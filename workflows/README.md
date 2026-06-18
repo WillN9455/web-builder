@@ -113,7 +113,7 @@ Phase "Assess Results"          — Pass: move to deployment | Fail: send back t
 
 ## File Dependency Map for Workflows
 
-Each workflow reads from upstream artifacts and produces outputs consumed by downstream workflows. The CLAUDE.md Framework Flow Map (§"Framework Flow Map — Cross-Reference Index") has the complete dependency table; this section maps specifically to workflow orchestration.
+Each workflow reads from upstream artifacts and produces outputs consumed by downstream workflows. The [`FRAMEWORK-FLOW.md`](../FRAMEWORK-FLOW.md) file has the complete dependency table; this section maps specifically to workflow orchestration.
 
 ### Workflow 1 (Idea → PRD)
 | Phase | Reads from | Writes to | Triggers |
@@ -163,5 +163,5 @@ Each workflow reads from upstream artifacts and produces outputs consumed by dow
 
 | File | Relationship |
 |------|-------------|
-| [`../AGENTS.md`](../AGENTS.md) §Agent Launch Order + §Communication Protocol | These define the agent-level orchestration that maps to workflow phases — each workflow phase triggers a downstream agent per this file |
-| `workflows/README.md` Phase structure (this file) → CLAUDE.md Flow Map | Each workflow's "reads from / writes to" columns reference files in the Framework Flow Map table |
+| [`../AGENTS.md`](../AGENTS.md) §Agent Launch Order + §Communication Protocol | Defines which agent triggers at each workflow phase boundary; agents follow the launch order in AGENTS.md, workflows define what happens inside each phase |
+| [`FRAMEWORK-FLOW.md`](../FRAMEWORK-FLOW.md) | Each workflow's "reads from / writes to" columns reference files in that table |

@@ -22,11 +22,12 @@ Idea (idea.txt)
 
 ## Project Structure
 
-All files below link to each other via cross-references defined in `CLAUDE.md` §Framework Flow Map and throughout each file's "Related Files" / "Cross-references" sections. See the flow map table for the complete dependency graph.
+All files below link to each other via cross-references defined in [`FRAMEWORK-FLOW.md`](./FRAMEWORK-FLOW.md) and throughout each file's "Related Files" / "Cross-references" sections. See that table for the complete dependency graph.
 
 ```
 ├── idea.txt                     # Living idea document (source of truth) → feeds PRD template
-├── CLAUDE.md                    # Framework rules and workflow docs (+ Framework Flow Map cross-reference index)
+├── CLAUDE.md                    # Framework rules and workflow docs
+├── FRAMEWORK-FLOW.md            # Complete file dependency / cross-reference table (moved from CLAUDE.md)
 ├── AGENTS.md                    # Agent roles, states, communication (+ agent-specific file references in each row)
 ├── PRD/                         # Product requirements per project
 │   └── templates/prd-template.md # PRD template with input/output chain cross-references
@@ -78,7 +79,7 @@ Every major file in this framework has a **"Related Files"** or **"Cross-referen
 2. **Output chain** — which downstream files consume this file's output
 3. **Related files** — which other files are complementary (e.g., a skill file and the state docs it governs)
 
-The canonical index of all cross-references is in `CLAUDE.md` §Framework Flow Map — Cross-Reference Index. This is the single source of truth for "what does what file need to build X?".
+The canonical index of all cross-references is in [`FRAMEWORK-FLOW.md`](./FRAMEWORK-FLOW.md). This is the single source of truth for "what does what file need to build X?".
 
 ## Getting Started
 

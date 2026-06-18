@@ -35,4 +35,4 @@ Design agents produce:
 - Each individual token file above as reference/spec
 - A manifest file listing all tokens and their usage counts
 
-**See also:** [`CLAUDE.md`](../../CLAUDE.md) Framework Flow Map for each token file's upstream inputs (PRD sections, user brand color input) and downstream consumers.
+**See also:** [`FRAMEWORK-FLOW.md`](../../FRAMEWORK-FLOW.md) for each token file's upstream inputs (PRD sections, user brand color input) and downstream consumers.
