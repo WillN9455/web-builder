@@ -25,10 +25,14 @@ claude-coding-framework/
 │   ├── components/        # Component specifications
 │   └── states/            # State definitions (error, loading, empty, etc.)
 ├── skills/                # Agent skill base — guidelines every agent follows
-│   ├── coding-guidelines.md
-│   ├── security-guidelines.md
-│   ├── accessibility-guidelines.md
-│   └── general-best-practices.md
+│   ├── coding-guidelines.md           # File organization, naming, code standards
+│   ├── security-guidelines.md         # Security checklist (auth, data, API)
+│   ├── accessibility-guidelines.md    # WCAG 2.1 AA requirements
+│   ├── general-best-practices.md      # Cross-agent rules
+│   ├── code-quality.md                # Duplication prevention, race conditions, timezone handling
+│   ├── feature-fidelity.md            # Design drift prevention, regression checks
+│   ├── security.md                    # Detailed security checklist with examples
+│   └── ui-best-practices.md           # UI completeness and resilience patterns
 ├── code-builder/          # Code generation rules and templates
 │   ├── templates/         # Starter project scaffolds
 │   └── config-rules.md    # How to choose frameworks, DBs, hosting
@@ -60,7 +64,14 @@ Each project flows through these stages:
 - **Agent**: 3 Code Agents (parallel, each on own branch)
 - Framework choices confirmed (frontend, DB, hosting, APIs)
 - Each agent builds their assigned feature with unit tests
-- Code follows skills/coding-guidelines.md and skills/security-guidelines.md
+- Code follows all relevant skill files (see Skill Invocation Rules above):
+  - `skills/coding-guidelines.md` — structure and naming
+  - `skills/security.md` + `skills/security-guidelines.md` — security from day one
+  - `skills/accessibility-guidelines.md` — WCAG compliance
+  - `skills/code-quality.md` — no duplication, atomic DB ops, correct timezones
+  - `skills/feature-fidelity.md` — match design exactly, preserve existing code
+  - `skills/ui-best-practices.md` — all UI states handled
+  - `skills/general-best-practices.md` — requirements-first discipline
 - Output: Feature-ready code pushed to branch
 
 ### Stage 4: Review
@@ -94,12 +105,41 @@ See `AGENTS.md` for detailed agent specifications, communication protocols, and 
 
 ## Skills / Guidelines
 
-All agents reference the skill base before working:
+### Framework Guidelines (always active)
+
+These apply at every stage. Every agent reads them before working:
 
 - **`skills/coding-guidelines.md`** — Coding standards, patterns, file organization
 - **`skills/security-guidelines.md`** — Security best practices (auth, data, API)
 - **`skills/accessibility-guidelines.md`** — WCAG compliance requirements
 - **`skills/general-best-practices.md`** — Platform-wide rules (always adhere to requirements and designs)
+
+### Feature Skills (triggered during build / large updates)
+
+These are activated when building or modifying features. See **Skill Invocation Rules** below for when each fires:
+
+- **`skills/code-quality.md`** — Prevents duplication, race conditions, and timezone bugs. Search before creating; use atomic DB operations; format on client, not server.
+- **`skills/feature-fidelity.md`** — Prevents design drift and regression. Read the design first, audit existing code before touching it, tie UI to persisted state.
+- **`skills/security.md`** — Comprehensive security checklist with examples. Auth guards, IDOR prevention, input validation, RBAC, CSRF, rate limiting, file uploads, error leakage.
+- **`skills/ui-best-practices.md`** — UI completeness and resilience. Loading states, error states with focus management, success feedback, empty states, back/cancel navigation, image fallbacks, form validation.
+
+### Skill Invocation Rules
+
+When an agent is performing a **build**, **implementation**, or **large update**, it MUST activate the appropriate skills from the table below. These are not optional — they are enforced at every stage of the framework.
+
+| Trigger | Activated Skills |
+|---------|-----------------|
+| Building any new feature (code generation) | `code-quality.md`, `feature-fidelity.md`, `security.md`, `ui-best-practices.md` |
+| Modifying an existing feature / updating code | `code-quality.md`, `feature-fidelity.md`, `security.md`, `ui-best-practices.md` |
+| Writing a route, endpoint, or API handler | `security.md` (all rules), `code-quality.md` (race conditions) |
+| Building or modifying a UI component / screen / form | `ui-best-practices.md` (all states), `feature-fidelity.md` (design fidelity) |
+| Creating a new utility function, helper, or component | `code-quality.md` (search before creating) |
+| Working with dates, times, or scheduling | `code-quality.md` (timezone rules) |
+| Any data access or query | `security.md` (IDOR prevention), `security-guidelines.md` |
+| Designing a screen or interaction | `accessibility-guidelines.md`, `ui-best-practices.md` |
+| Code review | All 8 skills reviewed adversarially against the changes |
+
+**How to activate:** Before writing any code for a feature, the agent should read and follow the relevant skill file(s) from the table above. The skill's rules become part of the task requirements — they are not optional guidelines.
 
 ## Rules
 
