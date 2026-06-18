@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+.next/
+.nuxt/
+.svelte-kit/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Output / build
+dist/
+build/
+out/
+
+# Test output
+testing/playwright/reports/
+test-results/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Generated files (regenerated from templates)
+design-system/*/tokens/tokens.css
