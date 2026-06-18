@@ -110,3 +110,58 @@ Phase "Assess Results"          — Pass: move to deployment | Fail: send back t
 - **Barriers are required between phases** — wait for all agents in a phase before starting the next
 - **Loops within phases** — use while loops with dry-counters (e.g., 2 consecutive "no issues" = done)
 - **User approval required** before moving between major stages (PRD → Design → Code → Review → QA → Deploy)
+
+## File Dependency Map for Workflows
+
+Each workflow reads from upstream artifacts and produces outputs consumed by downstream workflows. The CLAUDE.md Framework Flow Map (§"Framework Flow Map — Cross-Reference Index") has the complete dependency table; this section maps specifically to workflow orchestration.
+
+### Workflow 1 (Idea → PRD)
+| Phase | Reads from | Writes to | Triggers |
+|-------|-----------|----------|---------|
+| Gather | `idea.txt` (§Overall + pain points) | Clarified user input (internal) | — |
+| Write PRD | Clarified input + `PRD/templates/prd-template.md` (Section 1, §3-§8, §9, §12) | Draft `PRD/<project>/prd.md` | Requirements Reviewer |
+| Critique | Draft PRD; `general-best-practices.md` (§BA Agent → Requirements Reviewer rules); `accessibility-guidelines.md` (WCAG constraint check on UX Principles) | Reviewer comments in `PRD/<project>/reviewer-comments.md` + §13 Review Log | BA Agent (Revise phase) |
+| Revise | Reviewer comments; PRD template sections with gaps | Revised `PRD/<project>/prd.md` (sections updated) | Approve phase loop condition checked |
+| Approve | Approved PRD; reviewer resolves all §13 items | Final `PRD/<project>/prd.md` | **Workflow 2** — Design Agents receive approved PRD |
+
+### Workflow 2 (PRD → Design System)
+| Phase | Reads from | Writes to | Triggers |
+|-------|-----------|----------|---------|
+| Define Tokens | Approved PRD §6 UX Principles; brand colors from `idea.txt` / user input; WCAG constraints from `accessibility-guidelines.md` §Color & Contrast | `design-system/<project>/tokens/color.md`, `typography.md`, `spacing.md` per token README rules | Component specs |
+| Create Designs | Token definitions; PRD §8 User Stories → component selection from `components/README.md` index | `design-system/<project>/components/button.md`, `card.md`, `form-input.md`, `navigation.md` | Peer review by Design Agent B |
+| Peer Review | Designer A's outputs vs. token README rules + each component spec file structure rules (§props API, variants table, states table, accessibility notes, CSS implementation notes) | Review comments per component/state file | Designer A revisions (loop until agreed) |
+| Revise | Reviewer feedback; design specs | Revised component/state files | Compile phase |
+| Compile | All approved tokens + components + states | `tokens.css` (compiled custom properties); manifest.json | **Workflow 3** — Code Agents receive approved design system |
+
+### Workflow 3 (Design → Code)
+| Phase | Reads from | Writes to | Triggers |
+|-------|-----------|----------|---------|
+| Confirm Stack | PRD §3 Dependencies + user answers; `config-rules.md` §User Questions #1-#5 | Stack selection output (frontend, DB, hosting, API) | Template selection |
+| Scaffold | Stack choice from config-rules; `templates/nextjs-starter/` (or chosen template per `templates/README.md`); design token files | Scaffolded project with filled token values in CSS/TS files | Feature assignment |
+| Build Features | Approved PRD §8 User Stories (assigned features); component specs (`components/<feature>.md`); state specs (`states/*.md`); all skill files via Skill Invocation Rules table | Feature branch code implementing all states, following all rules | Unit tests |
+| Unit Tests | Feature spec; `testing/playwright/README.md` §Required Test Coverage; PRD acceptance criteria per user story (#N) | Unit + integration test files in feature's test directory | Push & Notify |
+| Push & Notify | Feature branch code + tests | Pushed feature branch | **Workflow 4** — Dev Reviewers begin review |
+
+### Workflow 4 (Code Review)
+| Phase | Reads from | Writes to | Triggers |
+|-------|-----------|----------|---------|
+| Review Maintainability | Code; `coding-guidelines.md` §Code Review Checklist; `code-quality.md` §1 Search Before Creating; `feature-fidelity.md` §After Implementation regression checks | Review comments per file: "X violates Y rule" | Dev Reviewer B (security) + C (a11y) in parallel |
+| Review Security | Code; `security.md` Pre-Completion Security Review checklist (§all 10 items); `security-guidelines.md` headers/secrets management section; PRD §5 Target Users (who has access?) | Security audit report: each checklist item passed/failed with file reference | Dev Reviewer C + BA/Design agents |
+| Review Accessibility | Code; `accessibility-guidelines.md` §Testing Requirements (keyboard, contrast, screen reader); each component's accessibility section in `components/*.md`; state required states tables per `interaction.md` | Accessibility audit report: each rule passed/failed with file reference | BA/Design Playwright review in parallel |
+| Review via Playwright | Code; PRD §8 User Stories (acceptance criteria to verify); design specs (`components/<feature>.md` + all applicable `states/*.md`); test tracing rules from `playwright/README.md` §Tracing test coverage table | Playwright results: pass/fail per user story per state doc | Consolidate issues |
+| Consolidate Issues | All three review dimensions' results | Consolidated review output → approve or send back to dev | **Workflow 5** (QA) if all pass; Code Agent (fix) if any fail |
+
+### Workflow 5 (QA Testing)
+| Phase | Reads from | Writes to | Triggers |
+|-------|-----------|----------|---------|
+| Clarify Requirements | PRD §8 User Stories + §13 reviewer comments; BA Agent for ambiguities per `general-best-practices.md` §BA Agent rule #2 (ask twice, then document) | Clarified requirements list | Test suite generation |
+| Write Test Suite | Clarified requirements; PRD §8 acceptance criteria per user story (#N); component specs; state docs (all 6 states' Testing Requirements lists); `accessibility-guidelines.md` §Testing Requirements | Playwright test files in `testing/playwright/features/<feature>/` | Test execution |
+| Execute Tests | Written tests; deployed/staged feature URL | Test results per feature: pass/fail per user story per state | Assess results |
+| Assess Results | Test results per PRD requirement traceability; `playwright/README.md` §QA Agent Test Execution Rules #3-#5 | Final verdict: deploy or send back to dev with failure details | Deployment (if all pass) |
+
+## Related Files
+
+| File | Relationship |
+|------|-------------|
+| [`../AGENTS.md`](../AGENTS.md) §Agent Launch Order + §Communication Protocol | These define the agent-level orchestration that maps to workflow phases — each workflow phase triggers a downstream agent per this file |
+| `workflows/README.md` Phase structure (this file) → CLAUDE.md Flow Map | Each workflow's "reads from / writes to" columns reference files in the Framework Flow Map table |

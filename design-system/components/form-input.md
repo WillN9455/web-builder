@@ -115,3 +115,25 @@ When user input exceeds available space:
   cursor: not-allowed;
 }
 ```
+
+## Token Mapping (which tokens each variant uses)
+
+| Variant | Color tokens (from `tokens/color.md`) | Spacing token (from `tokens/spacing.md`) |
+|---------|---------------------------------------|------------------------------------------|
+| Default | neutral-200 (border), neutral-800 (label), white (bg) | padding: space-2/space-3, border-radius: space-2 |
+| Filled | neutral-200 (border), neutral-600 (label), neutral-50 (bg) | Same spacing |
+| Error | error-500 (border), error-700 (label) — semantic palette | Same spacing |
+| Success | success-500 (border), success-700 (label) — semantic palette | Same spacing |
+| Focus ring | brand-primary-500 (ring + border), rgba(37,99,235,0.2) (shadow) | 2px offset per accessibility guidelines |
+
+## Related Files
+
+| File | Relationship |
+|------|-------------|
+| [`../tokens/color.md`](../tokens/color.md) §Semantic Palette + Neutral | All color tokens: borders, labels, focus rings, validation states |
+| [`../tokens/spacing.md`](../tokens/spacing.md) | Padding (space-2/space-3), border-radius (space-2), min-height (44px = space-11) |
+| [`states/error.md`](../states/error.md) | Error state: error border, `role="alert"` on error message, focus management |
+| [`states/validation.md`](../states/validation.md) | Validation state: inline field-level errors with `aria-invalid` + `aria-describedby` |
+| [`states/interaction.md`](../states/interaction.md) required states table | Default/focus/hover/disabled/readonly/error — all required per WCAG |
+| [`skills/accessibility-guidelines.md`](../../skills/accessibility-guidelines.md) §Screen Reader Support | `aria-describedby`, `aria-invalid` linkage, label association, focus management |
+| [`skills/ui-best-practices.md`](../../skills/ui-best-practices.md) §7 Form Validation | Client + server validation rules; field-level error placement; `noValidate` attribute |

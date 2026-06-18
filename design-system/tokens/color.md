@@ -2,6 +2,8 @@
 
 Define the complete color palette before design or implementation begins.
 
+**Cross-references:** Inputs from [`idea.txt`](../../idea.txt) (§Overall — user brand colors); PRD Section 6 UX Design Principles (brand tone → color selection); `skills/accessibility-guidelines.md` §Color & Contrast (WCAG AA constraint on all semantic colors). Outputs consumed by: all component specs in `design-system/components/`; QA Agent contrast audit; [`code-builder/templates/nextjs-starter/app/globals.css`](../../code-builder/templates/nextjs-starter/app/globals.css) compilation.
+
 ## Token Structure
 
 Each token follows this naming convention:
@@ -59,8 +61,21 @@ Categories: `brand`, `neutral`, `semantic`, `surface`
 
 ## Validation Checklist
 
-- [ ] Every brand color passes WCAG AA contrast (4.5:1 for text, 3:1 for large text/UI)
-- [ ] Semantic colors are distinguishable by non-color cues (icon, pattern)
-- [ ] Color palette supports both light and dark modes if required
+- [ ] Every brand color passes WCAG AA contrast (4.5:1 for text, 3:1 for large text/UI) — check against [`skills/accessibility-guidelines.md`](../../skills/accessibility-guidelines.md) §Color & Contrast rules
+- [ ] Semantic colors are distinguishable by non-color cues (icon, pattern) — required per `accessibility-guidelines.md` "Never use color alone" rule
+- [ ] Color palette supports both light and dark modes if required — check PRD §6 UX Design Principles for mode requirements
 - [ ] All tokens documented with CSS custom property names
 - [ ] PRD section mapped to each color decision
+
+## Related Files
+
+| File | Relationship |
+|------|-------------|
+| [`typography.md`](./typography.md) | Typography uses brand-primary colors for links, active states — must maintain contrast after pairing |
+| [`spacing.md`](./spacing.md) | Spacing tokens used with elevated surfaces (neutral-50 → neutral-100 depth) |
+| `states/error.md` | Semantic error colors (error-500/error-700) define error state borders and text |
+| `states/success.md` | Semantic success colors (success-500/success-700) define success state colors |
+| `states/info.md` (if exists) | Semantic info colors (info-500/info-700) for informational banners |
+| [`components/button.md`](../components/button.md) | Button primary/secondary variants use brand-primary/brand-secondary palette |
+| [`components/form-input.md`](../components/form-input.md) | Form field borders, focus rings, validation colors use semantic and neutral palette |
+| [`skills/ui-best-practices.md`](../../skills/ui-best-practices.md) §2 Error States | Error color must pair with `role="alert"` for screen reader announcement |

@@ -94,3 +94,46 @@ User action → API call fails →
 - [ ] Retry buttons show a loading state while retrying
 - [ ] Errors dismiss after 10 seconds (with persistent CTA) unless critical
 - [ ] Error messages match tone and style in PRD
+
+## Cross-References
+
+### Color tokens used (from `tokens/color.md` §Semantic Palette)
+| Token | Shade | Where used |
+|-------|-------|-----------|
+| `--ds-color-error-50` | `#FEF2F2` | Banner background, filled field bg |
+| `--ds-color-error-500` | `#DC2626` | Border-left stripe, icon color, inline error border |
+| `--ds-color-error-700` | `#B91C1C` | Banner text, critical severity text |
+
+### Semantic colors used (same file — also apply to states)
+| Token | Shade | Where used |
+|-------|-------|-----------|
+| `--ds-color-warning-500` | `#D97706` | Warning variant banner |
+| `--ds-color-warning-700` | `#B45309` | Warning text |
+| `--ds-color-info-500` | `#2563EB` | Info variant banner |
+
+### Rules governing this state
+| Rule source | Specific requirement |
+|-------------|---------------------|
+| [`skills/accessibility-guidelines.md`](../../skills/accessibility-guidelines.md) §Screen Reader Support | `role="alert"` on error banners; `aria-invalid="true"` on form fields with errors; focus management to first error |
+| [`skills/ui-best-practices.md`](../../skills/ui-best-practices.md) §2 Error States | Move focus to error on form submission failure; never expose raw server errors; distinguish error states from empty states |
+| `skills/security.md` §10 No Raw Error Leakage | Never show raw stack traces, SQL errors, or internal paths to clients — sanitize in UI |
+
+### Components that use this state
+| Component (from `components/`) | How error appears | Recovery action |
+|-------------------------------|------------------|-----------------|
+| `button.md` | Danger variant on hover; loading overlay during submit; disabled/error disabled states | Retry button, confirmation dialog for destructive actions |
+| `card.md` | 2px error-500 border + error banner in card body when content load fails | "Try Again" button inside the card's error boundary |
+| `form-input.md` | 2px error-500 border; error-700 label color; inline field-level error below input | Correct and re-validate on blur/change |
+| `navigation.md` | Nav banner if nav data fails to load; active state indicator turns red | "Reconnect" button in banner |
+
+### Downstream consumers (QA test mapping)
+| Test type | Playwright file | What it tests | Traces to PRD section |
+|-----------|-----------------|--------------|----------------------|
+| E2E error path | `features/<feature>/e2e.spec.ts` | API failure → error banner appears, retry works | PRD §8 User Story #N (error acceptance criteria) |
+| State test | `features/<feature>/states.spec.ts` | All error states per this doc's Testing Requirements list | This file + component specs |
+| A11y test | `features/<feature>/a11y.spec.ts` | `role="alert"` on error banners; focus on first error | `skills/accessibility-guidelines.md` §Screen Reader Support |
+
+### PRD input triggers (when this state is activated)
+- PRD Section 6 UX Principles: "Error handling and framework" section defines required error behaviors
+- PRD Section 8 User Stories: acceptance criteria that specify "when X fails, show Y"
+- PRD Section 12 Assumptions: any assumptions about offline behavior or network reliability

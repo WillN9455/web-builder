@@ -33,9 +33,28 @@ project-root/
 
 When choosing a template, reference `config-rules.md` for the decision tree. Default to **nextjs-starter** unless the user specifies otherwise or their requirements strongly favor another option (e.g., existing Vue team → vue-nuxt-starter).
 
+### Cross-references for template selection
+| config-rules.md section | Template file | What it fills in |
+|------------------------|---------------|-----------------|
+| Frontend Framework table → "React + Next.js" | `nextjs-starter/app/layout.tsx` | SSR setup, App Router structure |
+| Database table → PostgreSQL/MongoDB | `nextjs-starter/prisma/schema.prisma` (when it exists) or DB config file | Connection string from PRD §3 Dependencies; user credentials from `.env.example` |
+| Hosting Platform table → Vercel/Netlify | `nextjs-starter/vercel.json` or deployment config | Edge region, build output, runtime config |
+| API Communication table → REST/GraphQL | `nextjs-starter/app/api/` route structure | Route pattern per coding-guidelines.md file organization |
+
 ## How Code Agents Use Templates
 
 1. Confirm tech stack with user via `config-rules.md` questions
 2. Copy the chosen template into a new branch
-3. Replace all placeholder tokens (`{{PROJECT_NAME}}`, `{{PRIMARY_COLOR}}`, etc.) with project-specific values
-4. Implement features per PRD and design spec on top of the scaffold
+3. Replace all placeholder tokens (`{{PROJECT_NAME}}`, `{{PRIMARY_COLOR}}`, etc.) with project-specific values — **all color values must come from `design-system/tokens/color.md`**, all typography from `typography.md`, all spacing from `spacing.md`
+4. Implement features per PRD and design spec on top of the scaffold — each feature maps to a user story in PRD §8 + a component from `design-system/components/README.md` index
+5. Every skill file (coding-guidelines, security, accessibility, code-quality, feature-fidelity, ui-best-practices) must be applied during scaffold fill and feature implementation
+
+## Template → Skill Mapping
+
+| File in template | Skill file that governs it | Specific rules |
+|-----------------|---------------------------|---------------|
+| `app/layout.tsx` | `coding-guidelines.md` (naming, components) + `security-guidelines.md` (headers) | Component organization; security headers from §Headers & Configuration |
+| `globals.css` / token imports | `design-system/tokens/README.md` + `color.md` + `typography.md` | All custom properties match token names and values |
+| `src/components/` files | `feature-fidelity.md` §Read the Design First; `ui-best-practices.md` (§all sections) | Each component traces to a design spec in `design-system/components/`; all states from state docs implemented |
+| `src/services/` files | `security.md` (all 12 rules); `code-quality.md` (§search before creating, atomic DB ops, timezone rules) | Auth guards first; IDOR prevention; validation schemas; no predictable IDs |
+| `tests/` files | `testing/playwright/README.md` §Test File Organization | Test naming per PRD user story (#N); every test traces to a requirement |

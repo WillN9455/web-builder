@@ -2,6 +2,17 @@
  * {{PROJECT_NAME}} — Global Styles
  * Generated from design-system tokens.
  * All custom properties must match the tokens defined in design-system/tokens/.
+ *
+ * Cross-references:
+ * - Brand colors (primary-50..900) → design-system/tokens/color.md §Brand Palette — replace with user's brand colors before deploying
+ * - Neutral palette → color.md §Neutral Palette (exact hex values)
+ * - Semantic palette → color.md §Semantic Palette (WCAG AA contrast checked in color.md Validation Checklist)
+ * - Typography scale → typography.md Type Scale table (Major Third 1.250 ratio)
+ * - Spacing → spacing.md Space Scale table (4px base unit)
+ * - Container widths → spacing.md Container Widths table
+ * - Focus ring rules → accessibility-guidelines.md §Keyboard Accessibility + states/interaction.md focus state rules
+ * - Body styling → typography.md font-size/body line-height 1.625; color.md neutral-800 text; neutral-50 background
+ * - .sr-only utility → accessibility-guidelines.md §Screen Reader Support (screen reader only elements)
  */
 
 @tailwind base;

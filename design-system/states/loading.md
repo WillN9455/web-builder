@@ -94,3 +94,38 @@ For page-level loading (> 1s):
 - [ ] Spinner animation is ≤ 0.8s rotation speed (fast enough to not feel stuck, slow enough to not feel frantic)
 - [ ] Page-level loading has a recovery option after 3 seconds
 - [ ] No blank flashes between loading state and rendered content
+
+## Cross-References
+
+### Color tokens used (from `tokens/color.md`)
+| Token | Shade | Where used |
+|-------|-------|-----------|
+| `--ds-color-neutral-100` | `#F5F5F5` | Skeleton highlight shimmer |
+| `--ds-color-neutral-200` | `#E5E5E5` | Skeleton base color |
+| `--ds-color-brand-primary-500` | brand variant | Spinner color, progress bar fill |
+| `--ds-color-neutral-600` | `#4B5563` | Spinner color (page-level) |
+
+### Rules governing this state
+| Rule source | Specific requirement |
+|-------------|---------------------|
+| [`skills/accessibility-guidelines.md`](../../skills/accessibility-guidelines.md) §Screen Reader Support | Use `aria-busy="true"` on loading elements; never block interaction without cancel option |
+| [`skills/ui-best-practices.md`](../../skills/ui-best-practices.md) §1 Loading States | Disable interactive elements during in-flight requests; change button labels to "Saving…"/"Processing…" during loading |
+| `skills/security.md` §9 No Hardcoded Secrets | Spinner/loading color tokens come from CSS custom properties, not hardcoded values |
+
+### Components that use this state
+| Component (from `components/`) | How loading appears | Recovery action |
+|-------------------------------|--------------------|-----------------|
+| `button.md` | Loading overlay on button face; spinner icon; "Saving…"/"Uploading…" label change | Cancel if supported; retry after failure |
+| `card.md` | Skeleton placeholder bars matching card shape; inline spinner for component fetch | Refresh data source; navigate away from stale content |
+| `form-input.md` | Not typically used on individual inputs — loading appears on submit button instead | See button loading behavior |
+| `navigation.md` | Nav shimmer/skeleton during initial SSR or page transition | Auto-resolves when nav data loads; "Reconnect" if persistent failure |
+
+### Downstream consumers (QA test mapping)
+| Test type | Playwright file | What it tests | Traces to PRD section |
+|-----------|-----------------|--------------|----------------------|
+| State test | `features/<feature>/states.spec.ts` | Loading state duration, spinner animation speed, recovery option timing | PRD §6 UX Principles (timing expectations) |
+| E2E test | `features/<feature>/e2e.spec.ts` | Full flow: loading → data arrives → content renders; no blank flash between states | PRD §8 User Story #N (happy path timing) |
+
+### PRD input triggers
+- PRD Section 6 UX Principles: "Page loading states" and "Specific component loading state" sections define expected behavior
+- PRD Section 12 Assumptions: any network latency assumptions (e.g., "API responds within 2s under normal load")

@@ -222,3 +222,16 @@ Before calling a UI feature done:
 7. If the screen has a modal or drawer — can you Tab out of it? Does Escape close it?
 8. If the list can be empty — is there a distinct empty-state message (not a spinner, not an error)?
 9. Any destructive action — does it require confirmation before proceeding?
+
+## Related Files
+
+| File | Relationship |
+|------|-------------|
+| [`../design-system/states/error.md`](../design-system/states/error.md) | This skill §2 Error States references error banner patterns defined in the state doc |
+| [`../design-system/states/loading.md`](../design-system/states/loading.md) | This skill §1 Loading States uses skeleton/spinner/progress-bar patterns from the state doc |
+| [`../design-system/states/success.md`](../design-system/states/success.md) | This skill §3 Success Feedback references success banner component and auto-dismiss timing from the state doc |
+| [`../design-system/states/empty.md`](../design-system/states/empty.md) | This skill §2.5 Empty States references empty state structure and CTA rules from the state doc |
+| [`../design-system/states/validation.md`](../design-system/states/validation.md) | This skill §7 Form Validation uses validation error patterns, token values, and message formats from the state doc |
+| `design-system/tokens/color.md` §Semantic Palette | Success/error/warning colors used in UI states come from this file's semantic palette |
+| `design-system/components/form-input.md` | Form field implementation per component spec + validation state spec — this skill provides the UX rules, form-input component provides the CSS/spec |
+| [`accessibility-guidelines.md`](./accessibility-guidelines.md) §Screen Reader Support + §Interactive Elements Required States | ui-best-practices and accessibility guidelines are complementary: accessibility defines WCAG requirements; ui-best-practices defines implementation patterns that satisfy those requirements |

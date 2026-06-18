@@ -177,3 +177,22 @@ interface NavLink {
   color: var(--ds-color-neutral-400);
 }
 ```
+
+## Token Mapping (which tokens each component uses)
+
+| Component | Color tokens (from `tokens/color.md`) | Spacing token (from `tokens/spacing.md`) |
+|-----------|---------------------------------------|------------------------------------------|
+| Header nav | brand-primary-900 (solid bg), neutral-200 (border), brand-primary-500 (active indicator) | height: space-18, padding: 0/space-8 |
+| Breadcrumbs | neutral-600 (text), brand-primary-500 (link), neutral-400 (separator) | separator margin: space-2 |
+| Footer nav | neutral-600 (links on white bg), neutral-400 (social/icon links) | Column gap per grid spacing |
+
+## Related Files
+
+| File | Relationship |
+|------|-------------|
+| [`../tokens/color.md`](../tokens/color.md) §Brand + Neutral Palettes | Active state indicator, link colors, hover states, surface bg |
+| [`../tokens/spacing.md`](../tokens/spacing.md) | Header height (space-18 = 72px), nav item padding (space-4), breadcrumb separator gap (space-2) |
+| [`states/error.md`](../states/error.md) | Navigation error state: banner if nav data fails to load |
+| [`states/loading.md`](../states/loading.md) | Nav skeleton/shimmer during SSR or initial fetch |
+| [`states/interaction.md`](../states/interaction.md) required states table | Default/hover/focus/active/disabled for all nav items |
+| [`skills/accessibility-guidelines.md`](../../skills/accessibility-guidelines.md) §Keyboard Accessibility + §Screen Reader Support | Skip navigation link (first focusable), landmark `<nav>` with aria-label, focus trap in mobile menu, ESC closes, touch targets ≥44px |

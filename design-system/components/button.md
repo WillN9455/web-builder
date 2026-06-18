@@ -69,3 +69,24 @@ border-radius: var(--ds-space-2);
   outline-offset: 2px;
 }
 ```
+
+## Token Mapping (which tokens each variant uses)
+
+| Variant | Color tokens (from `tokens/color.md`) | Spacing token (from `tokens/spacing.md`) | Typography (from `tokens/typography.md`) |
+|---------|---------------------------------------|------------------------------------------|----------------------------------------|
+| Primary | brand-primary-500 (bg), white (text), brand-primary-700 (hover) | padding: space-1.5/space-4 | font-sm / body / lg per size row |
+| Secondary | brand-primary-500 (text/border), brand-primary-100 (hover bg) | Same as primary | Same as primary |
+| Ghost | neutral-600 (text), neutral-200 (hover bg) | Same as primary | Same as primary |
+| Danger | error-500 (bg), white (text), error-700 (hover) | Same as primary | Same as primary |
+
+## Related Files
+
+| File | Relationship |
+|------|-------------|
+| [`../tokens/color.md`](../tokens/color.md) §Brand Palette + Semantic Palette | All color tokens for each variant |
+| [`../tokens/spacing.md`](../tokens/spacing.md) | Padding values (space-1.5, space-3, space-6, space-8) |
+| [`states/error.md`](../states/error.md) | Danger variant error border/icon rules for destructive actions |
+| [`states/loading.md`](../states/loading.md) | Spinner overlay CSS on button during in-flight requests |
+| [`states/interaction.md`](../states/interaction.md) required states table | Every state the button must implement (default/hover/focus/active/disabled/error/loading) |
+| [`skills/accessibility-guidelines.md`](../../skills/accessibility-guidelines.md) §Interactive Elements Required States | Minimum touch target 44x44px, focus ring contrast, keyboard activation |
+| [`skills/ui-best-practices.md`](../../skills/ui-best-practices.md) §3 | Success feedback pattern for confirmation banners after button-triggered actions |

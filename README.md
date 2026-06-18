@@ -22,28 +22,63 @@ Idea (idea.txt)
 
 ## Project Structure
 
+All files below link to each other via cross-references defined in `CLAUDE.md` §Framework Flow Map and throughout each file's "Related Files" / "Cross-references" sections. See the flow map table for the complete dependency graph.
+
 ```
-├── idea.txt                     # Living idea document (source of truth)
-├── CLAUDE.md                    # Framework rules and workflow docs
-├── AGENTS.md                    # Agent roles, states, communication
+├── idea.txt                     # Living idea document (source of truth) → feeds PRD template
+├── CLAUDE.md                    # Framework rules and workflow docs (+ Framework Flow Map cross-reference index)
+├── AGENTS.md                    # Agent roles, states, communication (+ agent-specific file references in each row)
 ├── PRD/                         # Product requirements per project
-│   └── templates/               # PRD template for BA Agent
+│   └── templates/prd-template.md # PRD template with input/output chain cross-references
 ├── design-system/               # Design specs per project
-│   ├── tokens/                  # Color, typography, spacing tokens
-│   ├── components/              # Component specifications
-│   └── states/                  # Interaction state definitions
+│   ├── tokens/                  # Color, typography, spacing tokens (each has "Related Files" → components/skills)
+│   │   ├── README.md            # Token index + downstream consumer links to templates/components
+│   │   ├── color.md             # Semantic palette → state docs (error/warning/info colors)
+│   │   ├── typography.md        # Type scale → component specs (button/card/form-nav text sizes)
+│   │   └── spacing.md           # Spacing scale → component padding/border-radius/gap values
+│   ├── components/              # Component specifications (each has "Related Files" → tokens/states/skills)
+│   │   ├── README.md            # Component index + cross-reference map table for every component's token/state deps
+│   │   ├── button.md            # CTA spec — links to color tokens, all states, accessibility guidelines
+│   │   ├── card.md              # Data display spec — links to neutral colors, empty/loading states
+│   │   ├── form-input.md        # Input spec — links to validation state, semantic colors, UI best practices
+│   │   └── navigation.md        # Nav spec — links to brand colors, interaction states, accessibility guidelines
+│   └── states/                  # Interaction state definitions (each has "Cross-References" → tokens/components/QA)
+│       ├── README.md            # State index + mapping table for each file's token/color/component/QA cross-refs
+│       ├── error.md             # Error banner spec — links to semantic palette, UI best practices §2
+│       ├── loading.md           # Skeleton/spinner spec — links to neutral brand colors, UI best practices §1
+│       ├── success.md           # Success banner spec — links to semantic success palette, UI best practices §3
+│       ├── empty.md             # Empty content spec — links to neutral-600/400 colors, UI best practices §2.5
+│       ├── validation.md        # Form validation spec — links to semantic palette, form-input component, UI best practices §7
+│       └── interaction.md       # All interactive states — links to brand colors, accessibility guidelines, all components
 ├── code-builder/                # Code generation tools
-│   ├── config-rules.md          # Tech stack selection guide
-│   └── templates/               # Starter project scaffolds
-├── skills/                      # Agent skill base (every agent references these)
-│   ├── coding-guidelines.md
-│   ├── security-guidelines.md
-│   ├── accessibility-guidelines.md
-│   └── general-best-practices.md
+│   ├── config-rules.md          # Tech stack selection guide (→ PRD §3 Constraints; → templates)
+│   └── templates/               # Starter project scaffolds (→ config-rules selection; → each skill file)
+│       ├── README.md            # Template index + template→skill mapping table + cross-references for stack selection
+│       └── nextjs-starter/      # Scaffolded project (layout.tsx/globals.css have inline cross-reference comments)
+├── skills/                      # Agent skill base (each has "Related Files" → other files)
+│   ├── coding-guidelines.md     # File structure/naming (+ links to templates, testing, security)
+│   ├── security-guidelines.md   # Security standards (+ links to security.md detailed checklist, workflow 4)
+│   ├── accessibility-guidelines.md # WCAG guidelines (+ links to token contrast decisions, state docs, ui-best-practices)
+│   ├── general-best-practices.md # Cross-agent rules (+ links to PRD template, AGENTS.md, workflows)
+│   ├── code-quality.md          # Duplication/race/timezone prevention (+ links to PRD scope, coding-guidelines, testing)
+│   ├── feature-fidelity.md      # Design drift/regression prevention (+ links to component specs, token files, ui-best-practices)
+│   ├── security.md              # Detailed security checklist with examples (+ referenced by all agents via AGENTS.md triggers)
+│   └── ui-best-practices.md     # UI completeness checklist (+ links to state docs, accessibility guidelines, form-input component)
 ├── testing/                     # Test generation and execution
-│   └── playwright/              # UI test patterns and helpers
+│   └── playwright/README.md     # Playwright patterns (→ PRD user stories; → state docs for each test type; → CLAUDE.md workflows)
 └── workflows/                   # Orchestration scripts for agent coordination
+    └── README.md                # Workflow patterns with file dependency map (§all 5 workflows: reads-from / writes-to / triggers)
 ```
+
+## How Cross-References Work
+
+Every major file in this framework has a **"Related Files"** or **"Cross-references"** section that explicitly maps:
+
+1. **Input chain** — which upstream files feed into this file (what it reads from)
+2. **Output chain** — which downstream files consume this file's output
+3. **Related files** — which other files are complementary (e.g., a skill file and the state docs it governs)
+
+The canonical index of all cross-references is in `CLAUDE.md` §Framework Flow Map — Cross-Reference Index. This is the single source of truth for "what does what file need to build X?".
 
 ## Getting Started
 

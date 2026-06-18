@@ -106,3 +106,39 @@ Bad examples:
 - [ ] Password strength indicator updates in real time as user types
 - [ ] Validation errors do not prevent the user from correcting their input
 - [ ] Success validation (green checkmark) appears when field becomes valid
+
+## Cross-References
+
+### Color tokens used (from `tokens/color.md` §Semantic Palette)
+| Token | Shade | Where used |
+|-------|-------|-----------|
+| `--ds-color-error-500` | `#DC2626` | Invalid border, error icon, weak password bar |
+| `--ds-color-error-700` | `#B91C1C` | Error text color |
+| `--ds-color-success-500` | `#059669` | Validated (green checkmark) border and icon, strong password bar |
+| `--ds-color-warning-500` | `#D97706` | Fair strength indicator bar |
+
+### Rules governing this state
+| Rule source | Specific requirement |
+|-------------|---------------------|
+| [`skills/accessibility-guidelines.md`](../../skills/accessibility-guidelines.md) §Screen Reader Support | `aria-describedby` links error message to input; `aria-invalid="true"` on invalid fields; focus management to first error on submit |
+| [`skills/ui-best-practices.md`](../../skills/ui-best-practices.md) §7 Form Validation | Validate on submit (always) + blur (per field, after first interaction); show field-level errors adjacent to input; `noValidate` attribute on form; clear all errors button for 5+ errors |
+| `design-system/components/form-input.md` Required States table | Valid/error/validated/required-empty states must match this spec exactly |
+
+### Components that use this state
+| Component (from `components/`) | How validation appears | Traces to which PRD section |
+|-------------------------------|----------------------|----------------------------|
+| `button.md` | Not applicable for button itself — triggers validation on form submission | — |
+| `card.md` | Card containing a form inherits form-input field-level validation; error border on card body if required card fields missing | PRD §8 User Stories (form submissions in each user flow) |
+| `form-input.md` | Border color changes (error-500 / success-500); inline error message below input with icon; label color matches state | PRD §8 User Stories + UX Principles §6 (field requirements per feature) |
+| `navigation.md` | Not typically applicable — nav doesn't have user-input fields | — |
+
+### Downstream consumers (QA test mapping)
+| Test type | Playwright file | What it tests | Traces to PRD section |
+|-----------|-----------------|--------------|----------------------|
+| State test | `features/<feature>/states.spec.ts` | All validation states per this file's Testing Requirements list; focus management on first invalid field | PRD §8 User Story #N (validation acceptance criteria) |
+| E2E test | `features/<feature>/e2e.spec.ts` | Full form flow: fill valid → submit → success; fill invalid → submit → error messages appear; correct errors → submit again → success | PRD §8 User Story #N (error path acceptance criteria) |
+| A11y test | `features/<feature>/a11y.spec.ts` | `aria-invalid="true"` on invalid fields; `aria-describedby` linkage; focus moves to first error on submit | `skills/accessibility-guidelines.md` §Screen Reader Support |
+
+### PRD input triggers
+- PRD Section 6 UX Principles: "Validation states" section defines required behavior for each form field type
+- PRD Section 8 User Stories: acceptance criteria specifying validation rules per feature (e.g., "email must be valid format", "name is required")

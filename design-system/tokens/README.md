@@ -19,9 +19,20 @@ Design tokens are the atomic building blocks of the visual design system. Each t
 5. **All tokens must be CSS-implementable** — no platform-specific values
 6. **Document every token with its semantic name AND the PRD section it satisfies**
 
+## Downstream Consumers (where token values are used)
+
+All component specs in `design-system/components/` must use these token names — never hardcode hex values. Code Agents fill template CSS files with computed values from the token definitions:
+
+- [`code-builder/templates/nextjs-starter/app/globals.css`](../code-builder/templates/nextjs-starter/app/globals.css) → receives all color + typography tokens as `@layer base` custom properties
+- [`code-builder/config-rules.md`](../../code-builder/config-rules.md) → brand colors from PRD input feed stack choice (primary/secondary determine branding tier)
+- Each component spec file in `design-system/components/` → references specific token names in its CSS implementation notes
+- QA Agent → contrast check against `skills/accessibility-guidelines.md` §Color & Contrast using computed values
+
 ## Output
 
 Design agents produce:
 - `design-system/<project>/tokens/tokens.css` — compiled CSS custom properties
 - Each individual token file above as reference/spec
 - A manifest file listing all tokens and their usage counts
+
+**See also:** [`CLAUDE.md`](../../CLAUDE.md) Framework Flow Map for each token file's upstream inputs (PRD sections, user brand color input) and downstream consumers.

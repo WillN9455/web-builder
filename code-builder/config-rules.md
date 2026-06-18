@@ -36,8 +36,27 @@ How to choose tech stack, hosting, and tooling based on user input.
 
 ## User Questions Before Building
 
-1. **What is the primary purpose of this application?**
-2. **Expected user volume at launch?** (determines hosting scale)
-3. **Any existing technology constraints?** (must use AWS, must support IE11, etc.)
-4. **Team familiarity with any framework?** (if building in-house, not just AI-generated)
-5. **Budget constraints?** (free tier vs paid infrastructure)
+1. **What is the primary purpose of this application?** → maps to PRD §1 Main Feature + §2 Problem Alignment; informs framework choice (complex interactivity → React/Next.js per Frontend Framework table)
+2. **Expected user volume at launch?** → maps to PRD §3 Timing & Priority (scaling needs); determines hosting platform choice per Hosting Platform table (static only → Cloudflare Pages; full control → VPS)
+3. **Any existing technology constraints?** → must feed into PRD §3 Dependencies field; must be reflected in DB selection (must use PostgreSQL → relational table; must use MongoDB → document table)
+4. **Team familiarity with any framework?** → informs template selection: Vue team → Nuxt template; Svelte experience → SvelteKit template (per `templates/README.md`)
+5. **Budget constraints?** → free tier vs paid infrastructure; maps to hosting platform table and DB table (S3/R2 for file storage on budget; Redis for cache with performance needs)
+
+## Cross-references
+
+| config-rules.md section | Upstream input (from PRD) | Downstream output (to templates/skills) |
+|------------------------|--------------------------|---------------------------------------|
+| Frontend Framework table → Next.js | PRD §1 (complexity), §6 UX principles (interactivity needs) | `templates/nextjs-starter/`; skill files: `coding-guidelines.md` (React conventions), `accessibility-guidelines.md` (interactive element rules) |
+| Database table → PostgreSQL/MongoDB/etc. | PRD §3 Dependencies (existing DB constraints); §5 Target Users (data access patterns) | Schema templates; `security.md` §2 IDOR prevention (per data model) |
+| Hosting Platform table | PRD §2 Problem Alignment (scale requirements), user answer #2 (volume) | Deployment config; CI/CD setup |
+| API Communication table → REST/GraphQL/gRPC/WebSockets | PRD §5 Target Users (client types — mobile vs web); §6 UX principles (real-time needs) | Route structure in `coding-guidelines.md`; `security.md` §9 secrets management (API key storage) |
+
+## Related Files
+
+| File | Relationship |
+|------|-------------|
+| [`PRD/templates/prd-template.md`](../PRD/templates/prd-template.md) §3 Timing/Priority + §5 Target Users | PRD sections that feed stack selection — constraints, budget, scale requirements from the PRD drive every decision in this file |
+| [`templates/README.md`](./templates/README.md) | Config-rules selects which template is used; templates are filled with token values from design-system |
+| `design-system/tokens/color.md` §Brand Palette | Brand colors (primary/secondary) determine the "branding tier" which may influence hosting decisions (e.g., CDN for brand assets) |
+| [`skills/coding-guidelines.md`](../skills/coding-guidelines.md) | Coding conventions match the chosen framework — React hooks vs Vue composables vs Svelte stores |
+| `workflows/README.md` Workflow 3 Phase "Confirm Stack" | This workflow phase asks the user questions from this file's §User Questions section |

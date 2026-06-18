@@ -77,3 +77,23 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 ```
+
+## Token Mapping (which tokens each variant uses)
+
+| Variant | Color tokens (from `tokens/color.md`) | Spacing token (from `tokens/spacing.md`) |
+|---------|---------------------------------------|------------------------------------------|
+| Default | neutral-200 (border), transparent (bg) | border-radius: space-3, padding: space-6 |
+| Elevated | white (bg), neutral-200 (border) | Same radius, same padding |
+| Filled | neutral-100 (bg), no border | Same radius, same padding |
+
+## Related Files
+
+| File | Relationship |
+|------|-------------|
+| [`../tokens/color.md`](../tokens/color.md) §Neutral Palette + Surface Tokens | Card bg/border/shadow colors |
+| [`../tokens/spacing.md`](../tokens/spacing.md) | Border-radius (space-3), padding (space-6 for md, space-3 for sm, etc.) |
+| [`states/error.md`](../states/error.md) | Error state: 2px error-500 border + error banner in card body |
+| [`states/empty.md`](../states/empty.md) | Empty state: illustration + "No data" text with actionable CTA |
+| [`states/loading.md`](../states/loading.md) | Skeleton placeholder bars matching card shape during content fetch |
+| [`states/interaction.md`](../states/interaction.md) required states table | Default and hover states for interactive cards |
+| [`skills/accessibility-guidelines.md`](../../skills/accessibility-guidelines.md) §Screen Reader Support | Proper heading hierarchy within card; aria labels on interactive cards |

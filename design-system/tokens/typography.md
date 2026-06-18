@@ -75,3 +75,19 @@ line-height: 1.625;
 - [ ] Fallback stack matches each primary family
 - [ ] Type scale is mathematically consistent (1.250 ratio or PRD-specified ratio)
 - [ ] All headings use semibold (600) or bold (700) — never regular for heading text
+
+## Related Files
+
+| File | Relationship |
+|------|-------------|
+| `color.md` §Brand Palette | Link text uses brand-primary colors; link hover state changes color via typography → color cross-token relationship |
+| `spacing.md` | Typography spacing (line-height) interacts with vertical rhythm defined in spacing tokens |
+| `components/button.md` Variant table | Button label sizes map to type scale: sm→font-size-sm, md→font-body, lg→font-size-lg; font-weight for buttons → font-weight-medium |
+| `components/card.md` Internal Structure | Card heading/body typography uses this type scale (h2→font-size-2xl/body→font-body) |
+| `components/form-input.md` Variants table | Label typography: default→font-sm/neutral-800, filled→font-sm/neutral-600; input text→font-body |
+| `components/navigation.md` CSS Implementation Notes | Breadcrumb→font-size-sm/nav-label→font-body/header-height→spacing token; active indicator→brand-primary color from color.md |
+| `states/error.md` Banner tokens | Error banner heading → font-weight-bold; body text → font-body |
+| `states/loading.md` Skeleton patterns | Skeleton text width percentages map to typography scale line lengths for realistic approximation |
+| `states/success.md` Full Screen Tokens | Success screen title → font-size-2xl/3xl per design; icon bg → success-100 from color.md |
+| `states/validation.md` Validation states | Password strength labels→font-size-sm; strength bar → brand-primary/spinner color from color.md |
+| `skills/accessibility-guidelines.md` §Content & Layout | "One h1 per page" rule dictates which type scale token (3xl for h1); heading hierarchy must match type scale order (h1→3xl, h2→2xl, h3→xl) |

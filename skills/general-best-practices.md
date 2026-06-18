@@ -56,3 +56,12 @@ All agent work flows through files. If it's not written down, it doesn't exist:
 - Code → Feature branches
 - Tests → `testing/playwright/`
 - Reviews → `PRD/<project>/reviewer-comments.md`, inline PR comments
+
+## Related Files
+
+| File | Relationship |
+|------|-------------|
+| [`../PRD/templates/prd-template.md`](../PRD/templates/prd-template.md) §9 Supporting Documents + §13 Review Log | BA Agent uses MoSCoW from this file to prioritize features; PRD template is the artifact produced by general-best-practices rules |
+| [`../AGENTS.md`](../AGENTS.md) each agent row | Agent-specific rules in each skill section are implemented by all agents per these general best practices |
+| `workflows/README.md` Phase structure | Each workflow phase corresponds to a stage where these best practices must be enforced (e.g., "Gather" phase → BA Agent rules §1-#2; "Approve" phase → Artifacts Are Source of Truth) |
+| [`../code-builder/config-rules.md`](../code-builder/config-rules.md) Stack Selection Decision Tree | Tech stack choices from config-rules feed into which general best practices apply (e.g., React → hooks rule; Vue → composables rule) |

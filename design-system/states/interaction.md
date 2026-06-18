@@ -98,3 +98,40 @@ Every clickable/selectable element must implement all states below:
 | Modal/dialog open/close | 250ms | ease-out (open), ease-in (close) |
 | Tooltip appearance | 100ms | ease-out |
 | Loading spinner rotation | 800ms per full rotation | linear |
+
+## Cross-References
+
+### Color tokens used (from `tokens/color.md`)
+| Token | Shade | Where used |
+|-------|-------|-----------|
+| `--ds-color-brand-primary-500` | brand variant | Focus ring, link hover color, nav active indicator |
+| `--ds-color-brand-primary-700` | brand variant | Link hover text color |
+| `--ds-color-neutral-100` | `#F5F5F5` | Disabled button bg |
+| `--ds-color-neutral-200` | `#E5E5E5` | Disabled button (stronger), tooltip border, hover bg |
+| `--ds-color-neutral-300` | (implied) | Disabled border |
+| `--ds-color-neutral-400` | `#9CA3AF` | Disabled text |
+
+### Rules governing this state
+| Rule source | Specific requirement |
+|-------------|---------------------|
+| [`skills/accessibility-guidelines.md`](../../skills/accessibility-guidelines.md) §Interactive Elements Required States | Every clickable/selectable element MUST define all states: default/hover/focus/active/disabled/error/loading — with exact screen reader announcements per the table |
+| [`skills/accessibility-guidelines.md`](../../skills/accessibility-guidelines.md) §Keyboard Accessibility | All interactive elements reachable via keyboard; focus ring ≥3:1 contrast against surrounding; skip navigation link as first tab stop |
+| [`skills/ui-best-practices.md`](../../skills/ui-best-practices.md) §6 Accessibility | All interactive elements must be Tab-reachable and operable by Enter/Space; use `<button>` not `<div onClick>`; fieldset/legend for grouped inputs; aria-describedby for field errors |
+
+### Components that implement all required states
+| Component (from `components/`) | States table reference | Notes |
+|-------------------------------|----------------------|-------|
+| `button.md` | Required States table (§32–40) — 7 states: default/hover/focus/active/disabled/loading | Also implements error state via danger variant + loading overlay |
+| `card.md` | Default/hover (interactive cards); loading via skeleton; empty state per `empty.md`; error via error-boundary | Non-interactive cards only need default state |
+| `form-input.md` | Required States table (§40–48) — 7 states: default/focus/hover/disabled/readonly/error/filled | Plus validation variant per `validation.md` |
+| `navigation.md` | Required States table (§101–109) — default/hover/focus/active-disabled for all nav items | Mobile menu adds drawer state (open/close animation timing from §92–100) |
+
+### Downstream consumers (QA test mapping)
+| Test type | Playwright file | What it tests | Traces to PRD section |
+|-----------|-----------------|--------------|----------------------|
+| State test | `features/<feature>/states.spec.ts` | All required states for each component verified: hover shows, focus visible, disabled blocked, error displays | Component specs (`components/*.md`) + this file's states table |
+| A11y test | `features/<feature>/a11y.spec.ts` | Focus ring contrast ≥3:1; skip-nav link present; keyboard navigation through all interactive elements; no focus traps | `skills/accessibility-guidelines.md` §Keyboard Accessibility + §Focus |
+
+### PRD input triggers
+- PRD Section 6 UX Principles: "Interactions with each clickable element" section defines per-element behavior
+- PRD Section 12 Assumptions: any assumptions about touch target requirements (e.g., "target audience uses mobile devices")

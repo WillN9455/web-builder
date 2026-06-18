@@ -65,3 +65,13 @@ src/
 - [ ] No hardcoded strings — use constants or i18n keys
 - [ ] Console.log removed (use logger or remove entirely)
 - [ ] Complexity: cyclomatic complexity ≤ 5 per function
+
+## Related Files
+
+| File | Relationship |
+|------|-------------|
+| [`../code-builder/templates/nextjs-starter/`](../code-builder/templates/nextjs-starter/) | Coding conventions define `src/` file organization that templates must follow exactly |
+| [`design-system/components/README.md`](../design-system/components/README.md) Component Rules §5 | Components are CSS-implementable only — templates must not introduce JS-only effects |
+| [`testing/playwright/README.md`](../testing/playwright/README.md) §Test File Organization | Test file naming convention (`.test.ts` / `.spec.ts`) and organization mirrors source structure per these conventions |
+| [`skills/security.md`](./security.md) | All route handlers/API calls defined here must also pass security.md checklist |
+| `workflows/README.md` Workflow 4 Phase "Review Maintainability" | Dev Reviewer A uses this checklist as the review criteria |

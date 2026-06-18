@@ -59,3 +59,12 @@ Content-Security-Policy: default-src 'self'
 - SameSite=Strict or Lax on cookies
 - Logout invalidates server-side session token (not just clears frontend)
 - Idle timeout: 30 minutes; absolute timeout: 8 hours
+
+## Related Files
+
+| File | Relationship |
+|------|-------------|
+| [`security.md`](./security.md) | This file covers standards; security.md has the detailed checklist with code examples — use both together |
+| `design-system/tokens/color.md` §Semantic Palette | Security banners (error/warning/info colors) must use semantic palette tokens, not custom "alert" colors |
+| [`testing/playwright/README.md`](../testing/playwright/README.md) §QA Agent Test Execution Rules | QA Agent should verify security headers are present on deployed feature as part of test suite |
+| `workflows/README.md` Workflow 4 Phase "Review Security" | Dev Reviewer B uses these guidelines + security.md checklist for the security review dimension |

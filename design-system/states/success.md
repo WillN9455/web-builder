@@ -85,3 +85,37 @@ Examples:
 - [ ] Auto-dismiss timers are at least 4 seconds (long enough to read)
 - [ ] Success state does not navigate away unexpectedly (unless it's a full-screen success flow)
 - [ ] Form submission success shows confirmation of what was submitted
+
+## Cross-References
+
+### Color tokens used (from `tokens/color.md` §Semantic Palette)
+| Token | Shade | Where used |
+|-------|-------|-----------|
+| `--ds-color-success-500` | `#059669` | Banner border-left stripe, icon color, strength bar strong state |
+| `--ds-color-success-700` | `#047857` | Banner text color |
+| `--ds-color-success-100` | `#D1FAE5` | Full-screen success icon background |
+
+### Rules governing this state
+| Rule source | Specific requirement |
+|-------------|---------------------|
+| [`skills/accessibility-guidelines.md`](../../skills/accessibility-guidelines.md) §Screen Reader Support | Use `role="status"` (not `role="alert"`) — success is informational, not urgent; screen reader should announce "Success. [what was done]" |
+| [`skills/ui-best-practices.md`](../../skills/ui-best-practices.md) §3 Success Feedback | Use `role="status"` for in-page confirmation; show submitted value back to user; auto-dismiss after 3–5s unless message contains action link |
+| `features-fidelity.md` §During Implementation — Follow All Design States | Must implement success state explicitly as a code path — don't skip it because it's "unlikely" to fail |
+
+### Components that use this state
+| Component (from `components/`) | How success appears | Dismissal |
+|-------------------------------|--------------------|-----------|
+| `button.md` | Button briefly turns green (success-500 bg) on submit; label changes to "Saved ✓" | Returns to normal after 3–5s |
+| `card.md` | Green border-left stripe (4px success-500) on card body when item saved successfully | Auto-dismisses or manual dismiss |
+| `form-input.md` | 2px success-500 border + success checkmark icon on valid input (after blur + change) | Clears on next edit of the field |
+| `navigation.md` | Not typically applicable — nav doesn't produce success outcomes | — |
+
+### Downstream consumers (QA test mapping)
+| Test type | Playwright file | What it tests | Traces to PRD section |
+|-----------|-----------------|--------------|----------------------|
+| State test | `features/<feature>/states.spec.ts` | Success banner appears after form submission; auto-dismiss timer ≥4s; `role="status"` verified | PRD §8 User Story #N (success acceptance criteria) |
+| E2E test | `features/<feature>/e2e.spec.ts` | Full flow: submit → success message → value confirmed back to user | PRD §8 User Story #N (happy path) |
+
+### PRD input triggers
+- PRD Section 6 UX Principles: "Success states" section defines required behavior for each form/action type
+- PRD Section 8 User Stories: acceptance criteria specifying "when save succeeds, confirm with X"

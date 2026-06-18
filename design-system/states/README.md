@@ -40,10 +40,33 @@ For each PRD feature, map business rule states:
 
 Test every feature against these state categories:
 
-- [ ] Error states (API failures, form errors, page not found)
-- [ ] Loading states (page, component, submission, upload)
-- [ ] Success states (banner, full-screen, toast)
-- [ ] Empty states (no data, filtered results, fresh start)
-- [ ] Validation states (blur, submit, real-time)
-- [ ] Interaction states (hover, focus, active, disabled, read-only)
-- [ ] Business rule states (user context differences)
+- [ ] Error states (API failures, form errors, page not found) → color tokens from `tokens/color.md` §Semantic Palette (§error-500/700 for border/text)
+- [ ] Loading states (page, component, submission, upload) → skeleton colors from `tokens/color.md` §Neutral Palette; spinner colors from brand-primary
+- [ ] Success states (banner, full-screen, toast) → color tokens from `tokens/color.md` §Semantic Palette (§success-500/700/100)
+- [ ] Empty states (no data, filtered results, fresh start) → neutral-600/400 from `tokens/color.md` §Neutral Palette
+- [ ] Validation states (blur, submit, real-time) → semantic error/warning/success colors; links to `components/form-input.md` validation rules
+- [ ] Interaction states (hover, focus, active, disabled, read-only) → brand-primary and neutral palette from `tokens/color.md`; accessibility guidelines §Interactive Elements Required States
+- [ ] Business rule states (user context differences) → PRD Section 6 UX Principles + Section 12 Assumptions; maps to component index via `components/README.md`
+
+## Cross-references for each state file
+
+Each state file below links to its upstream inputs (which tokens define the colors), downstream consumers (which components use this state, which tests verify it). See the individual `.md` files in this directory — each has a "Cross-References" section with:
+
+| Cross-reference type | What it maps |
+|---------------------|-------------|
+| Color tokens used → `tokens/color.md` | Which semantic colors from the palette appear in this state |
+| Rules governing → skill files | Which accessibility and UI best practices rules apply to this state |
+| Components that use | Which components in `components/` implement this state, how it appears, recovery action |
+| Downstream consumers (QA) | Playwright test mapping: file name, what it tests, PRD section traced |
+| PRD input triggers | Which PRD sections activate this state (#8 User Stories, §6 UX Principles, §12 Assumptions) |
+
+## Related Files
+
+| File | Relationship |
+|------|-------------|
+| `tokens/color.md` §Semantic Palette | All state docs derive their color tokens (error/warning/info/success palettes) from this file |
+| `components/README.md` Component Index + Component Rules | Each component must define all states from this directory — rules §2 says "every component must define all interaction states" |
+| `components/form-input.md` Required States table | The validation state in `validation.md` directly maps to the form-input component's error and validated states |
+| `skills/accessibility-guidelines.md` §Interactive Elements + §Screen Reader Support | WCAG required states table is the foundation for `interaction.md`; screen reader rules apply to all 6 state docs |
+| `skills/ui-best-practices.md` (§1-3, §2.5, §7) | UI best practices rules map to each state doc: §1→loading, §2→error, §2.5→empty, §3→success, §7→validation |
+| `testing/playwright/README.md` "Tracing test coverage" table | Playwright tests for each state are listed in the individual `.md` files' Cross-References sections |

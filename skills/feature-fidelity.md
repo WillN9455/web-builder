@@ -117,3 +117,13 @@ If you added a new persisted field, confirm:
 - The component receives it from the loader.
 - A page refresh shows the same state as the post-action render.
 ```
+
+## Related Files
+
+| File | Relationship |
+|------|-------------|
+| [`../PRD/templates/prd-template.md`](../PRD/templates/prd-template.md) §8 User Stories | PRD is the source of truth for what was built — every feature maps to a user story; fidelity check against acceptance criteria in each story |
+| [`../design-system/components/button.md`](../design-system/components/button.md), [`card.md`](../design-system/components/card.md), [`form-input.md`](../design-system/components/form-input.md), [`navigation.md`](../design-system/components/navigation.md) | These are the design specs that feature-fidelity.md's §1 "Read the Design First" rule references; component specs define exact visual tokens and states to verify |
+| [`../design-system/states/error.md`](../design-system/states/error.md), [`loading.md`](../design-system/states/loading.md), [`success.md`](../design-system/states/success.md), [`empty.md`](../design-system/states/empty.md), [`validation.md`](../design-system/states/validation.md), [`interaction.md`](../design-system/states/interaction.md) | State docs define every state the component must implement — these are what "list every screen state" in §1 refers to |
+| `design-system/tokens/color.md`, `spacing.md`, `typography.md` | Token files define the exact CSS values used — §1 "Note exact visual tokens" references these |
+| [`ui-best-practices.md`](./ui-best-practices.md) | UI best practices + feature fidelity work together: ui-best-practices defines what states must exist; feature-fidelity verifies the implementation matches the design spec exactly |

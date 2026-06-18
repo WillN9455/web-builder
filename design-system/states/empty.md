@@ -68,3 +68,35 @@
 - [ ] Empty illustrations use SVGs (not raster images) — simple, scannable line-art style
 - [ ] Empty states are responsive: illustration scales down on mobile, content stacks vertically
 - [ ] Placeholder/empty text is not shown as placeholder in actual inputs (only for display areas)
+
+## Cross-References
+
+### Color tokens used (from `tokens/color.md`)
+| Token | Shade | Where used |
+|-------|-------|-----------|
+| `--ds-color-neutral-400` | `#9CA3AF` | Description text (lighter than title for hierarchy) |
+| `--ds-color-neutral-600` | `#4B5563` | Empty state title text |
+
+### Rules governing this state
+| Rule source | Specific requirement |
+|-------------|---------------------|
+| [`skills/accessibility-guidelines.md`](../../skills/accessibility-guidelines.md) §Content & Layout | "Empty states show actionable messaging, not just 'no data'" — CTA must be present; heading hierarchy within empty state (h3 for title) |
+| [`skills/ui-best-practices.md`](../../skills/ui-best-practices.md) §2.5 Empty States | Never show a spinner in place of an empty state; include a CTA if user can take action; do not reuse the error component — separate markup and copy |
+| `design-system/components/README.md` Component Rules §3 | All components with data display (Card, Navigation list items) must define empty state per this spec |
+
+### Components that use this state
+| Component (from `components/`) | How empty appears | CTA required? |
+|-------------------------------|------------------|---------------|
+| `button.md` | Not applicable — buttons don't have empty states; if button triggers content that's empty, the container uses this state | — |
+| `card.md` | Card body shows illustration + "No data" text with actionable CTA when card data is absent | Yes — must have CTA per PRD rules |
+| `form-input.md` | Not applicable for single inputs; form-level empty applies if entire form section has no data yet | N/A (covered by card/form container) |
+| `navigation.md` | Footer nav groups show "Coming soon" link groups when links not yet configured; breadcrumb only shows existing parent pages | No — informational only |
+
+### Downstream consumers (QA test mapping)
+| Test type | Playwright file | What it tests | Traces to PRD section |
+|-----------|-----------------|--------------|----------------------|
+| Edge case test | `features/<feature>/states.spec.ts` or `e2e.spec.ts` | Verify empty state renders with CTA when no data returned; CTA button is clickable and navigates to correct destination | PRD §8 User Story (edge cases for "no data" acceptance criteria) |
+
+### PRD input triggers
+- PRD Section 6 UX Principles: "Empty states" section defines required behavior ("No data available", placeholder text labels)
+- PRD Section 8 User Stories: acceptance criteria for "when list is empty, show X with CTA Y"
