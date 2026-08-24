@@ -118,7 +118,7 @@ Each workflow reads from upstream artifacts and produces outputs consumed by dow
 ### Workflow 1 (Idea → PRD)
 | Phase | Reads from | Writes to | Triggers |
 |-------|-----------|----------|---------|
-| Gather | `idea.txt` (§Overall + pain points) | Clarified user input (internal) | — |
+| Gather | `idea.md` (§Overall + pain points) | Clarified user input (internal) | — |
 | Write PRD | Clarified input + `PRD/templates/prd-template.md` (Section 1, §3-§8, §9, §12) | Draft `PRD/<project>/prd.md` | Requirements Reviewer |
 | Critique | Draft PRD; `general-best-practices.md` (§BA Agent → Requirements Reviewer rules); `accessibility-guidelines.md` (WCAG constraint check on UX Principles) | Reviewer comments in `PRD/<project>/reviewer-comments.md` + §13 Review Log | BA Agent (Revise phase) |
 | Revise | Reviewer comments; PRD template sections with gaps | Revised `PRD/<project>/prd.md` (sections updated) | Approve phase loop condition checked |
@@ -127,7 +127,7 @@ Each workflow reads from upstream artifacts and produces outputs consumed by dow
 ### Workflow 2 (PRD → Design System)
 | Phase | Reads from | Writes to | Triggers |
 |-------|-----------|----------|---------|
-| Define Tokens | Approved PRD §6 UX Principles; brand colors from `idea.txt` / user input; WCAG constraints from `accessibility-guidelines.md` §Color & Contrast | `design-system/<project>/tokens/color.md`, `typography.md`, `spacing.md` per token README rules | Component specs |
+| Define Tokens | Approved PRD §6 UX Principles; brand colors from `idea.md` / user input; WCAG constraints from `accessibility-guidelines.md` §Color & Contrast | `design-system/<project>/tokens/color.md`, `typography.md`, `spacing.md` per token README rules | Component specs |
 | Create Designs | Token definitions; PRD §8 User Stories → component selection from `components/README.md` index | `design-system/<project>/components/button.md`, `card.md`, `form-input.md`, `navigation.md` | Peer review by Design Agent B |
 | Peer Review | Designer A's outputs vs. token README rules + each component spec file structure rules (§props API, variants table, states table, accessibility notes, CSS implementation notes) | Review comments per component/state file | Designer A revisions (loop until agreed) |
 | Revise | Reviewer feedback; design specs | Revised component/state files | Compile phase |

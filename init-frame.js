@@ -12,7 +12,7 @@
  * feeling like a form. Unused sections are skipped silently.
  *
  * MVP additions covered: #1 bootstrap mechanism, #6 stack selection questionnaire.
- * Also seeds idea.txt with initial answers so the Main Orchestrator has signal to work from.
+ * Also seeds idea.md with initial answers so the Main Orchestrator has signal to work from.
  */
 
 import fs from "node:fs";
@@ -288,7 +288,7 @@ async function askAllQuestions() {
     vars[g.key] = answer || "(TBD -- BA Agent will follow up during Stage 1)";
   }
 
-  // Clean up: remove TBD answers so they don't pollute idea.txt
+  // Clean up: remove TBD answers so they don't pollute idea.md
   Object.keys(vars).forEach((k) => {
     if (vars[k].startsWith("(TBD")) delete vars[k];
   });
@@ -414,7 +414,7 @@ function writeIdeaTxt(absTarget, vars) {
   lines.push("- Framework initialized via init-frame.js -- see questions.md for the full questionnaire (68 questions)");
 
   const content = lines.join("\n") + "\n";
-  const dest = path.join(absTarget, "idea.txt");
+  const dest = path.join(absTarget, "idea.md");
   fs.writeFileSync(dest, content, "utf-8");
 }
 
@@ -425,13 +425,13 @@ function writeQuickstart(absTarget) {
   lines.push("## First-Time Setup (you just did this)");
   lines.push("");
   lines.push("You ran `node init-frame.js` and answered the bootstrap questions.");
-  lines.push("Your idea is stored in `idea.txt`.");
+  lines.push("Your idea is stored in `idea.md`.");
   lines.push("");
   lines.push("## Next Steps");
   lines.push("");
   lines.push("1. **Open this project in Claude Code** -- run `claude` in this directory.");
   lines.push("2. **Tell Claude you want to use the framework** -- e.g. \"Run the Idea-to-Web-Solution Framework.\"");
-  lines.push("3. The Main Orchestrator will read `idea.txt`, spawn the BA Agent to fill out the PRD, then proceed through Design -> Code -> Review -> QA -> Deployment stages.");
+  lines.push("3. The Main Orchestrator will read `idea.md`, spawn the BA Agent to fill out the PRD, then proceed through Design -> Code -> Review -> QA -> Deployment stages.");
   lines.push("");
   lines.push("## Stage Overview");
   lines.push("");
@@ -470,7 +470,7 @@ async function main() {
     // Phase 3: Scaffold the framework structure
     scaffoldFramework(foundation.absTarget, vars);
 
-    // Write idea.txt with gathered answers
+    // Write idea.md with gathered answers
     writeIdeaTxt(foundation.absTarget, vars);
 
     // Write QUICKSTART.md

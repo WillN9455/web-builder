@@ -5,7 +5,7 @@ An intelligent multi-agent system that takes a business idea and produces a full
 ## How It Works
 
 ```
-Idea (idea.txt)
+Idea (idea.md)
     ↓
 [Stage 1] Product Requirements → PRD/<project>/prd.md
     ↓
@@ -25,7 +25,7 @@ Idea (idea.txt)
 All files below link to each other via cross-references defined in [`FRAMEWORK-FLOW.md`](./FRAMEWORK-FLOW.md) and throughout each file's "Related Files" / "Cross-references" sections. See that table for the complete dependency graph.
 
 ```
-├── idea.txt                     # Living idea document (source of truth) → feeds PRD template
+├── idea.md                     # Living idea document (source of truth) → feeds PRD template
 ├── CLAUDE.md                    # Framework rules and workflow docs
 ├── FRAMEWORK-FLOW.md            # Complete file dependency / cross-reference table (moved from CLAUDE.md)
 ├── AGENTS.md                    # Agent roles, states, communication (+ agent-specific file references in each row)
@@ -83,7 +83,7 @@ The canonical index of all cross-references is in [`FRAMEWORK-FLOW.md`](./FRAMEW
 
 ## Getting Started
 
-1. Update `idea.txt` with your business idea, target audience, and pain points
+1. Update `idea.md` with your business idea, target audience, and pain points
 2. Run the framework — Claude Code agents will guide you through each stage
 3. The framework handles requirements gathering, design, code generation, review, testing, and deployment prep
 

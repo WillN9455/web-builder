@@ -7,7 +7,7 @@ Multi-agent coordination for the idea-to-web-solution framework. Agents are Clau
 ## Agent Roles
 
 ### Main Orchestrator (1 agent)
-- **Trigger**: User provides an initial idea/pain point from `idea.txt`
+- **Trigger**: User provides an initial idea/pain point from `idea.md`
 - **Responsibilities**:
   - Break the idea into a structured task list
   - Assign work to specialized agents
@@ -19,7 +19,7 @@ Multi-agent coordination for the idea-to-web-solution framework. Agents are Clau
 
 ### BA Agent (1 agent)
 - **Skill Reference**: [`skills/general-best-practices.md`](./skills/general-best-practices.md) (MoSCoW prioritization, "Artifacts Are Source of Truth"); [`skills/coding-guidelines.md`](./skills/coding-guidelines.md) (understand file structure for PRD §13 supporting docs)
-- **Trigger**: User's idea/pain point from `idea.txt` → see CLAUDE.md; FRAMEWORK-FLOW.md row "PRD/templates/prd-template.md" | Upstream input: [`idea.txt`](./idea.txt)
+- **Trigger**: User's idea/pain point from `idea.md` → see CLAUDE.md; FRAMEWORK-FLOW.md row "PRD/templates/prd-template.md" | Upstream input: [`idea.md`](./idea.md)
 - **Responsibilities**:
   - Ask clarifying questions to fill the PRD template (`PRD/templates/prd-template.md`) — every section maps to a design token or component downstream
   - Generate feature list prioritized using MoSCoW (per `skills/general-best-practices.md` §BA Agent) → outputs to PRD §3 Timing & Priority and §8 User Stories
@@ -27,7 +27,7 @@ Multi-agent coordination for the idea-to-web-solution framework. Agents are Clau
   - Define in-scope and out-of-scope boundaries → feeds Design Agent scope for component selection (`design-system/components/README.md` index)
   - Identify assumptions and risks → flags to Requirements Reviewer (§12 Assumptions, §13 Review Log)
   - Produce the PRD document at `PRD/<project-name>/prd.md`
-- **Output**: `PRD/<project-name>/prd.md` → consumes: [`idea.txt`](./idea.txt), user answers | produces: design triggers, QA criteria | see also FRAMEWORK-FLOW.md row "PRD/<project>/prd.md"
+- **Output**: `PRD/<project-name>/prd.md` → consumes: [`idea.md`](./idea.md), user answers | produces: design triggers, QA criteria | see also FRAMEWORK-FLOW.md row "PRD/<project>/prd.md"
 
 ### Requirements Reviewer (1 agent)
 - **Trigger**: New PRD from BA Agent at `PRD/<project-name>/prd.md` → see FRAMEWORK-FLOW.md row "PRD/<project>/prd.md" | Upstream input: PRD template sections (§8 user stories, §6 UX principles, §9 supporting docs)
@@ -115,7 +115,7 @@ pending → in-progress → review → qa-ready → done
 
 Agents communicate through:
 1. **Task state changes** — The primary mechanism; each agent monitors their assigned tasks. State transitions follow the machine defined in §Task States & Promotions below and `workflows/README.md` phase structure.
-2. **Artifact files** — PRDs, design specs, code diffs are written as files others read. See CLAUDE.md; FRAMEWORK-FLOW.md (§"Framework Flow Map — Cross-Reference Index") for complete artifact chain: every file's outputs column shows which downstream files consume it.
+2. **Artifact files** — PRDs, design specs, code diffs are written as files others read. Artifact paths are always resolved against the **workspace root** (CLAUDE.md §Workspace Root: `project-dir.txt` if present, else the current repository). See CLAUDE.md; FRAMEWORK-FLOW.md (§"Framework Flow Map — Cross-Reference Index") for the complete artifact chain: every file's outputs column shows which downstream files consume it.
 3. **Comments/tickets** — Inline comments on task items for specific feedback. Each comment must reference the rule or requirement being checked (e.g., "security.md §2: IDOR — query missing ownerId scope" or "feature-fidelity.md §Before Writing Code: design not read before coding").
 4. **Notifications** — When a stage completes, the Main Orchestrator notifies downstream agents → follow `workflows/README.md` Phase structure for notification triggers (e.g., Workflow 1 Phase "Approve" → notify Design Agents; Workflow 2 Phase "Compile" → notify Code Agents).
 
@@ -125,8 +125,8 @@ Follows `workflows/README.md` Workflow sequences. Each step references the CLAUD
 
 | Step | Action | Upstream input (from `FRAMEWORK-FLOW.md`) | Orchestrates (next agent) |
 |------|--------|-------------------------------|--------------------------|
-| 1 | Main Orchestrator receives user input | `idea.txt` (§Idea-to-Web-Solution Framework doc) | BA Agent |
-| 2 | → BA Agent generates PRD | `idea.txt` + user answers → PRD template (`PRD/templates/prd-template.md`) | Requirements Reviewer |
+| 1 | Main Orchestrator receives user input | `idea.md` (§Idea-to-Web-Solution Framework doc) | BA Agent |
+| 2 | → BA Agent generates PRD | `idea.md` + user answers → PRD template (`PRD/templates/prd-template.md`) | Requirements Reviewer |
 | 3 | → Requirements Reviewer critiques PRD | Approved PRD at `PRD/<project>/prd.md` | BA Agent (revisions) |
 | 4 | ← BA Agent revises (loop per `workflows/README.md` Workflow 1 Phase "Revise") | Reviewer comments from `PRD/<project>/reviewer-comments.md` + §13 review log | Main Orchestrator (when agreed) |
 | 5 | → Main Orchestrator creates design tasks | Approved PRD (§6 UX Principles → tokens; §8 User Stories → components) | Design Agents |

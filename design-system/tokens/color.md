@@ -2,7 +2,7 @@
 
 Define the complete color palette before design or implementation begins.
 
-**Cross-references:** Inputs from [`idea.txt`](../../idea.txt) (§Overall — user brand colors); PRD Section 6 UX Design Principles (brand tone → color selection); `skills/accessibility-guidelines.md` §Color & Contrast (WCAG AA constraint on all semantic colors). Outputs consumed by: all component specs in `design-system/components/`; QA Agent contrast audit; [`code-builder/templates/nextjs-starter/app/globals.css`](../../code-builder/templates/nextjs-starter/app/globals.css) compilation.
+**Cross-references:** Inputs from [`idea.md`](../../idea.md) (§Overall — user brand colors); PRD Section 6 UX Design Principles (brand tone → color selection); `skills/accessibility-guidelines.md` §Color & Contrast (WCAG AA constraint on all semantic colors). Outputs consumed by: all component specs in `design-system/components/`; QA Agent contrast audit; [`code-builder/templates/nextjs-starter/app/globals.css`](../../code-builder/templates/nextjs-starter/app/globals.css) compilation.
 
 ## Token Structure
 
