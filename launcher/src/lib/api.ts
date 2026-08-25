@@ -41,6 +41,15 @@ export type ProjectsResponse = {
 
 export async function fetchProjects(): Promise<ProjectsResponse> {
   const res = await fetch('/api/projects');
+  // Vite's SPA fallback returns index.html (text/html) when the /api proxy
+  // target is unreachable. Detect that here and surface a clear error so the
+  // UI can render the empty state instead of a cryptic JSON parse failure.
+  const contentType = res.headers.get('content-type') ?? '';
+  if (!contentType.includes('application/json')) {
+    throw new Error(
+      'API server is not running. Start it with `npm run dev` (or `npm run dev:api` in another terminal).',
+    );
+  }
   if (!res.ok) throw new Error(`Failed to load projects: ${res.status}`);
   return res.json() as Promise<ProjectsResponse>;
 }

@@ -10,7 +10,13 @@ import { TilesSkeleton, RingSkeleton, TableSkeleton } from './components/Skeleto
 type LoadState =
   | { kind: 'loading' }
   | { kind: 'error'; message: string }
-  | { kind: 'ok'; data: ProjectsResponse };
+  | { kind: 'ok'; data: ProjectsResponse; warning?: string };
+
+const EMPTY_RESPONSE: ProjectsResponse = {
+  projects: [],
+  pipeline: { completion: 0, byStatus: {} as never, totalProjects: 0, blocked: 0 },
+  nextMilestone: null,
+};
 
 export default function App() {
   const [state, setState] = useState<LoadState>({ kind: 'loading' });
@@ -22,7 +28,16 @@ export default function App() {
       const data = await fetchProjects();
       setState({ kind: 'ok', data });
     } catch (err) {
-      setState({ kind: 'error', message: err instanceof Error ? err.message : 'Unknown error' });
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      // When the API is unreachable we still want the user to land on the
+      // empty state (with a soft warning banner) so they can create their
+      // first project instead of seeing a JSON-parse error.
+      const isOffline = /api server is not running|failed to load/i.test(message);
+      if (isOffline) {
+        setState({ kind: 'ok', data: EMPTY_RESPONSE, warning: message });
+      } else {
+        setState({ kind: 'error', message });
+      }
     }
   }, []);
 
@@ -56,6 +71,13 @@ export default function App() {
         {state.kind === 'error' && (
           <div className="error-banner" role="alert">
             <span>Couldn't load projects: {state.message}</span>
+            <button onClick={load}>Retry</button>
+          </div>
+        )}
+
+        {state.kind === 'ok' && state.warning && (
+          <div className="error-banner" role="status">
+            <span>{state.warning}</span>
             <button onClick={load}>Retry</button>
           </div>
         )}
