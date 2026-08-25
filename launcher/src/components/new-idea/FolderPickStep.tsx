@@ -2,13 +2,19 @@ import { useState, type FormEvent } from 'react';
 import { initProjectDir } from '../../lib/api';
 
 type Props = {
-  onInit: (sessionId: string, projectDir: string) => void;
+  onInit: (sessionId: string, projectDir: string, projectName: string | null) => void;
   onCancel: () => void;
 };
 
 // Screen 7 of the v5 plan — folder pick.
+//
+// Accepts an optional project name. If provided, it's used as the seed for the
+// final project record (instead of letting the BA Agent invent a name during
+// the interview). The BA Agent still owns the interview content — it just
+// won't override the user's choice.
 export function FolderPickStep({ onInit, onCancel }: Props) {
   const [path, setPath] = useState('~/Code/');
+  const [name, setName] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -17,8 +23,9 @@ export function FolderPickStep({ onInit, onCancel }: Props) {
     setError(null);
     setSubmitting(true);
     try {
-      const res = await initProjectDir(path);
-      onInit(res.sessionId, res.dir);
+      const trimmedName = name.trim();
+      const res = await initProjectDir(path, trimmedName || null);
+      onInit(res.sessionId, res.dir, trimmedName || null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not create folder');
     } finally {
@@ -52,6 +59,23 @@ export function FolderPickStep({ onInit, onCancel }: Props) {
           A new folder will be created at this path. If it already exists, the framework files are added
           without overwriting what's there. <b>Pick a folder outside the framework repo</b> — writes to the
           framework would overwrite the framework itself.
+        </div>
+
+        <label htmlFor="project-name" style={{ marginTop: 18 }}>
+          Project name <span style={{ textTransform: 'none', fontWeight: 400, color: 'var(--ink-3)' }}>(optional)</span>
+        </label>
+        <input
+          id="project-name"
+          className="input"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          autoComplete="off"
+          placeholder="Leave blank and the BA Agent will suggest one"
+        />
+
+        <div className="help">
+          Optional. If you already know what to call this project, type it here and we'll use it as the
+          starting name. The BA Agent can still refine it from your description.
         </div>
 
         {error && (

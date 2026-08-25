@@ -723,9 +723,10 @@
   color: var(--ink);
   outline: none;
   resize: none;
-  min-height: 44px;
-  max-height: 140px;
-  line-height: 1.4;
+  /* Sized so ~5 lines are visible without needing to expand. */
+  min-height: 130px;
+  max-height: 260px;
+  line-height: 1.5;
 }
 .chat-foot .ta:focus { border-color: var(--navy); }
 .chat-foot .ta:disabled { background: rgba(50,42,92,0.04); color: var(--ink-2); }

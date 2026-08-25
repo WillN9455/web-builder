@@ -33,11 +33,16 @@ function buildSteps(): InterviewStep[] {
 // reply, and when the server emits the `idea` fence in the final reply it
 // advances the parent to the captured step.
 export function ChatStep({ sessionId, projectDir, onChangeFolder, onCaptured, onCancel }: Props) {
+  // Seed the BA opener locally — we don't call /api/chat on mount because the
+  // server requires a non-empty `messages` array (otherwise the user sees the
+  // "Body must include a non-empty messages array" error before they've typed
+  // anything). The first request to /api/chat fires only after the user has
+  // submitted their first reply.
   const [messages, setMessages] = useState<ChatMessage[]>([
     { role: 'assistant', content: BA_OPENER },
   ]);
   const [draft, setDraft] = useState('');
-  const [streaming, setStreaming] = useState(true);
+  const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [doneEvent, setDoneEvent] = useState<ChatDoneEvent | null>(null);
   const [steps, setSteps] = useState<InterviewStep[]>(buildSteps);
@@ -84,31 +89,10 @@ export function ChatStep({ sessionId, projectDir, onChangeFolder, onCaptured, on
   );
 
   // Kick off the first assistant greeting when the chat mounts.
-  useEffect(() => {
-    let cancelled = false;
-    const controller = new AbortController();
-    setStreaming(true);
-    setError(null);
-    streamChat(
-      sessionId,
-      [], // no prior user messages — the server seeds the opener via the prompt
-      (evt) => {
-        if (cancelled) return;
-        handleEvent(evt);
-      },
-      controller.signal,
-    ).catch((err: unknown) => {
-      if (cancelled) return;
-      setError(err instanceof Error ? err.message : 'Chat failed');
-      setStreaming(false);
-    });
-    return () => {
-      cancelled = true;
-      controller.abort();
-    };
-    // We only want to fire this once per session.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId]);
+  // (Removed: we now seed the opener locally to avoid the server-side
+  // "Body must include a non-empty messages array" error appearing
+  // before the user has typed anything. The first /api/chat call fires
+  // from `send()` once the user has entered text and clicked Send.)
 
   // Once the stream completes and we have a captured result, advance the parent.
   useEffect(() => {
@@ -210,7 +194,7 @@ export function ChatStep({ sessionId, projectDir, onChangeFolder, onCaptured, on
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={onKeyDown}
             disabled={streaming && !doneEvent}
-            rows={1}
+            rows={5}
             aria-label="Reply to the BA Agent"
           />
           <button

@@ -79,11 +79,11 @@ export type InitResponse = {
   workspacePinnedAt: string;
 };
 
-export async function initProjectDir(dir: string): Promise<InitResponse> {
+export async function initProjectDir(dir: string, projectName: string | null): Promise<InitResponse> {
   const res = await fetch('/api/init', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ dir }),
+    body: JSON.stringify({ dir, projectName }),
   });
   // Vite's SPA fallback returns index.html (text/html) when the /api proxy
   // target is unreachable (e.g. dev:api hasn't booted yet). Surface a clear

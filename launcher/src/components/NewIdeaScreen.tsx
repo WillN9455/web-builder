@@ -15,12 +15,18 @@ export function NewIdeaScreen() {
   const [step, setStep] = useState<Step>('folder');
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [projectDir, setProjectDir] = useState<string | null>(null);
+  // Optional project name supplied at the folder pick step. When set, it
+  // overrides whatever the BA Agent would invent during the interview. The
+  // server stores it alongside the session so the project row created on
+  // chat completion (or in the early-create flow from Task 2) uses it.
+  const [projectNameSeed, setProjectNameSeed] = useState<string | null>(null);
   const [doneEvent, setDoneEvent] = useState<ChatDoneEvent | null>(null);
 
   // Folder pick → chat
-  const handleInit = useCallback((sess: string, dir: string) => {
+  const handleInit = useCallback((sess: string, dir: string, name: string | null) => {
     setSessionId(sess);
     setProjectDir(dir);
+    setProjectNameSeed(name);
     setStep('chat');
   }, []);
 
@@ -30,6 +36,12 @@ export function NewIdeaScreen() {
     // Keep sessionId/projectDir around in case the user wants to re-enter
     // with the same folder; they're harmless until /api/chat is called again.
   }, []);
+
+  // "← All projects" link from the chat step — always jumps to /projects,
+  // not just one step back. (The chat step's footer Cancel link used to go
+  // back to the folder pick, which felt like a dead-end; users expected it
+  // to take them out of the intake flow entirely.)
+  const handleLeaveToProjects = useCallback(() => navigate('/projects'), [navigate]);
 
   // Chat step streamed a final reply — show captured card
   const handleCaptured = useCallback((evt: ChatDoneEvent) => {
@@ -65,7 +77,7 @@ export function NewIdeaScreen() {
           projectDir={projectDir}
           onChangeFolder={handleChangeFolder}
           onCaptured={handleCaptured}
-          onCancel={handleCancel}
+          onCancel={handleLeaveToProjects}
         />
       )}
       {step === 'done' && doneEvent && (
