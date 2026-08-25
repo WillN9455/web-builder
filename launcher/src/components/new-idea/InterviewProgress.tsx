@@ -1,8 +1,12 @@
-// Static 7-step interview checklist shown in the right rail of the chat.
-// The first three are marked done once the BA Agent has greeted, the user
-// has described the problem, and a project row exists — see ChatStep.
+// 7-step interview checklist shown in the right rail of the chat.
+// `done` flips on once the user has covered (or skipped) a topic; `current`
+// is the topic the BA Agent is asking about right now; `pending` is still
+// ahead; `skipped` means the user explicitly skipped this one.
+//
+// State transitions are driven by ChatStep — this component is purely a
+// renderer. See ChatStep.handleSend and handleSkip for the source of truth.
 
-type StepState = 'done' | 'current' | 'pending';
+type StepState = 'done' | 'current' | 'pending' | 'skipped';
 
 export type InterviewStep = {
   label: string;
@@ -19,11 +23,13 @@ export function InterviewProgress({ steps }: Props) {
       {steps.map((s, i) => (
         <div key={s.label} className={`step ${s.state}`}>
           <div className="num" aria-hidden>
-            {s.state === 'done' ? '✓' : i + 1}
+            {s.state === 'done' ? '✓' : s.state === 'skipped' ? '–' : i + 1}
           </div>
           <div className="body">
             <b>{s.label}</b>
-            <span>{s.detail}</span>
+            <span>
+              {s.state === 'skipped' ? 'Skipped — BA will fill in.' : s.detail}
+            </span>
           </div>
         </div>
       ))}

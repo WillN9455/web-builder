@@ -17,9 +17,11 @@ type Props = {
 const BA_OPENER =
   "Hey! Tell me about the idea you'd like to build — what problem are you trying to solve, and who's feeling it?";
 
-// Default 7-step interview checklist shown in the sidebar. The first 3
-// flip to "done" once a project row has been created and the BA Agent has
-// greeted + asked clarifying questions.
+// Default 7-step interview checklist shown in the sidebar. Step 0 ("Project
+// folder set") is fixed-done. Steps 1-6 map to the BA Agent's question order
+// — see intake.ts §SYSTEM_PROMPT. The client cursor (`currentStepIndex`)
+// tracks which step the BA is currently asking about; each user message
+// (real answer or skip) advances the cursor.
 function buildSteps(): InterviewStep[] {
   return [
     { label: 'Project folder set', detail: 'Workspace pinned.', state: 'done' },
@@ -31,6 +33,9 @@ function buildSteps(): InterviewStep[] {
     { label: 'Tech stack', detail: 'Optional — we can recommend.', state: 'pending' },
   ];
 }
+
+// Index of the first user-driven step (Problem) in buildSteps().
+const FIRST_TOPIC_INDEX = 1;
 
 // Screen 8 — BA-Agent chat. Streams tokens as they arrive, lets the user
 // reply, and when the server emits the `idea` fence in the final reply it
@@ -49,6 +54,10 @@ export function ChatStep({ sessionId, projectDir, onChangeFolder, onCaptured, on
   const [error, setError] = useState<string | null>(null);
   const [doneEvent, setDoneEvent] = useState<ChatDoneEvent | null>(null);
   const [steps, setSteps] = useState<InterviewStep[]>(buildSteps);
+  // Cursor pointing at whichever step the BA Agent is currently asking
+  // about. Each user message (real or skip) marks the current step done and
+  // advances to the next pending one.
+  const [currentStepIndex, setCurrentStepIndex] = useState<number>(FIRST_TOPIC_INDEX);
   // The slug of the project row that the server created on the first BA
   // reply (Task 2.1). Once set, the header shows an "Open project →" link
   // so the user can leave the chat and come back to the (still-in-progress)
@@ -83,28 +92,22 @@ export function ChatStep({ sessionId, projectDir, onChangeFolder, onCaptured, on
         // the first BA reply. The header link uses this to deep-link back
         // into the project.
         if (evt.projectSlug) setProjectSlug(evt.projectSlug);
-        // Promote the interview steps: once idea.md is on disk and a
-        // project row exists, the BA has enough to mark the early steps
-        // as captured. This is purely visual.
+        // When the BA emits the final idea fence, any steps still in
+        // pending/current state are now captured by the document — collapse
+        // them all to done. Skipped steps stay as "skipped" for transparency.
         if (evt.ideaWritten) {
-          setSteps((s) => {
-            const next = [...s];
-            if (next[1]) next[1] = { ...next[1], state: 'done', detail: 'Captured.' };
-            if (next[2]) next[2] = { ...next[2], state: 'done', detail: 'Captured.' };
-            if (next[3]) next[3] = { ...next[3], state: 'current' };
-            return next;
-          });
+          setSteps((s) =>
+            s.map((step) =>
+              step.state === 'pending' || step.state === 'current'
+                ? { ...step, state: 'done', detail: 'Captured.' }
+                : step,
+            ),
+          );
         }
       }
     },
     [appendAssistantToken],
   );
-
-  // Kick off the first assistant greeting when the chat mounts.
-  // (Removed: we now seed the opener locally to avoid the server-side
-  // "Body must include a non-empty messages array" error appearing
-  // before the user has typed anything. The first /api/chat call fires
-  // from `send()` once the user has entered text and clicked Send.)
 
   // Once the stream completes and we have a captured result, advance the parent.
   useEffect(() => {
@@ -122,19 +125,68 @@ export function ChatStep({ sessionId, projectDir, onChangeFolder, onCaptured, on
   async function send(text: string) {
     const trimmed = text.trim();
     if (!trimmed || streaming) return;
+    // Detect a typed "skip" — the user might type "skip", "Skip this one",
+    // or "no idea, skip". We mark the current step as skipped and forward
+    // a short note to the BA so it logs the skip in the assumptions list.
+    const isSkip = /^\s*skip\b/i.test(trimmed);
+    const payload = isSkip ? 'Skip — please fill this in yourself.' : trimmed;
+
     setError(null);
     setDraft('');
-    const next = [...messages, { role: 'user' as const, content: trimmed }];
+    const next = [...messages, { role: 'user' as const, content: payload }];
     setMessages(next);
     setStreaming(true);
     // Optimistically append an empty assistant bubble so tokens land in it.
     setMessages((p) => [...p, { role: 'assistant', content: '' }]);
+    advanceStep(isSkip ? 'skipped' : 'done');
     try {
       await streamChat(sessionId, next, handleEvent);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Chat failed');
       setStreaming(false);
     }
+  }
+
+  // Skip button — same effect as typing "skip", but clears any partial draft
+  // the user may have typed. We don't forward an empty message (the BA
+  // wouldn't have anything to acknowledge), so we just advance the cursor.
+  function skip() {
+    if (streaming) return;
+    // Surface the skip in the chat transcript so the BA and the user can
+    // both see it in the conversation log.
+    const next = [...messages, { role: 'user' as const, content: 'Skip — please fill this in yourself.' }];
+    setMessages(next);
+    setDraft('');
+    setStreaming(true);
+    setMessages((p) => [...p, { role: 'assistant', content: '' }]);
+    advanceStep('skipped');
+    void streamChat(sessionId, next, handleEvent).catch((err: unknown) => {
+      setError(err instanceof Error ? err.message : 'Chat failed');
+      setStreaming(false);
+    });
+  }
+
+  // Mark the step at `currentStepIndex` as `next` (done or skipped), then
+  // advance the cursor to the next pending topic.
+  function advanceStep(next: 'done' | 'skipped') {
+    setSteps((s) => {
+      const arr = [...s];
+      const at = arr[currentStepIndex];
+      if (at && (at.state === 'current' || at.state === 'pending')) {
+        arr[currentStepIndex] = {
+          ...at,
+          state: next,
+          detail: next === 'skipped' ? 'Skipped.' : 'Captured.',
+        };
+      }
+      // Promote the next pending step to current.
+      const upcoming = arr.findIndex((x, i) => i > currentStepIndex && x.state === 'pending');
+      if (upcoming >= 0) {
+        arr[upcoming] = { ...arr[upcoming], state: 'current' };
+        setCurrentStepIndex(upcoming);
+      }
+      return arr;
+    });
   }
 
   function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
@@ -211,7 +263,7 @@ export function ChatStep({ sessionId, projectDir, onChangeFolder, onCaptured, on
         <div className="chat-foot">
           <textarea
             className="ta"
-            placeholder={streaming ? 'BA Agent is typing…' : 'Reply to the BA Agent…'}
+            placeholder={streaming ? 'BA Agent is typing…' : 'Reply to the BA Agent (type "skip" to skip this question)…'}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={onKeyDown}
@@ -219,6 +271,15 @@ export function ChatStep({ sessionId, projectDir, onChangeFolder, onCaptured, on
             rows={5}
             aria-label="Reply to the BA Agent"
           />
+          <button
+            type="button"
+            className="btn-skip"
+            onClick={skip}
+            disabled={streaming || !!(doneEvent && doneEvent.ideaWritten)}
+            title="Mark the current question as skipped — BA will fill it in"
+          >
+            Skip
+          </button>
           <button
             className="btn btn-primary"
             onClick={() => void send(draft)}

@@ -738,6 +738,25 @@
   font-size: 12px;
 }
 
+/* Skip-question button sitting beside the Send button. Visual style is the
+ * "soft" pill — neutral, not destructive (skip is a deliberate but not
+ * irreversible action). */
+.btn-skip {
+  background: rgba(50, 42, 92, 0.06);
+  color: var(--ink-2);
+  border: 0;
+  height: 38px;
+  padding: 0 14px;
+  border-radius: var(--r-md);
+  font: inherit;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-skip:hover { background: rgba(50, 42, 92, 0.12); color: var(--ink); }
+.btn-skip:disabled { opacity: 0.5; cursor: not-allowed; }
+
 /* ─── Chat sidebar (interview progress) ───────────────────────────────── */
 
 .chat-side {
@@ -787,6 +806,13 @@
   color: #fff;
 }
 .chat-side .step.done .num { background: var(--mint); color: var(--ink); }
+.chat-side .step.skipped .num {
+  background: rgba(50, 42, 92, 0.05);
+  color: var(--ink-3);
+  border: 1px dashed rgba(50, 42, 92, 0.18);
+}
+.chat-side .step.skipped .body b { color: var(--ink-2); text-decoration: line-through; }
+.chat-side .step.skipped .body span { font-style: italic; }
 .chat-side .step .body b { display: block; font-weight: 600; font-size: 13px; }
 .chat-side .step .body span {
   color: var(--ink-2);
