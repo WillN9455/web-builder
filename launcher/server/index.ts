@@ -53,10 +53,26 @@ type ProjectRow = {
 type IdeaJson = NonNullable<ReturnType<typeof extractIdea>>;
 
 // ── Intake session store ───────────────────────────────────────────────────
-// sessionId → absolute project dir. Created by /api/init, required by /api/chat.
+// sessionId → session record. Created by /api/init, required by /api/chat.
 // Lost on server restart; the project-dir.txt pin survives so the framework
 // repo always knows the most recent workspace.
-const sessions = new Map<string, string>();
+type IntakeSession = {
+  dir: string;
+  // Optional project name supplied at /api/init. When set, it overrides
+  // whatever the BA Agent would invent during the interview. When null,
+  // the BA's first non-empty projectName wins (falling back to "New project"
+  // if the BA never names it).
+  nameSeed: string | null;
+  // Project row created on the first BA reply — see createEarlyProjectIfNeeded.
+  // Once created, the chat step can deep-link back to the project even if the
+  // interview is abandoned mid-way.
+  earlyProjectId: number | null;
+  earlyProjectSlug: string | null;
+  // Running message history (user + assistant). Persisted as memory files on
+  // each /api/chat reply so an aborted session doesn't lose the transcript.
+  history: ChatMessage[];
+};
+const sessions = new Map<string, IntakeSession>();
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -194,11 +210,21 @@ app.get('/api/health', async (_req, res) => {
 app.post('/api/init', async (req, res) => {
   // express.json has already parsed the body, but readBody() is here for
   // safety in case the limit is exceeded and the raw stream is needed.
-  const body = (req.body ?? {}) as { dir?: unknown };
+  const body = (req.body ?? {}) as { dir?: unknown; projectName?: unknown };
   try {
     const info = initProjectDir(body.dir);
     const sessionId = newSessionId();
-    sessions.set(sessionId, info.abs);
+    // Accept an optional project name (Task 1.4 / Task 2): when set, the BA
+    // Agent won't override it. Trim once and store the canonical form.
+    const rawName = typeof body.projectName === 'string' ? body.projectName.trim() : '';
+    const nameSeed = rawName ? rawName : null;
+    sessions.set(sessionId, {
+      dir: info.abs,
+      nameSeed,
+      earlyProjectId: null,
+      earlyProjectSlug: null,
+      history: [],
+    });
 
     // Pin the workspace root for any framework session launched from this repo:
     // CLAUDE.md §Workspace Root tells every agent to read project-dir.txt and
@@ -224,11 +250,126 @@ function sendNdjson(res: express.Response, obj: unknown): void {
   res.write(JSON.stringify(obj) + '\n');
 }
 
+// ── Memory files (.idea-memory/) ───────────────────────────────────────────
+//
+// The full conversation is persisted on every BA reply so the user (and
+// future framework agents) can refer back to it. Two files are written:
+//   • conversation.jsonl — one JSON entry per message (machine-readable)
+//   • transcript.md      — human-readable mirror (what the user sees in chat)
+//
+// Writes are best-effort: a filesystem failure logs to stderr but doesn't
+// break the chat stream. The DB row is the source of truth — these files
+// are convenience artefacts.
+function writeMemoryFiles(projectDir: string, history: ChatMessage[]): { transcriptPath: string; jsonlPath: string } | null {
+  try {
+    const memDir = path.join(projectDir, '.idea-memory');
+    fs.mkdirSync(memDir, { recursive: true });
+    const ts = new Date().toISOString();
+    const jsonlPath = path.join(memDir, 'conversation.jsonl');
+    const transcriptPath = path.join(memDir, 'transcript.md');
+
+    // conversation.jsonl: append a header on first write, then each entry.
+    const isFresh = !fs.existsSync(jsonlPath);
+    const jsonl = fs.openSync(jsonlPath, 'a');
+    if (isFresh) {
+      fs.writeSync(jsonl, JSON.stringify({ kind: 'header', ts, messageCount: history.length }) + '\n');
+    }
+    for (const m of history) {
+      fs.writeSync(jsonl, JSON.stringify({ kind: 'message', ts, role: m.role, content: m.content }) + '\n');
+    }
+    fs.closeSync(jsonl);
+
+    // transcript.md: always rewrite the full transcript (cheap, keeps it
+    // human-readable without needing to read jsonl).
+    const lines: string[] = [];
+    lines.push('# BA Agent interview transcript');
+    lines.push('');
+    lines.push(`Project: \`${projectDir}\``);
+    lines.push(`Captured: ${ts}`);
+    lines.push(`Messages: ${history.length}`);
+    lines.push('');
+    lines.push('---');
+    lines.push('');
+    for (const m of history) {
+      const who = m.role === 'user' ? 'You' : 'BA Agent';
+      lines.push(`## ${who}`);
+      lines.push('');
+      lines.push(m.content);
+      lines.push('');
+    }
+    fs.writeFileSync(transcriptPath, lines.join('\n'), 'utf-8');
+
+    return { transcriptPath, jsonlPath };
+  } catch (err) {
+    // Don't fail the chat over a missing .idea-memory write — surface in logs.
+    console.error('[api] failed to write memory files:', err);
+    return null;
+  }
+}
+
+// ── Early project creation (Task 2.1) ─────────────────────────────────────
+//
+// As soon as the BA Agent has replied at least once, we materialise a project
+// row in the launcher DB so the chat can deep-link back to it. The row
+// starts with the placeholder name "New project" (or whatever the user typed
+// at /api/init) and gets renamed when the BA emits the final idea fence.
+function createEarlyProject(session: IntakeSession): { id: number; slug: string } {
+  const name = session.nameSeed ?? 'New project';
+  const slug = uniqueSlug(slugify(name));
+  const tileColor = pickTileColor(slug);
+
+  const info = db
+    .prepare(
+      `INSERT INTO project
+         (name, slug, one_liner, category, folder_path,
+          current_stage, status, priority, tasks_total, tasks_done,
+          chats_count, tile_color, updated_relative)
+       VALUES
+         (@name, @slug, @one_liner, @category, @folder_path,
+          'Intake', 'active', 'medium', 0, 0,
+          1, @tile_color, 'just now')`,
+    )
+    .run({
+      name,
+      slug,
+      one_liner: 'Idea in progress — BA Agent is interviewing.',
+      category: 'Idea',
+      folder_path: session.dir,
+      tile_color: tileColor,
+    });
+  const projectId = Number(info.lastInsertRowid);
+
+  db.prepare(
+    `INSERT INTO stage (project_id, stage_key, status, started_at)
+     VALUES (?, 'Intake', 'active', datetime('now'))`,
+  ).run(projectId);
+
+  db.prepare(
+    `INSERT INTO activity (project_id, agent, message, kind)
+     VALUES (?, 'BA', 'Started idea intake interview', 'milestone')`,
+  ).run(projectId);
+
+  session.earlyProjectId = projectId;
+  session.earlyProjectSlug = slug;
+  return { id: projectId, slug };
+}
+
+// Rename an existing project row + refresh its slug/updated_at.
+// Called when the BA emits the final idea fence and we have a real name.
+function renameProject(projectId: number, newName: string): void {
+  const slug = uniqueSlug(slugify(newName));
+  db.prepare(
+    `UPDATE project
+       SET name = ?, slug = ?, updated_at = datetime('now')
+     WHERE id = ?`,
+  ).run(newName, slug, projectId);
+}
+
 app.post('/api/chat', async (req, res) => {
   const body = (req.body ?? {}) as { sessionId?: unknown; messages?: unknown };
 
-  const projectDir = typeof body.sessionId === 'string' ? sessions.get(body.sessionId) : undefined;
-  if (!projectDir) {
+  const session = typeof body.sessionId === 'string' ? sessions.get(body.sessionId) : undefined;
+  if (!session) {
     res.status(400).json({ error: 'No active session — set a project folder first.' });
     return;
   }
@@ -238,6 +379,12 @@ app.post('/api/chat', async (req, res) => {
     res.status(400).json({ error: validationError });
     return;
   }
+
+  // Save the latest message history into the session so /api/chat handlers
+  // running in parallel / on restart could re-read it. We also seed the
+  // in-memory record used for memory-file writes below.
+  const incoming = body.messages as ChatMessage[];
+  session.history = incoming;
 
   res.writeHead(200, {
     'Content-Type': 'application/x-ndjson; charset=utf-8',
@@ -253,7 +400,7 @@ app.post('/api/chat', async (req, res) => {
       body: JSON.stringify({
         model: MODEL,
         stream: true,
-        messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...(body.messages as ChatMessage[])],
+        messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...incoming],
       }),
     });
   } catch {
@@ -312,30 +459,104 @@ app.post('/api/chat', async (req, res) => {
     projectSlug?: string;
     ideaWriteError?: string;
     projectCreateError?: string;
+    // True on every reply once a project row exists — the client uses this
+    // to deep-link "Open project →" out of the chat step before the BA
+    // finishes.
+    earlyProject?: boolean;
+    memoryWritten?: boolean;
+    memoryError?: string;
   };
 
-  const doneEvent: DoneEvent = { type: 'done', model: MODEL };
+  // Append the freshly-emitted assistant reply to the session history so the
+  // memory files reflect the full conversation, not just what the user sent.
+  const assistantReply: ChatMessage = { role: 'assistant', content: full };
+  session.history = [...incoming, assistantReply];
+
+  // Persist the conversation every reply (Task 2.2). A aborted session
+  // still has its transcript on disk.
+  const memResult = writeMemoryFiles(session.dir, session.history);
+
+  // Create the project row on the first BA reply (Task 2.1). Idempotent —
+  // if a row already exists from a previous reply, we reuse it.
+  if (session.earlyProjectId === null) {
+    try {
+      const proj = createEarlyProject(session);
+      // Already mutated the session inside createEarlyProject.
+      void proj; // (slugs/id are surfaced via the done event below)
+    } catch (err) {
+      // Don't break the stream — the client can still show the captured step
+      // without a deep link; the final fence handler will create a row anyway.
+      console.error('[api] failed to create early project row:', err);
+    }
+  }
+
+  const doneEvent: DoneEvent = {
+    type: 'done',
+    model: MODEL,
+    earlyProject: session.earlyProjectId !== null,
+    projectId: session.earlyProjectId ?? undefined,
+    projectSlug: session.earlyProjectSlug ?? undefined,
+    memoryWritten: memResult !== null,
+  };
+  if (memResult === null) {
+    doneEvent.memoryError = 'Could not write memory files — see server logs.';
+  }
+
   const idea = extractIdea(full);
   if (idea) {
     try {
-      const result = writeIdeaFile(projectDir, idea);
+      const result = writeIdeaFile(session.dir, idea);
       doneEvent.ideaWritten = true;
       doneEvent.ideaPath = result.path;
       doneEvent.backupPath = result.backupPath;
-      doneEvent.projectName = idea.projectName ?? null;
 
-      try {
-        const proj = insertProjectFromIdea(idea, projectDir);
-        doneEvent.projectId = proj.id;
-        doneEvent.projectSlug = proj.slug;
-      } catch (err) {
-        // idea.md is on disk; the project row failed. Surface the error but
-        // still emit done so the client can show "captured" with a warning.
-        doneEvent.projectCreateError = err instanceof Error ? err.message : 'Could not create project row';
+      // Honour the user's nameSeed: if they typed a name at /api/init, keep
+      // it. Otherwise adopt the BA's projectName. Either way, rename the
+      // existing early row in place — don't create a duplicate.
+      const chosenName = (session.nameSeed ?? idea.projectName ?? '').trim() || 'New project';
+      if (session.earlyProjectId !== null) {
+        try {
+          renameProject(session.earlyProjectId, chosenName);
+          doneEvent.projectName = chosenName;
+          // Refresh slug on the session so the client can deep-link by slug.
+          const row = db
+            .prepare('SELECT slug FROM project WHERE id = ?')
+            .get(session.earlyProjectId) as { slug: string } | undefined;
+          if (row) session.earlyProjectSlug = row.slug;
+        } catch (err) {
+          doneEvent.projectCreateError =
+            'idea.md was written but the project row could not be renamed: ' +
+            (err instanceof Error ? err.message : String(err));
+        }
+      } else {
+        // Fallback: no early row (shouldn't happen now, but keep parity with
+        // the original flow). Insert a brand-new row.
+        try {
+          const proj = insertProjectFromIdea(idea, session.dir);
+          // Override the name the BA suggested if the user typed one.
+          if (session.nameSeed) {
+            renameProject(proj.id, session.nameSeed);
+          }
+          session.earlyProjectId = proj.id;
+          session.earlyProjectSlug = (
+            db.prepare('SELECT slug FROM project WHERE id = ?').get(proj.id) as { slug: string }
+          ).slug;
+          doneEvent.projectId = proj.id;
+          doneEvent.projectSlug = session.earlyProjectSlug;
+          doneEvent.projectName = session.nameSeed ?? idea.projectName ?? null;
+        } catch (err) {
+          doneEvent.projectCreateError =
+            err instanceof Error ? err.message : 'Could not create project row';
+        }
       }
+      // Re-surface the slug/id now that we may have renamed it.
+      doneEvent.projectId = session.earlyProjectId ?? doneEvent.projectId;
+      doneEvent.projectSlug = session.earlyProjectSlug ?? doneEvent.projectSlug;
     } catch (err) {
       doneEvent.ideaWritten = false;
-      doneEvent.ideaWriteError = 'Reply looked final but idea.md could not be written: ' + (err instanceof Error ? err.message : String(err));
+      doneEvent.ideaWriteError =
+        'Reply looked final but idea.md could not be written: ' +
+        (err instanceof Error ? err.message : String(err));
     }
   }
   sendNdjson(res, doneEvent);

@@ -9,6 +9,9 @@ type Props = {
   onChangeFolder: () => void;
   onCaptured: (done: ChatDoneEvent) => void;
   onCancel: () => void;
+  // Deep-link out of the chat to the project record once one exists. The
+  // parent owns the navigation; we only pass the slug through.
+  onOpenProject: (slug: string | undefined) => void;
 };
 
 const BA_OPENER =
@@ -32,7 +35,7 @@ function buildSteps(): InterviewStep[] {
 // Screen 8 — BA-Agent chat. Streams tokens as they arrive, lets the user
 // reply, and when the server emits the `idea` fence in the final reply it
 // advances the parent to the captured step.
-export function ChatStep({ sessionId, projectDir, onChangeFolder, onCaptured, onCancel }: Props) {
+export function ChatStep({ sessionId, projectDir, onChangeFolder, onCaptured, onCancel, onOpenProject }: Props) {
   // Seed the BA opener locally — we don't call /api/chat on mount because the
   // server requires a non-empty `messages` array (otherwise the user sees the
   // "Body must include a non-empty messages array" error before they've typed
@@ -46,6 +49,11 @@ export function ChatStep({ sessionId, projectDir, onChangeFolder, onCaptured, on
   const [error, setError] = useState<string | null>(null);
   const [doneEvent, setDoneEvent] = useState<ChatDoneEvent | null>(null);
   const [steps, setSteps] = useState<InterviewStep[]>(buildSteps);
+  // The slug of the project row that the server created on the first BA
+  // reply (Task 2.1). Once set, the header shows an "Open project →" link
+  // so the user can leave the chat and come back to the (still-in-progress)
+  // project any time.
+  const [projectSlug, setProjectSlug] = useState<string | null>(null);
   const bodyRef = useRef<HTMLDivElement | null>(null);
 
   // Helper: append a token to the last assistant message (or create one).
@@ -71,6 +79,10 @@ export function ChatStep({ sessionId, projectDir, onChangeFolder, onCaptured, on
       } else if (evt.type === 'done') {
         setDoneEvent(evt);
         setStreaming(false);
+        // Capture the slug of the project row that the server created on
+        // the first BA reply. The header link uses this to deep-link back
+        // into the project.
+        if (evt.projectSlug) setProjectSlug(evt.projectSlug);
         // Promote the interview steps: once idea.md is on disk and a
         // project row exists, the BA has enough to mark the early steps
         // as captured. This is purely visual.
@@ -143,6 +155,16 @@ export function ChatStep({ sessionId, projectDir, onChangeFolder, onCaptured, on
           <span className="crumb">
             Project · <b>{projectDir}</b>
           </span>
+          {projectSlug && !doneEvent?.ideaWritten && (
+            <button
+              type="button"
+              className="btn-link"
+              style={{ marginLeft: 'auto', fontSize: 12.5, fontWeight: 600 }}
+              onClick={() => onOpenProject(projectSlug)}
+            >
+              Open project →
+            </button>
+          )}
           <div className="ba-meta">
             <div className="av" aria-hidden>BA</div>
             <div className="meta">

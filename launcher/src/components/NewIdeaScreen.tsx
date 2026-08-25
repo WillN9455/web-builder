@@ -15,18 +15,13 @@ export function NewIdeaScreen() {
   const [step, setStep] = useState<Step>('folder');
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [projectDir, setProjectDir] = useState<string | null>(null);
-  // Optional project name supplied at the folder pick step. When set, it
-  // overrides whatever the BA Agent would invent during the interview. The
-  // server stores it alongside the session so the project row created on
-  // chat completion (or in the early-create flow from Task 2) uses it.
-  const [projectNameSeed, setProjectNameSeed] = useState<string | null>(null);
   const [doneEvent, setDoneEvent] = useState<ChatDoneEvent | null>(null);
 
-  // Folder pick → chat
-  const handleInit = useCallback((sess: string, dir: string, name: string | null) => {
+  // Folder pick → chat. `name` is forwarded to /api/init but lives on the
+  // server side from there — we don't need to keep a copy in client state.
+  const handleInit = useCallback((sess: string, dir: string, _name: string | null) => {
     setSessionId(sess);
     setProjectDir(dir);
-    setProjectNameSeed(name);
     setStep('chat');
   }, []);
 
@@ -78,6 +73,7 @@ export function NewIdeaScreen() {
           onChangeFolder={handleChangeFolder}
           onCaptured={handleCaptured}
           onCancel={handleLeaveToProjects}
+          onOpenProject={handleOpenProject}
         />
       )}
       {step === 'done' && doneEvent && (

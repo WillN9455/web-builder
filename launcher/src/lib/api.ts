@@ -118,6 +118,14 @@ export type ChatDoneEvent = {
   projectSlug?: string;
   ideaWriteError?: string;
   projectCreateError?: string;
+  // True on every reply once a project row exists in the launcher DB. Used
+  // by the chat step to surface an "Open project →" deep link as soon as
+  // the BA has emitted its first reply (Task 2.1).
+  earlyProject?: boolean;
+  // True when the conversation was persisted to .idea-memory/ on disk this
+  // reply (Task 2.2). false (or memoryError set) means the write failed.
+  memoryWritten?: boolean;
+  memoryError?: string;
 };
 export type ChatEvent = ChatTokenEvent | ChatErrorEvent | ChatDoneEvent;
 
