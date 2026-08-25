@@ -36,3 +36,6 @@ npm-debug.log*
 
 # Generated files (regenerated from templates)
 design-system/*/tokens/tokens.css
+
+# Machine-local workspace pointer (written by idea-intake)
+project-dir.txt
