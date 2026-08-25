@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { KeyboardEvent } from 'react';
+import type { KeyboardEvent, ReactNode } from 'react';
 import { streamChat, type ChatDoneEvent, type ChatEvent, type ChatMessage } from '../../lib/api';
 import { InterviewProgress, type InterviewStep } from './InterviewProgress';
 
@@ -12,16 +12,24 @@ type Props = {
   // Deep-link out of the chat to the project record once one exists. The
   // parent owns the navigation; we only pass the slug through.
   onOpenProject: (slug: string | undefined) => void;
+  // Resume mode — when provided, seed the chat with the previously persisted
+  // transcript and topic-progress state instead of the BA opener. NewIdeaScreen
+  // passes these in from the /api/projects/:id/resume response.
+  initialMessages?: ChatMessage[];
+  initialSteps?: InterviewStep[];
+  initialCurrentStepIndex?: number;
 };
 
 const BA_OPENER =
   "Hey! Tell me about the idea you'd like to build — what problem are you trying to solve, and who's feeling it?";
 
-// Default 7-step interview checklist shown in the sidebar. Step 0 ("Project
-// folder set") is fixed-done. Steps 1-6 map to the BA Agent's question order
-// — see intake.ts §SYSTEM_PROMPT. The client cursor (`currentStepIndex`)
-// tracks which step the BA is currently asking about; each user message
-// (real answer or skip) advances the cursor.
+// Default 9-step interview checklist shown in the sidebar. Step 0 ("Project
+// folder set") is fixed-done. Steps 1-8 mirror the BA Agent's question order
+// — see intake.ts §SYSTEM_PROMPT. The cursor (`currentStepIndex`) tracks
+// the topic the BA is currently asking about; the BA tells us it has moved
+// on by emitting `::topic=N::` (parsed server-side into a `topic` NDJSON
+// event), at which point we promote step N to current. The client never
+// advances the cursor on its own — only when the BA signals a transition.
 function buildSteps(): InterviewStep[] {
   return [
     { label: 'Project folder set', detail: 'Workspace pinned.', state: 'done' },
@@ -29,52 +37,124 @@ function buildSteps(): InterviewStep[] {
     { label: 'Users & scale', detail: 'Who feels this most?', state: 'pending' },
     { label: 'MVP scope', detail: 'Smallest shippable version.', state: 'pending' },
     { label: 'Business rules', detail: 'Permissions, automations.', state: 'pending' },
+    { label: 'Compliance', detail: 'GDPR / PCI / HIPAA / none.', state: 'pending' },
     { label: 'Brand & design', detail: 'Style, references.', state: 'pending' },
     { label: 'Tech stack', detail: 'Optional — we can recommend.', state: 'pending' },
+    { label: 'Timeline & constraints', detail: 'Launch, budget, risks.', state: 'pending' },
   ];
 }
 
 // Index of the first user-driven step (Problem) in buildSteps().
 const FIRST_TOPIC_INDEX = 1;
+// Last user-driven step (Timeline & constraints). The cap protects against
+// future BA prompt edits that add a 9th topic — the sidebar just stops
+// promoting past this point rather than going blank.
+const LAST_TOPIC_INDEX = 8;
+
+// Tiny inline renderer for the chat bubble. Handles the two pieces of
+// markdown the BA actually emits: **bold** and line breaks. We intentionally
+// keep the surface small — full markdown (lists, links, code blocks) isn't
+// worth the dependency for an interview transcript, and a permissive parser
+// is an XSS vector when the user pastes raw HTML.
+//
+// Output shape per line: alternating string + <strong> nodes. We use the
+// captured-key index on each segment so React doesn't reuse DOM nodes
+// when a line is re-rendered mid-stream.
+function renderBubble(content: string): ReactNode {
+  const lines = content.split('\n');
+  return lines.map((line, lineIdx) => {
+    const nodes: React.ReactNode[] = [];
+    // Regex matches **…** (non-greedy, no nested **). When the BA (or
+    // a user-pasted snippet) leaves an unbalanced **, the trailing half
+    // is rendered as literal text so we never silently swallow a chunk.
+    const BOLD_RE = /\*\*([^*]+)\*\*/g;
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+    let segIdx = 0;
+    while ((match = BOLD_RE.exec(line)) !== null) {
+      if (match.index > lastIndex) {
+        nodes.push(<span key={`t${lineIdx}-${segIdx++}`}>{line.slice(lastIndex, match.index)}</span>);
+      }
+      nodes.push(<strong key={`b${lineIdx}-${segIdx++}`}>{match[1]}</strong>);
+      lastIndex = match.index + match[0].length;
+    }
+    if (lastIndex < line.length) {
+      nodes.push(<span key={`t${lineIdx}-${segIdx++}`}>{line.slice(lastIndex)}</span>);
+    }
+    return (
+      <span key={lineIdx}>
+        {lineIdx > 0 && <br />}
+        {nodes.length > 0 ? nodes : line}
+      </span>
+    );
+  });
+}
 
 // Screen 8 — BA-Agent chat. Streams tokens as they arrive, lets the user
 // reply, and when the server emits the `idea` fence in the final reply it
 // advances the parent to the captured step.
-export function ChatStep({ sessionId, projectDir, onChangeFolder, onCaptured, onCancel, onOpenProject }: Props) {
+export function ChatStep({
+  sessionId,
+  projectDir,
+  onChangeFolder,
+  onCaptured,
+  onCancel,
+  onOpenProject,
+  initialMessages,
+  initialSteps,
+  initialCurrentStepIndex,
+}: Props) {
   // Seed the BA opener locally — we don't call /api/chat on mount because the
   // server requires a non-empty `messages` array (otherwise the user sees the
   // "Body must include a non-empty messages array" error before they've typed
   // anything). The first request to /api/chat fires only after the user has
   // submitted their first reply.
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    { role: 'assistant', content: BA_OPENER },
-  ]);
+  //
+  // Resume mode (`initialMessages` set) replaces the opener with the persisted
+  // transcript — the server already re-created the IntakeSession, so the next
+  // /api/chat will pick up exactly where the user left off.
+  const [messages, setMessages] = useState<ChatMessage[]>(
+    initialMessages && initialMessages.length > 0
+      ? initialMessages
+      : [{ role: 'assistant', content: BA_OPENER }],
+  );
   const [draft, setDraft] = useState('');
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [doneEvent, setDoneEvent] = useState<ChatDoneEvent | null>(null);
-  const [steps, setSteps] = useState<InterviewStep[]>(buildSteps);
-  // Cursor pointing at whichever step the BA Agent is currently asking
-  // about. Each user message (real or skip) marks the current step done and
-  // advances to the next pending one.
-  const [currentStepIndex, setCurrentStepIndex] = useState<number>(FIRST_TOPIC_INDEX);
+  const [steps, setSteps] = useState<InterviewStep[]>(initialSteps ?? buildSteps);
   // The slug of the project row that the server created on the first BA
   // reply (Task 2.1). Once set, the header shows an "Open project →" link
   // so the user can leave the chat and come back to the (still-in-progress)
   // project any time.
   const [projectSlug, setProjectSlug] = useState<string | null>(null);
+  // The current cursor tracks which step the BA is asking about. Kept in
+  // state so the sidebar can re-render at the right moment and so we can
+  // surface `data-step-index` on the rail for debugging.
+  const [currentStepIndex, setCurrentStepIndex] = useState<number>(
+    initialCurrentStepIndex ?? FIRST_TOPIC_INDEX,
+  );
   const bodyRef = useRef<HTMLDivElement | null>(null);
+
+  // Defensive client-side filter for the topic sentinel. The server is
+  // supposed to strip ::topic=N:: from the token stream before forwarding
+  // it, but if a stale build or a corner case ever leaks one through, we
+  // hide it here rather than showing the user `::topic=3::` mid-sentence.
+  const TOPIC_RE_CLIENT = /::\s*topic\s*=\s*\d+\s*::/gi;
+  const sanitiseToken = (raw: string): string => raw.replace(TOPIC_RE_CLIENT, '');
 
   // Helper: append a token to the last assistant message (or create one).
   const appendAssistantToken = useCallback((token: string) => {
+    const clean = sanitiseToken(token);
+    if (!clean) return;
     setMessages((prev) => {
       const last = prev[prev.length - 1];
       if (last && last.role === 'assistant') {
         const updated = [...prev];
-        updated[updated.length - 1] = { role: 'assistant', content: last.content + token };
+        updated[updated.length - 1] = { role: 'assistant', content: last.content + clean };
         return updated;
       }
-      return [...prev, { role: 'assistant', content: token }];
+      return [...prev, { role: 'assistant', content: clean }];
     });
   }, []);
 
@@ -85,6 +165,13 @@ export function ChatStep({ sessionId, projectDir, onChangeFolder, onCaptured, on
       } else if (evt.type === 'error') {
         setError(evt.message);
         setStreaming(false);
+      } else if (evt.type === 'topic') {
+        // The BA has signalled it's now asking about topic `evt.index`
+        // (1-based). Promote the previous current step to done and turn the
+        // target step current. The BA may have multiple follow-up rounds on
+        // a single topic before this event fires — that's exactly why we
+        // wait for the marker instead of advancing on every user reply.
+        advanceToTopic(evt.index, 'done');
       } else if (evt.type === 'done') {
         setDoneEvent(evt);
         setStreaming(false);
@@ -92,6 +179,12 @@ export function ChatStep({ sessionId, projectDir, onChangeFolder, onCaptured, on
         // the first BA reply. The header link uses this to deep-link back
         // into the project.
         if (evt.projectSlug) setProjectSlug(evt.projectSlug);
+        // Final reconciliation: if the done event carries a currentTopic
+        // we didn't see live (e.g. a quick succession of `topic` events
+        // was collapsed), snap the cursor to it.
+        if (typeof evt.currentTopic === 'number' && evt.currentTopic > 0) {
+          advanceToTopic(evt.currentTopic, 'done');
+        }
         // When the BA emits the final idea fence, any steps still in
         // pending/current state are now captured by the document — collapse
         // them all to done. Skipped steps stay as "skipped" for transparency.
@@ -126,8 +219,9 @@ export function ChatStep({ sessionId, projectDir, onChangeFolder, onCaptured, on
     const trimmed = text.trim();
     if (!trimmed || streaming) return;
     // Detect a typed "skip" — the user might type "skip", "Skip this one",
-    // or "no idea, skip". We mark the current step as skipped and forward
-    // a short note to the BA so it logs the skip in the assumptions list.
+    // or "no idea, skip". We rewrite it to a short marker so the BA logs
+    // the skip in the assumptions list. The sidebar only advances when the
+    // BA confirms the skip by emitting its own `::topic=N::` marker.
     const isSkip = /^\s*skip\b/i.test(trimmed);
     const payload = isSkip ? 'Skip — please fill this in yourself.' : trimmed;
 
@@ -138,7 +232,6 @@ export function ChatStep({ sessionId, projectDir, onChangeFolder, onCaptured, on
     setStreaming(true);
     // Optimistically append an empty assistant bubble so tokens land in it.
     setMessages((p) => [...p, { role: 'assistant', content: '' }]);
-    advanceStep(isSkip ? 'skipped' : 'done');
     try {
       await streamChat(sessionId, next, handleEvent);
     } catch (err) {
@@ -149,7 +242,8 @@ export function ChatStep({ sessionId, projectDir, onChangeFolder, onCaptured, on
 
   // Skip button — same effect as typing "skip", but clears any partial draft
   // the user may have typed. We don't forward an empty message (the BA
-  // wouldn't have anything to acknowledge), so we just advance the cursor.
+  // wouldn't have anything to acknowledge), so the user sees a "Skip" line
+  // in the transcript and the BA's reply handles the transition marker.
   function skip() {
     if (streaming) return;
     // Surface the skip in the chat transcript so the BA and the user can
@@ -159,32 +253,47 @@ export function ChatStep({ sessionId, projectDir, onChangeFolder, onCaptured, on
     setDraft('');
     setStreaming(true);
     setMessages((p) => [...p, { role: 'assistant', content: '' }]);
-    advanceStep('skipped');
     void streamChat(sessionId, next, handleEvent).catch((err: unknown) => {
       setError(err instanceof Error ? err.message : 'Chat failed');
       setStreaming(false);
     });
   }
 
-  // Mark the step at `currentStepIndex` as `next` (done or skipped), then
-  // advance the cursor to the next pending topic.
-  function advanceStep(next: 'done' | 'skipped') {
+  // Move the sidebar cursor to topic `index` (1-based, matching the BA's
+  // topic order). Everything before the target is marked `next` (done or
+  // skipped), the target becomes current, and everything after stays pending.
+  // Topics that have already been resolved (skipped) are left alone so the
+  // UI doesn't re-paint a step that the BA confirmed as out-of-scope.
+  //
+  // Called from the `topic` and `done` events emitted by the server. The
+  // BA controls when to advance — the client never guesses.
+  function advanceToTopic(index: number, next: 'done' | 'skipped') {
+    if (!Number.isInteger(index) || index < FIRST_TOPIC_INDEX) return;
     setSteps((s) => {
       const arr = [...s];
-      const at = arr[currentStepIndex];
-      if (at && (at.state === 'current' || at.state === 'pending')) {
-        arr[currentStepIndex] = {
-          ...at,
-          state: next,
-          detail: next === 'skipped' ? 'Skipped.' : 'Captured.',
-        };
+      // Clamp the target to the last user-driven step so the sidebar can't
+      // point past the end if the BA prompt ever grows a 9th topic.
+      const target = Math.min(index, LAST_TOPIC_INDEX + 1);
+      for (let i = FIRST_TOPIC_INDEX; i < arr.length; i++) {
+        const step = arr[i];
+        if (i < target) {
+          // Steps before the target are resolved.
+          if (step.state === 'current' || step.state === 'pending') {
+            arr[i] = {
+              ...step,
+              state: next,
+              detail: next === 'skipped' ? 'Skipped.' : 'Captured.',
+            };
+          }
+        } else if (i === target) {
+          // The target itself is the new "current" topic.
+          if (step.state === 'pending') {
+            arr[i] = { ...step, state: 'current' };
+          }
+        }
+        // Steps after the target stay pending.
       }
-      // Promote the next pending step to current.
-      const upcoming = arr.findIndex((x, i) => i > currentStepIndex && x.state === 'pending');
-      if (upcoming >= 0) {
-        arr[upcoming] = { ...arr[upcoming], state: 'current' };
-        setCurrentStepIndex(upcoming);
-      }
+      setCurrentStepIndex(target);
       return arr;
     });
   }
@@ -244,12 +353,7 @@ export function ChatStep({ sessionId, projectDir, onChangeFolder, onCaptured, on
                 {m.role === 'assistant' ? 'BA' : 'WN'}
               </div>
               <div className="bubble">
-                {m.content.split('\n').map((line, j) => (
-                  <span key={j}>
-                    {j > 0 && <br />}
-                    {line}
-                  </span>
-                ))}
+                {renderBubble(m.content)}
                 {m.role === 'assistant' && streaming && i === messages.length - 1 && m.content === '' && (
                   <span className="typing-dots" aria-hidden>
                     <span /> <span /> <span />
@@ -290,7 +394,11 @@ export function ChatStep({ sessionId, projectDir, onChangeFolder, onCaptured, on
         </div>
       </section>
 
-      <InterviewProgress steps={steps} doneCount={steps.filter((s) => s.state === 'done').length} />
+      <InterviewProgress
+        steps={steps}
+        doneCount={steps.filter((s) => s.state === 'done').length}
+        currentStepIndex={currentStepIndex}
+      />
 
       <button type="button" className="btn-link chat-back-link" onClick={onCancel}>
         ← All projects

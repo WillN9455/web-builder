@@ -107,6 +107,10 @@ export type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
 export type ChatTokenEvent = { type: 'token'; content: string };
 export type ChatErrorEvent = { type: 'error'; message: string };
+// Emitted when the BA Agent transitions from one interview topic to the next
+// (e.g. ::topic=3::). The index is 1-based and matches the BA's prompt order.
+// The client uses this to advance the sidebar — see ChatStep.handleEvent.
+export type ChatTopicEvent = { type: 'topic'; index: number };
 export type ChatDoneEvent = {
   type: 'done';
   model: string;
@@ -126,8 +130,12 @@ export type ChatDoneEvent = {
   // reply (Task 2.2). false (or memoryError set) means the write failed.
   memoryWritten?: boolean;
   memoryError?: string;
+  // Deepest 1-based topic index the BA has reached in this session. Mirrors
+  // the most recent `topic` event; included on the done event so the cursor
+  // survives reconnects and matches the persisted transcript on resume.
+  currentTopic?: number | null;
 };
-export type ChatEvent = ChatTokenEvent | ChatErrorEvent | ChatDoneEvent;
+export type ChatEvent = ChatTokenEvent | ChatErrorEvent | ChatTopicEvent | ChatDoneEvent;
 
 export async function streamChat(
   sessionId: string,
@@ -185,4 +193,57 @@ export async function streamChat(
 
   if (!doneEvent) throw new Error('Stream ended without a done event.');
   return doneEvent;
+}
+
+// ── /api/projects/:id/resume (intake — restore in-progress chat) ──────────
+//
+// Called by NewIdeaScreen when the URL carries ?resume=<slug>. The server
+// reads .idea-memory/conversation.jsonl from the project's folder, recreates
+// an IntakeSession, and returns the parsed transcript + topic-progress
+// counters so ChatStep can seed its local state.
+
+export type ResumeResponse = {
+  project: {
+    id: number;
+    name: string;
+    slug: string;
+    current_stage: StageKey;
+    folder_path: string;
+  };
+  sessionId: string;
+  messages: ChatMessage[];
+  topicProgress: {
+    capturedTopics: number;
+    skippedTopics: number;
+    currentIndex: number;
+    // Deepest 1-based ::topic=N:: marker seen in the persisted transcript.
+    // Null when the transcript has no markers yet (older sessions) — fall
+    // back to currentIndex in that case.
+    currentTopic: number | null;
+  };
+};
+
+export class ResumeUnavailableError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+  }
+}
+
+export async function fetchResume(slug: string): Promise<ResumeResponse> {
+  const res = await fetch(`/api/projects/${encodeURIComponent(slug)}/resume`);
+  // Same offline-detection trick used by the other API helpers: Vite's SPA
+  // fallback returns index.html (text/html) when the dev API isn't running.
+  const contentType = res.headers.get('content-type') ?? '';
+  if (!contentType.includes('application/json')) {
+    throw new Error(
+      'API server is not running. Start it with `npm run dev` (or `npm run dev:api` in another terminal).',
+    );
+  }
+  const data = (await res.json().catch(() => ({}))) as Partial<ResumeResponse> & { error?: string };
+  if (!res.ok) {
+    throw new ResumeUnavailableError(res.status, data.error ?? `Resume failed (HTTP ${res.status})`);
+  }
+  return data as ResumeResponse;
 }

@@ -71,6 +71,11 @@ type IntakeSession = {
   // Running message history (user + assistant). Persisted as memory files on
   // each /api/chat reply so an aborted session doesn't lose the transcript.
   history: ChatMessage[];
+  // Highest 1-based topic index the BA has transitioned to in this session.
+  // Drives the interview progress cursor; on resume, the /resume endpoint
+  // re-derives this from the persisted transcript so the cursor lines up
+  // with what the BA actually said.
+  currentTopic: number | null;
 };
 const sessions = new Map<string, IntakeSession>();
 
@@ -224,6 +229,7 @@ app.post('/api/init', async (req, res) => {
       earlyProjectId: null,
       earlyProjectSlug: null,
       history: [],
+      currentTopic: null,
     });
 
     // Pin the workspace root for any framework session launched from this repo:
@@ -280,7 +286,11 @@ function writeMemoryFiles(projectDir: string, history: ChatMessage[]): { transcr
     fs.closeSync(jsonl);
 
     // transcript.md: always rewrite the full transcript (cheap, keeps it
-    // human-readable without needing to read jsonl).
+    // human-readable without needing to read jsonl). Strip the internal
+    // ::topic=N:: markers from each assistant message — they live in the
+    // JSONL for /resume to recover, but they aren't part of the
+    // conversation a human reads.
+    const TOPIC_RE = /::topic=\d+::\s*/g;
     const lines: string[] = [];
     lines.push('# BA Agent interview transcript');
     lines.push('');
@@ -294,7 +304,7 @@ function writeMemoryFiles(projectDir: string, history: ChatMessage[]): { transcr
       const who = m.role === 'user' ? 'You' : 'BA Agent';
       lines.push(`## ${who}`);
       lines.push('');
-      lines.push(m.content);
+      lines.push(m.role === 'assistant' ? m.content.replace(TOPIC_RE, '') : m.content);
       lines.push('');
     }
     fs.writeFileSync(transcriptPath, lines.join('\n'), 'utf-8');
@@ -422,6 +432,68 @@ app.post('/api/chat', async (req, res) => {
   let full = '';
   const decoder = new TextDecoder();
   let buffer = '';
+  // Marker detection. The BA may emit `::topic=N::` (or any close
+  // variation) as a single token, or split across two tokens
+  // (e.g. `::` then `topic=2::`). We carry over the last few characters
+  // of each token until the next arrives so a split marker is still
+  // recognised. Anything that COULD be the start of a marker is held back
+  // from the streamed text — if the next token completes the marker, we
+  // emit a `topic` event and drop both halves; if it doesn't, we flush
+  // the carryover as ordinary text.
+  //
+  // The marker is the longest sentinel we recognise (10 chars), so the
+  // carryover never needs to be bigger than that. We keep a couple extra
+  // chars for safety against `::topic = N::` style variations.
+  const MARKER_MAX = 16;
+  let carry = '';
+  let lastTopicIndex: number | null = null;
+  // Permissive: allow optional whitespace inside the colons / around the
+  // `=`, accept uppercase ::TOPIC=n::, and tolerate one trailing colon.
+  // Capture group 1 is the digit(s).
+  const TOPIC_MARKER_RE = /::\s*topic\s*=\s*(\d+)\s*::/gi;
+  const stripTopicMarker = (text: string): string => text.replace(TOPIC_MARKER_RE, '');
+
+  // Process a chunk of text that may contain a (possibly split) marker.
+  // Streams out everything that is definitely NOT part of a marker, emits
+  // `topic` events for any complete marker it finds, and stashes the rest
+  // in `carry` for the next call.
+  function processText(text: string): void {
+    const combined = carry + text;
+    carry = '';
+    let cursor = 0;
+    let m: RegExpExecArray | null;
+    TOPIC_MARKER_RE.lastIndex = 0;
+    while ((m = TOPIC_MARKER_RE.exec(combined)) !== null) {
+      // Flush everything before the match as ordinary text.
+      if (m.index > cursor) {
+        const before = combined.slice(cursor, m.index);
+        if (before) {
+          full += before;
+          sendNdjson(res, { type: 'token', content: before });
+        }
+      }
+      // Emit the topic event.
+      const idx = Number(m[1]);
+      if (Number.isInteger(idx) && idx > 0 && (lastTopicIndex === null || idx > lastTopicIndex)) {
+        lastTopicIndex = idx;
+        sendNdjson(res, { type: 'topic', index: idx });
+      }
+      cursor = m.index + m[0].length;
+    }
+    // Tail handling: hold back the last MARKER_MAX chars so a marker split
+    // across tokens is still caught on the next call. Everything between
+    // `cursor` and the safe-to-emit prefix is streamed.
+    const safeLen = Math.max(0, combined.length - cursor - MARKER_MAX);
+    if (safeLen > 0) {
+      const flush = combined.slice(cursor, cursor + safeLen);
+      full += flush;
+      sendNdjson(res, { type: 'token', content: flush });
+      carry = combined.slice(cursor + safeLen);
+    } else {
+      carry = combined.slice(cursor);
+    }
+  }
+
   try {
     for await (const chunk of ollamaRes.body) {
       const piece = chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk as ArrayBuffer);
@@ -434,19 +506,77 @@ app.post('/api/chat', async (req, res) => {
           const evt = JSON.parse(line) as { message?: { content?: string } };
           const token = evt.message?.content;
           if (typeof token === 'string' && token) {
-            full += token;
-            sendNdjson(res, { type: 'token', content: token });
+            processText(token);
           }
         } catch {
           // partial line — leave in buffer
         }
       }
     }
+    // Stream ended — drain the carryover. If it contains a complete
+    // marker, emit the topic event and drop the marker text. If it looks
+    // like a partial marker (e.g. `::topic=2` with no trailing `::`),
+    // drop it — we'd rather lose a few punctuation chars than leak a
+    // raw `::topic=2::` to the user. Otherwise flush as ordinary text.
+    if (carry) {
+      TOPIC_MARKER_RE.lastIndex = 0;
+      const mEnd = TOPIC_MARKER_RE.exec(carry);
+      if (mEnd) {
+        const before = carry.slice(0, mEnd.index);
+        const after = carry.slice(mEnd.index + mEnd[0].length);
+        if (before) {
+          full += before;
+          sendNdjson(res, { type: 'token', content: before });
+        }
+        const idx = Number(mEnd[1]);
+        if (Number.isInteger(idx) && idx > 0 && (lastTopicIndex === null || idx > lastTopicIndex)) {
+          lastTopicIndex = idx;
+          sendNdjson(res, { type: 'topic', index: idx });
+        }
+        if (after) {
+          full += after;
+          sendNdjson(res, { type: 'token', content: after });
+        }
+      } else if (/::\s*topic\s*=/i.test(carry)) {
+        // Looks like a partial marker — drop it rather than leak the
+        // sentinel to the user.
+      } else {
+        full += carry;
+        sendNdjson(res, { type: 'token', content: carry });
+      }
+      carry = '';
+    }
   } catch {
     sendNdjson(res, { type: 'error', message: 'Lost connection to Ollama mid-response.' });
     res.end();
     return;
   }
+
+  // Defensive: re-scan the full reply for any marker we somehow missed
+  // (e.g. one that landed entirely inside the carryover buffer because the
+  // model emitted the whole thing in a single token that got flushed
+  // verbatim at stream-end). Strip any remaining text and emit the topic
+  // event the streaming path skipped, so the sidebar still advances.
+  TOPIC_MARKER_RE.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  const missed: number[] = [];
+  const cleaned = full.replace(TOPIC_MARKER_RE, (_match, digits: string) => {
+    const idx = Number(digits);
+    if (Number.isInteger(idx) && idx > 0) missed.push(idx);
+    return '';
+  });
+  if (missed.length) {
+    full = cleaned;
+    for (const idx of missed) {
+      if (lastTopicIndex === null || idx > lastTopicIndex) {
+        lastTopicIndex = idx;
+        sendNdjson(res, { type: 'topic', index: idx });
+      }
+    }
+  }
+  // Sync the per-session cursor so /resume (or a follow-up request) can
+  // report the deepest topic reached so far.
+  if (lastTopicIndex !== null) session.currentTopic = lastTopicIndex;
 
   type DoneEvent = {
     type: 'done';
@@ -465,15 +595,27 @@ app.post('/api/chat', async (req, res) => {
     earlyProject?: boolean;
     memoryWritten?: boolean;
     memoryError?: string;
+    // Deepest 1-based topic index the BA has reached in this session. The
+    // client uses this as a final reconciliation pass in case any streaming
+    // `topic` events were dropped or coalesced.
+    currentTopic?: number | null;
   };
 
   // Append the freshly-emitted assistant reply to the session history so the
   // memory files reflect the full conversation, not just what the user sent.
+  // We keep the un-stripped `full` (with ::topic=N:: markers intact) so the
+  // /resume endpoint can re-derive the sidebar cursor by scanning the JSONL.
+  // The user-facing transcript.md gets the cleaned version below.
   const assistantReply: ChatMessage = { role: 'assistant', content: full };
   session.history = [...incoming, assistantReply];
 
   // Persist the conversation every reply (Task 2.2). A aborted session
   // still has its transcript on disk.
+  //
+  // For the human-readable transcript.md we want the topic markers gone
+  // (they're internal signalling, not conversation); for the JSONL we keep
+  // them so /resume can re-derive the sidebar cursor. writeMemoryFiles
+  // handles the split.
   const memResult = writeMemoryFiles(session.dir, session.history);
 
   // Create the project row on the first BA reply (Task 2.1). Idempotent —
@@ -497,6 +639,10 @@ app.post('/api/chat', async (req, res) => {
     projectId: session.earlyProjectId ?? undefined,
     projectSlug: session.earlyProjectSlug ?? undefined,
     memoryWritten: memResult !== null,
+    // The latest 1-based topic index the BA has transitioned to. Null until
+    // the BA has emitted at least one ::topic=N:: marker; thereafter it
+    // reflects the deepest topic the BA has reached in this session.
+    currentTopic: lastTopicIndex,
   };
   if (memResult === null) {
     doneEvent.memoryError = 'Could not write memory files — see server logs.';
@@ -625,6 +771,129 @@ app.get('/api/projects/:id', (req, res) => {
     .prepare('SELECT stage_key, status, started_at, completed_at FROM stage WHERE project_id = ? ORDER BY id')
     .all(row.id);
   res.json({ project: row, stages });
+});
+
+// Resume an in-progress BA interview from disk. The project row plus the
+// `.idea-memory/conversation.jsonl` file are the source of truth — when a
+// user clicks an Intake-stage tile from the launcher we re-hydrate the chat
+// from these artefacts rather than starting over.
+app.get('/api/projects/:id/resume', (req, res) => {
+  const row = db
+    .prepare('SELECT * FROM project WHERE id = ? OR slug = ?')
+    .get(req.params.id, req.params.id) as ProjectRow | undefined;
+  if (!row) {
+    res.status(404).json({ error: 'Not found' });
+    return;
+  }
+  if (row.current_stage !== 'Intake') {
+    res.status(409).json({ error: 'Project is not in Intake stage — open the detail page.' });
+    return;
+  }
+  // Defensive: if idea.md was already written, the interview is effectively
+  // complete even though current_stage hasn't moved on yet. Send the user
+  // to the detail page rather than re-opening a finished chat.
+  if (fs.existsSync(path.join(row.folder_path, 'idea.md'))) {
+    res.status(409).json({ error: 'Idea already captured — open the detail page.' });
+    return;
+  }
+
+  const jsonlPath = path.join(row.folder_path, '.idea-memory', 'conversation.jsonl');
+  if (!fs.existsSync(jsonlPath)) {
+    res.status(410).json({ error: 'No transcript on disk for this project.' });
+    return;
+  }
+
+  // Parse the JSONL. Skip the header line, validate every entry, drop
+  // anything that doesn't look like a message — never trust the file blindly.
+  const raw = fs.readFileSync(jsonlPath, 'utf-8');
+  const messages: ChatMessage[] = [];
+  for (const line of raw.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    try {
+      const entry = JSON.parse(trimmed) as { kind?: string; role?: string; content?: unknown };
+      if (entry.kind !== 'message') continue;
+      if (entry.role !== 'user' && entry.role !== 'assistant') continue;
+      if (typeof entry.content !== 'string' || !entry.content.trim()) continue;
+      messages.push({ role: entry.role, content: entry.content });
+    } catch {
+      // skip malformed lines — the chat transcript is best-effort
+    }
+  }
+  if (messages.length === 0) {
+    res.status(410).json({ error: 'Transcript is empty.' });
+    return;
+  }
+
+  // Re-create an in-memory session so subsequent /api/chat calls work the
+  // same way as for an in-progress interview. Point earlyProjectId at the
+  // existing row so createEarlyProject() doesn't insert a duplicate.
+  const sessionId = newSessionId();
+  sessions.set(sessionId, {
+    dir: row.folder_path,
+    nameSeed: row.name && row.name !== 'New project' ? row.name : null,
+    earlyProjectId: row.id,
+    earlyProjectSlug: row.slug,
+    history: messages,
+    currentTopic: null, // populated below from the transcript
+  });
+
+  // Derive topic progress from the persisted transcript:
+  //   • currentTopic = the deepest ::topic=N:: marker found in any assistant
+  //     message (so the sidebar resumes at the right step even if the user
+  //     closed the tab mid-topic).
+  //   • capturedTopics / skippedTopics mirror the legacy skip-vs-answer
+  //     counting so the client can build its initial step list without
+  //     scanning the messages twice.
+  const TOPIC_RE = /::topic=(\d+)::/g;
+  let currentTopic: number | null = null;
+  let captured = 0;
+  let skipped = 0;
+  for (let i = 0; i < messages.length; i++) {
+    const m = messages[i];
+    if (m.role === 'assistant') {
+      let match: RegExpExecArray | null;
+      TOPIC_RE.lastIndex = 0;
+      while ((match = TOPIC_RE.exec(m.content)) !== null) {
+        const n = Number(match[1]);
+        if (Number.isInteger(n) && n > 0 && (currentTopic === null || n > currentTopic)) {
+          currentTopic = n;
+        }
+      }
+    }
+    if (i + 1 < messages.length) {
+      const next = messages[i + 1];
+      if (m.role !== 'user' || next.role !== 'assistant') continue;
+      if (m.content.startsWith('Skip — please fill this in yourself.')) skipped++;
+      else captured++;
+    }
+  }
+  const sessionRecord = sessions.get(sessionId);
+  if (sessionRecord) sessionRecord.currentTopic = currentTopic;
+  // Cap at the number of user-driven topics in the sidebar. 0=folder-done,
+  // 1..8 = the BA prompt's 8 topics. We don't ship a hard cap on the server
+  // side — the client renders whatever index it gets.
+  const currentIndex = currentTopic ?? Math.min(1 + captured + skipped, 8);
+
+  res.json({
+    project: {
+      id: row.id,
+      name: row.name,
+      slug: row.slug,
+      current_stage: row.current_stage,
+      folder_path: row.folder_path,
+    },
+    sessionId,
+    messages,
+    topicProgress: {
+      capturedTopics: captured,
+      skippedTopics: skipped,
+      currentIndex,
+      // Deepest ::topic=N:: marker seen — preferred over currentIndex when
+      // the client wants the cursor to match the BA's actual transitions.
+      currentTopic,
+    },
+  });
 });
 
 // Silence "unused" warnings for the size-cap helper that lives for parity

@@ -50,7 +50,13 @@ export function ProjectsScreen() {
   const onNewIdea = useCallback(() => navigate('/new'), [navigate]);
 
   const onOpenProject = useCallback(
-    (p: Project) => navigate(`/projects/${p.slug}`),
+    (p: Project) => {
+      // Intake-stage projects still have an in-progress BA interview —
+      // resume straight back into the chat instead of routing to the
+      // placeholder detail page. Otherwise, fall through to the detail page.
+      if (p.current_stage === 'Intake') navigate(`/new?resume=${p.slug}`);
+      else navigate(`/projects/${p.slug}`);
+    },
     [navigate],
   );
 

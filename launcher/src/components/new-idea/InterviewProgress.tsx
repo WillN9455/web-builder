@@ -14,11 +14,18 @@ export type InterviewStep = {
   state: StepState;
 };
 
-type Props = { steps: InterviewStep[]; doneCount: number };
+type Props = {
+  steps: InterviewStep[];
+  doneCount: number;
+  // Index of the step the BA is currently asking about. Surfaces as a
+  // `data-step-index` attribute on the rail so devtools can verify the
+  // cursor matches the live topic. Mirrors steps[i].state === 'current'.
+  currentStepIndex: number;
+};
 
-export function InterviewProgress({ steps }: Props) {
+export function InterviewProgress({ steps, currentStepIndex }: Props) {
   return (
-    <aside className="chat-side" aria-label="Interview progress">
+    <aside className="chat-side" aria-label="Interview progress" data-step-index={currentStepIndex}>
       <h4>Interview progress</h4>
       {steps.map((s, i) => (
         <div key={s.label} className={`step ${s.state}`}>
