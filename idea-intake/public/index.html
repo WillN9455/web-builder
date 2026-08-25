@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Idea Intake — BA Agent</title>
+<style>
+  :root {
+    --bg: #f6f6f4;
+    --panel: #ffffff;
+    --ink: #1c1917;
+    --ink-soft: #57534e;
+    --line: #e7e5e4;
+    --accent: #4f46e5;
+    --accent-ink: #ffffff;
+    --accent-soft: #eef2ff;
+    --ok-bg: #ecfdf5; --ok-line: #a7f3d0; --ok-ink: #065f46;
+    --err-bg: #fef2f2; --err-line: #fecaca; --err-ink: #991b1b;
+    --warn-ink: #92400e;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+  header {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 14px 20px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+  }
+  h1 { font-size: 17px; margin: 0; font-weight: 650; }
+  .sub { color: var(--ink-soft); font-size: 13px; }
+  .spacer { flex: 1; }
+  .pill {
+    font-size: 12px; padding: 4px 10px; border-radius: 999px;
+    border: 1px solid var(--line); color: var(--ink-soft); white-space: nowrap;
+    max-width: 380px; overflow: hidden; text-overflow: ellipsis;
+  }
+  .pill.ok { background: var(--ok-bg); border-color: var(--ok-line); color: var(--ok-ink); }
+  .pill.bad { background: var(--err-bg); border-color: var(--err-line); color: var(--err-ink); }
+  .pill.warn { color: var(--warn-ink); }
+
+  main {
+    flex: 1; width: 100%; max-width: 780px; margin: 0 auto;
+    display: flex; flex-direction: column; padding: 20px; gap: 14px;
+  }
+
+  /* Setup screen (choose project folder) */
+  #setup {
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 28px; margin-top: 24px;
+  }
+  #setup h2 { margin: 0 0 6px; font-size: 20px; }
+  #setup p { color: var(--ink-soft); margin: 6px 0 16px; font-size: 14px; line-height: 1.55; }
+  #setup-row { display: flex; gap: 8px; align-items: center; }
+  #dir-input {
+    flex: 1; padding: 12px 14px; font: inherit; font-size: 14px;
+    border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  #dir-input:focus { outline: 2px solid var(--accent); border-color: var(--accent); }
+  #setup-status { margin-top: 12px; font-size: 13px; color: var(--ok-ink); display: none; }
+
+  /* Empty state */
+  #empty-state {
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 28px; text-align: center; margin-top: 24px;
+  }
+  #empty-state h2 { margin: 0 0 6px; font-size: 20px; }
+  #empty-state p { color: var(--ink-soft); margin: 6px 0 16px; font-size: 14px; line-height: 1.55; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .chip {
+    border: 1px solid var(--line); background: var(--bg); border-radius: 999px;
+    padding: 7px 14px; font-size: 13px; cursor: pointer; color: var(--ink);
+  }
+  .chip:hover { border-color: var(--accent); color: var(--accent); }
+  .chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* Messages */
+  #log { display: flex; flex-direction: column; gap: 12px; }
+  .msg { max-width: 85%; padding: 10px 14px; border-radius: var(--radius); font-size: 14.5px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: break-word; }
+  .msg.user { align-self: flex-end; background: var(--accent); color: var(--accent-ink); border-bottom-right-radius: 4px; }
+  .msg.assistant { align-self: flex-start; background: var(--panel); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
+  .msg.assistant .cursor { display: inline-block; width: 8px; height: 15px; background: var(--accent); vertical-align: -2px; animation: blink 0.9s steps(1) infinite; border-radius: 2px; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* Banners */
+  .banner { border-radius: var(--radius); padding: 12px 16px; font-size: 14px; line-height: 1.55; }
+  .banner:focus { outline: 2px solid currentColor; outline-offset: 2px; }
+  #error-banner { display: none; background: var(--err-bg); border: 1px solid var(--err-line); color: var(--err-ink); }
+  #success-banner { display: none; background: var(--ok-bg); border: 1px solid var(--ok-line); color: var(--ok-ink); }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; background: rgba(0,0,0,0.06); padding: 1px 5px; border-radius: 5px; }
+
+  /* Composer */
+  #composer {
+    position: sticky; bottom: 0; background: var(--bg); padding: 12px 0 4px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  #composer-row { display: flex; gap: 8px; align-items: flex-end; }
+  #input {
+    flex: 1; resize: none; min-height: 52px; max-height: 180px;
+    padding: 12px 14px; font: inherit; font-size: 14.5px; line-height: 1.5;
+    border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel);
+  }
+  #input:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: var(--accent); }
+  .btn {
+    font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+    border-radius: var(--radius); padding: 12px 18px; border: 1px solid transparent; white-space: nowrap;
+  }
+  .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+  .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .btn-primary { background: var(--accent); color: var(--accent-ink); }
+  .btn-primary:hover:not(:disabled) { background: #4338ca; }
+  .btn-ghost { background: var(--panel); border-color: var(--line); color: var(--ink-soft); }
+  .btn-ghost:hover:not(:disabled) { color: var(--ink); border-color: #d6d3d1; }
+  .btn-ghost.danger-armed { color: var(--err-ink); border-color: var(--err-line); background: var(--err-bg); }
+  #toolbar { display: flex; gap: 8px; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+  #toolbar .hint { font-size: 12px; color: var(--ink-soft); }
+
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Idea Intake</h1>
+    <div class="sub">BA Agent interview → seeds <code>idea.md</code> in your project folder</div>
+  </div>
+  <div class="spacer"></div>
+  <span id="dir-pill" class="pill" hidden></span>
+  <span id="health-pill" class="pill">Checking Ollama…</span>
+</header>
+
+<main>
+  <!-- Error state (role=alert announces immediately; focus moves here on failure) -->
+  <div id="error-banner" class="banner" role="alert" tabindex="-1"></div>
+
+  <!-- Success state (announced politely; stays visible — it contains next steps) -->
+  <div id="success-banner" class="banner" role="status"></div>
+
+  <!-- Step 1: pick the project folder. Chat is unavailable until this resolves. -->
+  <section id="setup" aria-labelledby="setup-title">
+    <h2 id="setup-title">Where should this project live?</h2>
+    <p>
+      The framework structure (<code>skills/</code>, <code>design-system/</code>, <code>PRD/</code>, …) and the
+      captured <code>idea.md</code> will be written to this folder — <strong>not</strong> the framework repo.
+      Pick a new or existing folder (existing files are never overwritten). Examples:
+      <code>~/projects/my-app</code> or <code>/tmp/idea-test</code>.
+    </p>
+    <form id="setup-form" novalidate>
+      <div id="setup-row">
+        <label for="dir-input" style="position:absolute;left:-9999px;">Project folder path</label>
+        <input id="dir-input" type="text" placeholder="~/projects/my-app" autocomplete="off" required>
+        <button type="submit" id="setup-submit" class="btn btn-primary">Set folder</button>
+      </div>
+      <div id="setup-status" role="status"></div>
+    </form>
+  </section>
+
+  <!-- Step 2 (shown after a folder is set): the interview -->
+  <div id="chat-area" hidden>
+    <section id="empty-state" aria-labelledby="empty-title">
+      <h2 id="empty-title">Describe the idea you want to build</h2>
+      <p>
+        I'll interview you about the problem, users, features, scope, and constraints —
+        just enough to seed a solid PRD. Answer as much or as little as you like; you can also tell me
+        <em>"just proceed — fill it in yourself"</em> at any time, and I'll complete the gaps with
+        clearly-labeled assumptions.
+      </p>
+      <div class="chips" id="chips">
+        <button type="button" class="chip">A booking system for my physiotherapy clinic</button>
+        <button type="button" class="chip">An app that helps landlords track maintenance requests</button>
+        <button type="button" class="chip">A marketplace connecting home bakers with local customers</button>
+      </div>
+    </section>
+
+    <!-- Conversation. aria-live so screen readers hear agent replies as they stream. -->
+    <div id="log" aria-live="polite" aria-label="Conversation with BA Agent"></div>
+
+    <form id="composer" novalidate>
+      <div id="composer-row">
+        <label for="input" style="position:absolute;left:-9999px;">Your message to the BA Agent</label>
+        <textarea id="input" rows="2" placeholder="Type your idea, or an answer… (Enter to send, Shift+Enter for a new line)"
+          autocomplete="off" required></textarea>
+        <button type="submit" id="send" class="btn btn-primary">Send</button>
+      </div>
+      <div id="toolbar">
+        <span class="hint">Enter to send · Shift+Enter for newline</span>
+        <div>
+          <button type="button" id="proceed" class="btn btn-ghost">Just proceed — fill in the gaps for me</button>
+          <button type="button" id="reset" class="btn btn-ghost">New session</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  var setupSection = document.getElementById("setup");
+  var setupForm = document.getElementById("setup-form");
+  var dirInput = document.getElementById("dir-input");
+  var setupSubmit = document.getElementById("setup-submit");
+  var setupStatus = document.getElementById("setup-status");
+  var dirPill = document.getElementById("dir-pill");
+  var chatArea = document.getElementById("chat-area");
+
+  var log = document.getElementById("log");
+  var emptyState = document.getElementById("empty-state");
+  var form = document.getElementById("composer");
+  var input = document.getElementById("input");
+  var sendBtn = document.getElementById("send");
+  var proceedBtn = document.getElementById("proceed");
+  var resetBtn = document.getElementById("reset");
+  var errorBanner = document.getElementById("error-banner");
+  var successBanner = document.getElementById("success-banner");
+  var healthPill = document.getElementById("health-pill");
+
+  // Single source of truth: the conversation sent to the API (user + assistant turns only).
+  var messages = [];
+  var sessionId = null;
+  var sending = false;
+  var resetArmed = false;
+
+  // ── Health check (drives the header pill) ──────────────────────────────
+
+  fetch("/api/health")
+    .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+    .then(function (res) {
+      if (res.ok && res.data.ok && res.data.modelPresent) {
+        healthPill.textContent = res.data.model + " — ready";
+        healthPill.classList.add("ok");
+      } else if (res.ok && res.data.ok) {
+        healthPill.textContent = "Model missing: ollama pull " + res.data.model;
+        healthPill.classList.add("warn");
+      } else {
+        healthPill.textContent = res.data.message || "Ollama offline";
+        healthPill.classList.add("bad");
+      }
+    })
+    .catch(function () {
+      healthPill.textContent = "Ollama offline";
+      healthPill.classList.add("bad");
+    });
+
+  // ── Step 1: project folder → /api/init ─────────────────────────────────
+
+  setupForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var dir = dirInput.value.trim();
+    if (!dir) {
+      showError("Enter a project folder path first.");
+      dirInput.focus();
+      return;
+    }
+    clearError();
+    setupSubmit.disabled = true;
+    setupSubmit.textContent = "Setting up…";
+
+    fetch("/api/init", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ dir: dir }),
+    })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+      .then(function (res) {
+        if (!res.ok) {
+          showError(res.data.error || "Could not set up that folder.");
+          return;
+        }
+        sessionId = res.data.sessionId;
+        setupStatus.style.display = "block";
+        setupStatus.textContent = (res.data.existed ? "Using existing folder " : "Created ")
+          + res.data.dir + " — framework scaffolded ("
+          + res.data.filesCopied + " files added" + (res.data.filesSkipped ? ", " + res.data.filesSkipped + " existing kept" : "")
+          + "). Pinned as the workspace root in project-dir.txt — framework agents will write there.";
+
+        // Collapse setup, open the chat.
+        setupSection.hidden = true;
+        chatArea.hidden = false;
+        dirPill.textContent = "Project: " + res.data.dir;
+        dirPill.title = res.data.dir;
+        dirPill.hidden = false;
+        input.focus();
+      })
+      .catch(function () {
+        showError("Lost connection to the intake server. Is it still running? (node idea-intake/server.js)");
+      })
+      .finally(function () {
+        setupSubmit.disabled = false;
+        setupSubmit.textContent = "Set folder";
+      });
+  });
+
+  // ── Rendering ──────────────────────────────────────────────────────────
+
+  function escapeHtml(s) {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  /** Strip a (possibly still-open) ```idea fence — it's a machine contract, not chat content. */
+  function displayText(raw) {
+    var start = raw.indexOf("```idea");
+    if (start === -1) return raw;
+    var end = raw.indexOf("```", start + 7);
+    if (end === -1) return raw.slice(0, start);      // fence open, still streaming
+    return raw.slice(0, start) + raw.slice(end + 3); // fence closed
+  }
+
+  function addMessage(role, text) {
+    var el = document.createElement("div");
+    el.className = "msg " + role;
+    el.textContent = displayText(text);
+    log.appendChild(el);
+    scrollToBottom();
+    return el;
+  }
+
+  function setMessageText(el, text, streaming) {
+    var shown = displayText(text);
+    el.innerHTML = escapeHtml(shown) + (streaming ? ' <span class="cursor" aria-hidden="true"></span>' : "");
+    scrollToBottom();
+  }
+
+  function scrollToBottom() {
+    window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+  }
+
+  function hideEmptyState() {
+    if (emptyState) {
+      emptyState.remove();
+      emptyState = null;
+    }
+  }
+
+  // ── Banners ────────────────────────────────────────────────────────────
+
+  var lastError = null;
+  function showError(message) {
+    if (message === lastError) return; // don't re-trigger focus for identical repeats
+    lastError = message;
+    errorBanner.innerHTML = escapeHtml(message) +
+      ' <button type="button" class="btn btn-ghost" id="error-dismiss" style="margin-left:8px;padding:4px 10px;font-size:12px;">Dismiss</button>';
+    errorBanner.style.display = "block";
+    errorBanner.focus(); // move focus to the error so keyboard users notice it
+    document.getElementById("error-dismiss").addEventListener("click", function () {
+      errorBanner.style.display = "none";
+      (sessionId ? input : dirInput).focus();
+    });
+  }
+
+  function clearError() {
+    lastError = null;
+    errorBanner.style.display = "none";
+  }
+
+  function showSuccess(info) {
+    var html = "<strong>" + escapeHtml(info.projectName || "Your idea") + " captured.</strong> ";
+    html += "Wrote <code>" + escapeHtml(info.ideaPath) + "</code>.";
+    if (info.backupPath) html += " Previous version backed up to <code>" + escapeHtml(info.backupPath) + "</code>.";
+    html += "<br>Next step: open that project folder in Claude Code and run the framework — the BA Agent will expand this into the full PRD (Stage 1), then Design → Code → Review → QA.";
+    successBanner.innerHTML = html;
+    successBanner.style.display = "block";
+    successBanner.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  // ── Sending / streaming ────────────────────────────────────────────────
+
+  function setSending(on) {
+    sending = on;
+    sendBtn.disabled = on;
+    proceedBtn.disabled = on;
+    input.disabled = on;
+    sendBtn.textContent = on ? "Thinking…" : "Send"; // label reflects in-progress state
+    if (!on) input.focus();
+  }
+
+  function send(text) {
+    if (sending) return; // no double-submits
+    if (!sessionId) {
+      showError("Set a project folder first.");
+      return;
+    }
+    text = (text || "").trim();
+    if (!text) {
+      showError("Type a message first.");
+      return;
+    }
+    hideEmptyState();
+    clearError();
+
+    messages.push({ role: "user", content: text });
+    addMessage("user", text);
+    input.value = "";
+    autoGrow();
+
+    var bubble = addMessage("assistant", "");
+    var raw = "";
+    setSending(true);
+
+    fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionId: sessionId, messages: messages }),
+    })
+      .then(function (res) {
+        if (!res.ok || !res.body) throw new Error("The intake server returned HTTP " + res.status + ".");
+        var reader = res.body.getReader();
+        var decoder = new TextDecoder();
+        var buffer = "";
+
+        function pump() {
+          return reader.read().then(function (chunk) {
+            if (chunk.done) return;
+            buffer += decoder.decode(chunk.value, { stream: true });
+            var lines = buffer.split("\n");
+            buffer = lines.pop() || "";
+            lines.forEach(function (line) {
+              if (!line.trim()) return;
+              var evt;
+              try { evt = JSON.parse(line); } catch (e) { return; }
+              if (evt.type === "token") {
+                raw += evt.content;
+                setMessageText(bubble, raw, true);
+              } else if (evt.type === "error") {
+                showError(evt.message);
+              } else if (evt.type === "done") {
+                if (evt.ideaWriteError) showError(evt.ideaWriteError);
+                if (evt.ideaWritten) showSuccess(evt);
+              }
+            });
+            return pump();
+          });
+        }
+        return pump();
+      })
+      .then(function () {
+        setMessageText(bubble, raw, false);
+        if (raw.trim()) messages.push({ role: "assistant", content: raw });
+      })
+      .catch(function (err) {
+        // Network/parse failure. Bubble stays empty; report generically (no raw stack traces).
+        if (!raw.trim()) bubble.remove();
+        showError(err.message === "Failed to fetch"
+          ? "Lost connection to the intake server. Is it still running? (node idea-intake/server.js)"
+          : err.message);
+      })
+      .finally(function () {
+        setSending(false);
+      });
+  }
+
+  // ── Composer wiring ────────────────────────────────────────────────────
+
+  function autoGrow() {
+    input.style.height = "auto";
+    input.style.height = Math.min(input.scrollHeight, 180) + "px";
+  }
+  input.addEventListener("input", autoGrow);
+
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    send(input.value);
+  });
+
+  input.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      form.requestSubmit();
+    }
+  });
+
+  document.getElementById("chips").addEventListener("click", function (e) {
+    var chip = e.target.closest(".chip");
+    if (!chip) return;
+    hideEmptyState();
+    input.value = chip.textContent;
+    input.focus();
+    form.requestSubmit();
+  });
+
+  proceedBtn.addEventListener("click", function () {
+    send(messages.length
+      ? "Just proceed — fill in every remaining gap yourself with sensible, clearly-labeled assumptions and generate the final idea document now."
+      : "I'd like you to help me start from scratch. Ask me the key questions, but be ready to fill in gaps with sensible, clearly-labeled assumptions when I say so.");
+  });
+
+  // New session is destructive (discards the conversation) → two-step inline confirm.
+  resetBtn.addEventListener("click", function () {
+    if (!resetArmed && messages.length) {
+      resetArmed = true;
+      resetBtn.textContent = "Clear conversation?";
+      resetBtn.classList.add("danger-armed");
+      setTimeout(function () {
+        resetArmed = false;
+        resetBtn.textContent = "New session";
+        resetBtn.classList.remove("danger-armed");
+      }, 4000);
+      return;
+    }
+    location.reload(); // restores setup screen + re-checks health
+  });
+
+  dirInput.focus();
+})();
+</script>
+</body>
+</html>

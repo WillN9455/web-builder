@@ -1,0 +1,62 @@
+/* Design tokens — single source of truth for the launcher UI.
+ * Values match the v5 mockup (launcher/design/mockups.html :root). */
+
+:root {
+  --ground-a: #d9d5ec;
+  --ground-b: #c3cde8;
+  --panel: rgba(255, 255, 255, 0.72);
+  --panel-stroke: rgba(255, 255, 255, 0.6);
+  --ink: #2b2547;
+  --ink-2: #8b87a5;
+  --ink-3: #b6b2cc;
+  --shadow: 0 30px 60px -30px rgba(50, 42, 92, 0.25),
+            0 8px 24px -10px rgba(50, 42, 92, 0.12);
+  --navy: #322a5c;
+  --navy-2: #4a4080;
+  --peach: #fbdcbe;
+  --sky: #cfe0f4;
+  --lavender: #e6e1f7;
+  --mint: #d7efe4;
+  --butter: #f7edc6;
+  --blush: #fadcd9;
+  --coral: #ef7f57;
+  --blue: #6fa9e0;
+  --purple: #9b7fde;
+  --green: #5fbf95;
+  --amber: #e8b94a;
+  --rose: #d97a8e;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+  --r-sm: 10px;
+  --r-md: 16px;
+  --r-lg: 20px;
+  --r-xl: 24px;
+  --r-2xl: 28px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.5;
+  background:
+    radial-gradient(120% 80% at 0% 0%, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0) 60%),
+    linear-gradient(135deg, var(--ground-a) 0%, var(--ground-b) 100%);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button { font-family: inherit; cursor: pointer; }
+input { font-family: inherit; }
+a { color: inherit; text-decoration: none; }

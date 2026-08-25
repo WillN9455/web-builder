@@ -93,7 +93,7 @@ A new user has **no starting point**:
 - README says "Run the framework — Claude Code agents will guide you through each stage" but doesn't say how
 - No `QUICKSTART.md` or `FIRST-STEPS.md`
 - No example walkthrough (e.g., "Here's how to build a simple todo app using this framework")
-- The `idea.txt` file contains notes about the framework itself, not an actual business idea — confusing signal
+- The `idea.md` file contains notes about the framework itself, not an actual business idea — confusing signal
 
 ### Gap 8: Missing Structural Components for a Complete Builder
 
@@ -125,7 +125,7 @@ To actually produce a complete repository, the framework is missing guidance on:
 
 ### Ideal Additions (Beyond MVP)
 
-- Example project walkthrough (end-to-end, from idea.txt to deployed solution)
+- Example project walkthrough (end-to-end, from idea.md to deployed solution)
 - `.env.example` with every variable documented
 - CI/CD configuration templates (GitHub Actions)
 - Database schema template library (Prisma, Drizzle, etc.)

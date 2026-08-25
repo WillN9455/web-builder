@@ -50,7 +50,12 @@ Rules that apply to every agent at every stage of the framework.
 
 ## Artifacts Are Source of Truth
 
-All agent work flows through files. If it's not written down, it doesn't exist:
+All agent work flows through files. If it's not written down, it doesn't exist.
+
+**Location rule (from CLAUDE.md §Workspace Root):** every path below is relative to the
+workspace root — the directory in `project-dir.txt` if that file exists, otherwise the
+current repository. Never write artifacts to both places.
+
 - Requirements → `PRD/<project>/prd.md`
 - Design → `design-system/<project>/`
 - Code → Feature branches

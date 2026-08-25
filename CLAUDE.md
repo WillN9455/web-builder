@@ -9,14 +9,24 @@ An intelligent multi-agent system that takes a business idea and produces a full
 3. **Design before implementation** — Wireframes, interactions, states, and tokens are defined before any code is written.
 4. **Agents collaborate and critique** — Roles don't just produce; they review each other's work adversarially.
 5. **Accessibility and quality are non-negotiable** — WCAG compliance, security, and maintainability are built in, not bolted on.
-6. **Ideas evolve** — `idea.txt` is a living document. Update it as the vision clarifies.
+6. **Ideas evolve** — `idea.md` is a living document. Update it as the vision clarifies.
+
+## Workspace Root
+
+**Where artifacts go.** At session start, every agent resolves the workspace root:
+
+1. If `project-dir.txt` exists in the current directory, the **first non-empty line** is an absolute path to the project folder — **all reads and writes of framework artifacts** (`idea.md`, `PRD/`, `design-system/`, `code-builder/` output, `testing/`, reviews) must target that directory, not the current repository. Verify the path exists before writing; if it is missing or unreadable, stop and ask the user whether to update or remove `project-dir.txt` — do not silently fall back.
+2. If no `project-dir.txt` exists, the current repository **is** the project — write artifacts relative to the repository root as usual.
+
+`project-dir.txt` is written by `idea-intake/server.js` when a user picks a project folder in the intake chat (it is git-ignored — it is machine-local state, not project content). Never commit it, and never invent a project path if the file is absent.
 
 ## Project Structure
 
 ```
 claude-coding-framework/
 ├── CLAUDE.md              # This file — framework docs
-├── idea.txt               # Living idea document (source of truth)
+├── project-dir.txt        # Optional: absolute path of the project workspace (see Workspace Root)
+├── idea.md               # Living idea document (source of truth)
 ├── AGENTS.md              # Agent roles, coordination, and communication
 ├── PRD/
 │   └── templates/         # Product Requirements Document templates
@@ -151,10 +161,11 @@ When an agent is performing a **build**, **implementation**, or **large update**
 6. Code agents cannot start until design is approved by both design agents
 7. Features cannot move to QA without full review clearance
 8. The user always has final approval before moving between stages
+9. All artifact writes go to the workspace root — the path in `project-dir.txt` if it exists, otherwise the current repository (see Workspace Root)
 
 ## How This Framework Grows
 
-- Update `idea.txt` as the vision evolves
+- Update `idea.md` as the vision evolves
 - Add new skills when gaps are discovered during projects
 - Extend the PRD template as requirements patterns emerge
 - Add new design tokens and components to the design system
