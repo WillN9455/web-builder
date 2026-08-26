@@ -168,6 +168,40 @@
 
 ---
 
+## 6a.1 Analytics & instrumentation events
+
+> **Purpose:** §6a defines *business outcomes* (KPIs). This section
+> defines the *user actions and business events* that feed those
+> metrics — the events the runtime must emit so the metrics in §6a can
+> be measured. §6a is what the BA reports to the user; this section is
+> what the Code Agent wires and the QA Agent tests.
+>
+> **The BA Agent owns the event list; the Solution Architect picks the
+> tool; the Code Agents implement the emit calls; the QA Agent writes
+> tests that assert the events fire.** A metric in §6a with no event in
+> this table is unmeasurable and must be removed or have its event
+> added here.
+
+### Event catalog
+
+| Event name | Trigger (user action / system condition) | Properties (PII-safe — keys only) | Linked KPI (from §6a) | Linked story (from §8) | Owner |
+|------------|------------------------------------------|----------------------------------|----------------------|------------------------|-------|
+| `signup_started` | User submits signup form | `source`, `referrer` | Activation rate | #1 | BA |
+| `signup_completed` | Email verified | `user_id`, `cohort_week` | Activation rate | #1 | BA |
+| `booking_created` | Client confirms payment | `booking_id`, `coach_id`, `amount_cents`, `currency` | Booking completion rate | #6 | BA |
+| `booking_completed` | Session ends | `booking_id`, `duration_minutes` | Booking completion rate | #10 | BA |
+| `error_5xx` | Server returns 5xx | `endpoint`, `request_id`, `error_class` | Error rate | <story or N/A> | BA / SA |
+| `<event_name>` | <trigger> | <properties> | <§6a metric> | <§8 story> | <role> |
+
+### Rules
+
+- **PII in events:** properties MUST be keys, IDs, and enums — never raw PII. If a metric needs PII (e.g. email open rates), the event must be designed to use a hashed or allow-listed identifier. The Requirements Reviewer rejects events that carry `email`, `name`, `phone`, or `address` as a property.
+- **Event naming:** `snake_case`, past tense, verb-first. No product-specific prefixes — the catalog is product-agnostic.
+- **Idempotency:** events with side effects (queue jobs, emails) MUST carry an `idempotency_key` property so retries don't double-fire. The QA Agent asserts this.
+- **Cross-references:** every event MUST link to a §6a KPI (or be marked `N/A — operational`). Every operational event (`error_5xx`, `queue_job_failed`) MUST link to an `nfr-catalog.md` entry.
+
+---
+
 ## 6b. Key User Journeys (end-to-end)
 
 > The lifecycle narrative, not the individual steps. User stories (§8) say
@@ -207,6 +241,124 @@
 > §9b and note it in `open-questions.md`.
 
 **Cross-references:** §8 user stories; §9a states; §9b integrations; `business-rules.md`; Design Agents expand each journey into flows
+
+---
+
+## 6c. Privacy, cookie & consent UX
+
+> **Purpose:** `data-flow.md` covers GDPR/PCI *data* movements and
+> `nfr-catalog.md` covers security *controls*. This section covers the
+> *user-visible* privacy surface — the consent flows, banner copy, and
+> opt-in wording that the Design Agent specifies and the Code Agent
+> implements. Without it, three different engineers will build three
+> different cookie banners.
+>
+> **The BA Agent owns the copy and the consent semantics** (what we
+> ask, when we ask, what the default is, what "reject all" does). The
+> Design Agent owns the visual treatment. The Code Agent wires it.
+
+### Consent surfaces
+
+| Surface | When shown | Default state | What "Reject all" does | Linked data-flow / NFR |
+|---------|-----------|---------------|------------------------|------------------------|
+| Cookie banner (analytics) | First visit | Opt-out | Disables analytics events (§6a.1) | `data-flow.md` §2 (analytics flow); NFR SEC-### |
+| Cookie banner (marketing) | First visit | Opt-out | Disables marketing scripts | NFR SEC-### |
+| Marketing email opt-in | Signup form | Opt-in required (EU) / opt-out (US) | Skips the welcome email series | `data-flow.md` §F-###; NFR SEC-### |
+| Terms of Service / Privacy Policy acceptance | Signup + material changes | Required to proceed | N/A — block the action | `data-flow.md` §residency; legal review |
+| Third-party data sharing (e.g. Stripe, video) | At point of integration | Required to proceed (otherwise feature unavailable) | N/A — block the action | `data-flow.md` §third-party flows |
+| Push notifications | Settings page | Opt-in | No push until granted | `data-flow.md` §notification flow |
+| <surface> | <trigger> | <default> | <behaviour> | <NFR / data-flow ref> |
+
+### Copy rules
+
+- **Plain language.** Every consent string must be readable by a non-lawyer at a 9th-grade reading level. Legal precision goes in the linked Privacy Policy; the *UI* copy is plain.
+- **No dark patterns.** Reject-all must be one click, equally prominent to Accept-all, and produce the same end state. The Requirements Reviewer rejects designs where the path to reject is hidden, multi-step, or visually de-emphasised.
+- **Regional defaults vary.** EU/UK/CA default to opt-in for analytics and marketing; US defaults may be opt-out *only where legally permitted*. The BA Agent must specify per-region defaults in the table above — a single "default = opt-in" line is not acceptable.
+- **Withdrawal is one click.** Every opt-in has a one-click withdrawal path. Settings page link from every marketing email; in-app toggle for analytics.
+- **Audit trail.** Every consent decision is logged with timestamp + version of policy shown. Linked `data-flow.md` flow covers the storage.
+
+### Cross-references
+
+- `PRD/<project>/data-flow.md` §F-### — every consent surface has a corresponding data flow.
+- `PRD/<project>/nfr-catalog.md` Security & Compliance — consent is the UX layer over the controls.
+- `PRD/<project>/open-questions.md` — any surface where the BA Agent cannot decide the default (regional legal advice needed) goes here with `Blocker-for: PRD-approval`.
+
+---
+
+## 6d. Content, copy & localisation
+
+> **Purpose:** the BA owns the *words* the user sees. Design Agents
+> own the visual treatment; Code Agents own the rendering. Without a
+> copy spec from the BA, Design Agents will guess, three engineers
+> will write three different empty-state messages, and the codebase
+> will ship with mixed English / placeholder lorem ipsum in three
+> languages.
+>
+> **The BA Agent specifies the canonical copy, the tone, and the
+> locale-fallback behaviour.** The Design Agent maps it to components;
+> the Code Agent implements i18n keys. A locale without a row in the
+> fallback table is unbuildable.
+
+### Tone & voice
+
+- **Voice:** <one of: formal / friendly / playful / clinical — pick one and stay consistent>
+- **Reading level:** <target — usually 9th grade for general products, lower for healthcare>
+- **Person:** <second person "you" / first person plural "we" — pick one>
+- **Capitalisation:** <sentence case / Title Case — pick one; document the choice>
+- **Punctuation in UI:** <Oxford comma yes/no; serialised lists with "and" / "&">
+- **Emoji:** <allowed in body? in CTAs? in error states? — be explicit>
+
+### Empty-state copy (mandatory)
+
+> Every screen the user can land on with no data must have copy. "Nothing here yet" is not copy; it is a placeholder that the Design Agent will fill with lorem ipsum.
+
+| Surface | When shown | Headline (≤ 8 words) | Body (≤ 25 words) | Primary CTA | Secondary action |
+|---------|-----------|----------------------|--------------------|-------------|------------------|
+| Bookings list (no bookings) | User has 0 bookings | <e.g., "No bookings yet"> | <e.g., "Book your first session to get started."> | <e.g., "Find a coach"> | — |
+| Search results (no matches) | Search returns 0 | ... | ... | ... | ... |
+| Notifications (empty) | 0 unread | ... | ... | ... | ... |
+| Error state (generic) | Unhandled error | <e.g., "Something went wrong"> | <e.g., "Try again, or contact support if it persists."> | <e.g., "Retry"> | <e.g., "Contact support"> |
+| Loading state (> 2s) | Request > 2s | <e.g., "Loading…"> | — | — | — |
+| <surface> | <trigger> | ... | ... | ... | ... |
+
+### Error-message copy (mandatory)
+
+| Error condition (BR-### or story #) | User-visible message (≤ 15 words) | Tone | Recovery action |
+|-------------------------------------|------------------------------------|------|-----------------|
+| Card declined (BR-201) | <e.g., "Your card was declined. Try another card or contact your bank."> | Apologetic, action-oriented | Show retry CTA |
+| Booking conflict (BR-###) | <e.g., "That slot was just taken. Pick another time."> | Neutral, redirect | Show available slots |
+| Permission denied (RBAC) | <e.g., "You don't have access to this. Ask your admin if you think this is wrong."> | Informative | Show admin contact |
+| Network failure | <e.g., "Can't reach the server. Check your connection and try again."> | Neutral | Retry CTA |
+| <condition> | <message> | <tone> | <action> |
+
+### Placeholder & helper text
+
+> Form fields with hints need the hint text from the BA, not from the engineer's imagination.
+
+| Field (story #) | Placeholder | Helper text (visible) | Tooltip (on hover/focus) | Validation message |
+|-----------------|-------------|------------------------|---------------------------|---------------------|
+| <field> | <e.g., "[email protected]"> | <e.g., "We'll send a confirmation here"> | <e.g., "Why we ask: to send booking reminders"> | <e.g., "Enter a valid email address"> |
+| ... | ... | ... | ... | ... |
+
+### Locale fallback (mandatory)
+
+> The Code Agent wires i18n. The BA Agent specifies which locales ship at MVP and what the fallback chain is.
+
+| Locale (BCP-47) | MVP? | Fallback locale | Translation source | Notes |
+|-----------------|------|-----------------|--------------------|-------|
+| `en-US` | Yes | — | Source of truth | All keys originate here |
+| `en-GB` | Yes | `en-US` | <human / agency / MT> | <differences, e.g., date format> |
+| `fr-FR` | Yes | `en-US` | <human / agency / MT> | — |
+| `es-ES` | No (Phase 2) | `en-US` | <source> | — |
+| `<locale>` | <Yes/No> | <fallback> | <source> | <notes> |
+
+**Fallback behaviour:** <e.g., "Missing key in `fr-FR` falls back to `en-US`; missing key in `en-US` shows the key id (e.g., `booking.cancel.confirm`) so the team notices in QA, not silently in production.">
+
+### Cross-references
+
+- `PRD/<project>/business-rules.md` §Lifecycle edge cases — every error condition has a BR-### or story link.
+- `PRD/<project>/glossary.md` — domain terms must use the canonical translations here, not ad-hoc per-locale.
+- `design-system/components/` — Design Agents map copy to components; the BA copy is canonical, the visual is the Design Agent's call.
 
 ---
 

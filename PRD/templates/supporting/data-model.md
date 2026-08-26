@@ -137,6 +137,68 @@ User N───N Provider (via "favourite" — optional)
 
 ---
 
+## Enums, status fields & state transitions
+
+> **Purpose:** enums are half the state machine. The Solution Architect
+> sizes the state machine from these rows; the Code Agents implement
+> the transitions in route guards and DB constraints; the QA Agent
+> writes transition tests from this table.
+>
+> **`business-rules.md` holds the *why* (thresholds, precedence,
+> triggers); this section holds the *what* (the enum values and which
+> transitions are legal).** Both must agree — if they conflict, the
+> Requirements Reviewer rejects the PRD. The Cross-references section
+> below points at the corresponding business rules (BR-###) for every
+> transition.
+
+**Schema for every status enum:**
+
+| Column | Notes |
+|--------|-------|
+| `Entity.field` | e.g. `Booking.status`, `Payment.status` |
+| `Values` | Comma-separated enum values, each with one-sentence meaning |
+| `Default` | Initial value on row creation |
+| `Legal transitions` | `from → to` pairs with the BR-### trigger |
+| `Forbidden transitions` | Explicit "no" list — empty if no transition is illegal beyond "not listed" |
+| `Terminal values` | Values from which no transition is legal |
+| `Side effects` | Webhooks, emails, queue jobs fired on each transition |
+| `Linked BR-###` | Cross-reference to the business-rule rows that justify each transition |
+
+### Enums
+
+| Entity.field | Values | Default | Linked BR-### |
+|--------------|--------|---------|---------------|
+| `Booking.status` | `pending_payment`, `confirmed`, `cancelled`, `completed`, `no_show` | `pending_payment` | BR-101, BR-102, BR-103, BR-104 |
+| `Payment.status` | `requires_payment`, `processing`, `succeeded`, `failed`, `refunded`, `partially_refunded` | `requires_payment` | BR-201, BR-202, BR-203 |
+| `<Entity.field>` | ... | ... | ... |
+
+### Transition tables
+
+> One sub-table per status enum. Columns: `From`, `To`, `Trigger event`, `Actor / role`, `Side effects`, `Linked BR-###`. Every legal transition in the enums table above MUST appear here; every row here MUST appear in the enums table's `Legal transitions` column.
+
+#### `Booking.status`
+
+| From | To | Trigger event | Actor / role | Side effects | BR-### |
+|------|----|---------------|--------------|--------------|--------|
+| `pending_payment` | `confirmed` | Payment succeeds | System (webhook) | Send confirmation email + ICS; create video room | BR-101 |
+| `pending_payment` | `cancelled` | Payment abandoned (timeout) | System (cron) | None | BR-102 |
+| `confirmed` | `cancelled` | User / coach cancels within policy window | User, Coach, or System | Refund per ladder; notify other party | BR-103 |
+| `confirmed` | `completed` | Session ends + both parties confirmed | System (timer) or Coach | Release payment; prompt for review | BR-104 |
+| `confirmed` | `no_show` | Coach / client did not join within 10 min | System or Coach | Apply no-show policy | BR-105 |
+| **Any** | **Any** | **All other transitions** | — | — | **Forbidden** |
+
+#### `Payment.status`
+
+| From | To | Trigger event | Actor / role | Side effects | BR-### |
+|------|----|---------------|--------------|--------------|--------|
+| ... | ... | ... | ... | ... | ... |
+
+### Cross-references
+
+- `PRD/<project>/business-rules.md` — every transition's BR-### trigger lives there (decision table form, with thresholds and precedence).
+- `PRD/<project>/rbac-matrix.md` — `Actor / role` column ties to the role × permission matrix.
+- `PRD/<project>/data-flow.md` — `Side effects` may move PII or trigger cross-border flows; flag if so.
+
 ## Deletion & GDPR flows
 
 **Right to erasure (Article 17):**

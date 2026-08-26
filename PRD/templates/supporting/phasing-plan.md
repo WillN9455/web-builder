@@ -144,6 +144,56 @@ violating dependencies. Rules:
 
 ---
 
+## Rollout, kill-switches & feature flags
+
+> **Purpose:** the phasing plan defines *what* ships in each phase.
+> This section defines *how* a feature goes live and *how it comes
+> back* if it goes wrong. Without it, every incident response starts
+> with "how do we turn this off?" — which is the wrong question at
+> the wrong time.
+>
+> **The BA Agent owns the rollout shape and the kill-switch decision
+> per feature; the Solution Architect picks the flag/infra mechanism;
+> the Code Agents wire it; the QA Agent verifies the kill-switch works.**
+> A feature in the phasing plan without a row in this table is a
+> deployment-time incident waiting to happen.
+
+### Per-phase rollout strategy
+
+For every phase below, fill the table or it fails §13 sign-off.
+
+| Phase | Rollout shape (% of traffic or cohort) | Feature flags required | Kill-switch mechanism | Rollback metric (auto-rollback trigger) | Owner |
+|-------|----------------------------------------|------------------------|------------------------|------------------------------------------|-------|
+| MVP | <e.g., "100% to internal coaches week 1; 10% of public traffic week 2; 100% week 4"> | <flag names + default state> | <flag toggle + on-call runbook link> | <e.g., "5xx > 1% for 5 min" or "booking_completion < 50% of baseline"> | <role> |
+| Phase 2 | ... | ... | ... | ... | ... |
+| Phase 3 | ... | ... | ... | ... | ... |
+
+### Per-feature flag & kill-switch matrix
+
+> One row per feature that ships to users. "Internal only" or "no user-visible behaviour change" features may use the row `N/A` with rationale.
+
+| Feature | Story # | Flag name | Default state in prod | Default state for internal/QA | Kill-switch behaviour (≤ 30s to disable) | Linked metric |
+|---------|---------|-----------|----------------------|--------------------------------|-------------------------------------------|---------------|
+| <feature> | #N | <flag-id> | <on/off/%> | <on> | <e.g., "Flag → off hides CTA + blocks POST endpoint with 503"> | <§6a KPI or §6a.1 event> |
+| ... | ... | ... | ... | ... | ... | ... |
+
+### Rollout rules (BA Agent enforces)
+
+1. **Every user-visible feature gets a row.** Internal-only changes may group under one row with `N/A` flag and rationale.
+2. **Default off in prod for new features.** A new feature ships with the flag off in prod, on for QA/internal. The Code Agent flips it on only after the SA signs off on the rollout window.
+3. **Kill-switch ≤ 30 seconds.** The kill-switch must disable the feature (UI + endpoint) within 30 seconds of a flag flip. If it cannot, the SA rejects the rollout plan.
+4. **Auto-rollback metrics are defined up front.** Each row's "Rollback metric" is a measured signal — not "if something looks bad." Vague rollback criteria are review defects.
+5. **Gradual rollout has a halt criterion.** If the rollback metric fires, the rollout halts and the flag goes off. No human-in-the-loop to "decide if it's bad enough."
+6. **One-way doors flagged.** Any feature that is hard to reverse (data model changes, paid commitments, public API contracts) must be tagged `one-way door` and require the Orchestrator's sign-off before rollout — not just the SA's.
+
+### Cross-references
+
+- `PRD/<project>/risks.md` — every "one-way door" feature gets a risk row.
+- `PRD/<project>/nfr-catalog.md` Observability + Availability — rollback metrics depend on the observability stack.
+- `code-builder/config-rules.md` — the SA's flag mechanism choice (LaunchDarkly, Unleash, env vars, custom) lives there.
+
+---
+
 ## Risks to the phasing plan
 
 > Anything that could push a phase out. Mirrored from `risks.md` but

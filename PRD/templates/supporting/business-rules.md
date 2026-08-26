@@ -94,6 +94,60 @@ pending → confirmed → completed
 
 ---
 
+## Lifecycle edge cases (mandatory enumeration)
+
+> **The BA Agent must enumerate every lifecycle edge case the product
+> could hit, even if the answer is "out of scope, see BR-###."** A
+> product that hasn't decided what happens when a coach is deleted
+> with upcoming bookings will discover it in production. Forcing the
+> decision into this table means the Code Agent can implement the
+> chosen behaviour, the SA can size any background work it implies,
+> and the QA Agent can write a regression test for each.
+>
+> The default for every row below is **`unspecified`** until the BA
+> Agent fills it. An `unspecified` row is a Requirements Reviewer defect.
+
+### Categories (use these to spark the brainstorm)
+
+1. **Account / entity lifecycle** — account deleted, deactivated, role changed, ownership transferred mid-flow.
+2. **Payment failure modes** — card declined, 3DS abandoned, partial capture, webhook lost, refund issued, chargeback.
+3. **Concurrency / state conflicts** — two parties act on the same record within seconds (cancel + reschedule, double-book, refund + dispute).
+4. **Time / clock edges** — daylight saving boundaries, leap seconds, midnight UTC for local-time business, deadline crossed mid-request.
+5. **Integration / third-party failures** — payment provider down, email provider down, video provider room creation fails after payment succeeded.
+6. **Trust / permission edges** — user loses access mid-flow (org removed, subscription lapsed), admin override, audit log required.
+7. **Data / privacy edges** — GDPR erasure hits a record that has financial implications (must keep tax-relevant data), anonymisation vs deletion.
+8. **Operational edges** — deploy during peak, scheduled job double-runs, queue backlog, idempotency key reuse.
+
+### Edge-case register
+
+| Edge case | Category | Affected entities | Required behaviour | BR-### | Status |
+|-----------|----------|-------------------|--------------------|--------|--------|
+| Coach account is deleted while there are upcoming bookings | 1 | User, Booking | <e.g., "Auto-cancel bookings ≥ 24h away; refund per BR-103; notify clients"> | <BR-### or `unspecified`> | <open / approved> |
+| Client cancels after they've already started the session | 1, 4 | Booking | <e.g., "No refund; flag for coach review"> | <BR-### or `unspecified`> | <open / approved> |
+| Payment succeeds but video-room creation fails | 5 | Booking, Session | <e.g., "Queue retry job; surface 'join by phone' fallback; alert on-call"> | <BR-### or `unspecified`> | <open / approved> |
+| Card declined on a recurring booking | 2 | Payment, Subscription | <e.g., "Retry with exponential backoff; suspend after N failures; notify"> | <BR-### or `unspecified`> | <open / approved> |
+| User requests GDPR erasure but has tax-relevant transactions | 7 | User, Payment | <e.g., "Anonymise PII fields; retain transactional records per BR-###"> | <BR-### or `unspecified`> | <open / approved> |
+| Two clients book the same slot before availability locks | 3 | Booking | <e.g., "DB unique constraint on (coach_id, slot_start); second write returns 409"> | <BR-### or `unspecified`> | <open / approved> |
+| Scheduled job runs twice (clock skew, manual rerun) | 8 | <varies> | <e.g., "Idempotency key per (entity, action, day); second run no-ops"> | <BR-### or `unspecified`> | <open / approved> |
+| <edge case N> | <category> | <entities> | <behaviour> | <BR-###> | <status> |
+
+### How the BA Agent fills this table
+
+1. Walk each user story in PRD §8 and ask "what can go wrong on or after this step?"
+2. Walk each business rule (BR-###) and ask "what's the failure mode of this rule?"
+3. Walk each integration in PRD §9b and ask "what does this look like when the integration is down or slow?"
+4. Walk each enum transition in `data-model.md` §Enums & state transitions and ask "what does this look like at 23:59:59 the day before?"
+5. For each edge case, the required behaviour is one of: (a) a `BR-###` reference, (b) `out of scope` with rationale, (c) `unspecified` — but `unspecified` rows are review defects and must be eliminated before §13 sign-off.
+
+### How downstream consumers read this table
+
+- **Solution Architect** — sizes queues, retries, idempotency, and background jobs from the "Required behaviour" column. Rows that imply infrastructure (queues, schedulers) feed the architecture diagram.
+- **Code Agents** — implement the behaviour as route guards, DB constraints, queue jobs, and `data-model.md` enum defaults.
+- **QA Agent** — writes a regression test per row. An `unspecified` row is an untestable requirement and fails the test plan.
+- **Requirements Reviewer** — rejects the PRD if any row is `unspecified` at §13 sign-off.
+
+---
+
 ## Rules deferred to later phases
 
 | ID | Rule | Phase | Why deferred |
