@@ -241,6 +241,8 @@
 | 1 | <persona> | <action> | <benefit> | <given/when/then> | MVP / Phase 2 / Phase 3 | Must / Should / Could / Won't |
 | 2 | ... | ... | ... | ... | ... | ... |
 
+**Acceptance-criteria format:** every AC is written as Gherkin — `Given <state>, When <action>, Then <observable outcome>` — one scenario per row, atomic and testable. Narrative prose AC ("the user can cancel") is not acceptable: it cannot be traced one-to-one to a Playwright test and is the most common cause of QA ambiguity. Multi-clause prose must be split into one Given/When/Then per clause. The QA Agent maps exactly one test per AC; if you cannot write a single When/Then for it, split the story.
+
 **Story-point sizing convention:** T-shirt sizes (S/M/L/XL) or Fibonacci — pick one and stick with it across the project.
 
 **Phase definitions (see also `phasing-plan.md`):**

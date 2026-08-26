@@ -14,6 +14,15 @@
 
 ## Part 1 — BA inputs (must be complete before SA starts)
 
+> **Single-source rule:** `PRD/<project>/prd.md` and its supporting files
+> (`nfr-catalog.md`, `traffic-profile.md`, `business-rules.md`,
+> `rbac-matrix.md`, `cost-model.md`, `data-flow.md`, `data-model.md`) are
+> **canonical**. Part 1 below is a *re-aggregation* the SA reads in one place —
+> it copies, it does not originate. If a value here disagrees with the
+> canonical file, the canonical file wins, and Part 1 is stale. The BA must
+> re-sync the affected Part 1 section whenever the PRD or a supporting file
+> changes; the Requirements Reviewer checks for drift at each pass.
+
 ### 1.1 Project summary
 
 - **Project name:** <name>
@@ -231,6 +240,25 @@ broken cost model.
 - **Blocking data-flow questions:** <list OQ-IDs from data-flow §6 with `blocker-for: tech`/`integration`>
 
 **Cross-references:** `PRD/<project>/data-flow.md` (full map + PCI scope); `data-model.md` (PII at rest); `nfr-catalog.md` SEC-*/DR-*; `rbac-matrix.md` (flow initiators)
+
+---
+
+### 1.15 Environments & non-production data
+
+> What environments exist, what data they hold, and how non-prod stays
+> compliant. The SA provisions these; the BA states the constraints (PII in
+> staging, anonymisation, preview environments) so the SA doesn't have to
+> guess — especially under EU-residency / GDPR where a staging snapshot of
+> real user data is itself a data-protection event.
+
+- **Environments required at MVP:** <e.g., "local, preview (per-PR), staging, production">
+- **Non-prod data policy:** <e.g., "staging uses synthetic seed data only; no PII; production snapshots forbidden without anonymisation per `data-flow.md` §4">
+- **Preview environments:** <e.g., "ephemeral per-PR preview with seeded demo coach + client; no real Stripe keys (test mode only)">
+- **Secrets / third-party keys in non-prod:** <e.g., "Stripe + Postmark + Daily.co in test/sandbox mode; production keys never in non-prod">
+- **Anonymisation rule for any prod-data copy:** <e.g., "email → `user_{id}@example.test`; names → randomised; payments → test intent ids; never copy card data (there is none — see §1.14 PCI scope)">
+- **Backups:** <e.g., "prod DB backup encrypted, EU region, 30-day retention; staging has no backup">
+
+**Cross-references:** `PRD/<project>/data-flow.md` §4 (residency/erasure); `nfr-catalog.md` SEC-001/SEC-004, DR-001; `rbac-matrix.md` (admin/system access to non-prod)
 
 ---
 
