@@ -93,7 +93,7 @@ User action → API call fails →
 - [ ] Error banners are announced to screen readers (`role="alert"`)
 - [ ] Retry buttons show a loading state while retrying
 - [ ] Errors dismiss after 10 seconds (with persistent CTA) unless critical
-- [ ] Error messages match tone and style in PRD
+- [ ] Error messages match tone and style in PRD §6d (locale-aware; locale fallback applies)
 
 ## Cross-References
 
@@ -116,6 +116,7 @@ User action → API call fails →
 |-------------|---------------------|
 | [`skills/accessibility-guidelines.md`](../../skills/accessibility-guidelines.md) §Screen Reader Support | `role="alert"` on error banners; `aria-invalid="true"` on form fields with errors; focus management to first error |
 | [`skills/ui-best-practices.md`](../../skills/ui-best-practices.md) §2 Error States | Move focus to error on form submission failure; never expose raw server errors; distinguish error states from empty states |
+| [`../../PRD/templates/prd-template.md`](../../PRD/templates/prd-template.md) §6d Content, copy & localisation | Error-message copy is **mandatory** (§6d "Error-message copy" section) — the [what went wrong] + [what to do] text must be pulled from §6d, locale-aware, with the §6d locale-fallback rule applying. Do not invent error copy. |
 | `skills/security.md` §10 No Raw Error Leakage | Never show raw stack traces, SQL errors, or internal paths to clients — sanitize in UI |
 
 ### Components that use this state
@@ -135,5 +136,6 @@ User action → API call fails →
 
 ### PRD input triggers (when this state is activated)
 - PRD Section 6 UX Principles: "Error handling and framework" section defines required error behaviors
+- PRD Section 6d Content, copy & localisation: mandatory error-message copy (what went wrong + what to do) — locale-aware, with locale fallback
 - PRD Section 8 User Stories: acceptance criteria that specify "when X fails, show Y"
 - PRD Section 12 Assumptions: any assumptions about offline behavior or network reliability
