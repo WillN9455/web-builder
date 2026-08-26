@@ -646,6 +646,27 @@
 }
 .chat-error svg { color: var(--rose); flex: none; margin-top: 2px; }
 
+/* Near-limit / at-limit banner. Amber by default (a nudge to wrap up),
+   deeper amber once the hard cap is hit (the server will reject further
+   replies). Mirrors .chat-error's layout so the two read as one family. */
+.chat-warn {
+  display: flex;
+  gap: 10px;
+  align-items: start;
+  background: var(--butter);
+  color: var(--ink);
+  padding: 12px 18px;
+  margin: 12px 22px 0;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.chat-warn svg { color: var(--amber); flex: none; margin-top: 2px; }
+.chat-warn--limit {
+  background: var(--blush);
+}
+.chat-warn--limit svg { color: var(--rose); }
+
 .chat-body {
   flex: 1;
   padding: 22px 26px;

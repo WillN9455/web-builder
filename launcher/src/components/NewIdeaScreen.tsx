@@ -51,6 +51,12 @@ export function NewIdeaScreen() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [projectDir, setProjectDir] = useState<string | null>(null);
   const [doneEvent, setDoneEvent] = useState<ChatDoneEvent | null>(null);
+  // Conversation caps returned by /api/init (or /api/projects/:id/resume).
+  // Forwarded to ChatStep so it can warn as the user nears the limit. The
+  // server is the single source of truth — these come straight off the
+  // intake.ts constants, never duplicated here.
+  const [maxMessages, setMaxMessages] = useState<number>(150);
+  const [warnThreshold, setWarnThreshold] = useState<number>(120);
   // Resume-mode seed data — non-null only when entering via ?resume=<slug>.
   const [initialMessages, setInitialMessages] = useState<ChatMessage[] | null>(null);
   const [initialSteps, setInitialSteps] = useState<InterviewStep[] | null>(null);
@@ -59,11 +65,16 @@ export function NewIdeaScreen() {
 
   // Folder pick → chat. `name` is forwarded to /api/init but lives on the
   // server side from there — we don't need to keep a copy in client state.
-  const handleInit = useCallback((sess: string, dir: string, _name: string | null) => {
-    setSessionId(sess);
-    setProjectDir(dir);
-    setStep('chat');
-  }, []);
+  const handleInit = useCallback(
+    (sess: string, dir: string, _name: string | null, max: number, warn: number) => {
+      setSessionId(sess);
+      setProjectDir(dir);
+      setMaxMessages(max);
+      setWarnThreshold(warn);
+      setStep('chat');
+    },
+    [],
+  );
 
   // "← Change folder" link inside the chat step
   const handleChangeFolder = useCallback(() => {
@@ -151,6 +162,8 @@ export function NewIdeaScreen() {
 
         setSessionId(data.sessionId);
         setProjectDir(data.project.folder_path);
+        setMaxMessages(data.maxMessages);
+        setWarnThreshold(data.warnThreshold);
         setInitialMessages(data.messages);
         setInitialSteps(base);
         setInitialStepIndex(cursor);
@@ -227,6 +240,8 @@ export function NewIdeaScreen() {
           initialMessages={initialMessages ?? undefined}
           initialSteps={initialSteps ?? undefined}
           initialCurrentStepIndex={initialStepIndex ?? undefined}
+          maxMessages={maxMessages}
+          warnThreshold={warnThreshold}
         />
       )}
       {step === 'done' && doneEvent && (

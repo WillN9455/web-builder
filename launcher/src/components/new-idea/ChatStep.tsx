@@ -18,6 +18,11 @@ type Props = {
   initialMessages?: ChatMessage[];
   initialSteps?: InterviewStep[];
   initialCurrentStepIndex?: number;
+  // Conversation caps from the server (intake.ts via /api/init or /resume).
+  // `warnThreshold` is the message count at which we start nudging the user
+  // to wrap up; `maxMessages` is the hard cap the server rejects beyond.
+  maxMessages: number;
+  warnThreshold: number;
 };
 
 const BA_OPENER =
@@ -103,6 +108,8 @@ export function ChatStep({
   initialMessages,
   initialSteps,
   initialCurrentStepIndex,
+  maxMessages,
+  warnThreshold,
 }: Props) {
   // Seed the BA opener locally — we don't call /api/chat on mount because the
   // server requires a non-empty `messages` array (otherwise the user sees the
@@ -305,6 +312,14 @@ export function ChatStep({
     }
   }
 
+  // Near-limit / at-limit banner. `messages` already includes the BA opener
+  // and the optimistic assistant bubble while streaming, so the count is a
+  // close match to what the server validates (it sees one extra — the new
+  // user reply — at send time). Hide once the idea is captured.
+  const atLimit = messages.length >= maxMessages;
+  const nearLimit = !atLimit && messages.length >= warnThreshold;
+  const showLimitWarn = (nearLimit || atLimit) && !doneEvent?.ideaWritten;
+
   return (
     <div className="chat-grid" style={{ padding: '26px 36px 40px' }}>
       <section className="chat" aria-label="BA Agent interview">
@@ -346,6 +361,23 @@ export function ChatStep({
           </div>
         )}
 
+        {showLimitWarn && (
+          <div
+            className={`chat-warn${atLimit ? ' chat-warn--limit' : ''}`}
+            role="status"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden>
+              <path d="M12 2 22 20 2 20 Z" />
+              <path d="M12 9v5 M12 17h.01" />
+            </svg>
+            <div>
+              {atLimit
+                ? `Conversation limit reached (${maxMessages} messages). The server won't accept more replies — please start a new session.`
+                : `Approaching the conversation limit (${messages.length}/${maxMessages} messages) — consider wrapping up soon.`}
+            </div>
+          </div>
+        )}
+
         <div className="chat-body" ref={bodyRef}>
           {messages.map((m, i) => (
             <div key={i} className={`msg ${m.role}`}>
@@ -379,7 +411,7 @@ export function ChatStep({
             type="button"
             className="btn-skip"
             onClick={skip}
-            disabled={streaming || !!(doneEvent && doneEvent.ideaWritten)}
+            disabled={streaming || !!(doneEvent && doneEvent.ideaWritten) || atLimit}
             title="Mark the current question as skipped — BA will fill it in"
           >
             Skip
@@ -387,7 +419,7 @@ export function ChatStep({
           <button
             className="btn btn-primary"
             onClick={() => void send(draft)}
-            disabled={!draft.trim() || streaming}
+            disabled={!draft.trim() || streaming || atLimit}
           >
             Send
           </button>

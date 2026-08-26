@@ -100,6 +100,10 @@ export type InitResponse = {
   filesCopied: number;
   filesSkipped: number;
   workspacePinnedAt: string;
+  // Conversation caps — surfaced so the chat UI can warn as the user approaches
+  // the limit without duplicating the server constants (intake.ts).
+  maxMessages: number;
+  warnThreshold: number;
 };
 
 export async function initProjectDir(dir: string, projectName: string | null): Promise<InitResponse> {
@@ -235,6 +239,9 @@ export type ResumeResponse = {
   };
   sessionId: string;
   messages: ChatMessage[];
+  // Conversation caps — same values surfaced by /api/init.
+  maxMessages: number;
+  warnThreshold: number;
   topicProgress: {
     capturedTopics: number;
     skippedTopics: number;

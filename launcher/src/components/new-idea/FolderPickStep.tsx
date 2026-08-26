@@ -2,7 +2,13 @@ import { useState, type FormEvent } from 'react';
 import { initProjectDir } from '../../lib/api';
 
 type Props = {
-  onInit: (sessionId: string, projectDir: string, projectName: string | null) => void;
+  onInit: (
+    sessionId: string,
+    projectDir: string,
+    projectName: string | null,
+    maxMessages: number,
+    warnThreshold: number,
+  ) => void;
   onCancel: () => void;
 };
 
@@ -25,7 +31,7 @@ export function FolderPickStep({ onInit, onCancel }: Props) {
     try {
       const trimmedName = name.trim();
       const res = await initProjectDir(path, trimmedName || null);
-      onInit(res.sessionId, res.dir, trimmedName || null);
+      onInit(res.sessionId, res.dir, trimmedName || null, res.maxMessages, res.warnThreshold);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not create folder');
     } finally {

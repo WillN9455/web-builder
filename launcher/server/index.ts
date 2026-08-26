@@ -15,6 +15,8 @@ import {
   REPO_ROOT,
   SYSTEM_PROMPT,
   MAX_BODY_BYTES,
+  MAX_MESSAGES,
+  WARN_THRESHOLD,
   buildIdeaTxt,
   extractIdea,
   newSessionId,
@@ -71,6 +73,12 @@ type IntakeSession = {
   // Running message history (user + assistant). Persisted as memory files on
   // each /api/chat reply so an aborted session doesn't lose the transcript.
   history: ChatMessage[];
+  // How many entries of `history` have already been appended to
+  // .idea-memory/conversation.jsonl. writeMemoryFiles appends only the delta
+  // (history.slice(persistedCount)) each turn, so the JSONL grows linearly
+  // instead of quadratically. Reset to 0 on a fresh session; seeded with the
+  // deduped transcript length on resume.
+  persistedCount: number;
   // Highest 1-based topic index the BA has transitioned to in this session.
   // Drives the interview progress cursor; on resume, the /resume endpoint
   // re-derives this from the persisted transcript so the cursor lines up
@@ -229,6 +237,7 @@ app.post('/api/init', async (req, res) => {
       earlyProjectId: null,
       earlyProjectSlug: null,
       history: [],
+      persistedCount: 0,
       currentTopic: null,
     });
 
@@ -246,6 +255,10 @@ app.post('/api/init', async (req, res) => {
       filesCopied: info.copied,
       filesSkipped: info.skipped,
       workspacePinnedAt: pointerPath,
+      // Conversation caps — surfaced so the chat UI can warn as the user
+      // approaches the limit without duplicating the constants client-side.
+      maxMessages: MAX_MESSAGES,
+      warnThreshold: WARN_THRESHOLD,
     });
   } catch (err) {
     res.status(400).json({ error: err instanceof Error ? err.message : 'Init failed' });
@@ -266,7 +279,11 @@ function sendNdjson(res: express.Response, obj: unknown): void {
 // Writes are best-effort: a filesystem failure logs to stderr but doesn't
 // break the chat stream. The DB row is the source of truth — these files
 // are convenience artefacts.
-function writeMemoryFiles(projectDir: string, history: ChatMessage[]): { transcriptPath: string; jsonlPath: string } | null {
+function writeMemoryFiles(
+  projectDir: string,
+  history: ChatMessage[],
+  persistedCount: number,
+): { transcriptPath: string; jsonlPath: string } | null {
   try {
     const memDir = path.join(projectDir, '.idea-memory');
     fs.mkdirSync(memDir, { recursive: true });
@@ -274,13 +291,18 @@ function writeMemoryFiles(projectDir: string, history: ChatMessage[]): { transcr
     const jsonlPath = path.join(memDir, 'conversation.jsonl');
     const transcriptPath = path.join(memDir, 'transcript.md');
 
-    // conversation.jsonl: append a header on first write, then each entry.
+    // conversation.jsonl: append ONLY the messages we haven't written yet
+    // (history.slice(persistedCount)). Previously this loop wrote the entire
+    // history on every turn, so the file grew quadratically (2 + 4 + 6 + …)
+    // and a resume reloaded all those duplicates, tripping the conversation
+    // cap after just a handful of real exchanges. Append-mode is still
+    // correct — only the set of newly-appended messages changes each turn.
     const isFresh = !fs.existsSync(jsonlPath);
     const jsonl = fs.openSync(jsonlPath, 'a');
     if (isFresh) {
       fs.writeSync(jsonl, JSON.stringify({ kind: 'header', ts, messageCount: history.length }) + '\n');
     }
-    for (const m of history) {
+    for (const m of history.slice(persistedCount)) {
       fs.writeSync(jsonl, JSON.stringify({ kind: 'message', ts, role: m.role, content: m.content }) + '\n');
     }
     fs.closeSync(jsonl);
@@ -314,6 +336,46 @@ function writeMemoryFiles(projectDir: string, history: ChatMessage[]): { transcr
     // Don't fail the chat over a missing .idea-memory write — surface in logs.
     console.error('[api] failed to write memory files:', err);
     return null;
+  }
+}
+
+// Recover the true conversation from a JSONL that the old (quadratic-append)
+// writeMemoryFiles bloated. Each turn appended the full history as a fresh
+// "snapshot", so the file is S_1 ++ S_2 ++ … ++ S_n where every snapshot is a
+// prefix-extension of the previous one. The final snapshot is the complete,
+// in-order conversation. We detect snapshot boundaries by the first two
+// messages repeating (the BA opener + the user's first reply — distinctive
+// enough that a later skip/reply can't be mistaken for a restart) and keep
+// everything from the last boundary onward. A clean, linearly-grown file has
+// no repeats, so this is a no-op there.
+function dedupeMessages(all: ChatMessage[]): ChatMessage[] {
+  if (all.length < 2) return all;
+  const fp = (m: ChatMessage) => m.role + ' ' + m.content;
+  const startFp = fp(all[0]) + '' + fp(all[1]);
+  let lastStart = 0;
+  for (let i = 2; i < all.length; i++) {
+    if (fp(all[i]) + '' + fp(all[i + 1] ?? { role: '', content: '' }) === startFp) {
+      lastStart = i;
+    }
+  }
+  return lastStart === 0 ? all : all.slice(lastStart);
+}
+
+// Rewrite .idea-memory/conversation.jsonl from scratch with a clean history.
+// Used on resume when dedupeMessages shrank the array — compacts bloated files
+// in place so the next append starts from a tidy baseline.
+function rewriteConversationJsonl(projectDir: string, messages: ChatMessage[]): void {
+  const memDir = path.join(projectDir, '.idea-memory');
+  const jsonlPath = path.join(memDir, 'conversation.jsonl');
+  const ts = new Date().toISOString();
+  const fd = fs.openSync(jsonlPath, 'w');
+  try {
+    fs.writeSync(fd, JSON.stringify({ kind: 'header', ts, messageCount: messages.length }) + '\n');
+    for (const m of messages) {
+      fs.writeSync(fd, JSON.stringify({ kind: 'message', ts, role: m.role, content: m.content }) + '\n');
+    }
+  } finally {
+    fs.closeSync(fd);
   }
 }
 
@@ -615,8 +677,10 @@ app.post('/api/chat', async (req, res) => {
   // For the human-readable transcript.md we want the topic markers gone
   // (they're internal signalling, not conversation); for the JSONL we keep
   // them so /resume can re-derive the sidebar cursor. writeMemoryFiles
-  // handles the split.
-  const memResult = writeMemoryFiles(session.dir, session.history);
+  // handles the split — it appends only the messages added since the last
+  // write (history.slice(persistedCount)) so the JSONL grows linearly.
+  const memResult = writeMemoryFiles(session.dir, session.history, session.persistedCount);
+  if (memResult) session.persistedCount = session.history.length;
 
   // Create the project row on the first BA reply (Task 2.1). Idempotent —
   // if a row already exists from a previous reply, we reuse it.
@@ -853,6 +917,25 @@ app.get('/api/projects/:id/resume', (req, res) => {
     return;
   }
 
+  // Older transcripts were written by the quadratic-append writeMemoryFiles,
+  // so the JSONL may contain the same conversation many times over. Recover
+  // the single true history, and if we shrunk anything, compact the file in
+  // place so the next append starts from a clean baseline.
+  const deduped = dedupeMessages(messages);
+  if (deduped.length < messages.length) {
+    try {
+      rewriteConversationJsonl(row.folder_path, deduped);
+      console.log(
+        `[api] compacted resume JSONL: ${messages.length} -> ${deduped.length} entries`,
+      );
+    } catch (err) {
+      // Best-effort — the deduped array is what we use for the session either
+      // way; only the on-disk compaction failed.
+      console.error('[api] failed to compact resume JSONL:', err);
+    }
+  }
+  const history = deduped;
+
   // Re-create an in-memory session so subsequent /api/chat calls work the
   // same way as for an in-progress interview. Point earlyProjectId at the
   // existing row so createEarlyProject() doesn't insert a duplicate.
@@ -862,7 +945,10 @@ app.get('/api/projects/:id/resume', (req, res) => {
     nameSeed: row.name && row.name !== 'New project' ? row.name : null,
     earlyProjectId: row.id,
     earlyProjectSlug: row.slug,
-    history: messages,
+    history,
+    // The JSONL now holds exactly `history` entries (compacted above if it
+    // was bloated), so the next /api/chat append-delta starts from here.
+    persistedCount: history.length,
     currentTopic: null, // populated below from the transcript
   });
 
@@ -877,8 +963,8 @@ app.get('/api/projects/:id/resume', (req, res) => {
   let currentTopic: number | null = null;
   let captured = 0;
   let skipped = 0;
-  for (let i = 0; i < messages.length; i++) {
-    const m = messages[i];
+  for (let i = 0; i < history.length; i++) {
+    const m = history[i];
     if (m.role === 'assistant') {
       let match: RegExpExecArray | null;
       TOPIC_RE.lastIndex = 0;
@@ -889,8 +975,8 @@ app.get('/api/projects/:id/resume', (req, res) => {
         }
       }
     }
-    if (i + 1 < messages.length) {
-      const next = messages[i + 1];
+    if (i + 1 < history.length) {
+      const next = history[i + 1];
       if (m.role !== 'user' || next.role !== 'assistant') continue;
       if (m.content.startsWith('Skip — please fill this in yourself.')) skipped++;
       else captured++;
@@ -912,7 +998,11 @@ app.get('/api/projects/:id/resume', (req, res) => {
       folder_path: row.folder_path,
     },
     sessionId,
-    messages,
+    messages: history,
+    // Conversation caps — same values surfaced by /api/init so the chat UI
+    // can warn near the limit on a resumed session too.
+    maxMessages: MAX_MESSAGES,
+    warnThreshold: WARN_THRESHOLD,
     topicProgress: {
       capturedTopics: captured,
       skippedTopics: skipped,

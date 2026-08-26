@@ -26,8 +26,26 @@ export const MODEL = process.env.IDEA_MODEL ?? "qwen3.6:35b-extended";
 export const OLLAMA = process.env.OLLAMA_HOST ?? "http://127.0.0.1:11434";
 
 export const MAX_BODY_BYTES = 512 * 1024;
-export const MAX_MESSAGES = 200;
+
+// Conversation caps. Three layered guards keep the payload sent to the local
+// Ollama model inside a ~100k-token context window:
+//   • MAX_MESSAGE_CHARS  — per-message size (a single paste can't blow the window).
+//   • MAX_CONTEXT_CHARS  — total chars across every message. At ~3.5 chars/token
+//     (markdown/JSON content is denser than prose), 320k chars ≈ 91k tokens; plus
+//     the ~1.8k-token SYSTEM_PROMPT that is prepended on every turn, we land at
+//     ~93k tokens — under the 100k target with margin.
+//   • MAX_MESSAGES       — count cap. A generous ceiling for an intake interview
+//     (realistically 40–60 messages across 8 topics); the char guard is what
+//     actually enforces the token budget, this just stops a 1000-tiny-message
+//     conversation from sneaking through.
+//
+// WARN_THRESHOLD is the message count at which the chat UI starts telling the
+// user they're approaching the limit. Surfaced to the client via /api/init and
+// /api/projects/:id/resume so the server stays the single source of truth.
+export const MAX_MESSAGES = 150;
 export const MAX_MESSAGE_CHARS = 8000;
+export const MAX_CONTEXT_CHARS = 320_000;
+export const WARN_THRESHOLD = 120;
 
 // ── Project scaffolding (mirrors init-frame.js) ────────────────────────────
 
@@ -339,11 +357,18 @@ export type ChatMessage = { role: "user" | "assistant"; content: string };
 export function validateMessages(messages: unknown): string | null {
   if (!Array.isArray(messages) || messages.length === 0) return "Body must include a non-empty messages array.";
   if (messages.length > MAX_MESSAGES) return "Conversation too long (max " + MAX_MESSAGES + " messages). Start a new session.";
+  let totalChars = 0;
   for (const m of messages as ChatMessage[]) {
     if (!m || (m.role !== "user" && m.role !== "assistant")) return "Each message needs role 'user' or 'assistant'.";
     if (typeof m.content !== "string" || !m.content.trim()) return "Each message needs non-empty string content.";
     if (m.content.length > MAX_MESSAGE_CHARS) return "A message exceeds " + MAX_MESSAGE_CHARS + " characters.";
+    totalChars += m.content.length;
   }
+  // Total-content guard — the real backstop for the ~100k-token context window.
+  // MAX_MESSAGES alone can't guarantee that (150 short messages and 150 long
+  // ones differ by orders of magnitude), so sum the actual chars and reject
+  // when the conversation would no longer fit alongside the system prompt.
+  if (totalChars > MAX_CONTEXT_CHARS) return "Conversation too long — it would exceed the model's context window. Start a new session.";
   return null;
 }
 
