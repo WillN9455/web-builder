@@ -31,6 +31,7 @@ Multi-agent coordination for the idea-to-web-solution framework. Agents are Clau
   - Produce the RBAC & permissions matrix at `PRD/<project>/rbac-matrix.md` (role × permission table, default-deny, with every "own"/"group" cell flagged as an IDOR boundary; consolidates `data-model.md` CRUD column into one matrix the SA designs auth from and the Code Agents implement as route guards)
   - Produce the run-rate cost model at `PRD/<project>/cost-model.md` (break the §3 budget cap into infra vs storage vs egress vs per-transaction fees; a product can be under budget on infra and still lose money per booking — model both so the SA's vendor choices don't break the budget)
   - Produce the PII data-flow map at `PRD/<project>/data-flow.md` (where PII moves and every trust boundary it crosses — client → app → DB → third parties — field-level, with PCI scope and residency per flow; `data-model.md` is PII at rest, this is PII in motion)
+  - Stitch the user stories into 2–5 end-to-end journeys in PRD §6b (the lifecycle narrative — core loop + highest-stakes alternate paths — naming the stories, states, integrations, and business rules each journey touches; the Design Agents expand these into flows and the SA sizes state machines from them)
   - Produce the PRD document at `PRD/<project-name>/prd.md`
 - **Output**: `PRD/<project-name>/prd.md` → consumes: [`idea.md`](./idea.md), user answers | produces: design triggers, QA criteria | see also FRAMEWORK-FLOW.md row "PRD/<project>/prd.md"
 
@@ -62,7 +63,7 @@ Multi-agent coordination for the idea-to-web-solution framework. Agents are Clau
 
 ### Design Agents (2 agents, peer review each other)
 - **Skill Reference**: [`skills/accessibility-guidelines.md`](./skills/accessibility-guidelines.md) (WCAG AA contrast rules, required states table); [`skills/general-best-practices.md`](./skills/general-best-practices.md) §Design Agents ("Mobile-first responsive breakpoints: 375px, 768px, 1024px, 1440px")
-- **Trigger**: Approved PRD from Main Orchestrator → see FRAMEWORK-FLOW.md row "PRD/<project>/prd.md" | Upstream inputs: PRD §6 UX Design Principles (→ typography/spacing scale), PRD §8 User Stories (→ component list via `design-system/components/README.md` index)
+- **Trigger**: Approved PRD from Main Orchestrator → see FRAMEWORK-FLOW.md row "PRD/<project>/prd.md" | Upstream inputs: PRD §6 UX Design Principles (→ typography/spacing scale), PRD §6b Key User Journeys (→ end-to-end flows/wireframes — each journey expanded into screens), PRD §8 User Stories (→ component list via `design-system/components/README.md` index)
 - **Responsibilities**:
   - Define design tokens (colors with branding input → [`design-system/tokens/color.md`](./design-system/tokens/color.md); typography → [`design-system/tokens/typography.md`](./design-system/tokens/typography.md); spacing → [`design-system/tokens/spacing.md`](./design-system/tokens/spacing.md)) per `tokens/README.md` rules (Major Third 1.250 ratio, 4px base unit)
   - Create user flows and wireframes for each feature — map each PRD §8 user story to a component from the index in `design-system/components/README.md`
