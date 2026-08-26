@@ -12,6 +12,7 @@
 - §5a Stakeholders → `PRD/<project>/stakeholder-map.md`
 - §6a Metrics → rolled into `prd.md` §6a (canonical) and copied into `nfr-catalog.md`
 - §8a Phasing → `PRD/<project>/phasing-plan.md` (with dependency graph)
+- §8b Business rules → `PRD/<project>/business-rules.md` (full decision register; §8b below is the summary)
 - §9a Data model → `PRD/<project>/data-model.md`
 - §9b Integrations → rolled into `prd.md` §9b (canonical) and expanded in `tech-decision-brief.md`
 - §11a Glossary → `PRD/<project>/glossary.md`
@@ -215,6 +216,28 @@
 **Stories that block other stories:** <list story #s and what they block>
 
 **Stories deferred from MVP with explicit reason:** <list story # + reason>
+
+---
+
+## 8b. Business Rules & Decisions
+
+> The non-story decisions the code must enforce — refund ladders, cut-off
+> times, no-show definitions, status transitions, eligibility, money
+> handling. User stories say *what* the user does; this section says *what
+> the system decides* in response. Full register lives in
+> `PRD/<project>/business-rules.md`; the table here is the summary.
+
+| ID | Rule (one sentence the code can enforce) | Trigger | Decision | Source |
+|----|-------------------------------------------|---------|----------|--------|
+| BR-001 | <e.g., Full refund if cancelled > 24h before start> | <e.g., Client cancels> | <e.g., Refund 100%; booking → cancelled> | <e.g., user interview> |
+| BR-002 | <e.g., No-show if client doesn't join within 15 min> | <e.g., 15 min after start> | <e.g., booking → no_show; coach paid> | <industry norm> |
+
+**Rules with thresholds use decision tables, not prose** — ambiguity here is a
+bug in code. If two rules fire on the same trigger, state the precedence in
+`business-rules.md`. Challenged rules must resolve before the SA finalises
+state machines (file in `open-questions.md` with `blocker-for: tech`).
+
+**Cross-references:** `PRD/<project>/business-rules.md`; `rbac-matrix.md` for role gating; `data-model.md` for status enums
 
 ---
 

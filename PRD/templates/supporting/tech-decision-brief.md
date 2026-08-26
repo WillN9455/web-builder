@@ -161,6 +161,22 @@
 
 ---
 
+### 1.11 Business rules (from `business-rules.md`)
+
+> The decisions the code must enforce that are not user stories. The SA
+> uses these to design state machines, validation, and integration
+> sequencing (e.g., refund timing ↔ payment-webhook handling).
+
+- **Rules with thresholds (decision tables):** <e.g., "Refund: 100% >24h, 50% 12–24h, 0% <12h — first match wins">
+- **Status transitions (state machine):** <e.g., "pending → confirmed → completed / no_show; → cancelled per refund ladder">
+- **Time / cut-off rules:** <e.g., "Reschedule allowed >12h before start; no-show = no join within 15 min">
+- **Money handling:** <e.g., "integer minor units; payout 24h after completed">
+- **Rules blocking the state-machine design:** <list BR-IDs filed in `open-questions.md` with `blocker-for: tech`>
+
+**Cross-references:** `PRD/<project>/business-rules.md` (full register); `data-model.md` status enums; `rbac-matrix.md` eligibility gating
+
+---
+
 ## Part 2 — Solution Architect outputs (SA fills in)
 
 ### 2.1 Chosen stack

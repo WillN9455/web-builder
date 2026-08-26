@@ -27,6 +27,7 @@ Multi-agent coordination for the idea-to-web-solution framework. Agents are Clau
   - Define in-scope and out-of-scope boundaries → feeds Design Agent scope for component selection (`design-system/components/README.md` index)
   - Identify assumptions and risks → flags to Requirements Reviewer (§12 Assumptions, §13 Review Log)
   - Produce the traffic & access-pattern profile at `PRD/<project>/traffic-profile.md` (the load distribution — peak:average, read:write, hot endpoints, geo — the Solution Architect sizes for; without it the SA hits averages and fails peaks)
+  - Produce the business-rules register at `PRD/<project>/business-rules.md` (the non-story decisions the code must enforce — refund ladders, cut-offs, status transitions, eligibility — as decision tables, not prose; the SA designs state machines from this)
   - Produce the PRD document at `PRD/<project-name>/prd.md`
 - **Output**: `PRD/<project-name>/prd.md` → consumes: [`idea.md`](./idea.md), user answers | produces: design triggers, QA criteria | see also FRAMEWORK-FLOW.md row "PRD/<project>/prd.md"
 
@@ -42,7 +43,7 @@ Multi-agent coordination for the idea-to-web-solution framework. Agents are Clau
 
 ### Solution Architect (1 agent, runs once per project)
 - **Skill Reference**: [`skills/general-best-practices.md`](./skills/general-best-practices.md) (decision audit trail); [`skills/coding-guidelines.md`](./skills/coding-guidelines.md) (file structure for tech-decision-brief output); [`skills/security-guidelines.md`](./skills/security-guidelines.md) (must-use/must-avoid feasibility check); [`skills/accessibility-guidelines.md`](./skills/accessibility-guidelines.md) (NFR feasibility check)
-- **Trigger**: PRD approved by Requirements Reviewer → see FRAMEWORK-FLOW.md row "PRD/<project>/tech-decision-brief.md" | Upstream inputs: `PRD/<project>/prd.md` (all sections), `PRD/<project>/nfr-catalog.md`, `PRD/<project>/traffic-profile.md`, `PRD/<project>/data-model.md`, `PRD/<project>/open-questions.md` (filtered by `blocker-for: tech`), `PRD/<project>/assumptions.md`, `PRD/<project>/risks.md`, `code-builder/config-rules.md` (decision tree + 5 user questions)
+- **Trigger**: PRD approved by Requirements Reviewer → see FRAMEWORK-FLOW.md row "PRD/<project>/tech-decision-brief.md" | Upstream inputs: `PRD/<project>/prd.md` (all sections), `PRD/<project>/nfr-catalog.md`, `PRD/<project>/traffic-profile.md`, `PRD/<project>/business-rules.md`, `PRD/<project>/data-model.md`, `PRD/<project>/open-questions.md` (filtered by `blocker-for: tech`), `PRD/<project>/assumptions.md`, `PRD/<project>/risks.md`, `code-builder/config-rules.md` (decision tree + 5 user questions)
 - **Responsibilities**:
   - Read the BA's half of `PRD/<project>/tech-decision-brief.md` (Part 1: hard constraints, stack-selection questionnaire, integrations, data sensitivity, compliance, NFRs, blocking open questions, phasing window)
   - Translate requirements into a stack decision: framework, language, DB, hosting, auth, background jobs, observability, CI/CD — one row per choice with rationale, trade-offs accepted, and rejected alternatives
