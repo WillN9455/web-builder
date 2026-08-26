@@ -7,6 +7,7 @@
 
 **Supporting artifacts (instantiated alongside this PRD at `PRD/<project>/`):**
 - §3a NFRs → `PRD/<project>/nfr-catalog.md` (full target + measurement)
+- §3a load shape → `PRD/<project>/traffic-profile.md` (distribution the SA sizes for — peak:avg, read:write, hot endpoints, geo)
 - §3b Tech constraints → `PRD/<project>/tech-decision-brief.md` (BA half — SA completes the other half)
 - §5a Stakeholders → `PRD/<project>/stakeholder-map.md`
 - §6a Metrics → rolled into `prd.md` §6a (canonical) and copied into `nfr-catalog.md`
@@ -56,6 +57,11 @@
 > Full per-NFR testable statements (target + measurement method + owner) live in
 > `PRD/<project>/nfr-catalog.md`. This section is the executive summary; the
 > catalog is the source of truth for QA and the Solution Architect.
+>
+> The NFR targets here say *how much*; the **load distribution** the SA sizes
+> for (peak:average, read:write ratio, hot endpoints, geo split) lives in
+> `PRD/<project>/traffic-profile.md`. Averages hit with peaks failing is the
+> most common sizing miss — fill both.
 
 | Category | Constraint / NFR | Source |
 |----------|------------------|--------|

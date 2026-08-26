@@ -143,6 +143,24 @@
 
 ---
 
+### 1.10 Traffic & access-pattern profile (from `traffic-profile.md`)
+
+> The load *distribution* the architecture must serve. NFR §1.7 gives the
+> averages (concurrent users, MAU); this section gives the shape that turns
+> averages into a sizing decision. Without it the SA hits the mean and
+> fails the peak.
+
+- **Peak : average ratio:** <e.g., "5:1 weekday-morning; see traffic-profile §1">
+- **Net read : write ratio:** <e.g., "~30:1 read-heavy; cache + read-replica from MVP">
+- **Hot endpoints (top 3):** <e.g., "coach profile 45%, availability 20%, dashboard 10%">
+- **Geographic split:** <e.g., "EU 90% at MVP; US 20% by 12 months — single EU region, edge-served">
+- **Background / batch load:** <e.g., "hourly reminder bursts; Stripe webhook spikes; weekly reconciliation">
+- **Load-bearing assumptions:** <list A-IDs from traffic-profile §7 the SA is sizing against>
+
+**Cross-references:** `PRD/<project>/traffic-profile.md` (full profile); `nfr-catalog.md` S-001/S-002, P-001..P-005
+
+---
+
 ## Part 2 — Solution Architect outputs (SA fills in)
 
 ### 2.1 Chosen stack
