@@ -1,0 +1,1855 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Idea Hub — Designs (v5.1)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ─── Design tokens (from example-design.png) ─────────────────────────── */
+  :root {
+    /* Ground + surfaces */
+    --ground-a: #d9d5ec;
+    --ground-b: #c3cde8;
+    --panel:    rgba(255, 255, 255, 0.72);
+    --panel-stroke: rgba(255, 255, 255, 0.6);
+    --ink:      #2b2547;
+    --ink-2:    #8b87a5;
+    --ink-3:    #b6b2cc;
+    --shadow:   0 30px 60px -30px rgba(50, 42, 92, 0.25), 0 8px 24px -10px rgba(50, 42, 92, 0.12);
+
+    /* Brand */
+    --navy:     #322a5c;
+    --navy-2:   #4a4080;
+
+    /* Tiles (pastel backgrounds) */
+    --peach:    #fbdcbe;
+    --sky:      #cfe0f4;
+    --lavender: #e6e1f7;
+    --mint:     #d7efe4;
+    --butter:   #f7edc6;
+    --blush:    #fadcd9;
+    --sea:      #cde6ea;
+
+    /* Accents (for line icons / status dot) */
+    --coral:    #ef7f57;
+    --blue:     #6fa9e0;
+    --purple:   #9b7fde;
+    --green:    #5fbf95;
+    --amber:    #e8b94a;
+    --rose:     #d97a8e;
+
+    /* Type */
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+
+    /* Radii */
+    --r-sm: 10px;
+    --r-md: 16px;
+    --r-lg: 20px;
+    --r-xl: 24px;
+    --r-2xl: 28px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { font-family: var(--font-sans); color: var(--ink); -webkit-font-smoothing: antialiased; }
+  body {
+    min-height: 100vh;
+    background:
+      radial-gradient(120% 80% at 10% 0%, #e3dff2 0%, transparent 60%),
+      linear-gradient(135deg, var(--ground-a) 0%, var(--ground-b) 100%);
+    padding: 40px 32px 80px;
+  }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; cursor: pointer; border: 0; background: none; color: inherit; }
+
+  /* ─── Document chrome ─────────────────────────────────────────────────── */
+  .doc {
+    max-width: 1440px;
+    margin: 0 auto 64px;
+  }
+  .doc-header {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 28px;
+    color: var(--ink);
+  }
+  .doc-title { font-size: 30px; font-weight: 700; letter-spacing: -0.01em; }
+  .doc-sub { color: var(--ink-2); font-size: 14px; max-width: 640px; line-height: 1.55; margin-top: 6px; }
+  .doc-meta { font-family: var(--font-mono); font-size: 12px; color: var(--ink-2); white-space: nowrap; }
+  .toc {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    background: var(--panel);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--panel-stroke);
+    border-radius: var(--r-2xl);
+    padding: 8px;
+    box-shadow: var(--shadow);
+    margin-bottom: 36px;
+  }
+  .toc a {
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-size: 12.5px;
+    color: var(--ink-2);
+    font-weight: 500;
+  }
+  .toc a:hover { background: rgba(255,255,255,0.6); color: var(--ink); }
+  .toc a b { color: var(--ink); margin-right: 6px; }
+
+  /* ─── Screen frame ────────────────────────────────────────────────────── */
+  .screen {
+    background: var(--panel);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid var(--panel-stroke);
+    border-radius: var(--r-2xl);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    margin: 0 auto 56px;
+  }
+  .screen-label {
+    display: flex; align-items: center; gap: 14px;
+    padding: 18px 28px;
+    border-bottom: 1px dashed rgba(50, 42, 92, 0.12);
+    font-size: 12.5px;
+    color: var(--ink-2);
+  }
+  .screen-label .num {
+    font-family: var(--font-mono);
+    background: var(--navy);
+    color: #fff;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .screen-label .name { font-weight: 600; color: var(--ink); }
+  .screen-label .route { font-family: var(--font-mono); color: var(--ink-2); }
+  .screen-body { padding: 0; }
+
+  /* App frame lives inside every screen (so they all look like the same product) */
+  .app {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    min-height: 820px;
+  }
+  .app.full { grid-template-columns: 1fr; }
+
+  /* ─── Sidebar ─────────────────────────────────────────────────────────── */
+  .side {
+    padding: 28px 18px 24px;
+    border-right: 1px solid rgba(50, 42, 92, 0.08);
+    background: rgba(255, 255, 255, 0.45);
+    display: flex; flex-direction: column;
+    gap: 22px;
+  }
+  .brand {
+    display: flex; align-items: center; gap: 10px;
+    padding: 0 8px;
+  }
+  .brand-mark {
+    width: 32px; height: 32px;
+    border-radius: 9px;
+    background: var(--navy);
+    display: grid; place-items: center;
+    color: #fff; font-weight: 700; font-size: 16px;
+    font-family: var(--font-mono);
+  }
+  .brand-name { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+  .menu-label {
+    font-size: 11px;
+    color: var(--ink-2);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 0 12px;
+  }
+  .nav { display: flex; flex-direction: column; gap: 2px; }
+  .nav a {
+    display: flex; align-items: center; gap: 12px;
+    padding: 9px 12px;
+    border-radius: 12px;
+    font-size: 14px;
+    color: var(--ink);
+    font-weight: 500;
+  }
+  .nav a .ico { width: 18px; height: 18px; flex: none; }
+  .nav a:hover { background: rgba(255,255,255,0.7); }
+  .nav a.active {
+    background: var(--navy);
+    color: #fff;
+  }
+  .nav a .count {
+    margin-left: auto;
+    background: rgba(255,255,255,0.85);
+    color: var(--navy);
+    border-radius: 999px;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .nav a.active .count { background: rgba(255,255,255,0.15); color: #fff; }
+  .side-promo {
+    margin-top: auto;
+    background: linear-gradient(160deg, var(--peach) 0%, var(--blush) 100%);
+    border-radius: var(--r-lg);
+    padding: 18px;
+    position: relative;
+    overflow: hidden;
+  }
+  .side-promo h4 { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+  .side-promo p { font-size: 12px; color: var(--ink); line-height: 1.5; opacity: 0.85; margin-bottom: 12px; }
+  .side-promo button {
+    width: 100%;
+    background: var(--navy);
+    color: #fff;
+    border-radius: 999px;
+    padding: 9px 14px;
+    font-size: 12.5px;
+    font-weight: 600;
+  }
+  .side-promo::after {
+    content: "";
+    position: absolute;
+    right: -16px; top: -16px;
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.35);
+  }
+  .side-foot { display: flex; flex-direction: column; gap: 2px; }
+  .side-foot a {
+    display: flex; align-items: center; gap: 12px;
+    padding: 9px 12px;
+    border-radius: 12px;
+    font-size: 14px;
+    color: var(--ink);
+  }
+  .side-foot a:hover { background: rgba(255,255,255,0.7); }
+  .side-foot a .ico { width: 18px; height: 18px; }
+
+  /* ─── Main column ─────────────────────────────────────────────────────── */
+  .main {
+    padding: 26px 36px 40px;
+    display: flex; flex-direction: column;
+    gap: 24px;
+  }
+  .topbar {
+    display: flex; align-items: center; gap: 18px;
+  }
+  .topbar h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
+  .search {
+    flex: 1; max-width: 540px;
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 16px;
+    background: #fff;
+    border-radius: 999px;
+    border: 1px solid rgba(50, 42, 92, 0.08);
+    color: var(--ink-2);
+    font-size: 13.5px;
+  }
+  .search input { border: 0; outline: 0; flex: 1; background: transparent; color: var(--ink); font: inherit; }
+  .kbd {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    background: var(--lavender);
+    color: var(--ink);
+    padding: 2px 7px;
+    border-radius: 6px;
+  }
+  .icon-btn {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: #fff;
+    border: 1px solid rgba(50, 42, 92, 0.08);
+    display: grid; place-items: center;
+    color: var(--ink-2);
+    position: relative;
+  }
+  .icon-btn .dot {
+    position: absolute; top: 7px; right: 7px;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--coral);
+    border: 2px solid #fff;
+  }
+  .avatar {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--mint), var(--sky));
+    display: grid; place-items: center;
+    color: var(--ink);
+    font-size: 12px; font-weight: 700;
+    border: 2px solid #fff;
+  }
+
+  /* Section headings */
+  .sec-head {
+    display: flex; align-items: end; justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .sec-head h2 { font-size: 15px; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; color: var(--ink-2); }
+  .sec-head a, .sec-head .more { font-size: 12.5px; color: var(--ink-2); }
+
+  /* ─── Buttons ─────────────────────────────────────────────────────────── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 18px;
+    border-radius: 999px;
+    font-size: 13.5px;
+    font-weight: 600;
+  }
+  .btn-primary { background: var(--navy); color: #fff; }
+  .btn-primary:hover { background: var(--navy-2); }
+  .btn-ghost { background: #fff; color: var(--ink); border: 1px solid rgba(50, 42, 92, 0.1); }
+  .btn-ghost:hover { background: rgba(255,255,255,0.7); }
+  .btn-soft { background: rgba(255,255,255,0.6); color: var(--ink); border: 1px solid rgba(50, 42, 92, 0.08); }
+  .btn-pill { padding: 6px 12px; font-size: 12px; border-radius: 999px; }
+  .btn svg { width: 14px; height: 14px; }
+
+  /* ─── Status pill (used everywhere) ───────────────────────────────────── */
+  .pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .pill .dot { width: 6px; height: 6px; border-radius: 50%; }
+  .pill.todo     { background: var(--lavender); color: var(--ink); }
+  .pill.todo     .dot { background: var(--purple); }
+  .pill.inprog   { background: var(--sky);     color: var(--ink); }
+  .pill.inprog   .dot { background: var(--blue); }
+  .pill.review   { background: var(--butter);  color: var(--ink); }
+  .pill.review   .dot { background: var(--amber); }
+  .pill.blocked  { background: var(--blush);   color: var(--ink); }
+  .pill.blocked  .dot { background: var(--rose); }
+  .pill.done     { background: var(--mint);    color: var(--ink); }
+  .pill.done     .dot { background: var(--green); }
+  .pill.shipped  { background: var(--navy);    color: #fff; }
+  .pill.shipped  .dot { background: var(--mint); }
+  .pill.draft    { background: var(--peach);   color: var(--ink); }
+  .pill.draft    .dot { background: var(--coral); }
+  .pill.input    { background: var(--sea);     color: var(--ink); }
+  .pill.input    .dot { background: #4a8c9a; }
+
+  /* Priority dots (right of status pill) */
+  .prio {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 12px; color: var(--ink-2);
+  }
+  .prio .ring {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    border: 2px solid currentColor;
+  }
+  .prio.high   { color: var(--coral); }
+  .prio.medium { color: var(--amber); }
+  .prio.low    { color: var(--green); }
+
+  /* Days left text */
+  .days {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 12px; color: var(--ink-2);
+  }
+  .days .clock { width: 12px; height: 12px; opacity: 0.7; }
+
+  /* ─── Pastel project tile (hero of v4) ───────────────────────────────── */
+  .tile-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+  .tile {
+    border-radius: var(--r-xl);
+    padding: 20px;
+    min-height: 168px;
+    display: flex; flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+    overflow: hidden;
+  }
+  .tile .tile-ico {
+    width: 28px; height: 28px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.55);
+    display: grid; place-items: center;
+    color: var(--ink);
+  }
+  .tile h3 { font-size: 16px; font-weight: 700; letter-spacing: -0.005em; line-height: 1.25; max-width: 90%; }
+  .tile .one-liner { font-size: 12.5px; color: var(--ink); opacity: 0.75; margin-top: 4px; }
+  .tile .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .tile .meta { display: flex; align-items: center; gap: 10px; font-size: 11.5px; color: var(--ink); opacity: 0.7; }
+  .tile .meta .nm { display: flex; align-items: center; gap: 4px; }
+  .tile .more-btn {
+    width: 26px; height: 26px;
+    border-radius: 8px;
+    display: grid; place-items: center;
+    color: var(--ink);
+    opacity: 0.6;
+  }
+  .tile .more-btn:hover { background: rgba(255,255,255,0.6); opacity: 1; }
+
+  .tile-peach    { background: var(--peach); }
+  .tile-sky      { background: var(--sky); }
+  .tile-lavender { background: var(--lavender); }
+  .tile-mint     { background: var(--mint); }
+  .tile-butter   { background: var(--butter); }
+  .tile-blush    { background: var(--blush); }
+  .tile-sea      { background: var(--sea); }
+
+  /* ─── Pipeline mini-bar (under each card) ─────────────────────────────── */
+  .pipeline-mini {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 3px;
+    height: 6px;
+    margin-top: 12px;
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .pipeline-mini span {
+    background: rgba(50, 42, 92, 0.12);
+    border-radius: 999px;
+  }
+  .pipeline-mini span.done { background: var(--green); }
+  .pipeline-mini span.active { background: var(--navy); }
+  .pipeline-mini span.review { background: var(--amber); }
+  .pipeline-mini span.blocked { background: var(--rose); }
+  .pipeline-mini span.shipped { background: var(--navy); }
+
+  /* ─── List-style project card (table-ish rows) ────────────────────────── */
+  .rows {
+    background: #fff;
+    border-radius: var(--r-xl);
+    overflow: hidden;
+  }
+  .row {
+    display: grid;
+    grid-template-columns: minmax(220px, 1.4fr) 70px 70px 110px 80px 130px 1fr 30px;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 20px;
+    border-bottom: 1px solid rgba(50, 42, 92, 0.06);
+  }
+  .row:last-child { border-bottom: 0; }
+  .row.head {
+    background: transparent;
+    font-size: 11px;
+    color: var(--ink-2);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+    padding-top: 10px; padding-bottom: 10px;
+  }
+  .row .ttl { display: flex; flex-direction: column; }
+  .row .ttl b { font-size: 14px; font-weight: 600; }
+  .row .ttl span { font-size: 12px; color: var(--ink-2); }
+  .row .ico-sm { width: 12px; height: 12px; opacity: 0.6; margin-right: 4px; vertical-align: -2px; }
+  .row .progress {
+    height: 6px;
+    background: rgba(50, 42, 92, 0.08);
+    border-radius: 999px;
+    position: relative;
+    overflow: hidden;
+  }
+  .row .progress::after {
+    content: "";
+    position: absolute; left: 0; top: 0; bottom: 0;
+    background: var(--navy);
+    border-radius: 999px;
+    width: var(--p, 0%);
+  }
+  .row .more {
+    color: var(--ink-2);
+    width: 24px; height: 24px;
+    border-radius: 6px;
+    display: grid; place-items: center;
+  }
+  .row .more:hover { background: rgba(50, 42, 92, 0.06); color: var(--ink); }
+
+  /* Stage segment label inside row */
+  .stage-pt {
+    font-size: 12px;
+    color: var(--ink-2);
+    font-family: var(--font-mono);
+    background: rgba(50, 42, 92, 0.05);
+    padding: 2px 8px;
+    border-radius: 6px;
+    display: inline-block;
+  }
+
+  /* ─── Aggregate ring chart (dashboard) ────────────────────────────────── */
+  .ring-block {
+    display: flex; align-items: center; gap: 24px;
+    background: #fff;
+    border-radius: var(--r-xl);
+    padding: 20px 24px;
+  }
+  .ring {
+    width: 96px; height: 96px;
+    position: relative;
+    flex: none;
+  }
+  .ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .ring circle { fill: none; stroke-width: 10; }
+  .ring .track { stroke: rgba(50, 42, 92, 0.08); }
+  .ring .fill  { stroke: var(--navy); stroke-linecap: round; }
+  .ring .num {
+    position: absolute; inset: 0;
+    display: grid; place-items: center;
+    font-size: 20px; font-weight: 700;
+    color: var(--ink);
+  }
+  .ring-legend { display: flex; flex-direction: column; gap: 6px; }
+  .ring-legend .item {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12.5px;
+  }
+  .ring-legend .swatch {
+    width: 10px; height: 10px; border-radius: 3px;
+  }
+  .ring-legend .lbl { color: var(--ink); font-weight: 500; }
+  .ring-legend .val { margin-left: auto; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+
+  /* ─── Empty state ─────────────────────────────────────────────────────── */
+  .empty {
+    background: #fff;
+    border-radius: var(--r-2xl);
+    padding: 56px 32px;
+    text-align: center;
+    border: 1px dashed rgba(50, 42, 92, 0.18);
+  }
+  .empty .illu {
+    width: 88px; height: 88px;
+    margin: 0 auto 16px;
+    border-radius: 24px;
+    background: linear-gradient(160deg, var(--peach), var(--lavender));
+    display: grid; place-items: center;
+  }
+  .empty h2 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+  .empty p { color: var(--ink-2); font-size: 14px; max-width: 380px; margin: 0 auto 18px; line-height: 1.55; }
+
+  /* ─── Recommended category cards (top of dashboard) ───────────────────── */
+  .rec-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+  .rec {
+    background: #fff;
+    border-radius: var(--r-lg);
+    padding: 14px 16px;
+    display: flex; align-items: center; gap: 12px;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--ink);
+    border: 1px solid rgba(50, 42, 92, 0.04);
+  }
+  .rec .ico {
+    width: 32px; height: 32px;
+    border-radius: 9px;
+    background: var(--lavender);
+    display: grid; place-items: center;
+    color: var(--purple);
+  }
+  .rec.c1 .ico { background: var(--peach);  color: var(--coral); }
+  .rec.c2 .ico { background: var(--sky);    color: var(--blue); }
+  .rec.c3 .ico { background: var(--lavender); color: var(--purple); }
+  .rec.c4 .ico { background: var(--mint);   color: var(--green); }
+
+  /* ─── Project detail screen ───────────────────────────────────────────── */
+  .detail-grid {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 22px;
+  }
+  .card {
+    background: #fff;
+    border-radius: var(--r-xl);
+    padding: 22px;
+  }
+  .card h3 { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-2); margin-bottom: 14px; }
+  .proj-head {
+    display: flex; align-items: start; gap: 18px;
+    padding: 8px 4px 4px;
+  }
+  .proj-head .ico-lg {
+    width: 52px; height: 52px;
+    border-radius: 14px;
+    display: grid; place-items: center;
+    flex: none;
+  }
+  .proj-head h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.01em; }
+  .proj-head .one { color: var(--ink-2); font-size: 13.5px; margin-top: 2px; }
+  .proj-head .path { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-2); margin-top: 6px; display: inline-flex; align-items: center; gap: 4px; }
+  .proj-head .actions { margin-left: auto; display: flex; gap: 8px; }
+  .team {
+    display: flex; align-items: center;
+  }
+  .team .av {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: var(--sky);
+    border: 2px solid #fff;
+    display: grid; place-items: center;
+    font-size: 10.5px; font-weight: 700;
+    color: var(--ink);
+    margin-left: -8px;
+  }
+  .team .av:first-child { margin-left: 0; }
+  .team .av.a2 { background: var(--peach); }
+  .team .av.a3 { background: var(--mint); }
+  .team .av.a4 { background: var(--lavender); }
+
+  /* 7-stage stepper */
+  .stepper {
+    display: flex; align-items: center;
+    background: #fff;
+    border-radius: var(--r-xl);
+    padding: 14px 18px;
+    gap: 0;
+    overflow-x: auto;
+  }
+  .step {
+    display: flex; align-items: center; gap: 8px;
+    flex: 1;
+    min-width: 0;
+  }
+  .step .num {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: rgba(50, 42, 92, 0.08);
+    color: var(--ink-2);
+    display: grid; place-items: center;
+    font-size: 12px; font-weight: 700;
+    flex: none;
+  }
+  .step .lbl { font-size: 12.5px; color: var(--ink-2); font-weight: 500; white-space: nowrap; }
+  .step.done .num { background: var(--mint); color: var(--ink); }
+  .step.done .num::after { content: "✓"; }
+  .step.done .num b { display: none; }
+  .step.active .num { background: var(--navy); color: #fff; }
+  .step.active .lbl { color: var(--ink); font-weight: 600; }
+  .step.review .num { background: var(--butter); color: var(--ink); }
+  .step.blocked .num { background: var(--blush); color: var(--rose); }
+  .step.shipped .num { background: var(--navy); color: #fff; }
+  .step.shipped .num::after { content: "★"; }
+  .step.shipped .num b { display: none; }
+  .step .bar {
+    flex: 1;
+    height: 2px;
+    background: rgba(50, 42, 92, 0.1);
+    margin: 0 8px;
+  }
+  .step.done + .step .bar { background: var(--green); }
+  .step.review + .step .bar { background: var(--amber); }
+  .step.blocked + .step .bar { background: var(--rose); }
+
+  /* Checklist in detail */
+  .check { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px dashed rgba(50,42,92,0.08); }
+  .check:last-child { border-bottom: 0; }
+  .check .box {
+    width: 18px; height: 18px;
+    border-radius: 6px;
+    border: 1.5px solid rgba(50,42,92,0.2);
+    background: #fff;
+    display: grid; place-items: center;
+    flex: none;
+    color: #fff;
+    font-size: 11px;
+  }
+  .check.done .box { background: var(--green); border-color: var(--green); }
+  .check.done .lbl { color: var(--ink-2); text-decoration: line-through; }
+  .check .lbl { font-size: 13.5px; }
+  .check .meta { margin-left: auto; font-size: 11.5px; color: var(--ink-2); }
+
+  /* Activity timeline */
+  .tl { display: flex; flex-direction: column; gap: 14px; }
+  .tl-item { display: flex; gap: 12px; }
+  .tl-item .av-lg {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    display: grid; place-items: center;
+    font-size: 11px; font-weight: 700;
+    color: var(--ink);
+    flex: none;
+  }
+  .tl-item .av-lg.ba   { background: var(--peach); }
+  .tl-item .av-lg.da   { background: var(--sky); }
+  .tl-item .av-lg.code { background: var(--mint); }
+  .tl-item .av-lg.rev  { background: var(--butter); }
+  .tl-item .av-lg.qa   { background: var(--lavender); }
+  .tl-item .av-lg.orch { background: var(--navy); color: #fff; }
+  .tl-item .body { flex: 1; }
+  .tl-item .body .who { font-size: 13px; font-weight: 600; }
+  .tl-item .body .who span { color: var(--ink-2); font-weight: 400; }
+  .tl-item .body .msg { font-size: 12.5px; color: var(--ink); opacity: 0.85; line-height: 1.5; }
+  .tl-item .body .ts  { font-size: 11px; color: var(--ink-2); margin-top: 2px; }
+
+  /* Artifact list */
+  .art { display: flex; flex-direction: column; gap: 8px; }
+  .art-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px;
+    background: rgba(255,255,255,0.7);
+    border: 1px solid rgba(50,42,92,0.06);
+    border-radius: 12px;
+    font-size: 13px;
+  }
+  .art-item .ftag {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    background: var(--lavender);
+    color: var(--purple);
+    padding: 2px 6px;
+    border-radius: 5px;
+  }
+  .art-item .lbl { font-weight: 500; }
+  .art-item .path { font-family: var(--font-mono); font-size: 11px; color: var(--ink-2); margin-left: auto; }
+
+  /* Working-on-this-stage callout */
+  .callout {
+    background: linear-gradient(160deg, var(--lavender) 0%, var(--sky) 100%);
+    border-radius: var(--r-lg);
+    padding: 14px 16px;
+    display: flex; align-items: center; gap: 12px;
+    margin-top: 14px;
+  }
+  .callout .pulse {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--coral);
+    box-shadow: 0 0 0 0 rgba(239, 127, 87, 0.5);
+    animation: pulse 1.6s infinite;
+  }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(239, 127, 87, 0.5); }
+    70% { box-shadow: 0 0 0 8px rgba(239, 127, 87, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(239, 127, 87, 0); }
+  }
+  .callout .lbl { font-size: 12.5px; color: var(--ink); }
+  .callout .lbl b { font-weight: 700; }
+  .callout .who { margin-left: auto; font-size: 12px; color: var(--ink); opacity: 0.7; }
+
+  /* ─── /new screens (centered) ─────────────────────────────────────────── */
+  .center-stage {
+    display: grid;
+    place-items: center;
+    min-height: 820px;
+    padding: 40px 32px;
+  }
+  .center-card {
+    width: 100%;
+    max-width: 640px;
+    background: #fff;
+    border-radius: var(--r-2xl);
+    padding: 36px;
+    box-shadow: 0 20px 50px -25px rgba(50, 42, 92, 0.18);
+  }
+  .center-card .crumbs {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--lavender);
+    color: var(--purple);
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 600;
+    margin-bottom: 18px;
+  }
+  .center-card h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 6px; }
+  .center-card p.sub { color: var(--ink-2); font-size: 14px; line-height: 1.55; margin-bottom: 24px; }
+  .center-card label { display: block; font-size: 12.5px; font-weight: 600; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+  .input {
+    width: 100%;
+    padding: 14px 16px;
+    background: rgba(50, 42, 92, 0.04);
+    border: 1px solid transparent;
+    border-radius: 12px;
+    font: inherit;
+    color: var(--ink);
+    outline: none;
+  }
+  .input:focus { background: #fff; border-color: var(--navy); }
+  .input.mono { font-family: var(--font-mono); font-size: 13px; }
+  .help { font-size: 12px; color: var(--ink-2); margin-top: 8px; line-height: 1.5; }
+  .help b { color: var(--ink); font-weight: 600; }
+  .err {
+    display: flex; gap: 10px; align-items: start;
+    background: var(--blush);
+    color: var(--ink);
+    padding: 12px 14px;
+    border-radius: 12px;
+    font-size: 13px;
+    margin-top: 14px;
+  }
+  .err .ico { color: var(--rose); flex: none; }
+  .actions-row { display: flex; align-items: center; justify-content: space-between; margin-top: 24px; }
+  .actions-row .right { display: flex; gap: 8px; }
+
+  /* Chat screen layout */
+  .chat-grid {
+    display: grid;
+    grid-template-columns: 1fr 280px;
+    gap: 22px;
+    height: 720px;
+  }
+  .chat {
+    background: #fff;
+    border-radius: var(--r-2xl);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .chat-head {
+    padding: 18px 22px;
+    border-bottom: 1px solid rgba(50, 42, 92, 0.06);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .chat-head .back { color: var(--ink-2); font-size: 13px; display: flex; align-items: center; gap: 4px; }
+  .chat-head .crumb { font-family: var(--font-mono); font-size: 12px; color: var(--ink-2); }
+  .chat-head .crumb b { color: var(--ink); }
+  .chat-head .av {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: var(--peach);
+    display: grid; place-items: center;
+    font-size: 12px; font-weight: 700;
+  }
+  .chat-head .meta b { font-size: 14px; }
+  .chat-head .meta span { font-size: 11.5px; color: var(--green); display: inline-flex; align-items: center; gap: 4px; }
+  .chat-head .meta span::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+
+  .chat-body {
+    flex: 1;
+    padding: 22px 26px;
+    display: flex; flex-direction: column; gap: 16px;
+    overflow-y: auto;
+  }
+  .msg { display: flex; gap: 10px; max-width: 80%; }
+  .msg .av-sm {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    flex: none;
+    display: grid; place-items: center;
+    font-size: 11px; font-weight: 700;
+  }
+  .msg.ba .av-sm  { background: var(--peach); }
+  .msg.user .av-sm { background: var(--sky); }
+  .msg .bubble {
+    padding: 12px 16px;
+    border-radius: 16px;
+    font-size: 13.5px;
+    line-height: 1.55;
+  }
+  .msg.ba .bubble { background: var(--peach); border-top-left-radius: 4px; }
+  .msg.user { margin-left: auto; flex-direction: row-reverse; }
+  .msg.user .bubble { background: var(--navy); color: #fff; border-top-right-radius: 4px; }
+
+  .chat-foot {
+    padding: 14px 16px;
+    border-top: 1px solid rgba(50, 42, 92, 0.06);
+    display: flex; align-items: end; gap: 10px;
+    background: rgba(50, 42, 92, 0.02);
+  }
+  .chat-foot .ta {
+    flex: 1;
+    background: #fff;
+    border-radius: 14px;
+    border: 1px solid rgba(50, 42, 92, 0.08);
+    padding: 10px 14px;
+    font: inherit;
+    color: var(--ink);
+    outline: none;
+    resize: none;
+    height: 44px;
+  }
+
+  .chat-side {
+    background: #fff;
+    border-radius: var(--r-2xl);
+    padding: 20px;
+    display: flex; flex-direction: column; gap: 18px;
+  }
+  .chat-side h4 { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-2); }
+  .chat-side .step { display: flex; align-items: start; gap: 10px; padding: 8px 0; border-bottom: 1px dashed rgba(50,42,92,0.08); font-size: 13px; }
+  .chat-side .step:last-child { border-bottom: 0; }
+  .chat-side .step .num { width: 22px; height: 22px; border-radius: 50%; background: var(--mint); color: var(--ink); display: grid; place-items: center; font-size: 11px; font-weight: 700; }
+  .chat-side .step.pending .num { background: rgba(50,42,92,0.08); color: var(--ink-2); }
+  .chat-side .step.current .num { background: var(--navy); color: #fff; }
+  .chat-side .step .body b { display: block; font-weight: 600; }
+  .chat-side .step .body span { color: var(--ink-2); font-size: 11.5px; }
+
+  .success-banner {
+    background: var(--mint);
+    color: var(--ink);
+    border-radius: var(--r-lg);
+    padding: 14px 18px;
+    display: flex; align-items: center; gap: 12px;
+    font-size: 13.5px;
+  }
+  .success-banner .ico { width: 30px; height: 30px; border-radius: 50%; background: var(--green); color: #fff; display: grid; place-items: center; }
+  .success-banner b { font-weight: 700; }
+  .success-banner a { color: var(--navy); font-weight: 600; margin-left: auto; }
+
+  /* ─── UI kit (screen 10) ──────────────────────────────────────────────── */
+  .kit-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    padding: 32px;
+  }
+  .kit-section {
+    background: #fff;
+    border-radius: var(--r-xl);
+    padding: 22px;
+  }
+  .kit-section h3 { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-2); margin-bottom: 16px; }
+  .kit-section .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+
+  .swatch-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+  .swatch {
+    border-radius: 10px;
+    padding: 12px;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--ink);
+    aspect-ratio: 1;
+    display: flex; align-items: end;
+  }
+
+  /* Banners */
+  .bn { display: flex; gap: 10px; padding: 12px 14px; border-radius: 12px; font-size: 13px; align-items: start; }
+  .bn.info    { background: var(--sky); }
+  .bn.success { background: var(--mint); }
+  .bn.warn    { background: var(--butter); }
+  .bn.error   { background: var(--blush); }
+
+  /* Form fields */
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-size: 12.5px; font-weight: 600; color: var(--ink-2); }
+  .field input { padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(50,42,92,0.12); font: inherit; outline: none; }
+  .field input:focus { border-color: var(--navy); }
+  .field .hint { font-size: 11.5px; color: var(--ink-2); }
+
+  /* Stage stepper horizontal mini variant for kit */
+  .kit-stepper {
+    display: flex; align-items: center; gap: 0;
+  }
+  .kit-step {
+    display: flex; align-items: center; gap: 6px;
+    padding: 4px 0;
+  }
+  .kit-step .n {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: rgba(50,42,92,0.08);
+    color: var(--ink-2);
+    display: grid; place-items: center;
+    font-size: 10.5px; font-weight: 700;
+  }
+  .kit-step.done .n { background: var(--green); color: #fff; }
+  .kit-step.active .n { background: var(--navy); color: #fff; }
+  .kit-step.review .n { background: var(--amber); color: #fff; }
+  .kit-step.blocked .n { background: var(--rose); color: #fff; }
+  .kit-step .lbl { font-size: 12px; color: var(--ink-2); }
+  .kit-step .sep { width: 24px; height: 1px; background: rgba(50,42,92,0.1); margin: 0 6px; }
+  .kit-step.done + .kit-step .sep { background: var(--green); }
+
+  /* chat bubbles in kit */
+  .kit-bubble { padding: 8px 12px; border-radius: 12px; font-size: 12.5px; max-width: 70%; line-height: 1.5; }
+  .kit-bubble.ba   { background: var(--peach); }
+  .kit-bubble.user { background: var(--navy); color: #fff; }
+
+  /* utility */
+  .mb-8 { margin-bottom: 8px; }
+  .mb-12 { margin-bottom: 12px; }
+  .mb-16 { margin-bottom: 16px; }
+  .stack-12 > * + * { margin-top: 12px; }
+  .row-12 { display: flex; gap: 12px; align-items: center; }
+
+
+  /* ─── v5 additions: Kanban + project-scoped menu ────────────────────────── */
+  .side .nav a .count {
+    /* Project menu: small chip, secondary text colour for Jira label */
+    font-family: var(--font-mono);
+    font-size: 10px;
+    background: rgba(50,42,92,0.08);
+    color: var(--ink-2);
+    padding: 2px 7px;
+    border-radius: 999px;
+    margin-left: auto;
+  }
+  .side .nav a.active .count { background: rgba(255,255,255,0.18); color: #fff; }
+  .side .side-promo h4 { font-size: 13px; font-weight: 600; color: var(--ink); margin-bottom: 4px; }
+  .side .side-promo p { font-size: 12px; color: var(--ink-2); line-height: 1.5; }
+  .side .side-promo p code { font-family: var(--font-mono); background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px; font-size: 11px; }
+  .side .side-promo button { margin-top: 10px; font-size: 12px; font-weight: 600; padding: 8px 14px; border-radius: 999px; background: var(--navy); color: #fff; }
+
+  /* Kanban board */
+  .kanban {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+  }
+  .kcol {
+    background: rgba(255,255,255,0.5);
+    border-radius: var(--r-md);
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 320px;
+  }
+  .khead {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; font-weight: 600; color: var(--ink-2);
+    text-transform: uppercase; letter-spacing: 0.05em;
+    padding: 0 2px 6px;
+    border-bottom: 1px dashed rgba(50,42,92,0.12);
+  }
+  .khead .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .khead .kcount {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    background: rgba(50,42,92,0.08);
+    color: var(--ink-2);
+    padding: 1px 7px;
+    border-radius: 999px;
+    font-size: 10px;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  .kcard {
+    background: #fff;
+    border-radius: 12px;
+    padding: 12px;
+    box-shadow: 0 4px 10px -6px rgba(50,42,92,0.18);
+    display: flex; flex-direction: column; gap: 6px;
+    font-size: 12.5px;
+    border: 1px solid rgba(50,42,92,0.04);
+  }
+  .krow { display: flex; align-items: center; gap: 8px; }
+  .ktag {
+    font-family: var(--font-mono); font-size: 10px; font-weight: 600;
+    color: var(--navy);
+    background: rgba(50,42,92,0.06);
+    padding: 2px 7px; border-radius: 5px;
+  }
+  .kprio { width: 8px; height: 8px; border-radius: 50%; margin-left: auto; }
+  .kprio.high { background: var(--rose); }
+  .kprio.med  { background: var(--amber); }
+  .kprio.low  { background: var(--ink-3); }
+  .ktitle { font-size: 12.5px; font-weight: 500; color: var(--ink); line-height: 1.4; }
+  .kfoot { display: flex; align-items: center; gap: 8px; margin-top: 4px; font-size: 11px; color: var(--ink-2); }
+  .kagent {
+    width: 20px; height: 20px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 700;
+    color: var(--ink);
+  }
+  .kagent.a-c1 { background: var(--mint); }
+  .kagent.a-c2 { background: var(--sky); }
+  .kagent.a-c3 { background: var(--butter); }
+  .kpts { font-family: var(--font-mono); font-size: 10px; }
+  .kprog {
+    margin-left: auto;
+    font-size: 10px;
+    color: var(--ink-2);
+    background: rgba(50,42,92,0.05);
+    padding: 1px 6px;
+    border-radius: 5px;
+  }
+
+  /* Agent strip */
+  .agent-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px;
+    border-radius: var(--r-sm);
+    background: rgba(255,255,255,0.5);
+  }
+  .agent-row b { display: block; font-size: 13px; font-weight: 600; color: var(--ink); }
+  .agent-row .agent-sub { font-size: 11.5px; color: var(--ink-2); }
+
+  /* Avatar colour classes (for code agent chips in Kanban / agent strip) */
+  .av.a-c1 { background: var(--mint); color: var(--ink); }
+  .av.a-c2 { background: var(--sky); color: var(--ink); }
+  .av.a-c3 { background: var(--butter); color: var(--ink); }
+
+  /* ─── BA Workspace (screens 12–14) ─────────────────────────────────────
+   * Replaces the old "Stage 2 preview" placeholder in /projects/:id.
+   * Layout: project menu (existing) → two-column inside main →
+   *   left: 15-file artifact list (the 14 supporting docs + prd.md)
+   *   right: markdown viewer (View) / textarea + save (Edit) /
+   *          "Sent to SA" success card.
+   */
+  .ba-grid {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 22px;
+    min-height: 640px;
+  }
+
+  /* File tree (left rail) */
+  .file-tree {
+    background: #fff;
+    border-radius: var(--r-xl);
+    padding: 16px 14px;
+    display: flex; flex-direction: column;
+    gap: 14px;
+  }
+  .file-tree-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 4px;
+  }
+  .file-tree-head h3 {
+    font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--ink-2);
+  }
+  .file-tree-head .count {
+    font-family: var(--font-mono); font-size: 11px;
+    color: var(--ink-2);
+    background: rgba(50, 42, 92, 0.06);
+    padding: 2px 7px; border-radius: 999px;
+  }
+  .file-tree-foot {
+    margin-top: auto;
+    padding: 12px 4px 4px;
+    border-top: 1px dashed rgba(50,42,92,0.12);
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--ink-2);
+  }
+  .file-tree-foot a { color: var(--navy); font-weight: 600; }
+  .file-group { display: flex; flex-direction: column; gap: 2px; }
+  .file-group-label {
+    font-size: 10.5px; font-weight: 700;
+    color: var(--ink-2);
+    text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 6px 8px 4px;
+  }
+  .file {
+    display: flex; align-items: center; gap: 9px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    font-size: 13px;
+    color: var(--ink);
+    cursor: pointer;
+    transition: background 100ms ease;
+  }
+  .file:hover { background: rgba(50, 42, 92, 0.05); }
+  .file.active { background: var(--navy); color: #fff; }
+  .file.active .file-meta { color: rgba(255, 255, 255, 0.65); }
+  .file.active .file-ico { background: rgba(255, 255, 255, 0.15); color: #fff; }
+  .file-name { font-weight: 500; }
+  .file-meta {
+    margin-left: auto;
+    font-family: var(--font-mono); font-size: 11px;
+    color: var(--ink-2);
+  }
+  .file-ico {
+    width: 22px; height: 22px;
+    border-radius: 6px;
+    background: var(--lavender);
+    color: var(--purple);
+    display: grid; place-items: center;
+    flex: none;
+    font-family: var(--font-mono); font-size: 9.5px;
+    font-weight: 700; letter-spacing: 0.04em;
+  }
+  .file.flag { /* unsaved / needs-review indicator */
+    box-shadow: inset 3px 0 0 var(--coral);
+  }
+  .file.done-ic .file-ico { background: var(--mint); color: var(--green); }
+  .file.done-ic .file-ico::after { content: "✓"; font-family: var(--font-sans); font-size: 12px; }
+
+  /* Per-file review status — small dot at the right edge of the row */
+  .file-status {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    margin-left: 6px;
+    flex: none;
+  }
+  .file-status.draft     { background: var(--purple); }
+  .file-status.review    { background: var(--amber); box-shadow: 0 0 0 3px rgba(232, 185, 74, 0.18); }
+  .file-status.returned  { background: var(--rose); box-shadow: 0 0 0 3px rgba(217, 122, 142, 0.18); }
+  .file-status.completed { background: var(--green); }
+
+  /* File row tooltips for the status dot — accessed via aria-label on the
+   * <span class="file-status"> in the mockup; documented in plan.md. */
+
+  /* Per-file "Send to Solution Architect" row action (replaces the bulk
+   * button that used to live in the stage banner). Shown only on hover. */
+  .file-row-action {
+    margin-left: 6px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: rgba(50, 42, 92, 0.06);
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--ink-2);
+    flex: none;
+  }
+  .file-row-action.sa { background: var(--navy); color: #fff; }
+  .file-row-action.return { background: var(--rose); color: #fff; }
+  .file-row-action.done { background: var(--green); color: #fff; }
+
+  /* Viewer / editor card (right pane) */
+  .ba-doc {
+    background: #fff;
+    border-radius: var(--r-xl);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    min-height: 640px;
+  }
+  .ba-doc-head {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 18px;
+    border-bottom: 1px solid rgba(50, 42, 92, 0.06);
+  }
+  .ba-doc-head .crumbs {
+    font-family: var(--font-mono); font-size: 11.5px;
+    color: var(--ink-2);
+  }
+  .ba-doc-head .crumbs b { color: var(--ink); font-weight: 600; }
+  .ba-doc-head .title { font-size: 14px; font-weight: 700; }
+  .ba-doc-head .meta {
+    margin-left: auto;
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11.5px; color: var(--ink-2);
+  }
+  .ba-doc-head .meta b { color: var(--ink); font-weight: 600; }
+  .ba-tabs {
+    display: inline-flex;
+    background: rgba(50, 42, 92, 0.05);
+    border-radius: 999px;
+    padding: 3px;
+  }
+  .ba-tabs button {
+    padding: 5px 14px;
+    font-size: 12px; font-weight: 600;
+    color: var(--ink-2);
+    border-radius: 999px;
+  }
+  .ba-tabs button.active { background: #fff; color: var(--ink); box-shadow: 0 1px 4px rgba(50, 42, 92, 0.08); }
+
+  .ba-doc-body {
+    flex: 1;
+    padding: 22px 26px;
+    overflow-y: auto;
+    display: flex; flex-direction: column; gap: 18px;
+  }
+  .ba-doc-body.view { font-size: 13.5px; line-height: 1.65; color: var(--ink); }
+  .ba-doc-body h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
+  .ba-doc-body h2 { font-size: 17px; font-weight: 700; letter-spacing: -0.005em; margin-top: 6px; }
+  .ba-doc-body h3 { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-2); margin-top: 8px; }
+  .ba-doc-body p { margin: 6px 0; }
+  .ba-doc-body ul, .ba-doc-body ol { padding-left: 20px; margin: 6px 0; }
+  .ba-doc-body li { margin: 3px 0; }
+  .ba-doc-body code {
+    font-family: var(--font-mono); font-size: 12.5px;
+    background: rgba(50, 42, 92, 0.06);
+    padding: 1px 5px; border-radius: 4px;
+  }
+  .ba-doc-body pre {
+    background: rgba(50, 42, 92, 0.04);
+    border-radius: 12px;
+    padding: 14px 16px;
+    font-family: var(--font-mono); font-size: 12px;
+    color: var(--ink);
+    overflow-x: auto;
+    border: 1px solid rgba(50, 42, 92, 0.06);
+  }
+  .ba-doc-body blockquote {
+    border-left: 3px solid var(--purple);
+    background: var(--lavender);
+    padding: 10px 14px;
+    border-radius: 0 10px 10px 0;
+    color: var(--ink);
+    margin: 10px 0;
+  }
+  .ba-doc-body table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+    background: rgba(50, 42, 92, 0.02);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .ba-doc-body th, .ba-doc-body td {
+    padding: 9px 12px;
+    text-align: left;
+    border-bottom: 1px solid rgba(50, 42, 92, 0.06);
+  }
+  .ba-doc-body th {
+    background: rgba(50, 42, 92, 0.04);
+    font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.05em;
+    color: var(--ink-2);
+  }
+  .ba-doc-body tr:last-child td { border-bottom: 0; }
+
+  /* Requirements list (screen 15) */
+  .req-filter {
+    display: flex; align-items: center; gap: 14px;
+    padding: 4px 0 2px;
+  }
+  .req-filter-left { display: flex; align-items: center; gap: 14px; flex: 1; }
+  .req-filter-right { display: flex; align-items: center; gap: 10px; }
+  .req-filter-sep { width: 1px; height: 22px; background: rgba(50,42,92,0.08); }
+  .req-filter .ba-tabs button { font-size: 11.5px; padding: 4px 11px; }
+  .req-filter .filter-count {
+    margin-left: 4px; font-family: var(--font-mono); font-size: 10.5px;
+    color: var(--ink-2); font-weight: 600;
+  }
+  .req-filter .ba-tabs button.active .filter-count { color: var(--ink); }
+  .req-chips { display: flex; gap: 6px; }
+  .req-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 10px; border-radius: 999px;
+    font-size: 11.5px; font-weight: 600;
+    color: var(--ink-2);
+    background: rgba(50,42,92,0.04);
+    cursor: pointer;
+  }
+  .req-chip b { font-family: var(--font-mono); font-weight: 700; }
+  .req-chip.active { background: var(--navy); color: #fff; }
+  .req-search {
+    display: flex; align-items: center; gap: 6px;
+    background: #fff; border: 1px solid rgba(50,42,92,0.08);
+    border-radius: 999px; padding: 5px 12px;
+    color: var(--ink-2);
+  }
+  .req-search input { border: 0; outline: 0; background: transparent; font: inherit; font-size: 12px; color: var(--ink); width: 180px; }
+
+  .story {
+    border: 1px solid rgba(50,42,92,0.06);
+    border-radius: 14px;
+    background: #fff;
+    overflow: hidden;
+  }
+  .story + .story { margin-top: 10px; }
+  .story-head {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 12px 14px;
+    background: linear-gradient(180deg, rgba(50,42,92,0.02), transparent);
+  }
+  .story-id {
+    font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+    color: var(--ink-2);
+    background: rgba(50,42,92,0.06);
+    padding: 4px 8px; border-radius: 6px;
+    flex: none; align-self: flex-start;
+  }
+  .story-body { flex: 1; }
+  .story-title { font-size: 14px; font-weight: 700; color: var(--ink); }
+  .story-as { font-size: 12px; color: var(--ink-2); margin-top: 2px; line-height: 1.5; }
+  .story-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: none; }
+  .story-count { font-size: 11px; color: var(--ink-2); font-family: var(--font-mono); }
+
+  .req-list { border-top: 1px solid rgba(50,42,92,0.06); }
+  .req {
+    display: grid;
+    grid-template-columns: 64px 1fr 86px 64px 130px 50px;
+    gap: 12px; align-items: center;
+    padding: 10px 14px;
+    font-size: 12.5px;
+    border-top: 1px solid rgba(50,42,92,0.04);
+  }
+  .req:first-child { border-top: 0; }
+  .req:hover { background: rgba(50,42,92,0.02); }
+  .req-id { font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--ink-2); }
+  .req-text { color: var(--ink); line-height: 1.5; }
+  .req-type {
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 10.5px; font-weight: 700;
+    padding: 2px 8px; border-radius: 999px;
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .req-type.type-br { background: var(--peach); color: var(--coral); }
+  .req-type.type-tr { background: var(--sky); color: var(--blue); }
+  .req-prio {
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 10.5px; font-weight: 700;
+    padding: 2px 0; border-radius: 4px;
+    text-align: center;
+  }
+  .req-prio.prio-must, .req-prio.must { color: var(--coral); }
+  .req-prio.should { color: var(--amber); }
+  .req-prio.could { color: var(--ink-2); }
+  .req-status {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11.5px; font-weight: 600; color: var(--ink-2);
+  }
+  .req-status .file-status { box-shadow: none; flex: none; }
+  .req-status.status-done { color: var(--green); }
+  .req-status.status-review { color: var(--amber); }
+  .req-status.status-draft { color: var(--ink-2); }
+  .req-status.status-blocked { color: var(--rose); }
+  .req-owner {
+    text-align: center;
+    font-size: 10.5px; font-weight: 700; color: var(--ink-2);
+    background: rgba(50,42,92,0.06);
+    padding: 2px 0; border-radius: 4px;
+  }
+  .story.more { background: rgba(50,42,92,0.02); border-style: dashed; }
+  .story.more .story-head { background: transparent; }
+  .story.more .story-id { background: var(--lavender); color: var(--purple); }
+
+  /* Editor textarea */
+  .ba-doc-body.edit { padding: 0; }
+  .ba-edit {
+    flex: 1;
+    width: 100%;
+    border: 0; outline: 0; resize: none;
+    background: transparent;
+    font-family: var(--font-mono); font-size: 12.5px;
+    line-height: 1.65;
+    color: var(--ink);
+    padding: 22px 26px;
+    min-height: 560px;
+  }
+
+  /* Footer (Save + Send to SA) */
+  .ba-doc-foot {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 18px;
+    border-top: 1px solid rgba(50, 42, 92, 0.06);
+    background: rgba(50, 42, 92, 0.02);
+  }
+  .ba-doc-foot .left { font-size: 12px; color: var(--ink-2); }
+  .ba-doc-foot .left b { color: var(--ink); font-weight: 600; }
+  .ba-doc-foot .right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+
+  /* Stage banner above the workspace (now a counter, not an action) */
+  .ba-stage {
+    display: flex; align-items: center; gap: 14px;
+    background: #fff;
+    border-radius: var(--r-xl);
+    padding: 16px 22px;
+    border: 1px solid rgba(50, 42, 92, 0.04);
+  }
+  .ba-stage .ico {
+    width: 40px; height: 40px;
+    border-radius: 12px;
+    background: var(--peach);
+    color: var(--coral);
+    display: grid; place-items: center;
+    flex: none;
+  }
+  .ba-stage .body { flex: 1; }
+  .ba-stage .body .lbl {
+    font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--ink-2);
+  }
+  .ba-stage .body .ttl { font-size: 15px; font-weight: 700; color: var(--ink); }
+  .ba-stage .body .sub { font-size: 12.5px; color: var(--ink-2); margin-top: 2px; }
+  .ba-stage .counts {
+    display: flex; gap: 8px;
+    flex: none;
+  }
+  .ba-stage .count-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 11px;
+    border-radius: 999px;
+    font-size: 11.5px; font-weight: 600;
+    color: var(--ink);
+    background: rgba(50, 42, 92, 0.04);
+  }
+  .ba-stage .count-pill b { font-family: var(--font-mono); }
+  .ba-stage .count-pill .file-status { box-shadow: none; margin: 0; }
+
+  /* Inline review thread (screen 14) — shown beneath the document body when
+   * the selected file is in "In Review (SA)" or "Returned" state. */
+  .review-thread {
+    background: rgba(50, 42, 92, 0.02);
+    border-top: 1px solid rgba(50, 42, 92, 0.06);
+    padding: 16px 22px;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .review-thread .thread-head {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 12px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--ink-2);
+  }
+  .review-thread .thread-head .who { margin-left: auto; font-size: 11.5px; color: var(--ink-2); font-weight: 500; text-transform: none; letter-spacing: 0; }
+  .review-thread .comment {
+    display: flex; gap: 10px;
+    background: #fff;
+    border: 1px solid rgba(50, 42, 92, 0.06);
+    border-radius: 12px;
+    padding: 12px 14px;
+  }
+  .review-thread .comment.sa { border-left: 3px solid var(--amber); }
+  .review-thread .comment.ba { border-left: 3px solid var(--peach); }
+  .review-thread .comment .av-sm {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: grid; place-items: center;
+    font-size: 11px; font-weight: 700;
+    color: var(--ink); flex: none;
+  }
+  .review-thread .comment.sa .av-sm { background: var(--butter); }
+  .review-thread .comment.ba .av-sm { background: var(--peach); }
+  .review-thread .comment .body { flex: 1; font-size: 13px; line-height: 1.55; }
+  .review-thread .comment .body .who { font-size: 12px; font-weight: 600; color: var(--ink); }
+  .review-thread .comment .body .who span { color: var(--ink-2); font-weight: 400; margin-left: 6px; }
+  .review-thread .comment .body p { margin: 4px 0 0; color: var(--ink); }
+  .review-thread .compose {
+    display: flex; gap: 10px; align-items: end;
+    background: #fff;
+    border: 1px solid rgba(50, 42, 92, 0.06);
+    border-radius: 12px;
+    padding: 10px 12px;
+  }
+  .review-thread .compose textarea {
+    flex: 1; border: 0; outline: 0; resize: none;
+    font: inherit; font-size: 13px;
+    color: var(--ink);
+    background: transparent;
+    min-height: 38px;
+  }
+  .review-thread .compose .who { font-size: 11.5px; color: var(--ink-2); }
+
+  /* "Open questions" mini-banner on workspace (links to §11 of prd.md) */
+  .oqa {
+    background: var(--butter);
+    color: var(--ink);
+    border-radius: var(--r-lg);
+    padding: 12px 14px;
+    display: flex; align-items: center; gap: 10px;
+    font-size: 12.5px;
+  }
+  .oqa .ico { color: var(--amber); flex: none; }
+  .oqa .body b { font-weight: 700; }
+  .oqa a {
+    margin-left: auto;
+    color: var(--ink); font-weight: 600;
+    text-decoration: underline;
+  }
+</style>
+<body>
+<div class="doc">
+
+  <!-- Document header -->
+  <header class="doc-header">
+    <div>
+      <div class="doc-title">Idea Hub — Requirements (v5.2)</div>
+      <div class="doc-sub">Curated, signed-off list of <b>business &amp; technical requirements</b> grouped by user story (US-01 …). Read by SA, devs, designers, and QA as the source of truth for what must be built. Each row carries a stable <code style="font-family: var(--font-mono);">BR-xxx / TR-xxx</code> ID, a type tag, MoSCoW priority, status pill, and owner. No new endpoints — the list renders from the frontmatter of <code style="font-family: var(--font-mono);">prd.md</code> §8 (business requirements) and <code style="font-family: var(--font-mono);">user-journeys.md</code> per-story blocks (technical requirements). BA authors; everyone else reads. The authoring workspace for these and the other 15 PRD artifacts lives in the <a href="background.html"><b>Project Background</b></a> tab.</div>
+    </div>
+    <div class="doc-meta">v5.2 · launcher/design/requirements.html<br/>1 screen (15)</div>
+  </header>
+
+  <nav class="toc">
+    <a href="#s15"><b>15</b> Requirements — list of requirements by user story</a>
+  </nav>
+
+  <section class="screen" id="s15">
+    <div class="screen-label">
+      <span class="num">15</span>
+      <span class="name">Requirements — list of requirements by user story</span>
+      <span class="route">/projects/:id · Requirements</span>
+    </div>
+    <div class="screen-body">
+      <div class="app">
+        <aside class="side">
+          <div class="brand"><div class="brand-mark">IH</div><div class="brand-name">Idea Hub</div></div>
+          <div>
+            <div class="menu-label">Menu</div>
+            <nav class="nav">
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12l9-9 9 9 M5 10v10h14V10"/></svg> Overview</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h11l3 3v13H5z M16 4v3h3 M8 11h8 M8 14h8 M8 17h5"/></svg> Project Background <span class="count">17</span></a>
+              <a href="#" class="active"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="4" height="4" rx="0.8"/><rect x="3" y="11" width="4" height="4" rx="0.8"/><rect x="3" y="18" width="4" height="2.5" rx="0.8"/><path d="M10 6h11 M10 13h11 M10 19.5h8"/></svg> Requirements <span class="count">15</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z M4 9h16 M9 4v16"/></svg> Design</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Build <span class="count">Jira</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="9" r="3"/><path d="M3 19c0-3 2.7-5 6-5s6 2 6 5 M14 19c0-3 2.7-5 6-5"/></svg> Agents</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 12l2 2 4-4 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg> QA</a>
+            </nav>
+          </div>
+          <div class="side-promo">
+            <p><b>Requirements</b><br/>The signed-off list of business &amp; technical requirements, grouped by user story. SA, devs, designers, and QA use this as the source of truth for what must be built.</p>
+          </div>
+          <div class="side-foot"><a href="#">⇤ Back to projects</a><a href="#">Settings</a></div>
+        </aside>
+
+        <main class="main">
+          <div class="topbar">
+            <h1>Requirements</h1>
+          </div>
+
+          <!-- Stage banner — read-only, references the source docs -->
+          <div class="ba-stage">
+            <div class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 5h11v14H9z M5 5h14v14H5z"/></svg></div>
+            <div class="body">
+              <div class="lbl">Requirements</div>
+              <div class="ttl">15 business &amp; technical requirements · grouped by user story</div>
+              <div class="sub">The signed-off list. Long-form context lives in the <a href="#"><b>Project Background</b></a> tab. Read-only for SA, devs, designers, and QA — only the BA can add or change a requirement.</div>
+            </div>
+            <div class="counts">
+              <span class="count-pill"><span class="file-status completed"></span><b>9</b> Business</span>
+              <span class="count-pill"><span class="file-status review"></span><b>6</b> Technical</span>
+              <span class="count-pill"><span class="file-status returned"></span><b>3</b> Blocked</span>
+            </div>
+          </div>
+
+          <div class="ba-workspace" style="grid-template-columns: 1fr;">
+            <div class="ba-doc">
+              <div class="ba-doc-head">
+                <div>
+                  <div class="crumbs">Requirements · <b>Neighborhood Library</b> · <span class="pill done" style="padding: 2px 8px; font-size: 10.5px;"><span class="dot"></span> 15 requirements</span></div>
+                  <div class="title">Neighborhood Library — Requirements</div>
+                </div>
+                <div class="meta">
+                  <span>Last edited 2h ago by BA Agent</span>
+                </div>
+              </div>
+
+              <div class="ba-doc-body view">
+                <!-- User story group -->
+                <div class="story">
+                  <div class="story-head">
+                    <div class="story-id">US-01</div>
+                    <div class="story-body">
+                      <div class="story-title">List an item for lending</div>
+                      <div class="story-as"><b>As a</b> household owner, <b>I want to</b> list an item with title, photo, condition, and pickup window, <b>so that</b> nearby borrowers can find and request it.</div>
+                    </div>
+                    <div class="story-meta">
+                      <span class="pill" style="padding:2px 8px; font-size:10.5px;"><span class="dot" style="background: var(--green)"></span> Story approved</span>
+                      <span class="story-count">3 reqs</span>
+                    </div>
+                  </div>
+                  <div class="req-list">
+                    <div class="req">
+                      <span class="req-id">BR-001</span>
+                      <span class="req-text">The list form must require title, photo, condition, and a pickup window before save.</span>
+                      <span class="req-type type-br">Business</span>
+                      <span class="req-prio prio-must">Must</span>
+                      <span class="req-status status-done"><span class="file-status completed"></span> Done</span>
+                      <span class="req-owner">BA</span>
+                    </div>
+                    <div class="req">
+                      <span class="req-id">BR-002</span>
+                      <span class="req-text">Saved items must be visible to all approved members in the same neighborhood within 5 seconds.</span>
+                      <span class="req-type type-br">Business</span>
+                      <span class="req-prio prio-must">Must</span>
+                      <span class="req-status status-done"><span class="file-status completed"></span> Done</span>
+                      <span class="req-owner">BA</span>
+                    </div>
+                    <div class="req">
+                      <span class="req-id">TR-001</span>
+                      <span class="req-text">Photo uploads must use signed URLs and store objects in the project bucket with public-read disabled.</span>
+                      <span class="req-type type-tr">Technical</span>
+                      <span class="req-prio prio-must">Must</span>
+                      <span class="req-status status-review"><span class="file-status review"></span> In SA review</span>
+                      <span class="req-owner">SA</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="story">
+                  <div class="story-head">
+                    <div class="story-id">US-02</div>
+                    <div class="story-body">
+                      <div class="story-title">Browse items nearby</div>
+                      <div class="story-as"><b>As a</b> borrower, <b>I want to</b> browse items within a 1-mile radius, <b>so that</b> I only see what I can reasonably walk to.</div>
+                    </div>
+                    <div class="story-meta">
+                      <span class="pill" style="padding:2px 8px; font-size:10.5px;"><span class="dot" style="background: var(--green)"></span> Story approved</span>
+                      <span class="story-count">2 reqs</span>
+                    </div>
+                  </div>
+                  <div class="req-list">
+                    <div class="req">
+                      <span class="req-id">BR-003</span>
+                      <span class="req-text">Default search radius is 1 mile; users can adjust between 0.5 and 5 miles.</span>
+                      <span class="req-type type-br">Business</span>
+                      <span class="req-prio prio-must">Must</span>
+                      <span class="req-status status-done"><span class="file-status completed"></span> Done</span>
+                      <span class="req-owner">BA</span>
+                    </div>
+                    <div class="req">
+                      <span class="req-id">TR-002</span>
+                      <span class="req-text">Radius search must use a geo index — never a client-side filter over the full result set.</span>
+                      <span class="req-type type-tr">Technical</span>
+                      <span class="req-prio prio-must">Must</span>
+                      <span class="req-status status-draft"><span class="file-status draft"></span> Draft</span>
+                      <span class="req-owner">SA</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="story">
+                  <div class="story-head">
+                    <div class="story-id">US-03</div>
+                    <div class="story-body">
+                      <div class="story-title">Request and approve a loan</div>
+                      <div class="story-as"><b>As a</b> borrower, <b>I want to</b> request a loan and have the lender approve or decline, <b>so that</b> both sides commit to a pickup time.</div>
+                    </div>
+                    <div class="story-meta">
+                      <span class="pill" style="padding:2px 8px; font-size:10.5px;"><span class="dot" style="background: var(--amber)"></span> Story in review</span>
+                      <span class="story-count">3 reqs</span>
+                    </div>
+                  </div>
+                  <div class="req-list">
+                    <div class="req">
+                      <span class="req-id">BR-004</span>
+                      <span class="req-text">Each loan request must capture pickup date, return date, and a free-text note.</span>
+                      <span class="req-type type-br">Business</span>
+                      <span class="req-prio prio-must">Must</span>
+                      <span class="req-status status-done"><span class="file-status completed"></span> Done</span>
+                      <span class="req-owner">BA</span>
+                    </div>
+                    <div class="req">
+                      <span class="req-id">BR-005</span>
+                      <span class="req-text">A lender must explicitly approve or decline — no implicit acceptance on no-response.</span>
+                      <span class="req-type type-br">Business</span>
+                      <span class="req-prio prio-must">Must</span>
+                      <span class="req-status status-review"><span class="file-status review"></span> In SA review</span>
+                      <span class="req-owner">BA</span>
+                    </div>
+                    <div class="req">
+                      <span class="req-id">TR-003</span>
+                      <span class="req-text">Loan state transitions must be append-only; cancellations and declines are recorded events, not edits.</span>
+                      <span class="req-type type-tr">Technical</span>
+                      <span class="req-prio should">Should</span>
+                      <span class="req-status status-draft"><span class="file-status draft"></span> Draft</span>
+                      <span class="req-owner">SA</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="story">
+                  <div class="story-head">
+                    <div class="story-id">US-04</div>
+                    <div class="story-body">
+                      <div class="story-title">Rate the other party after return</div>
+                      <div class="story-as"><b>As a</b> lender or borrower, <b>I want to</b> submit a 1–5 star rating and short comment after the item is returned, <b>so that</b> the community has a record of trustworthiness.</div>
+                    </div>
+                    <div class="story-meta">
+                      <span class="pill blocked" style="padding:2px 8px; font-size:10.5px;"><span class="dot" style="background: var(--rose)"></span> Story blocked</span>
+                      <span class="story-count">2 reqs</span>
+                    </div>
+                  </div>
+                  <div class="req-list">
+                    <div class="req">
+                      <span class="req-id">BR-006</span>
+                      <span class="req-text">Both parties must be able to rate; the form is available for 14 days after return, then closes.</span>
+                      <span class="req-type type-br">Business</span>
+                      <span class="req-prio must">Must</span>
+                      <span class="req-status status-blocked"><span class="file-status returned"></span> Blocked</span>
+                      <span class="req-owner">BA</span>
+                    </div>
+                    <div class="req">
+                      <span class="req-id">TR-004</span>
+                      <span class="req-text">Ratings must be stored as a write-once record; a user can update their own rating only within the 14-day window.</span>
+                      <span class="req-type type-tr">Technical</span>
+                      <span class="req-prio should">Should</span>
+                      <span class="req-status status-blocked"><span class="file-status returned"></span> Blocked</span>
+                      <span class="req-owner">SA</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="story">
+                  <div class="story-head">
+                    <div class="story-id">US-05</div>
+                    <div class="story-body">
+                      <div class="story-title">Notify the other party on a state change</div>
+                      <div class="story-as"><b>As a</b> lender, <b>I want to</b> get a notification when a borrower requests or cancels a loan, <b>so that</b> I can respond quickly.</div>
+                    </div>
+                    <div class="story-meta">
+                      <span class="pill draft" style="padding:2px 8px; font-size:10.5px;"><span class="dot" style="background: var(--purple)"></span> Story draft</span>
+                      <span class="story-count">2 reqs</span>
+                    </div>
+                  </div>
+                  <div class="req-list">
+                    <div class="req">
+                      <span class="req-id">BR-007</span>
+                      <span class="req-text">Notifications are in-app and email; SMS is out of scope for v1.</span>
+                      <span class="req-type type-br">Business</span>
+                      <span class="req-prio could">Could</span>
+                      <span class="req-status status-draft"><span class="file-status draft"></span> Draft</span>
+                      <span class="req-owner">BA</span>
+                    </div>
+                    <div class="req">
+                      <span class="req-id">TR-005</span>
+                      <span class="req-text">Notification delivery is event-driven; failed sends retry with exponential backoff up to 3 attempts.</span>
+                      <span class="req-type type-tr">Technical</span>
+                      <span class="req-prio could">Could</span>
+                      <span class="req-status status-draft"><span class="file-status draft"></span> Draft</span>
+                      <span class="req-owner">SA</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="story">
+                  <div class="story-head">
+                    <div class="story-id">US-06</div>
+                    <div class="story-body">
+                      <div class="story-title">Block or report a member</div>
+                      <div class="story-as"><b>As a</b> member, <b>I want to</b> block or report another member, <b>so that</b> I no longer see their listings and the team can review misconduct.</div>
+                    </div>
+                    <div class="story-meta">
+                      <span class="pill draft" style="padding:2px 8px; font-size:10.5px;"><span class="dot" style="background: var(--purple)"></span> Story draft</span>
+                      <span class="story-count">3 reqs</span>
+                    </div>
+                  </div>
+                  <div class="req-list">
+                    <div class="req">
+                      <span class="req-id">BR-008</span>
+                      <span class="req-text">A blocked user must not appear in the blocker's search results, but can still exist in the system.</span>
+                      <span class="req-type type-br">Business</span>
+                      <span class="req-prio must">Must</span>
+                      <span class="req-status status-draft"><span class="file-status draft"></span> Draft</span>
+                      <span class="req-owner">BA</span>
+                    </div>
+                    <div class="req">
+                      <span class="req-id">BR-009</span>
+                      <span class="req-text">Reports create a moderation queue item with the reporter, target, reason, and any evidence.</span>
+                      <span class="req-type type-br">Business</span>
+                      <span class="req-prio must">Must</span>
+                      <span class="req-status status-draft"><span class="file-status draft"></span> Draft</span>
+                      <span class="req-owner">BA</span>
+                    </div>
+                    <div class="req">
+                      <span class="req-id">TR-006</span>
+                      <span class="req-text">Blocks apply at read time via the search index — never as a destructive delete.</span>
+                      <span class="req-type type-tr">Technical</span>
+                      <span class="req-prio must">Must</span>
+                      <span class="req-status status-draft"><span class="file-status draft"></span> Draft</span>
+                      <span class="req-owner">SA</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Story group collapsed hint -->
+                <div class="story more">
+                  <div class="story-head">
+                    <div class="story-id">+9</div>
+                    <div class="story-body">
+                      <div class="story-title">9 more user stories</div>
+                      <div class="story-as" style="color: var(--ink-2);">Includes: account &amp; neighborhood join, photos &amp; condition, search filters, item edit/delete, loan history, push notifications, admin moderation, audit log, accessibility baseline.</div>
+                    </div>
+                    <div class="story-meta">
+                      <span class="story-count">12 reqs</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </main>
+      </div>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

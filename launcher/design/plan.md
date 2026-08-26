@@ -1,18 +1,21 @@
 # Idea Hub — App Plan (v5.2)
 
-An update to v5.1. **v5.2 relabels the BA Workspace tab to `Project Background`** and adds a new top-level **`Requirements`** tab next to it. Project Background holds the same long-form source docs the BA Workspace always held (idea, personas, journeys, full PRD source, glossary, business rules, risks — read-only for SA, devs, designers, and QA). The new Requirements tab shows a curated list of business & technical requirements grouped by user story, read by SA, devs, designers, and QA as the source of truth for what must be built. The BA Workspace's file tree, per-file review workflow, and view/edit tabs are unchanged — only the tab label changes. Earlier `mockups.html` files in `launcher/design/` are intentionally ignored — v5.2 stands on its own.
+An update to v5.1. **v5.2 relabels the BA Workspace tab to `Project Background`** and adds a new top-level **`Requirements`** tab next to it. Project Background is the BA Workspace — the 17-file authoring + SA-review surface (screens 12–14) where the BA Agent drafts each PRD artifact and the SA Agent reviews it file-by-file. The new Requirements tab shows a curated list of business & technical requirements grouped by user story, read by SA, devs, designers, and QA as the source of truth for what must be built. The BA Workspace's file tree, per-file review workflow, and view/edit tabs are unchanged — only the tab label changes. Earlier `mockups.html` files in `launcher/design/` are intentionally ignored — v5.2 stands on its own.
 
 ## What changed in v5.2 (Project Background relabel + Requirements list view)
 
-- **BA Workspace tab relabeled to `Project Background`.** The tab in the per-project side menu previously called Requirements (which opened the BA Workspace) is now called **Project Background**. The contents, file tree, per-file review workflow, and view/edit tabs are unchanged. Screen 12's banner and crumb now read "Project Background · source documents".
-- **New `Requirements` tab next to Project Background.** Holds a curated list of business & technical requirements grouped by user story (the same list that was always the right-pane default in the BA Workspace). Filterable by type (Business / Technical), status (Open / Approved / Blocked), and free-text search. Each row carries a stable ID (`BR-001`, `TR-001`…), a type tag, a MoSCoW priority, a status pill, and an owner.
-- **No new endpoints, no new data model.** The requirements list is rendered from the same `PRD/templates/prd-full.md` and per-story files in `user-journeys.md`; BR/TR IDs are stable frontmatter in those files.
-- **Role model stays read-by-default.** Project Background and Requirements are both read-only for non-BA roles. Background is the "why" / context; Requirements is the "what" / signed-off list.
+- **BA Workspace tab relabeled to `Project Background`.** The tab in the per-project side menu previously called Requirements (which opened the BA Workspace) is now called **Project Background**. The contents, file tree, per-file review workflow, and view/edit tabs are unchanged. Screen 12's banner now reads **"15 artifacts"** (not "source documents") to match what the workspace actually holds.
+- **New `Requirements` tab next to Project Background.** Holds a curated list of business & technical requirements grouped by user story, rendered from `prd.md` §8 + per-story frontmatter in `user-journeys.md`. Filterable by type (Business / Technical), status (Open / Approved / Blocked), and free-text search. Each row carries a stable ID (`BR-001`, `TR-001`…), a type tag, a MoSCoW priority, a status pill, and an owner.
+- **No new endpoints, no new data model.** The requirements list is rendered by parsing `prd.md` and the per-story sections of `user-journeys.md`; `BR-`/`TR-` IDs are stable frontmatter keys on those sections.
+- **Role model is per-action, not per-tab.**
+  - **Project Background** — BA authors; SA reviews/edits during `In Review (SA)`; Design, Code, QA read-only.
+  - **Requirements** — BA authors; everyone else (SA, Design, Code, QA) reads. No one but the BA adds or changes a requirement.
+  - Background is the "where it came from" / authoring surface; Requirements is the "what must be built" / signed-off surface.
 
 ## What changed from v4
 
 - **No global sidebar.** The initial `/projects` screen is single-column (`app full`). The New idea flow (`/new`) and empty state also have no sidebar — you only see the project menu inside a project.
-- **Per-project menu.** When a project is open, the left sidebar shows project-scoped items: **Overview** (default landing), **Requirements** (PRD doc + feature list, with item count), **Design** (design system + wireframes + tokens), **Build** (Jira Kanban board), **Agents** (which framework agents are active), **QA** (test runs), **Activity** (timeline), **Artifacts** (generated files).
+- **Per-project menu.** When a project is open, the left sidebar shows project-scoped items: **Overview** (default landing), **Project Background** (BA Workspace — 15 PRD artifacts, per-file review; badge = total artifact count for the project), **Requirements** (BR/TR list grouped by user story; badge = total requirement count), **Design** (design system + wireframes + tokens), **Build** (Jira Kanban board), **Agents** (which framework agents are active), **QA** (test runs), **Activity** (timeline), **Artifacts** (generated files).
 - **New Build / Jira Kanban screen.** Replaces the placeholder for "Build stage" — shows a 4-column board (To do / In progress / In review / Done) with Jira ticket IDs (e.g. `TM-18`), Code Agent avatars on each card, a Jira-sync banner, and an "Agent strip" at the bottom showing each of the 3 Code Agents' current work + ETA.
 - **Topbar gets a primary CTA.** The initial Projects topbar now has a `+ New idea` button on the right (next to the avatar). Same for the empty state.
 - **App shell moved to "reference".** The original v4 sidebar (Dashboard / Projects / Intake / Design Library / QA Runs / Settings) is preserved as Screen 10 — `App shell — reference (legacy v4 chrome)` — so reviewers can compare the old vs new navigation.
@@ -57,7 +60,7 @@ The visual shift: the app reads as a single calm **workshop dashboard** — one 
 | 1 | Projects — initial (no menu) | `/projects` | none | Single-column. Topbar (logo, search, notif, avatar, **+ New idea**). "Active now" 3×2 pastel tile grid, aggregate pipeline ring chart + status legend + Next milestone card, "All projects" table. |
 | 2 | Projects — empty state | `/projects` (first visit) | none | Centered illustration card with `+ New idea` + secondary "Import a folder" CTA. Topbar present, no sidebar. |
 | 3 | Project detail — Design active | `/projects/:id · Overview` | project menu (Overview active) | Project header (pastel tile, name, one-liner, mono path, team avatars), 7-stage stepper, "Current stage — Design" panel with checklist + agent callout, right column (Activity + Artifacts). |
-| 4 | Project detail — Blocked | `/projects/:id · Requirements` | project menu (Requirements active) | Same chrome, PRD step is rose/red, error banner shows the blocker, "Open questions for you" replaces the checklist, right column shows the last successful stage. |
+| 4 | Project detail — Blocked | `/projects/:id · Project Background` | project menu (Project Background active) | Same chrome, PRD step is rose/red, error banner shows the blocker, "Open questions for you" replaces the checklist, right column shows the last successful stage. |
 | 5 | Project detail — Shipped | `/projects/:id · Overview` | project menu (Overview active) | All 7 steps in dark-navy with ✓, "Journey" checklist of every stage, Ship Summary card over Mint + Peach tiles. |
 | 6 | Project detail — Build / Jira Kanban | `/projects/:id · Build` | project menu (Build active) | Jira-sync banner, 4-column Kanban board (To do / In progress / In review / Done) with `TM-*` ticket IDs, Code Agent avatars on cards, Agent strip at bottom showing each of the 3 Code Agents. |
 | 7 | New idea — folder pick | `/new · step 1` | none | Centered pastel card: "Step 1 of 2" crumb, path input (mono), helper, inline error banner, Cancel + "Create project folder →" actions. |
@@ -67,19 +70,29 @@ The visual shift: the app reads as a single calm **workshop dashboard** — one 
 | 11 | UI kit | `/__kit` | none | All design tokens, type scale, buttons, status pills, priority rings, 7-stage stepper, pipeline mini-bar, banner variants, form fields, chat bubbles, Kanban cards, agent avatars, sample project card. |
 | 12 | **Project Background — view** *(renamed from BA Workspace — view in v5.2)* | `/projects/:id · Project Background` | project menu (Project Background active) | 15-file artifact tree on the left (5 groups: Core PRD, Scope & rules, Data & access, Planning & risk, SA handoff). Every row carries a colored status dot (Draft / In Review / Returned / Completed). Right pane renders the selected source document with `View` / `Edit` tabs (Edit = BA only). Stage banner at top shows live counts (e.g. `8 Draft / 3 In Review / 1 Returned / 3 Completed`). |
 | 13 | **Project Background — edit** *(renamed from BA Workspace — edit in v5.2)* | `/projects/:id · Project Background · Edit` | project menu (Project Background active) | Same chrome; right pane switches to a monospace textarea. Dirty file gets a coral indicator in the tree; footer shows the file's current status pill + `Cmd-S` hint + Discard / Save changes / Send for SA review (only enabled while the file is in Draft or Returned). |
-| 14 | **Project Background — file in SA review** *(renamed from BA Workspace — file in SA review in v5.2)* | `/projects/:id · Project Background · data-model.md · In Review` | project menu (Project Background active) | Same chrome; the active file is in the `In Review (SA)` state. Body is a read-only preview with the SA's inline `blockquote` markup preserved; footer shows `Open reviewer-comments.md →`, `Return to BA`, and `Mark Completed ✓`. Below the document is an inline `.review-thread` — SA + BA comments interleaved with a Compose box — so the BA can answer SA questions without leaving the page. |
+| 14 | **Project Background — file in SA review** *(renamed from BA Workspace — file in SA review in v5.2)* | `/projects/:id · Project Background · data-model.md · In Review` | project menu (Project Background active) | Same chrome; the active file is in the `In Review (SA)` state. Body is a read-only preview with the SA's inline `blockquote` markup preserved; footer shows `Return to BA` and `Mark Completed ✓`. Below the document is an inline `.review-thread` — SA + BA comments interleaved with a Compose box — so the BA can answer SA questions without leaving the page. |
 | 15 | **Requirements — list of requirements by user story** *(new in v5.2)* | `/projects/:id · Requirements` | project menu (Requirements active) | Read-only list of business & technical requirements, grouped by user story (US-01 …). Filter bar (All / Business / Technical tabs, Open / Approved / Blocked chips, free-text search). Each row carries a stable `BR-xxx` / `TR-xxx` ID, a type tag, MoSCoW priority, status pill, and owner. Stage banner shows totals (e.g. `9 Business / 6 Technical / 3 Blocked`) and links back to Project Background for context. This is the source of truth for what must be built; SA, devs, designers, and QA read it. |
 
 ## Project Background + Requirements — design notes (v5.1 BA Workspace, relabeled in v5.2)
 
 The BA Workspace is the **default landing for PRD-stage projects** when the Project Background tab is open. The previous placeholder ("Project detail ships in Stage 2") is gone; the project menu opens directly onto the file tree under Project Background.
 
-In v5.2 the BA Workspace tab is renamed **Project Background**; a brand-new top-level **Requirements** tab is added next to it. They do not share a file tree — they show different views of the same source docs:
+In v5.2 the BA Workspace tab is renamed **Project Background**; a brand-new top-level **Requirements** tab is added next to it. They are two different views of the same PRD pack — not the same file tree:
 
-- **Project Background** holds the long-form source documents — `idea.md`, `personas.md`, `user-journeys.md`, `PRD/templates/prd-full.md`, `glossary.md`, `business-rules.md`, `risks.md`. These give the team context (the "why" and the supporting prose). Read-only for SA, devs, designers, and QA.
-- **Requirements** holds the curated, signed-off list of business & technical requirements grouped by user story. Each row has a stable `BR-xxx` / `TR-xxx` ID, a type tag (Business / Technical), MoSCoW priority, status pill, and owner. This is the list that drives design, build, and QA — they read it; they do not edit it.
+- **Project Background** is the **authoring + review surface** for the 17 PRD files the BA and SA Agents work on (15 PRD artifacts + `personas.md` + `user-journeys.md`). It is the BA Workspace itself: a left-rail file tree grouped into five bands (Core PRD, Scope & rules, Data & access, Planning & risk, SA handoff), each row carrying a per-file status dot, with View/Edit tabs on the right and a per-file review state machine. **BA authors**, **SA reviews/edits during `In Review (SA)`**, **Design/Code/QA read-only**.
+- **Requirements** is the **signed-off "what must be built" surface** — a curated list of business & technical requirements grouped by user story. Each row has a stable `BR-xxx` / `TR-xxx` ID, a type tag (Business / Technical), MoSCoW priority, status pill, and owner. **BA authors**; **SA, Design, Code, QA read-only**. This is the source of truth Design, Build, and QA build against.
 
-The same source `.md` files on disk back both tabs. The Requirements list is rendered by walking `PRD/templates/prd-full.md` and the per-story files in `user-journeys.md`; the `BR-/TR-` IDs are stable frontmatter keys. No new endpoints, no new data model.
+**Why two tabs, not one.** Project Background holds *everything the BA drafts* (15+2 files), and Requirements holds the *extracted requirement list* Design and Build consume. Conflating them would force the BA to scroll past long-form prose to find a single requirement, and would tempt Design/Code/QA to read the prose instead of the list.
+
+**Source-of-truth rule (resolves naming drift from earlier drafts).**
+
+- `BR-` (business requirements) IDs live in the frontmatter of `prd.md` §8 user-story subsections (one block per story), and each BR row carries `story: US-NN`, `type: business`, MoSCoW, status, owner.
+- `TR-` (technical requirements) IDs live in `user-journeys.md` per-story frontmatter, and each TR row carries the same shape with `type: technical`.
+- The Requirements tab is a renderer over these two files — it never owns data.
+- `business-rules.md` (artifact #4) keeps domain rules (state machines, automations, edge cases) and **does not** own `BR-`/`TR-` IDs. This avoids the earlier confusion between "business rules" (domain logic) and "business requirements" (the signed-off list).
+- `idea.md` is a framework-level reference (not under `PRD/`) and is surfaced on the Overview screen, not here. It is the only file in the workspace that lives outside the project's `PRD/` folder.
+
+No new endpoints, no new data model — both tabs read from the on-disk `PRD/` directory.
 
 **Why a workspace, not a doc list.** The BA Agent now produces **15 artifacts** per project (see [BA artifacts](#ba-artifacts-new-in-v51) below), not just one PRD. The Requirements screen has to make every one of them visible at a glance, jump between them without losing context, and clearly show the handoff boundary to the next agent.
 
@@ -101,7 +114,7 @@ The BA picks a single file in the tree and clicks `Send for SA review →` in th
 2. **Read or edit.** The right pane is a single-card document viewer with a View / Edit tab strip. View renders the markdown (headings, lists, tables, code blocks, blockquotes — all the styling is already in `mockups.html`). Edit swaps the body for a full-pane monospace textarea; dirty state shows in both the tree (coral inset bar) and the header (`● Unsaved changes`). Edit is locked while the file is `In Review (SA)` — the BA has to either accept the SA's edits (`Mark Completed`) or hand the file back (`Return to BA`) before resuming editing.
 3. **Transition a file.** The document footer's right side is status-aware:
    - On a `Draft` or `Returned` file: `Discard` / `Save changes` / `Send for SA review →`.
-   - On an `In Review (SA)` file (BA side): `Open reviewer-comments.md →` / `Return to BA` / `Mark Completed ✓`.
+   - On an `In Review (SA)` file (BA side): `Return to BA` / `Mark Completed ✓`. Comments live in the inline `.review-thread` rendered below the document (no separate file).
    - On a `Completed` file: `Reopen for editing` only.
 
    Each transition appends one `activity` row (e.g. `BA Agent · "Sent data-model.md for SA review"` or `SA Agent · "Marked business-rules.md Completed"`).
@@ -112,16 +125,16 @@ The BA picks a single file in the tree and clicks `Send for SA review →` in th
 
 **Open questions banner.** If any `Blocker-for: PRD-approval` open questions exist, the workspace shows a butter-yellow banner under the stage strip with a count + a deep link to `prd.md` §11. This mirrors the BA Agent's review-gate rule in `skills/general-best-practices.md`.
 
-## BA artifacts (new in v5.1)
+## BA artifacts (v5.2 — 17 total: 15 PRD artifacts + personas + user journeys)
 
-The BA Agent now produces 15 files per project, all under `PRD/` inside the project's folder. The BA Workspace surfaces all 15:
+The BA Agent produces 17 files per project, all under `PRD/` inside the project's folder. The Project Background workspace surfaces all 17:
 
 | # | File | Group | Purpose |
 |---|------|-------|---------|
-| 1 | `prd.md` | Core PRD | The main PRD — problem, users, MVP, success metrics, user journeys. |
+| 1 | `prd.md` | Core PRD | The main PRD — problem, users, MVP, success metrics, user journeys. Source of `BR-` IDs in §8. |
 | 2 | `glossary.md` | Scope & rules | Domain terms + definitions so SA / Design Agents don't reinvent them. |
 | 3 | `stakeholder-map.md` | Scope & rules | Who's affected, who's accountable, who's consulted/informed. |
-| 4 | `business-rules.md` | Scope & rules | Authoritative business rules (state machines, automations, edge cases). |
+| 4 | `business-rules.md` | Scope & rules | Authoritative domain business rules (state machines, automations, edge cases). Does **not** own `BR-`/`TR-` IDs. |
 | 5 | `assumptions.md` | Scope & rules | BA-made assumptions when the user skipped an intake question. |
 | 6 | `open-questions.md` | Scope & rules | The §11 mirror — every open / in-discussion / resolved entry with `Blocker-for`. |
 | 7 | `data-model.md` | Data & access | Entities, fields, enums + state transitions, PII handling summary. |
@@ -133,11 +146,17 @@ The BA Agent now produces 15 files per project, all under `PRD/` inside the proj
 | 13 | `cost-model.md` | Planning & risk | Run-rate cost model (infra + per-seat + per-request). |
 | 14 | `risks.md` | Planning & risk | Top risks + mitigations + owners. |
 | 15 | `tech-decision-brief.md` | SA handoff | Open questions, constraints, candidate stacks, SA's recommended pick + rationale. |
+| 16 | `personas.md` | Core PRD | Long-form personas referenced by `prd.md` §5. Read by Design for tone-of-voice; read by Code for permission roles. |
+| 17 | `user-journeys.md` | Core PRD | One subsection per user story. Source of `TR-` IDs (frontmatter) and of journey diagrams Design builds from. |
 
-Two more files exist but are written by the *next* stage and shown elsewhere:
+Two more files exist but are written by *other* stages and shown elsewhere:
 
-- `reviewer-comments.md` (SA Agent — lives in the SA workspace; appears as the link from the Sent success card).
-- `idea.md` (Intake — lives on the project root, surfaced on the Overview screen).
+- `prd-questions.md` (user clarifications; surfaced in §11 of `prd.md`).
+- `idea.md` (Intake — lives at the project root, **not** under `PRD/`; surfaced on the Overview screen and via the "Linked project" promo card).
+
+Review comments for a file in `In Review (SA)` are **not** a file — they live on the API (see `prd_comment` table below and the `GET/POST /api/projects/:id/ba-workspace/:name/comments` endpoints) and are rendered inline below the document on screen 14. There is no `reviewer-comments.md` on disk.
+
+**How 15 vs 17 is communicated in the UI.** Screen 12's banner shows **"17 artifacts"** (the actual on-disk count for the BA Workspace). The legacy "15-file artifact tree" wording in v5.1 copy was correct for the PRD pack only; v5.2 reflects the full set. The Requirements tab banner shows **"N business & technical requirements"** (no file count — it's a list, not a file tree).
 
 ## Stage model
 
@@ -159,24 +178,32 @@ Maps 1:1 to the framework workflow (CLAUDE.md):
 | QA | Stage 5 — QA Testing | QA Agent |
 | Shipped | Stage 6 — Deployment | Main Orchestrator |
 
-## Per-project menu (new in v5)
+## Per-project menu (new in v5; v5.2 = 9 items)
 
-The 8 items that appear in the left sidebar whenever a project is open:
+The 9 items that appear in the left sidebar whenever a project is open. v5.2 splits the old single "Requirements" entry into two tabs (Project Background + Requirements) — see [What changed in v5.2](#what-changed-in-v52-project-background-relabel--requirements-list-view) for context.
 
-| Item | Lands on | What it shows |
-|------|----------|---------------|
-| **Overview** | `/projects/:id` (default) | Project header, 7-stage stepper, current-stage panel, activity + artifacts |
-| **Requirements** | `/projects/:id/requirements` | PRD doc, feature list, open questions (count badge) |
-| **Design** | `/projects/:id/design` | Design tokens, wireframes, hi-fi mockups, peer review state |
-| **Build** | `/projects/:id/build` | Jira Kanban board (4 columns), Code Agent strip, sync status |
-| **Agents** | `/projects/:id/agents` | Active framework agents for this project (BA, Design A/B, Code 1/2/3, QA, Reviewer) with avatars + status |
-| **QA** | `/projects/:id/qa` | Test runs, Playwright results, accessibility audits |
-| **Activity** | `/projects/:id/activity` | Timeline of everything that happened, agent-coloured |
-| **Artifacts** | `/projects/:id/artifacts` | File tree of generated docs, code, designs |
+| # | Item | Lands on | What it shows | Badge |
+|---|------|----------|---------------|-------|
+| 1 | **Overview** | `/projects/:id` (default) | Project header, 7-stage stepper, current-stage panel, activity + artifacts | — |
+| 2 | **Project Background** | `/projects/:id/background` | BA Workspace — 17-file PRD artifact tree (Core PRD / Scope & rules / Data & access / Planning & risk / SA handoff) with per-file review state, View/Edit panes, open-questions banner | Total artifact count (constant `17` until the BA marks any missing) |
+| 3 | **Requirements** | `/projects/:id/requirements` | Read-only list of business & technical requirements grouped by user story (BR-xxx / TR-xxx IDs) | Total requirement count (`BR + TR`) |
+| 4 | **Design** | `/projects/:id/design` | Design tokens, wireframes, hi-fi mockups, peer review state | — |
+| 5 | **Build** | `/projects/:id/build` | Jira Kanban board (4 columns), Code Agent strip, sync status | "Jira" pill (no number) |
+| 6 | **Agents** | `/projects/:id/agents` | Active framework agents for this project (BA, Design A/B, Code 1/2/3, QA, Reviewer) with avatars + status | — |
+| 7 | **QA** | `/projects/:id/qa` | Test runs, Playwright results, accessibility audits | Open test-run count |
+| 8 | **Activity** | `/projects/:id/activity` | Timeline of everything that happened, agent-coloured | — |
+| 9 | **Artifacts** | `/projects/:id/artifacts` | File tree of generated docs, code, designs | — |
 
-Each item uses a different icon (line SVG, 1.8 stroke, currentColor) — see Screen 3 mockup. The active item gets the dark-navy pill background. Items with a numeric count (Requirements, QA) show a small badge; Build shows a "Jira" pill instead of a number.
+**Badge semantics (per item):**
 
-Below the menu, a small "Linked project" promo card reminds the user that `idea.md` lives in the framework folder, with a one-click "Open idea.md →" button. A footer adds "← All projects" and "Help & support" links.
+- **Project Background** — count of PRD artifacts that exist on disk out of the 17-name allowlist. New projects show `0` until the BA Agent drafts the first file; the banner reads "0/17 artifacts" instead of just the count.
+- **Requirements** — total `BR-*` + `TR-*` rows parsed from `prd.md` §8 and `user-journeys.md` frontmatter.
+- **QA** — count of test runs with status ≠ `passed` & ≠ `shipped` (open work only).
+- **Build** — never a number; shows "Jira" to surface the integration.
+
+Each item uses a different icon (line SVG, 1.8 stroke, currentColor) — see Screen 3 mockup. The active item gets the dark-navy pill background. `aria-current="page"` is set on the active item; `aria-current="step"` on the 7-stage stepper's active segment.
+
+Below the menu, a small "Linked project" promo card reminds the user that `idea.md` lives at the project root (framework-level reference, not under `PRD/`), with a one-click "Open idea.md →" button. A footer adds "← All projects" and "Help & support" links.
 
 ## Project card design
 
@@ -222,9 +249,9 @@ ArtifactEntry   (virtual — from PRD/ folder)
                 project_id, name (e.g. 'prd.md'), group, size_bytes,
                 exists, dirty (set client-side on edit)
 ReviewerNote    id, project_id, author_agent, target_file, body, ts
-                -- threaded comments written by the SA / Reviewer Agent into
-                -- PRD/reviewer-comments.md. The Sent success card links
-                -- straight here.
+                -- threaded comments on a PRD artifact while it is In Review (SA).
+                -- Written and read via /api/projects/:id/ba-workspace/:name/comments.
+                -- Rendered inline on screen 14 — there is no reviewer-comments.md on disk.
 ```
 
 The BA Workspace reads the artifact files **directly from `PRD/` on disk** — the SQLite `artifact` table only carries one row per project (the original `idea.md`) so we don't duplicate path-of-truth with the BA's filesystem. The 15-file tree is rendered from a fixed list (see *BA artifacts* above) and each row reports `exists` + `size_bytes` based on what `fs.stat` returns. Saves rewrite the file in place and append one `activity` row.
@@ -255,33 +282,69 @@ Per `skills/ui-best-practices.md` / `skills/accessibility-guidelines.md`:
 - Build / Kanban: keyboard drag-and-drop with announcement, Jira-sync banner uses `role="status"` so screen readers pick it up.
 - New idea flow: explicit back/cancel in step 1, "← Change folder" link in step 2.
 
+### Project Background (screens 12–14) and Requirements (screen 15)
+
+The v5.1 a11y block did not cover the BA Workspace or the Requirements list. v5.2 closes the gap so screens 12–15 ship in a state that matches the rest of the app.
+
+**Loading.**
+
+- Project Background (12) shows a pastel skeleton for the 17-row file tree (group headers + rows) and a separate skeleton block for the right-pane document while the markdown is being read from disk. The stage strip renders immediately from the cached status counts so the BA can see what is owed.
+- Requirements (15) shows a skeleton for the user-story groups while parsing `prd.md` and `user-journeys.md` frontmatter. The filter bar renders with all controls disabled until the parse completes.
+
+**Empty.**
+
+- Project Background on a brand-new project (the BA Agent has not drafted anything yet): the file tree shows all 17 rows with the `Draft` status dot and a disabled "no file yet" placeholder in the right pane; the stage strip reads `0/17 artifacts · 17 Draft`. There is no error state.
+- Requirements on a brand-new project: a single empty-state card inside the right pane reading "No requirements yet — the BA will draft them in Project Background" with a `Open Project Background →` button (BA only; hidden for other roles).
+
+**Error.**
+
+- Project Background: a single rose banner at the top of the right pane when a file fetch fails, with a focus-managed `Retry` button. The file tree remains interactive; only the failed row is marked `⚠ failed to load`. `aria-live="assertive"` so the failure is announced.
+- Requirements: a single rose banner at the top with `Retry`. The filter bar remains interactive (filters the previously-loaded list).
+- Both: a 404 from `…/ba-workspace/:name` (file removed between list and fetch) routes the BA to a small "This file is no longer part of the project" card with `Back to tree` instead of crashing the route.
+
+**Search / filter no-results.**
+
+- Requirements (15) filter bar: when type + status + search produce zero rows, the user-story groups collapse and a centered "No requirements match these filters" card appears with a `Clear filters` action. `aria-live="polite"` so the change is announced.
+
+**Keyboard / focus.**
+
+- Project Background file tree: arrow keys move selection between rows; `Enter` opens the file in the right pane; `Space` toggles a future "select for batch view" affordance. The currently-selected file receives focus-visible styling distinct from the dark-navy pill (a 2px coral focus ring) so screen readers and keyboard users don't lose the selection when the pill is applied.
+- View ↔ Edit swap (12 → 13): focus moves to the first interactive element of the new pane (the textarea on Edit, the first heading on View). `aria-selected` on the tab strip; `Tab` moves between tabs, not into the body.
+- Requirements list (15): `⌘F` / `Ctrl-F` focuses the search input; `Esc` clears it. Filter chips are radio-style (one of `All / Business / Technical`) with `aria-pressed`; status chips are checkbox-style (multi-select).
+- Inline review thread on screen 14: `Tab` order is SA comment → BA reply → next SA comment, with `role="log"` on the thread and `aria-live="polite"` on new comments.
+
+**Confirmation on destructive transitions.**
+
+- `Mark Completed ✓` on screen 14 (BA accepts SA's edits) opens a small inline confirm with `Cancel` / `Confirm` — focus starts on `Cancel`, `Enter` confirms.
+- `Discard` on screen 13 (revert unsaved edit) asks for confirm only if the body has more than 5 lines of changes; otherwise it reverts without prompt.
+
 ## Status
 
 - [x] v5 plan + HTML mockups — `launcher/design/mockups.html` (14 screens, ~165KB, self-contained)
-- [x] v5.1 plan + HTML mockups — BA Workspace (screens 12–14)
-- [x] v5.2 plan + HTML mockups — Project Background tab relabel + Requirements list view (screen 15 + screens 12–14 labels updated)
+- [x] v5.1 plan + HTML mockups — BA Workspace (screens 12–14, 15 PRD artifacts)
+- [x] v5.2 plan + HTML mockups — Project Background tab relabel + Requirements list view (screen 15 new; screens 12–14 now show 17 artifacts including personas + user-journeys; labels + sidebar counts + per-project menu updated)
 - [ ] Backend / DB design — next conversation (the v5.1 endpoints are described in the **New endpoints for v5.1** section below; not yet implemented)
 - [ ] Scaffold Vite React app once mockups are approved
 
 ## What's in `mockups.html`
 
-| # | Screen | Notes |
-|---|--------|-------|
-| 1 | Projects — initial (no menu) | Single-column (`app full`). Topbar with logo, search, notifications, avatar, `+ New idea` CTA. Active now tiles, pipeline ring, all projects table. |
-| 2 | Projects — empty state | Centered illustration card with `+ New idea` and "Import a folder" CTAs. No sidebar. |
-| 3 | Project detail — Design active | Project menu (Overview active). Header + stepper + current-stage panel + activity/artifacts. |
-| 4 | Project detail — Blocked | Project menu (Requirements active). Same chrome, blocker banner, "Open questions" replaces checklist. |
-| 5 | Project detail — Shipped | Project menu (Overview active). All 7 steps done, Journey checklist, Ship Summary. |
-| 6 | Project detail — Build / Jira Kanban | Project menu (Build active). 4-column Kanban, Jira sync banner, Code Agent strip. |
-| 7 | `/new` step 1 — folder pick | No sidebar. Path input, helper, Cancel + Create actions. |
-| 8 | `/new` step 2 — BA-Agent chat | No sidebar (uses an in-page chat-side widget). Chat thread + Interview progress. |
-| 9 | New idea — captured (success) | No sidebar. Big checkmark, project summary, View idea.md + Open project. |
-| 10 | App shell — reference (legacy v4 chrome) | v4 sidebar preserved verbatim — Dashboard / Projects / Intake / Design Library / QA Runs / Settings. For comparison only. |
-| 11 | UI kit | All design tokens, type scale, buttons (5 variants incl. disabled), status pills (7), priority rings, 7-stage stepper, pipeline mini-bar (4 progress states), 4 banner variants, form fields (default + error), chat bubbles, Kanban cards, agent avatars, sample project card. |
-| 12 | **Project Background — view** *(v5.1 BA Workspace, renamed in v5.2)* | Stage banner with live per-file status counts + 15-file tree (5 groups, each row carrying a colored status dot) + markdown viewer with `View` / `Edit` tabs (Edit = BA only). Optional butter-yellow open-questions banner when `Blocker-for: PRD-approval` items exist. |
-| 13 | **Project Background — edit** *(v5.1 BA Workspace edit, renamed in v5.2)* | Same chrome, full-pane monospace textarea, dirty indicator in tree (coral inset) + header (`● Unsaved changes`), status-aware footer (`Discard` / `Save changes` / `Send for SA review →` for Draft/Returned; edit is locked while the file is `In Review (SA)`). |
-| 14 | **Project Background — file in SA review** *(v5.1 BA Workspace review, renamed in v5.2)* | Same chrome; active file is `In Review (SA)` — body is read-only with the SA's inline `blockquote` markup preserved, footer shows `Open reviewer-comments.md →`, `Return to BA`, and `Mark Completed ✓`. Below the document: inline `.review-thread` interleaving SA + BA comments with a Compose reply box. |
-| 15 | **Requirements — list of requirements by user story** *(new in v5.2)* | Read-only list of business & technical requirements, grouped by user story (US-01 …). Filter bar (All / Business / Technical tabs, Open / Approved / Blocked chips, free-text search). Each row carries a stable `BR-xxx` / `TR-xxx` ID, a type tag, MoSCoW priority, status pill, and owner. Stage banner shows totals (`9 Business / 6 Technical / 3 Blocked`). |
+| # | Screen | Route | Sidebar | Notes |
+|---|--------|-------|---------|-------|
+| 1 | Projects — initial (no menu) | `/projects` | none | Single-column (`app full`). Topbar with logo, search, notifications, avatar, `+ New idea` CTA. Active now tiles, pipeline ring, all projects table. |
+| 2 | Projects — empty state | `/projects` (first visit) | none | Centered illustration card with `+ New idea` and "Import a folder" CTAs. No sidebar. |
+| 3 | Project detail — Design active | `/projects/:id · Overview` | project menu (Overview active) | Header + stepper + current-stage panel + activity/artifacts. |
+| 4 | Project detail — Blocked | `/projects/:id · Project Background` | project menu (Project Background active) | Same chrome, blocker banner, "Open questions" replaces checklist. |
+| 5 | Project detail — Shipped | `/projects/:id · Overview` | project menu (Overview active) | All 7 steps done, Journey checklist, Ship Summary. |
+| 6 | Project detail — Build / Jira Kanban | `/projects/:id · Build` | project menu (Build active) | 4-column Kanban, Jira sync banner, Code Agent strip. |
+| 7 | `/new` step 1 — folder pick | `/new` | none | Path input, helper, Cancel + Create actions. |
+| 8 | `/new` step 2 — BA-Agent chat | `/new` (chat-side widget) | none | Chat thread + Interview progress. |
+| 9 | New idea — captured (success) | `/new` final | none | Big checkmark, project summary, View idea.md + Open project. |
+| 10 | App shell — reference (legacy v4 chrome) | persistent layout | v4 sidebar (Dashboard / Projects / Intake / Design Library / QA Runs / Settings) | v4 sidebar preserved verbatim — for comparison only, not part of the live product. |
+| 11 | UI kit | `/__kit` | none | All design tokens, type scale, buttons (5 variants incl. disabled), status pills (7), priority rings, 7-stage stepper, pipeline mini-bar (4 progress states), 4 banner variants, form fields (default + error), chat bubbles, Kanban cards, agent avatars, sample project card. |
+| 12 | **Project Background — view** *(v5.1 BA Workspace, renamed in v5.2)* | `/projects/:id · Project Background` | project menu (Project Background active) | Stage banner with live per-file status counts + 17-file tree (5 groups, each row carrying a colored status dot) + markdown viewer with `View` / `Edit` tabs (Edit = BA only). Banner reads "17 artifacts" (matches the on-disk count). Optional butter-yellow open-questions banner when `Blocker-for: PRD-approval` items exist. |
+| 13 | **Project Background — edit** *(v5.1 BA Workspace edit, renamed in v5.2)* | `/projects/:id · Project Background · Edit` | project menu (Project Background active) | Same chrome, full-pane monospace textarea, dirty indicator in tree (coral inset) + header (`● Unsaved changes`), status-aware footer (`Discard` / `Save changes` / `Send for SA review →` for Draft/Returned; edit is locked while the file is `In Review (SA)`). |
+| 14 | **Project Background — file in SA review** *(v5.1 BA Workspace review, renamed in v5.2)* | `/projects/:id · Project Background · data-model.md · In Review` | project menu (Project Background active) | Same chrome; active file is `In Review (SA)` — body is read-only with the SA's inline `blockquote` markup preserved, footer shows `Return to BA` and `Mark Completed ✓`. Below the document: inline `.review-thread` interleaving SA + BA comments with a Compose reply box. |
+| 15 | **Requirements — list of requirements by user story** *(new in v5.2)* | `/projects/:id · Requirements` | project menu (Requirements active) | Read-only list of business & technical requirements, grouped by user story (US-01 …). Filter bar (All / Business / Technical tabs, Open / Approved / Blocked chips, free-text search). Each row carries a stable `BR-xxx` / `TR-xxx` ID, a type tag, MoSCoW priority, status pill, and owner. Banner shows totals (`9 Business / 6 Technical / 3 Blocked`). |
 
 ## Visual decisions confirmed (v5)
 
