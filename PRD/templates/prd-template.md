@@ -4,6 +4,21 @@
 
 ---
 **Cross-references:** Input chain reads from [`idea.md`](../../idea.md) (Section 1 Main Feature, Section 5 Target Users). Section 6 UX Design Principles feeds into [`design-system/tokens/typography.md`](../design-system/tokens/typography.md) and `spacing.md`. Section 3 Timing/Priority / budget constraints feed into [`code-builder/config-rules.md`](../code-builder/config-rules.md) §User Questions #2-#5. Section 8 User Stories traces to Playwright tests (`testing/playwright/README.md` §Example Test Suite Structure — test name maps to Story #N). See also [`FRAMEWORK-FLOW.md`](../../FRAMEWORK-FLOW.md) for full dependency table.
+
+**Supporting artifacts (instantiated alongside this PRD at `PRD/<project>/`):**
+- §3a NFRs → `PRD/<project>/nfr-catalog.md` (full target + measurement)
+- §3b Tech constraints → `PRD/<project>/tech-decision-brief.md` (BA half — SA completes the other half)
+- §5a Stakeholders → `PRD/<project>/stakeholder-map.md`
+- §6a Metrics → rolled into `prd.md` §6a (canonical) and copied into `nfr-catalog.md`
+- §8a Phasing → `PRD/<project>/phasing-plan.md` (with dependency graph)
+- §9a Data model → `PRD/<project>/data-model.md`
+- §9b Integrations → rolled into `prd.md` §9b (canonical) and expanded in `tech-decision-brief.md`
+- §11a Glossary → `PRD/<project>/glossary.md`
+- §12 Assumptions → `PRD/<project>/assumptions.md` (full register; §12 below is the summary)
+- §12a Risks → `PRD/<project>/risks.md` (full register)
+- Open items across all sections → `PRD/<project>/open-questions.md`
+- Reviewer critique → `PRD/<project>/reviewer-comments.md` (one file per review pass)
+- Reviewer/BA loop history → also captured inline in §13 below
 ---
 
 ## 1. Main Feature
@@ -36,6 +51,45 @@
 
 ---
 
+## 3a. Constraints & Non-Functional Requirements
+
+> Full per-NFR testable statements (target + measurement method + owner) live in
+> `PRD/<project>/nfr-catalog.md`. This section is the executive summary; the
+> catalog is the source of truth for QA and the Solution Architect.
+
+| Category | Constraint / NFR | Source |
+|----------|------------------|--------|
+| Performance | <e.g., p95 page response < 2s on 3G> | `nfr-catalog.md` #<id> |
+| Accessibility | <e.g., WCAG 2.1 AA across all user flows> | `nfr-catalog.md` #<id> |
+| Browser support | <e.g., last 2 versions of Chrome, Safari, Firefox, Edge> | `nfr-catalog.md` #<id> |
+| Localization | <e.g., English only at MVP; i18n-ready strings> | `nfr-catalog.md` #<id> |
+| Offline / connectivity | <e.g., read-only offline cache; no offline writes> | `nfr-catalog.md` #<id> |
+| Scalability | <e.g., 10k MAU at launch, 100k by 12 months> | `nfr-catalog.md` #<id> |
+| Security & compliance | <e.g., PII encrypted at rest; GDPR data-subject access workflow> | `nfr-catalog.md` #<id> |
+| Data residency | <e.g., EU-only; no data leaves EEA> | `nfr-catalog.md` #<id> |
+| Availability | <e.g., 99.5% monthly uptime; degraded mode for read-only> | `nfr-catalog.md` #<id> |
+| Observability | <e.g., structured logs, RUM, error rate < 0.5%> | `nfr-catalog.md` #<id> |
+
+---
+
+## 3b. Tech Constraints (must-use / must-avoid)
+
+> Hard guard-rails the Solution Architect cannot override without explicit
+> re-approval from the Main Orchestrator and user. These are non-negotiables
+> that drive the stack decision in `code-builder/config-rules.md`.
+
+**Must use (existing investments we must integrate with):**
+- <e.g., "Customer DB already on PostgreSQL 14 — must use, do not migrate">
+- <e.g., "SSO via Okta — must use, not Auth0 or custom">
+
+**Must avoid (forbidden choices):**
+- <e.g., "No PHP — team has no PHP experience">
+- <e.g., "No vendor lock-in for storage — must be S3-compatible (AWS S3, R2, MinIO)">
+
+**Open tech-constraint questions:** see `open-questions.md` filtered by `blocker-for: tech`.
+
+---
+
 ## 4. Background & Evidence
 
 <Supporting research, market data, user interviews, competitive analysis>
@@ -50,11 +104,49 @@
 
 **Benefit to end user:** <How does this feature improve their experience?>
 
+**Primary persona for MVP:** <Which persona from the table above is the focus of the first release?>
+
+---
+
+## 5a. Stakeholder Map
+
+> Detail (RACI, comms cadence, escalation) lives in
+> `PRD/<project>/stakeholder-map.md`. This table is the one-line view every
+> agent reads first.
+
+| Name / Role | Interest | Influence | Decision rights |
+|-------------|----------|-----------|-----------------|
+| <e.g., Product Owner — Jane> | <scope, value, ROI> | High | Final sign-off on scope changes |
+| <e.g., Engineering Lead — Sam> | <feasibility, quality> | High | Stack & technical sign-off |
+| <e.g., Design Lead — Priya> | <UX, accessibility> | Medium | Design sign-off |
+| <e.g., Compliance — Lee> | <GDPR, security> | Medium | Hard veto on compliance items |
+| <e.g., Customer Success — Maya> | <support load, churn> | Low | Consulted for support impact |
+
+**Escalation path:** <who escalates to whom when disagreement cannot be resolved at agent level>
+
 ---
 
 ## 6. UX Design Principles
 
 <Guiding principles: e.g., "minimal clicks to core task," "progressive disclosure," "defaults work for 80% of cases">
+
+---
+
+## 6a. Success Metrics & KPIs
+
+> Each metric is a measurable outcome the QA Agent can verify against.
+> Targets here must be realistic; the BA's job is to anchor ambition to
+> observable behaviour, not to invent numbers.
+
+| Metric | Target | Measurement | Baseline | Owner |
+|--------|--------|-------------|----------|-------|
+| <e.g., Activation rate (sign-up → first successful booking) | ≥ 40% within 7 days | Product analytics, cohort view | <placeholder — fill from analytics> | <role> |
+| <e.g., Time-to-first-booking | median < 90s | RUM event | <placeholder> | <role> |
+| <e.g., Booking completion rate | ≥ 70% | Funnel analytics | <placeholder> | <role> |
+| <e.g., Error rate (5xx) | < 0.5% per week | Server logs / observability | <placeholder> | <role> |
+| <e.g., Support tickets per 1k bookings | < 5 | Support tool | <placeholder> | <role> |
+
+**Anti-metrics (we explicitly do NOT optimise for):** <e.g., raw MAU without activation — quality of users matters more than quantity>
 
 ---
 
@@ -69,14 +161,54 @@
 - <What we're explicitly NOT building in this phase>
 - <Future phases where items belong>
 
+### MVP Definition (the smallest release that delivers value)
+
+> The MVP definition belongs here, not buried in the release plan, because
+> it is the single source of truth for "what must the first release include
+> to be worth shipping". Every story in §8 is either MVP or explicitly
+> deferred.
+
+**MVP must include:** <list the user stories from §8 that are non-negotiable for the first release>
+
+**Explicitly deferred from MVP:** <list the user stories that are valuable but not in the first release>
+
 ---
 
 ## 8. User Stories
 
-| # | As a... | I want to... | So that... | Acceptance Criteria |
-|---|---------|-------------|------------|-------------------|
-| 1 | <persona> | <action> | <benefit> | <given/when/then> |
-| 2 | ... | ... | ... | ... |
+| # | As a... | I want to... | So that... | Acceptance Criteria | Phase | MoSCoW |
+|---|---------|-------------|------------|---------------------|-------|--------|
+| 1 | <persona> | <action> | <benefit> | <given/when/then> | MVP / Phase 2 / Phase 3 | Must / Should / Could / Won't |
+| 2 | ... | ... | ... | ... | ... | ... |
+
+**Story-point sizing convention:** T-shirt sizes (S/M/L/XL) or Fibonacci — pick one and stick with it across the project.
+
+**Phase definitions (see also `phasing-plan.md`):**
+- **MVP** — must ship; user cannot use the product without it
+- **Phase 2** — high value but not blocking the first release
+- **Phase 3** — growth/scale features that can wait until product-market fit
+- **Backlog** — captured but unscheduled
+
+---
+
+## 8a. Phasing & Release Plan
+
+> Full dependency graph and parallelisable-story markers live in
+> `PRD/<project>/phasing-plan.md`. This section is the high-level plan
+> referenced by the Solution Architect and the Orchestrator when scheduling
+> code tasks.
+
+| Phase | Scope summary | User stories (§8) | Dependencies on other phases | Target window |
+|-------|---------------|-------------------|------------------------------|---------------|
+| MVP   | <one-line summary> | #1, #4, #7 | None | <date range> |
+| Phase 2 | <one-line summary> | #2, #5 | MVP | <date range> |
+| Phase 3 | <one-line summary> | #3, #6, #8 | MVP + Phase 2 | <date range> |
+
+**Stories that can be built in parallel (no cross-dependency):** <list story #s>
+
+**Stories that block other stories:** <list story #s and what they block>
+
+**Stories deferred from MVP with explicit reason:** <list story # + reason>
 
 ---
 
@@ -89,31 +221,111 @@
 
 ---
 
+## 9a. Data Model & Entities
+
+> High-level entity list with relationships, PII classification, ownership
+> and retention. Full field-level schema is the Solution Architect's job —
+> this section is the requirement the architect works from.
+
+| Entity | Purpose | Key fields | PII? | Retention | Owner (CRUD) |
+|--------|---------|------------|------|-----------|-------------|
+| <e.g., User> | <purpose> | <id, email, name, created_at> | Yes | <duration> | <role> |
+| <e.g., Booking> | <purpose> | <id, user_id, slot_id, status> | Indirect (links to User) | <duration> | <role> |
+
+**Key relationships:**
+- <e.g., User 1—N Booking>
+- <e.g., Booking N—1 Slot>
+
+**PII handling rules:**
+- <e.g., email is PII; never returned in API responses without explicit field allow-list>
+- <e.g., PII columns encrypted at rest using column-level encryption; key rotation annually>
+
+**Deletion / GDPR right-to-erasure behaviour:**
+- <e.g., soft-delete User → cascade soft-delete Bookings → after 30 days hard delete and tombstone in audit log>
+
+---
+
+## 9b. Integrations & External Systems
+
+> Each row is an integration the SA must design around. Add rows for every
+> third-party service the product depends on (auth providers, payments,
+> email, SMS, storage, analytics, support tools, etc.).
+
+| System | Purpose | Auth model | Failure mode | Data shared | Owner |
+|--------|---------|-----------|--------------|-------------|-------|
+| <e.g., Stripe> | <payments> | <OAuth / API key / webhook signing secret> | <retry + queue; surface to user> | <customer email, amount, last4> | <role> |
+| <e.g., Postmark> | <transactional email> | <server token> | <queue + retry; user sees "we'll email you shortly"> | <email, content> | <role> |
+| <e.g., S3 / R2> | <file uploads> | <IAM role / signed URL> | <user sees upload error; retry> | <user-uploaded files> | <role> |
+
+**Integration sign-off needed from:** <list stakeholders from §5a>
+
+**Integration questions outstanding:** see `open-questions.md` filtered by `blocker-for: integration`.
+
+---
+
 ## 10. Release Milestones & Plan
 
 | Phase | Deliverable | Target Date |
-|-------|------------|-------------|
-| M1: Requirements | Approved PRD | <date> |
-| M2: Design | Design spec signed off | <date> |
-| M3: MVP Features | Core features built and tested | <date> |
-| M4: Polishing | Edge cases, polish, launch | <date> |
+|-------|-------------|-------------|
+| M1: Requirements | Approved PRD + all supporting artifacts | <date> |
+| M2: Architecture | Approved `tech-decision-brief.md` (SA signed) | <date> |
+| M3: Design | Design spec signed off | <date> |
+| M4: MVP Features | Core features built and tested | <date> |
+| M5: Polishing | Edge cases, polish, launch | <date> |
+| M6: Post-launch review | KPI review against §6a; backlog reprioritised | <date + 30 days> |
 
 ---
 
 ## 11. User Clarifications & Questions
 
-> **Items that need user input before proceeding:**
+> **Items that need user input before proceeding.** Detailed log with
+> blocker-for relationships lives in `PRD/<project>/open-questions.md`. This
+> section is the executive checklist the user sees.
 
 - [ ] <Question 1>
 - [ ] <Question 2>
+
+**Blocking open questions (any unresolved item in `open-questions.md` with `blocker-for: PRD-approval`):** <count + links>
+
+---
+
+## 11a. Glossary & Domain Terms
+
+> Canonical definitions for every domain term used above. Glossary lives
+> in `PRD/<project>/glossary.md` and is referenced by the dev/QA agents so
+> nobody has to guess what a term means.
+
+| Term | Definition |
+|------|------------|
+| <e.g., "Booking"> | A confirmed reservation between a User and a Slot |
+| <e.g., "Slot"> | A bookable time window offered by a Provider |
+| <e.g., "Activation"> | A User has signed up AND completed at least one Booking |
 
 ---
 
 ## 12. Assumptions
 
+> Full register (each assumption + why we believe it + what happens if
+> wrong + owner of validation) lives in
+> `PRD/<project>/assumptions.md`. This section is the summary the reviewer
+> scans first.
+
 - <Assumption 1: e.g., "User has a modern browser">
 - <Assumption 2>
 - <Risks if assumption is wrong>
+
+---
+
+## 12a. Risks & Mitigations
+
+> Full register (likelihood / impact / owner / mitigation / trigger) lives
+> in `PRD/<project>/risks.md`. This section is the summary the
+> Orchestrator reads to decide whether to proceed.
+
+| Risk | Likelihood | Impact | Mitigation | Owner | Trigger |
+|------|------------|--------|------------|-------|---------|
+| <e.g., "Stripe outage blocks bookings"> | Medium | High | <queue + retry; show "we'll confirm shortly"> | <role> | <signal> |
+| <e.g., "GDPR right-to-erasure cascading deletes corrupt analytics"> | Low | High | <soft-delete + tombstone; weekly reconciliation job> | <role> | <signal> |
 
 ---
 
@@ -123,15 +335,21 @@
 |------|----------|---------|-----------|
 | | | | No → <Resolution> |
 
+> **Full reviewer pass log (with inline replies) lives in
+> `PRD/<project>/reviewer-comments.md`.** The table here is the one-line
+> view the Orchestrator checks before promoting to the next stage. Every
+> unresolved row here is a blocker for promotion.
+
 ---
 
 ---
 **Output chain (downstream consumers):** Approved PRD at `PRD/<project>/prd.md` feeds:
 - Design Agents → component selection from [`design-system/components/README.md`](../design-system/components/README.md) index (map each user story to a component); token definitions from [`design-system/tokens/README.md`](../design-system/tokens/README.md) (§6 UX Principles → typography/spacing scale)
-- Code Agents → assigned features per §8 User Stories + acceptance criteria; tech stack via [`code-builder/config-rules.md`](../code-builder/config-rules.md); scaffold from [`code-builder/templates/nextjs-starter/`](../code-builder/templates/nextjs-starter/)
-- QA Agent → test suite traces each PRD user story (#N) to a Playwright test (`testing/playwright/README.md` §Test Writing Rules → "every test must trace back to a PRD requirement")
+- Solution Architect → `PRD/<project>/tech-decision-brief.md` (SA completes the second half using §3a, §3b, §9a, §9b + `nfr-catalog.md` + `open-questions.md`); stack choice then drives `code-builder/config-rules.md`
+- Code Agents → assigned features per §8 User Stories + acceptance criteria; tech stack via the SA-approved `tech-decision-brief.md`; scaffold from [`code-builder/templates/nextjs-starter/`](../code-builder/templates/nextjs-starter/) (or whichever stack the SA picked)
+- QA Agent → test suite traces each PRD user story (#N) to a Playwright test (`testing/playwright/README.md` §Test Writing Rules → "every test must trace back to a PRD requirement"); also tests NFRs in `nfr-catalog.md` and KPIs in §6a
 - BA + Design Reviewers → feature verification via Playwright per workflow pattern
 See [`FRAMEWORK-FLOW.md`](../../FRAMEWORK-FLOW.md) rows for each downstream file.
 ---
 
-*This PRD must be reviewed and critiqued by the Requirements Reviewer Agent before any design or development begins. All open items from Section 11 must be answered. All reviewer comments in Section 13 must be resolved.*
+*This PRD must be reviewed and critiqued by the Requirements Reviewer Agent before any design or development begins. All open items from Section 11 must be answered. All reviewer comments in Section 13 must be resolved. The Solution Architect may not start until §3a, §3b, §9a, §9b are filled and the corresponding supporting artifacts exist.*
