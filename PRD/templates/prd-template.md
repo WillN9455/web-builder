@@ -17,6 +17,7 @@
 - §9a Data model → `PRD/<project>/data-model.md`
 - §9b Integrations → rolled into `prd.md` §9b (canonical) and expanded in `tech-decision-brief.md`
 - §9c Permissions → `PRD/<project>/rbac-matrix.md` (role × permission matrix; IDOR boundaries)
+- §9d Data flow → `PRD/<project>/data-flow.md` (PII in motion, trust boundaries, PCI scope)
 - §11a Glossary → `PRD/<project>/glossary.md`
 - §12 Assumptions → `PRD/<project>/assumptions.md` (full register; §12 below is the summary)
 - §12a Risks → `PRD/<project>/risks.md` (full register)
@@ -326,6 +327,31 @@ have a row in `rbac-matrix.md` before it is coded — the Dev Reviewer checks
 each against `security.md` §IDOR.
 
 **Cross-references:** `PRD/<project>/rbac-matrix.md`; `data-model.md` CRUD column; `business-rules.md` BR-04x (eligibility); `skills/security.md` §RBAC / §IDOR
+
+---
+
+## 9d. PII Data-Flow & Trust Boundaries
+
+> `data-model.md` classifies PII at rest; this section maps PII in motion —
+> client → app → DB → third parties — and every trust boundary it crosses.
+> Full field-level flow map + PCI scope lives in
+> `PRD/<project>/data-flow.md`. The Solution Architect places encryption,
+> residency, and PCI-scope controls from this; the runtime architecture
+> diagram (brief Part 2.3) must reflect it.
+
+| # | Flow (from → to) | PII fields | Boundary control |
+|---|------------------|-----------|------------------|
+| F-1 | <browser → app (signup)> | <email, password> | <TLS; rate-limit; validate> |
+| F-3 | <app → Stripe (payment)> | <email, amount> | <Stripe Elements — raw PAN never reaches app> |
+
+**PCI scope:** card data enters via the payment provider's hosted UI only; our
+servers receive a token/intent id, never PAN/CVC. If any flow carries raw card
+data it is a P0 defect, not a design.
+
+**Residency:** all EU-user flows stay within EU zones (app, DB, queue in EU;
+third parties via EU endpoints). Cross-border risks filed in `open-questions.md`.
+
+**Cross-references:** `PRD/<project>/data-flow.md`; `data-model.md` (PII at rest); `nfr-catalog.md` SEC-001..008, DR-001..002; `rbac-matrix.md` (who initiates each flow)
 
 ---
 

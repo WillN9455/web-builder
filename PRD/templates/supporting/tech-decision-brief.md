@@ -217,6 +217,23 @@ broken cost model.
 
 ---
 
+### 1.14 PII data-flow & trust boundaries (from `data-flow.md`)
+
+> Where PII moves and every trust boundary it crosses. The SA places
+> encryption-in-transit, residency controls, and PCI-scope boundaries from
+> this map; the Part 2.3 architecture diagram must reflect it.
+
+- **Trust zones:** <e.g., "browser, edge, app, db, queue (all EU); third parties Stripe/Postmark/Daily.co/R2 (EU endpoints)">
+- **PII flows (count):** <e.g., "9 field-level flows (F-1..F-9) — see data-flow §2">
+- **PCI scope:** <e.g., "app is out of card-data scope; Stripe Elements handles PAN; we store intent id only">
+- **Residency:** <e.g., "all EU-user flows stay EU; Daily.co residency pending OQ-008">
+- **Logging rule:** <e.g., "never log email/name/card; log user_id/booking_id/request_id only (OBS-*)">
+- **Blocking data-flow questions:** <list OQ-IDs from data-flow §6 with `blocker-for: tech`/`integration`>
+
+**Cross-references:** `PRD/<project>/data-flow.md` (full map + PCI scope); `data-model.md` (PII at rest); `nfr-catalog.md` SEC-*/DR-*; `rbac-matrix.md` (flow initiators)
+
+---
+
 ## Part 2 — Solution Architect outputs (SA fills in)
 
 ### 2.1 Chosen stack
