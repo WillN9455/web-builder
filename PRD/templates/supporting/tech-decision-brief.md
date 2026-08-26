@@ -194,6 +194,29 @@
 
 ---
 
+### 1.13 Cost model (from `cost-model.md`)
+
+> The run-rate the SA's vendor choices must fit under. The budget cap (§1.1)
+> is one number; this is the breakdown — infra vs storage vs egress vs
+> per-transaction fees. The SA reconciles every choice in §2.1 against this
+> model before sign-off.
+
+- **Budget cap (PRD §3):** <e.g., "€500/mo MVP, €2k/mo at 12 months">
+- **Per-transaction margin floor:** <e.g., "must net > €0 after fees on a €60 booking">
+- **Infra subtotal (MVP / 12mo):** <€X / €Y> — driven by `traffic-profile.md` volumes
+- **Per-transaction subtotal:** <e.g., "~2.7% per booking (Stripe + Postmark + Daily.co)">
+- **Budget vs model headroom:** <e.g., "MVP headroom €80/mo; 12mo headroom €300/mo">
+- **Cost risks:** <list R-IDs from cost-model §6 the SA's choices must not trigger>
+
+**Rule:** if any vendor choice in §2.1 makes the model break (headroom < 0),
+the SA either picks a cheaper option and re-runs the model, or escalates to
+raise the budget cap (requires user re-approval). Do not sign §2.8 with a
+broken cost model.
+
+**Cross-references:** `PRD/<project>/cost-model.md` (full model + reconciliation); `traffic-profile.md` (volumes); `nfr-catalog.md` OBS-*/B-*/SEC-005 (NFRs that force cost lines)
+
+---
+
 ## Part 2 — Solution Architect outputs (SA fills in)
 
 ### 2.1 Chosen stack

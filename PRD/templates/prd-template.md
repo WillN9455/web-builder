@@ -8,6 +8,7 @@
 **Supporting artifacts (instantiated alongside this PRD at `PRD/<project>/`):**
 - §3a NFRs → `PRD/<project>/nfr-catalog.md` (full target + measurement)
 - §3a load shape → `PRD/<project>/traffic-profile.md` (distribution the SA sizes for — peak:avg, read:write, hot endpoints, geo)
+- §3 budget → `PRD/<project>/cost-model.md` (run-rate + per-transaction breakdown the SA reconciles vendor choices against)
 - §3b Tech constraints → `PRD/<project>/tech-decision-brief.md` (BA half — SA completes the other half)
 - §5a Stakeholders → `PRD/<project>/stakeholder-map.md`
 - §6a Metrics → rolled into `prd.md` §6a (canonical) and copied into `nfr-catalog.md`
@@ -51,6 +52,13 @@
 | Priority | P0 (critical) / P1 (high) / P2 (medium) / P3 (low) |
 | Target release | <Date or sprint> |
 | Dependencies | <Other features that must ship first> |
+| Budget cap | <e.g., <€500/mo at MVP; <€2k/mo at 12 months> |
+
+> The budget cap above is a single number. The **run-rate breakdown** the
+> Solution Architect trades vendor choices against — infra vs storage vs
+> egress vs per-transaction fees (Stripe %, Postmark/email, Daily.co/min) —
+> lives in `PRD/<project>/cost-model.md`. A product can be under budget on
+> infra and still lose money per booking; model both.
 
 ---
 
