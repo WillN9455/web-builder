@@ -1551,7 +1551,7 @@
   <header class="doc-header">
     <div>
       <div class="doc-title">Idea Hub — Project Background (v5.2)</div>
-      <div class="doc-sub">Long-form source documents for a PRD-stage project — <b>idea</b>, <b>personas</b>, <b>user journeys</b>, <b>PRD</b>, <b>glossary</b>, <b>business rules</b>, and <b>risks</b>. Every artifact moves through its own <code style="font-family: var(--font-mono);">Draft → In Review (SA) → Returned / Completed</code> workflow — no bulk handoff. Read-only for SA, devs, designers, and QA. For the curated, signed-off list of business &amp; technical requirements grouped by user story, see <a href="requirements.html"><b>requirements.html</b></a>.</div>
+      <div class="doc-sub">Long-form source documents for a Requirements-stage project — <b>idea</b>, <b>personas</b>, <b>user journeys</b>, <b>PRD</b>, <b>glossary</b>, <b>business rules</b>, and <b>risks</b>. Every artifact moves through its own <code style="font-family: var(--font-mono);">Draft → In Review (SA) → Returned / Approved</code> workflow — no bulk handoff. Read-only for SA, devs, designers, and QA. For the curated, signed-off list of business &amp; technical requirements grouped by user story, see <a href="requirements.html"><b>requirements.html</b></a>.</div>
     </div>
     <div class="doc-meta">v5.2 · launcher/design/background.html<br/>3 screens (12–14)</div>
   </header>
@@ -1607,13 +1607,13 @@
             <div class="body">
               <div class="lbl">Project Background · source documents</div>
               <div class="ttl">17 artifacts · each moves through its own review</div>
-              <div class="sub">Click any file to read it. Use <b>Send to SA</b> on the row to start the Solution Architect's review on that file. The SA can edit + leave comments; the file comes back <b>Returned</b> for revision or <b>Completed</b> when accepted.</div>
+              <div class="sub">Click any file to read it. Use <b>Send to SA</b> on the row to start the Solution Architect's review on that file. The SA can edit + leave comments; the file comes back <b>Returned</b> for revision or <b>Approved</b> when accepted.</div>
             </div>
             <div class="counts">
               <span class="count-pill"><span class="file-status draft"></span><b>9</b> Draft</span>
               <span class="count-pill"><span class="file-status review"></span><b>2</b> In Review</span>
               <span class="count-pill"><span class="file-status returned"></span><b>1</b> Returned</span>
-              <span class="count-pill"><span class="file-status completed"></span><b>3</b> Completed</span>
+              <span class="count-pill"><span class="file-status completed"></span><b>3</b> Approved</span>
             </div>
           </div>
 
@@ -1770,7 +1770,7 @@
                     <tr><td>prd.md</td><td><span class="pill draft"><span class="dot"></span> Draft</span></td></tr>
                     <tr><td>user-journeys.md</td><td><span class="pill review"><span class="dot"></span> In Review</span></td></tr>
                     <tr><td>open-questions.md</td><td><span class="pill blocked"><span class="dot"></span> Returned to BA</span></td></tr>
-                    <tr><td>business-rules.md</td><td><span class="pill done"><span class="dot"></span> Completed</span></td></tr>
+                    <tr><td>business-rules.md</td><td><span class="pill done"><span class="dot"></span> Approved</span></td></tr>
                   </tbody>
                 </table>
               </div>
@@ -2037,13 +2037,13 @@ available  ──request──▶ pending   ──approve──▶ on_loan
             <div class="body">
               <div class="lbl">data-model.md · Solution Architect review</div>
               <div class="ttl">SA is reading this file — 2 comments so far</div>
-              <div class="sub">You can keep editing while the SA reviews. Use <b>Mark Completed</b> to accept the SA's edits, or <b>Return to BA</b> to flag it back for another pass.</div>
+              <div class="sub">You can keep editing while the SA reviews. Use <b>Approve</b> to accept the SA's edits, or <b>Return to BA</b> to flag it back for another pass.</div>
             </div>
             <div class="counts">
               <span class="count-pill"><span class="file-status draft"></span><b>8</b> Draft</span>
               <span class="count-pill"><span class="file-status review"></span><b>3</b> In Review</span>
               <span class="count-pill"><span class="file-status returned"></span><b>1</b> Returned</span>
-              <span class="count-pill"><span class="file-status completed"></span><b>3</b> Completed</span>
+              <span class="count-pill"><span class="file-status completed"></span><b>3</b> Approved</span>
             </div>
           </div>
 
@@ -2193,7 +2193,7 @@ available  ──request──▶ pending   ──approve──▶ on_loan
                 <div class="left">Read-only preview of SA's review state — full editor unlocks once you <b>Return to BA</b>.</div>
                 <div class="right">
                   <button class="btn btn-soft btn-pill" style="background: var(--blush); color: var(--ink);">Return to BA</button>
-                  <button class="btn btn-primary" style="background: var(--green);">Mark Completed ✓</button>
+                  <button class="btn btn-primary" style="background: var(--green);">Approve ✓</button>
                 </div>
               </div>
 

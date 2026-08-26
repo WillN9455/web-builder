@@ -1549,10 +1549,10 @@
   <nav class="toc">
     <a href="#s1"><b>1</b> Projects — initial (no menu)</a>
     <a href="#s2"><b>2</b> Projects — empty state</a>
-    <a href="#s3"><b>3</b> Project detail — Design active</a>
-    <a href="#s4"><b>4</b> Project detail — Blocked</a>
-    <a href="#s5"><b>5</b> Project detail — Shipped</a>
-    <a href="#s6"><b>6</b> Project detail — Build / Kanban</a>
+    <a href="#s3"><b>3</b> Overview — Design active</a>
+    <a href="#s4"><b>4</b> Overview — Blocked</a>
+    <a href="#s5"><b>5</b> Overview — Deployed</a>
+    <a href="#s6"><b>6</b> Sprint — Jira Kanban</a>
     <a href="#s7"><b>7</b> New idea — folder pick</a>
     <a href="#s8"><b>8</b> New idea — BA-Agent chat</a>
     <a href="#s9"><b>9</b> New idea — captured</a>
@@ -1654,7 +1654,7 @@
                   <h3>Personal Bookmarks</h3>
                   <div class="one-liner">A clean, fast personal link library</div>
                   <div class="row" style="margin-top: 10px;">
-                    <span class="pill shipped"><span class="dot"></span> Shipped</span>
+                    <span class="pill shipped"><span class="dot"></span> Deployed</span>
                     <span class="more-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></span>
                   </div>
                 </div>
@@ -1687,7 +1687,7 @@
                 <div class="num">65%</div>
               </div>
               <div class="ring-legend">
-                <div class="item"><span class="swatch" style="background:var(--mint)"></span><span class="lbl">Shipped</span><span class="val">2</span></div>
+                <div class="item"><span class="swatch" style="background:var(--mint)"></span><span class="lbl">Deployed</span><span class="val">2</span></div>
                 <div class="item"><span class="swatch" style="background:var(--green)"></span><span class="lbl">Done</span><span class="val">1</span></div>
                 <div class="item"><span class="swatch" style="background:var(--amber)"></span><span class="lbl">Review</span><span class="val">1</span></div>
                 <div class="item"><span class="swatch" style="background:var(--blue)"></span><span class="lbl">In progress</span><span class="val">1</span></div>
@@ -1752,7 +1752,7 @@
                 <span class="stage-pt">1</span>
                 <span class="pill blocked"><span class="dot"></span> Blocked</span>
                 <span class="prio high"><span class="ring"></span> High</span>
-                <span class="stage-pt">PRD</span>
+                <span class="stage-pt">Requirements</span>
                 <div class="progress" style="--p:14%"></div>
                 <button class="more">⋯</button>
               </div>
@@ -1776,9 +1776,9 @@
                 </div>
                 <span class="stage-pt">11 / 11</span>
                 <span class="stage-pt">0</span>
-                <span class="pill shipped"><span class="dot"></span> Shipped</span>
+                <span class="pill shipped"><span class="dot"></span> Deployed</span>
                 <span class="prio low"><span class="ring"></span> Low</span>
-                <span class="stage-pt">Shipped</span>
+                <span class="stage-pt">Deployed</span>
                 <div class="progress" style="--p:100%"></div>
                 <button class="more">⋯</button>
               </div>
@@ -1793,7 +1793,7 @@
   <!-- ═════════════ 2 · Projects — empty state ═════════════ -->
   <section class="screen" id="s2">
     <div class="screen-label">
-      <span class="num">3</span>
+      <span class="num">2</span>
       <span class="name">Projects — empty state</span>
       <span class="route">/projects · first visit</span>
     </div>
@@ -1825,11 +1825,11 @@
     </div>
   </section>
 
-  <!-- ═════════════ 2 · Projects — empty state ═════════════ -->
+  <!-- ═════════════ 3 · Overview — Design active ═════════════ -->
   <section class="screen" id="s3">
     <div class="screen-label">
-      <span class="num">4</span>
-      <span class="name">Project detail — Design stage active</span>
+      <span class="num">3</span>
+      <span class="name">Overview — Design active</span>
       <span class="route">/projects/tenant-maintenance · Overview</span>
     </div>
     <div class="screen-body">
@@ -1843,7 +1843,7 @@
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h11l3 3v13H5z M16 4v3h3 M8 11h8 M8 14h8 M8 17h5"/></svg> Project Background <span class="count">7</span></a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3h7v7 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> Requirements <span class="count">14</span></a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z M4 9h16 M9 4v16"/></svg> Design</a>
-              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Build <span class="count">Jira</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Build <span class="count">12</span></a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="9" r="3"/><path d="M3 19c0-3 2.7-5 6-5s6 2 6 5 M14 19c0-3 2.7-5 6-5"/></svg> Agents</a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 12l2 2 4-4 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg> QA <span class="count">3</span></a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> Activity</a>
@@ -1891,12 +1891,12 @@
             <!-- 7-stage stepper -->
             <div class="stepper" style="margin-top: 18px;">
               <div class="step done"><div class="num"><b>1</b></div><div class="lbl">Intake</div><div class="bar"></div></div>
-              <div class="step done"><div class="num"><b>2</b></div><div class="lbl">PRD</div><div class="bar"></div></div>
+              <div class="step done"><div class="num"><b>2</b></div><div class="lbl">Requirements</div><div class="bar"></div></div>
               <div class="step active"><div class="num"><b>3</b></div><div class="lbl">Design</div><div class="bar"></div></div>
               <div class="step"><div class="num"><b>4</b></div><div class="lbl">Build</div><div class="bar"></div></div>
               <div class="step"><div class="num"><b>5</b></div><div class="lbl">Review</div><div class="bar"></div></div>
               <div class="step"><div class="num"><b>6</b></div><div class="lbl">QA</div><div class="bar"></div></div>
-              <div class="step"><div class="num"><b>7</b></div><div class="lbl">Shipped</div></div>
+              <div class="step"><div class="num"><b>7</b></div><div class="lbl">Deployed</div></div>
             </div>
           </div>
 
@@ -1977,12 +1977,12 @@
     </div>
   </section>
 
-  <!-- ═════════════ 2 · Projects — empty state ═════════════ -->
+  <!-- ═════════════ 4 · Overview — Blocked ═════════════ -->
   <section class="screen" id="s4">
     <div class="screen-label">
-      <span class="num">5</span>
-      <span class="name">Project detail — Blocked stage</span>
-      <span class="route">/projects/field-service · Requirements</span>
+      <span class="num">4</span>
+      <span class="name">Overview — Blocked</span>
+      <span class="route">/projects/field-service · Overview</span>
     </div>
     <div class="screen-body">
       <div class="app">
@@ -1991,11 +1991,11 @@
           <div>
             <div class="menu-label">Menu</div>
             <nav class="nav">
-              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12l9-9 9 9 M5 10v10h14V10"/></svg> Overview</a>
+              <a href="#" class="active"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12l9-9 9 9 M5 10v10h14V10"/></svg> Overview</a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h11l3 3v13H5z M16 4v3h3 M8 11h8 M8 14h8 M8 17h5"/></svg> Project Background <span class="count">7</span></a>
-              <a href="#" class="active"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3h7v7 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> Requirements <span class="count">14</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3h7v7 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> Requirements <span class="count">14</span></a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z M4 9h16 M9 4v16"/></svg> Design</a>
-              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Build <span class="count">Jira</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Build <span class="count">12</span></a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="9" r="3"/><path d="M3 19c0-3 2.7-5 6-5s6 2 6 5 M14 19c0-3 2.7-5 6-5"/></svg> Agents</a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 12l2 2 4-4 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg> QA <span class="count">3</span></a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> Activity</a>
@@ -2031,65 +2031,146 @@
             </div>
             <div class="stepper" style="margin-top: 18px;">
               <div class="step done"><div class="num"><b>1</b></div><div class="lbl">Intake</div><div class="bar"></div></div>
-              <div class="step blocked"><div class="num"><b>2</b></div><div class="lbl">PRD</div><div class="bar"></div></div>
+              <div class="step active"><div class="num"><b>2</b></div><div class="lbl">Requirements</div><div class="bar"></div></div>
               <div class="step"><div class="num"><b>3</b></div><div class="lbl">Design</div><div class="bar"></div></div>
               <div class="step"><div class="num"><b>4</b></div><div class="lbl">Build</div><div class="bar"></div></div>
               <div class="step"><div class="num"><b>5</b></div><div class="lbl">Review</div><div class="bar"></div></div>
               <div class="step"><div class="num"><b>6</b></div><div class="lbl">QA</div><div class="bar"></div></div>
-              <div class="step"><div class="num"><b>7</b></div><div class="lbl">Shipped</div></div>
+              <div class="step"><div class="num"><b>7</b></div><div class="lbl">Deployed</div></div>
             </div>
           </div>
 
           <div class="detail-grid">
+            <!-- Left: current stage -->
             <div class="card">
               <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 8px;">
-                <h3>Current stage — PRD</h3>
-                <span class="pill blocked"><span class="dot"></span> Blocked</span>
+                <h3>Current stage — Requirements</h3>
+                <span class="pill inprog"><span class="dot"></span> In Progress</span>
+              </div>
+              <div class="callout">
+                <span class="pulse"></span>
+                <div class="lbl"><b>BA Agent + Requirements Reviewer</b> are iterating on user stories &amp; acceptance criteria</div>
+                <div class="who">Started 1d ago</div>
               </div>
 
-              <div class="bn error" style="margin-top: 6px;">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="color: var(--rose); flex:none;"><circle cx="12" cy="12" r="9"/><path d="M12 8v5 M12 16h.01"/></svg>
-                <div>
-                  <b>Blocker:</b> Requirements reviewer flagged 3 critical gaps — need a decision on offline support, photo storage, and pricing tier before the PRD can be finalised.
-                </div>
+              <h3 style="margin-top: 22px;">Requirements checklist</h3>
+              <div>
+                <div class="check done"><div class="box">✓</div><div class="lbl">Intake captured — idea, personas, journeys documented</div><span class="meta">1d ago</span></div>
+                <div class="check done"><div class="box">✓</div><div class="lbl">User stories drafted (9 candidates)</div><span class="meta">yesterday</span></div>
+                <div class="check done"><div class="box">✓</div><div class="lbl">Acceptance criteria written for first-pass stories</div><span class="meta">today</span></div>
+                <div class="check"><div class="box"></div><div class="lbl">Edge cases (offline, conflict resolution) added</div><span class="meta">in progress</span></div>
+                <div class="check"><div class="box"></div><div class="lbl">Non-functional requirements (perf, security, a11y)</div></div>
+                <div class="check"><div class="box"></div><div class="lbl">Reviewer sign-off on all user stories</div></div>
+                <div class="check"><div class="box"></div><div class="lbl">Traceability matrix — story → AC → test plan</div></div>
               </div>
-
-              <h3 style="margin-top: 22px;">Open questions for you</h3>
-              <div class="check"><div class="box"></div><div class="lbl">Does the app need to work offline for field engineers?</div><span class="meta">2 days</span></div>
-              <div class="check"><div class="box"></div><div class="lbl">Where do uploaded photos get stored? (S3 / Cloudinary / local?)</div><span class="meta">2 days</span></div>
-              <div class="check"><div class="box"></div><div class="lbl">Confirm pricing tier — free for one engineer, paid for team?</div><span class="meta">2 days</span></div>
 
               <div style="display:flex; gap: 8px; margin-top: 18px;">
-                <button class="btn btn-primary">Answer in chat</button>
-                <button class="btn btn-ghost">Skip and let BA fill in</button>
+                <button class="btn btn-primary">Mark Requirements complete</button>
+                <button class="btn btn-ghost">Pause stage</button>
               </div>
             </div>
 
+            <!-- Right column -->
             <div style="display:flex; flex-direction: column; gap: 18px;">
               <div class="card">
-                <h3>Last successful stage</h3>
-                <div style="display:flex; align-items:center; gap:10px; padding: 8px 0;">
-                  <span class="pill done"><span class="dot"></span> Intake · done</span>
-                  <span class="days"><svg class="clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> 3d ago</span>
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 4px;">
+                  <h3 style="margin: 0;">Outstanding questions</h3>
+                  <span class="pill inprog"><span class="dot"></span> 3 open</span>
+                </div>
+                <div style="font-size: 12px; color: var(--ink-2); opacity:.75; margin-bottom: 14px;">BA Agent is waiting on these answers before finalising the requirements. Reply inline or open the full chat.</div>
+
+                <div style="display:flex; flex-direction: column; gap: 14px;">
+                  <div style="background: var(--butter); border-radius: 12px; padding: 12px 14px;">
+                    <div style="display:flex; align-items:flex-start; gap:8px;">
+                      <div class="av-sm ba" style="margin-top: 2px;">BA</div>
+                      <div style="flex:1;">
+                        <div style="font-weight: 600; font-size: 13px; color: var(--ink);">Does the app need to work offline for field engineers?</div>
+                        <div style="font-size: 11.5px; color: var(--ink); opacity:.65; margin-top: 2px;">Asked 1d ago · Blocks story <b>FS-04 Sync jobs offline</b></div>
+                        <div style="display:flex; gap: 6px; margin-top: 10px;">
+                          <textarea class="ta" rows="2" placeholder="Type your answer…" style="flex:1; resize: none; font-size: 12.5px; padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(43,37,71,.15); background: white; font-family: inherit;"></textarea>
+                        </div>
+                        <div style="display:flex; gap: 6px; margin-top: 8px; justify-content: flex-end;">
+                          <button class="btn btn-ghost" style="padding: 6px 10px; font-size: 12px;">Skip — BA decides</button>
+                          <button class="btn btn-primary" style="padding: 6px 12px; font-size: 12px;">Send answer</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style="background: var(--butter); border-radius: 12px; padding: 12px 14px;">
+                    <div style="display:flex; align-items:flex-start; gap:8px;">
+                      <div class="av-sm ba" style="margin-top: 2px;">BA</div>
+                      <div style="flex:1;">
+                        <div style="font-weight: 600; font-size: 13px; color: var(--ink);">Where do uploaded photos get stored? (S3 / Cloudinary / local?)</div>
+                        <div style="font-size: 11.5px; color: var(--ink); opacity:.65; margin-top: 2px;">Asked 1d ago · Blocks story <b>FS-07 Attach photos to a job</b></div>
+                        <div style="display:flex; gap: 6px; margin-top: 10px;">
+                          <textarea class="ta" rows="2" placeholder="Type your answer…" style="flex:1; resize: none; font-size: 12.5px; padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(43,37,71,.15); background: white; font-family: inherit;"></textarea>
+                        </div>
+                        <div style="display:flex; gap: 6px; margin-top: 8px; justify-content: flex-end;">
+                          <button class="btn btn-ghost" style="padding: 6px 10px; font-size: 12px;">Skip — BA decides</button>
+                          <button class="btn btn-primary" style="padding: 6px 12px; font-size: 12px;">Send answer</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style="background: var(--butter); border-radius: 12px; padding: 12px 14px;">
+                    <div style="display:flex; align-items:flex-start; gap:8px;">
+                      <div class="av-sm ba" style="margin-top: 2px;">BA</div>
+                      <div style="flex:1;">
+                        <div style="font-weight: 600; font-size: 13px; color: var(--ink);">Confirm pricing tier — free for one engineer, paid for team?</div>
+                        <div style="font-size: 11.5px; color: var(--ink); opacity:.65; margin-top: 2px;">Asked 1d ago · Blocks story <b>FS-12 Billing &amp; seat limits</b></div>
+                        <div style="display:flex; gap: 6px; margin-top: 10px;">
+                          <textarea class="ta" rows="2" placeholder="Type your answer…" style="flex:1; resize: none; font-size: 12.5px; padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(43,37,71,.15); background: white; font-family: inherit;"></textarea>
+                        </div>
+                        <div style="display:flex; gap: 6px; margin-top: 8px; justify-content: flex-end;">
+                          <button class="btn btn-ghost" style="padding: 6px 10px; font-size: 12px;">Skip — BA decides</button>
+                          <button class="btn btn-primary" style="padding: 6px 12px; font-size: 12px;">Send answer</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(43,37,71,.08); display:flex; justify-content: space-between; align-items: center;">
+                  <span style="font-size: 12px; color: var(--ink-2); opacity:.7;">Need more context? Switch to the full chat with the BA Agent.</span>
+                  <button class="btn btn-soft btn-pill" style="padding: 6px 12px; font-size: 12px;">Open chat →</button>
                 </div>
               </div>
               <div class="card">
                 <h3>Activity</h3>
                 <div class="tl">
                   <div class="tl-item">
+                    <div class="av-lg ba">BA</div>
+                    <div class="body">
+                      <div class="who">BA Agent <span>·</span> <span>3h ago</span></div>
+                      <div class="msg">Added 4 acceptance criteria to <b>Schedule a job</b> story, covering timezone, daylight savings, and overlapping slots.</div>
+                    </div>
+                  </div>
+                  <div class="tl-item">
                     <div class="av-lg rev">RV</div>
                     <div class="body">
-                      <div class="who">Reviewer <span>·</span> <span>2d ago</span></div>
-                      <div class="msg">Flagged 3 critical gaps. Stage moved to <b>Blocked</b> until you answer.</div>
+                      <div class="who">Requirements Reviewer <span>·</span> <span>5h ago</span></div>
+                      <div class="msg">Flagged 2 missing edge cases on the offline-sync story — asked BA for revisions.</div>
                     </div>
                   </div>
                   <div class="tl-item">
                     <div class="av-lg ba">BA</div>
                     <div class="body">
-                      <div class="who">BA Agent <span>·</span> <span>3d ago</span></div>
-                      <div class="msg">Drafted PRD with 9 user stories. Out of scope: invoicing.</div>
+                      <div class="who">BA Agent <span>·</span> <span>yesterday</span></div>
+                      <div class="msg">Drafted 9 user stories from intake. Out of scope: invoicing.</div>
                     </div>
                   </div>
+                </div>
+              </div>
+
+              <div class="card">
+                <h3>Artifacts</h3>
+                <div class="art">
+                  <div class="art-item"><span class="ftag">MD</span><span class="lbl">idea.md</span><span class="path">/idea.md</span></div>
+                  <div class="art-item"><span class="ftag">MD</span><span class="lbl">Project Background</span><span class="path">/PRD/field-service/background.md</span></div>
+                  <div class="art-item"><span class="ftag">MD</span><span class="lbl">Requirements</span><span class="path">/PRD/field-service/requirements.md</span></div>
+                  <div class="art-item"><span class="ftag">Spec</span><span class="lbl">Glossary</span><span class="path">/PRD/field-service/glossary.md</span></div>
                 </div>
               </div>
             </div>
@@ -2099,11 +2180,11 @@
     </div>
   </section>
 
-  <!-- ═════════════ 2 · Projects — empty state ═════════════ -->
+  <!-- ═════════════ 5 · Overview — Deployed ═════════════ -->
   <section class="screen" id="s5">
     <div class="screen-label">
-      <span class="num">6</span>
-      <span class="name">Project detail — Shipped</span>
+      <span class="num">5</span>
+      <span class="name">Overview — Deployed</span>
       <span class="route">/projects/personal-bookmarks · Overview</span>
     </div>
     <div class="screen-body">
@@ -2117,7 +2198,7 @@
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h11l3 3v13H5z M16 4v3h3 M8 11h8 M8 14h8 M8 17h5"/></svg> Project Background <span class="count">7</span></a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3h7v7 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> Requirements <span class="count">11</span></a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z M4 9h16 M9 4v16"/></svg> Design</a>
-              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Build <span class="count">Jira</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Build <span class="count">12</span></a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="9" r="3"/><path d="M3 19c0-3 2.7-5 6-5s6 2 6 5 M14 19c0-3 2.7-5 6-5"/></svg> Agents</a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 12l2 2 4-4 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg> QA <span class="count">3</span></a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> Activity</a>
@@ -2142,20 +2223,20 @@
               <div>
                 <h1>Personal Bookmarks</h1>
                 <div class="one">A clean, fast personal link library</div>
-                <div class="path">~/Code/personal-bookmarks · Shipped 1 week ago</div>
+                <div class="path">~/Code/personal-bookmarks · Deployed 1 week ago</div>
               </div>
               <div class="actions">
-                <span class="pill shipped"><span class="dot"></span> Shipped</span>
+                <span class="pill shipped"><span class="dot"></span> Deployed</span>
               </div>
             </div>
             <div class="stepper" style="margin-top: 18px;">
               <div class="step done"><div class="num"><b>1</b></div><div class="lbl">Intake</div><div class="bar"></div></div>
-              <div class="step done"><div class="num"><b>2</b></div><div class="lbl">PRD</div><div class="bar"></div></div>
+              <div class="step done"><div class="num"><b>2</b></div><div class="lbl">Requirements</div><div class="bar"></div></div>
               <div class="step done"><div class="num"><b>3</b></div><div class="lbl">Design</div><div class="bar"></div></div>
               <div class="step done"><div class="num"><b>4</b></div><div class="lbl">Build</div><div class="bar"></div></div>
               <div class="step done"><div class="num"><b>5</b></div><div class="lbl">Review</div><div class="bar"></div></div>
               <div class="step done"><div class="num"><b>6</b></div><div class="lbl">QA</div><div class="bar"></div></div>
-              <div class="step shipped"><div class="num"><b>7</b></div><div class="lbl">Shipped</div></div>
+              <div class="step shipped"><div class="num"><b>7</b></div><div class="lbl">Deployed</div></div>
             </div>
           </div>
 
@@ -2163,7 +2244,7 @@
             <div class="card">
               <h3>Journey</h3>
               <div class="check done"><div class="box">✓</div><div class="lbl">Intake — captured via BA chat on Mar 12</div><span class="meta">2h</span></div>
-              <div class="check done"><div class="box">✓</div><div class="lbl">PRD — 7 user stories approved</div><span class="meta">1d</span></div>
+              <div class="check done"><div class="box">✓</div><div class="lbl">Requirements — 7 user stories approved</div><span class="meta">1d</span></div>
               <div class="check done"><div class="box">✓</div><div class="lbl">Design — 4 screens, full state coverage</div><span class="meta">2d</span></div>
               <div class="check done"><div class="box">✓</div><div class="lbl">Build — Next.js + Postgres on Vercel</div><span class="meta">4d</span></div>
               <div class="check done"><div class="box">✓</div><div class="lbl">Review — code review + accessibility check</div><span class="meta">1d</span></div>
@@ -2201,12 +2282,12 @@
     </div>
   </section>
 
-  <!-- ═════════════ 2 · Projects — empty state ═════════════ -->
+  <!-- ═════════════ 6 · Sprint — Jira Kanban ═════════════ -->
   <section class="screen" id="s6">
     <div class="screen-label">
       <span class="num">6</span>
-      <span class="name">Project detail — Build / Jira Kanban</span>
-      <span class="route">/projects/tenant-maintenance · Build</span>
+      <span class="name">Sprint — Jira Kanban</span>
+      <span class="route">/projects/tenant-maintenance · Sprint</span>
     </div>
     <div class="screen-body">
       <div class="app">
@@ -2219,7 +2300,7 @@
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h11l3 3v13H5z M16 4v3h3 M8 11h8 M8 14h8 M8 17h5"/></svg> Project Background <span class="count">7</span></a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3h7v7 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> Requirements <span class="count">14</span></a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z M4 9h16 M9 4v16"/></svg> Design</a>
-              <a href="#" class="active"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Build <span class="count">Jira</span></a>
+              <a href="#" class="active"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Build <span class="count">12</span></a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="9" r="3"/><path d="M3 19c0-3 2.7-5 6-5s6 2 6 5 M14 19c0-3 2.7-5 6-5"/></svg> Agents</a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 12l2 2 4-4 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg> QA <span class="count">3</span></a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> Activity</a>
@@ -2262,12 +2343,12 @@
             <!-- 7-stage stepper (Build now active) -->
             <div class="stepper" style="margin-top: 18px;">
               <div class="step done"><div class="num"><b>1</b></div><div class="lbl">Intake</div><div class="bar"></div></div>
-              <div class="step done"><div class="num"><b>2</b></div><div class="lbl">PRD</div><div class="bar"></div></div>
+              <div class="step done"><div class="num"><b>2</b></div><div class="lbl">Requirements</div><div class="bar"></div></div>
               <div class="step done"><div class="num"><b>3</b></div><div class="lbl">Design</div><div class="bar"></div></div>
               <div class="step active"><div class="num"><b>4</b></div><div class="lbl">Build</div><div class="bar"></div></div>
               <div class="step"><div class="num"><b>5</b></div><div class="lbl">Review</div><div class="bar"></div></div>
               <div class="step"><div class="num"><b>6</b></div><div class="lbl">QA</div><div class="bar"></div></div>
-              <div class="step"><div class="num"><b>7</b></div><div class="lbl">Shipped</div></div>
+              <div class="step"><div class="num"><b>7</b></div><div class="lbl">Deployed</div></div>
             </div>
           </div>
 
@@ -2398,7 +2479,7 @@
     </div>
   </section>
 
-  <!-- ═════════════ 2 · Projects — empty state ═════════════ -->
+  <!-- ═════════════ 7 · New idea — folder pick ═════════════ -->
   <section class="screen" id="s7">
     <div class="screen-label">
       <span class="num">7</span>
@@ -2434,7 +2515,7 @@
     </div>
   </section>
 
-  <!-- ═════════════ 2 · Projects — empty state ═════════════ -->
+  <!-- ═════════════ 8 · New idea — BA-Agent chat ═════════════ -->
   <section class="screen" id="s8">
     <div class="screen-label">
       <span class="num">8</span>
@@ -2506,7 +2587,7 @@
     </div>
   </section>
 
-  <!-- ═════════════ 2 · Projects — empty state ═════════════ -->
+  <!-- ═════════════ 9 · New idea — captured ═════════════ -->
   <section class="screen" id="s9">
     <div class="screen-label">
       <span class="num">9</span>
@@ -2545,10 +2626,10 @@
     </div>
   </section>
 
-  <!-- ═════════════ 2 · Projects — empty state ═════════════ -->
+  <!-- ═════════════ 10 · App shell — reference (legacy v4) ═════════════ -->
   <section class="screen" id="s10">
     <div class="screen-label">
-      <span class="num">1</span>
+      <span class="num">10</span>
       <span class="name">App shell — reference (legacy v4 chrome)</span>
       <span class="route">persistent layout · all routes</span>
     </div>
@@ -2604,10 +2685,10 @@
     </div>
   </section>
 
-  <!-- ═════════════ 2 · Projects — empty state ═════════════ -->
+  <!-- ═════════════ 11 · UI kit ═════════════ -->
   <section class="screen" id="s11">
     <div class="screen-label">
-      <span class="num">10</span>
+      <span class="num">11</span>
       <span class="name">UI kit</span>
       <span class="route">/__kit</span>
     </div>
@@ -2693,7 +2774,7 @@
               <span class="pill review"><span class="dot"></span> In Review</span>
               <span class="pill blocked"><span class="dot"></span> Blocked</span>
               <span class="pill done"><span class="dot"></span> Done</span>
-              <span class="pill shipped"><span class="dot"></span> Shipped</span>
+              <span class="pill shipped"><span class="dot"></span> Deployed</span>
             </div>
             <h3 style="margin-top: 18px;">Priority</h3>
             <div class="row">
@@ -2708,12 +2789,12 @@
             <h3>7-stage stepper</h3>
             <div class="kit-stepper">
               <div class="kit-step done"><div class="n">1</div><div class="lbl">Intake</div><div class="sep"></div></div>
-              <div class="kit-step done"><div class="n">2</div><div class="lbl">PRD</div><div class="sep"></div></div>
+              <div class="kit-step done"><div class="n">2</div><div class="lbl">Requirements</div><div class="sep"></div></div>
               <div class="kit-step active"><div class="n">3</div><div class="lbl">Design</div><div class="sep"></div></div>
               <div class="kit-step"><div class="n">4</div><div class="lbl">Build</div><div class="sep"></div></div>
               <div class="kit-step"><div class="n">5</div><div class="lbl">Review</div><div class="sep"></div></div>
               <div class="kit-step"><div class="n">6</div><div class="lbl">QA</div><div class="sep"></div></div>
-              <div class="kit-step"><div class="n">7</div><div class="lbl">Shipped</div></div>
+              <div class="kit-step"><div class="n">7</div><div class="lbl">Deployed</div></div>
             </div>
             <h3 style="margin-top: 18px;">Pipeline mini-bar</h3>
             <div style="display:flex; flex-direction: column; gap: 8px; margin-top: 8px;">
