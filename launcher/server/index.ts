@@ -773,6 +773,34 @@ app.get('/api/projects/:id', (req, res) => {
   res.json({ project: row, stages });
 });
 
+// Delete a project row. Resolves by numeric id or slug — mirrors the GET above
+// so the table/tile menus can pass whichever they have on hand. The folder
+// on disk (idea.md, .idea-memory/, etc.) is intentionally left in place: the
+// launcher is a dev tool and recovery-by-recreate is cheap. FK cascades in
+// db.ts handle stage / artifact / activity / jira_link / kanban_card.
+app.delete('/api/projects/:id', (req, res) => {
+  const idParam = req.params.id;
+  const row = db
+    .prepare('SELECT id, slug, name FROM project WHERE id = ? OR slug = ?')
+    .get(idParam, idParam) as { id: number; slug: string; name: string } | undefined;
+  if (!row) {
+    res.status(404).json({ error: 'Not found' });
+    return;
+  }
+  try {
+    const tx = db.transaction((projectId: number) => {
+      db.prepare('DELETE FROM project WHERE id = ?').run(projectId);
+    });
+    tx(row.id);
+    res.json({ ok: true, id: row.id, slug: row.slug, name: row.name });
+  } catch {
+    // Log internally; return a generic message so we never leak the underlying
+    // SQL error to the client.
+    console.error('[api] delete project failed for id', row.id);
+    res.status(500).json({ error: 'Could not delete project.' });
+  }
+});
+
 // Resume an in-progress BA interview from disk. The project row plus the
 // `.idea-memory/conversation.jsonl` file are the source of truth — when a
 // user clicks an Intake-stage tile from the launcher we re-hydrate the chat

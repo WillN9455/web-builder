@@ -67,6 +67,29 @@ export async function fetchProjects(): Promise<ProjectsResponse> {
   return res.json() as Promise<ProjectsResponse>;
 }
 
+// Delete a project row (DB only — the on-disk folder is preserved so the
+// project can be recovered by pointing a new row at the same directory).
+// Mirrors fetchProjects' offline-detection so the UI can surface the same
+// "API server is not running" copy users see on the initial load.
+export type DeleteProjectResponse = { ok: true; id: number; slug: string; name: string };
+
+export async function deleteProject(id: number | string): Promise<DeleteProjectResponse> {
+  const res = await fetch(`/api/projects/${encodeURIComponent(String(id))}`, {
+    method: 'DELETE',
+  });
+  const contentType = res.headers.get('content-type') ?? '';
+  if (!contentType.includes('application/json')) {
+    throw new Error(
+      'API server is not running. Start it with `npm run dev` (or `npm run dev:api` in another terminal).',
+    );
+  }
+  const data = (await res.json().catch(() => ({}))) as Partial<DeleteProjectResponse> & {
+    error?: string;
+  };
+  if (!res.ok) throw new Error(data.error ?? `Delete failed (HTTP ${res.status})`);
+  return data as DeleteProjectResponse;
+}
+
 // ── /api/init (intake — folder pick + scaffold) ───────────────────────────
 
 export type InitResponse = {
