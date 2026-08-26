@@ -177,6 +177,23 @@
 
 ---
 
+### 1.12 Roles & permissions (from `rbac-matrix.md`)
+
+> The role × permission matrix the SA's auth model must enforce. Drives the
+> choice of auth library, session model, and IDOR scoping — every "own"
+> cell is a server-side scoped query the Dev Reviewer checks against
+> `security.md` §IDOR.
+
+- **Roles:** <e.g., "anonymous, client, coach, admin, system — see §5 persona→role map">
+- **Auth mechanism per role:** <e.g., "client/coach: Auth.js email+password; admin: Okta SSO (§3b must-use); system: service token + webhook signature">
+- **Default policy:** <e.g., "default-deny; empty cell = Deny">
+- **IDOR boundaries (own/group scoping):** <list the own-scoped resources the SA must design query scoping for>
+- **Role transitions:** <e.g., "coach losing Stripe → loses publish perms (BR-040)">
+
+**Cross-references:** `PRD/<project>/rbac-matrix.md` (full matrix + IDOR table); `prd.md` §9c summary; `business-rules.md` BR-04x; `skills/security.md` §RBAC / §IDOR
+
+---
+
 ## Part 2 — Solution Architect outputs (SA fills in)
 
 ### 2.1 Chosen stack

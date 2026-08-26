@@ -15,6 +15,7 @@
 - §8b Business rules → `PRD/<project>/business-rules.md` (full decision register; §8b below is the summary)
 - §9a Data model → `PRD/<project>/data-model.md`
 - §9b Integrations → rolled into `prd.md` §9b (canonical) and expanded in `tech-decision-brief.md`
+- §9c Permissions → `PRD/<project>/rbac-matrix.md` (role × permission matrix; IDOR boundaries)
 - §11a Glossary → `PRD/<project>/glossary.md`
 - §12 Assumptions → `PRD/<project>/assumptions.md` (full register; §12 below is the summary)
 - §12a Risks → `PRD/<project>/risks.md` (full register)
@@ -289,6 +290,34 @@ state machines (file in `open-questions.md` with `blocker-for: tech`).
 **Integration sign-off needed from:** <list stakeholders from §5a>
 
 **Integration questions outstanding:** see `open-questions.md` filtered by `blocker-for: integration`.
+
+---
+
+## 9c. Roles & Permissions (RBAC)
+
+> Who can do what to which resource. PRD §5 defines personas;
+> `data-model.md` has a per-entity CRUD column; this section is the
+> consolidated role × permission matrix the Solution Architect designs the
+> auth model from and the Code Agents implement as route guards. Full
+> matrix with IDOR boundaries lives in `PRD/<project>/rbac-matrix.md`.
+
+| Role | Maps to persona (§5) | Key permissions |
+|------|----------------------|-----------------|
+| `anonymous` | (logged-out) | public surfaces only |
+| `client` | Client | `booking:create/read/update` (own); `data_export/erase` (own) |
+| `coach` | Coach | `availability/session_type:write` (own); `booking/read` (their clients); `session_note:write` (own) |
+| `admin` | (staff) | all `:read`/`:write`; SSO per §3b |
+| `system` | (jobs/webhooks) | service token; status transitions, refunds (per `business-rules.md`) |
+
+**IDOR boundaries (every "own" cell must be scoped server-side):**
+- `booking:read/update` scoped to `client_id` or `coach_id` = caller
+- `session_note:read` scoped to own booking, or `visible_to_client` for the booking's client
+
+**Default-deny:** an empty cell is Deny, not "unspecified". Every route must
+have a row in `rbac-matrix.md` before it is coded — the Dev Reviewer checks
+each against `security.md` §IDOR.
+
+**Cross-references:** `PRD/<project>/rbac-matrix.md`; `data-model.md` CRUD column; `business-rules.md` BR-04x (eligibility); `skills/security.md` §RBAC / §IDOR
 
 ---
 
