@@ -17,8 +17,10 @@ export default defineConfig({
     proxy: {
       // Proxy API requests to the Node/Express server in dev so React can
       // fetch /api/* on the same origin as the Vite dev server.
+      // Use 127.0.0.1 to avoid IPv6/IPv4 localhost resolution mismatch
+      // (Vite binds to ::1, which can make `localhost` proxy targets fail).
       '/api': {
-        target: 'http://localhost:5184',
+        target: 'http://127.0.0.1:5184',
         changeOrigin: true,
       },
     },
