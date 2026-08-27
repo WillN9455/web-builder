@@ -295,6 +295,35 @@
   .sec-head h2 { font-size: 15px; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; color: var(--ink-2); }
   .sec-head a, .sec-head .more { font-size: 12.5px; color: var(--ink-2); }
 
+  /* Expand-to-show-more arrow (e.g. Active now section head) */
+  .expand-btn {
+    display: inline-grid; place-items: center;
+    width: 28px; height: 28px;
+    border-radius: 999px;
+    border: 1px solid rgba(50, 42, 92, 0.12);
+    background: #fff;
+    color: var(--ink-2);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, transform 0.15s;
+  }
+  .expand-btn:hover { background: rgba(50, 42, 92, 0.05); color: var(--ink); }
+  .expand-btn[aria-expanded="true"] svg { transform: rotate(180deg); }
+  .expand-row { display: flex; justify-content: center; margin-top: 16px; }
+
+  /* Scrollable list (e.g. Outstanding questions) */
+  .q-scroll {
+    max-height: 320px;
+    overflow-y: auto;
+    padding-right: 4px;
+    margin-right: -4px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .q-scroll::-webkit-scrollbar { width: 6px; }
+  .q-scroll::-webkit-scrollbar-thumb { background: rgba(50, 42, 92, 0.18); border-radius: 999px; }
+  .q-scroll::-webkit-scrollbar-track { background: transparent; }
+
   /* ─── Buttons ─────────────────────────────────────────────────────────── */
   .btn {
     display: inline-flex; align-items: center; gap: 8px;
@@ -431,7 +460,7 @@
   }
   .row {
     display: grid;
-    grid-template-columns: minmax(220px, 1.4fr) 70px 70px 110px 80px 130px 1fr 30px;
+    grid-template-columns: minmax(220px, 1.4fr) 70px 110px 120px 130px 1fr 30px;
     align-items: center;
     gap: 16px;
     padding: 14px 20px;
@@ -486,7 +515,7 @@
 
   /* ─── Aggregate ring chart (dashboard) ────────────────────────────────── */
   .ring-block {
-    display: flex; align-items: center; gap: 24px;
+    display: flex; align-items: center; justify-content: center; gap: 24px;
     background: #fff;
     border-radius: var(--r-xl);
     padding: 20px 24px;
@@ -1591,7 +1620,6 @@
           <div>
             <div class="sec-head">
               <h2>Active now</h2>
-              <a href="#" class="more">View all →</a>
             </div>
             <div class="tile-grid">
               <div class="tile tile-peach">
@@ -1602,7 +1630,7 @@
                   <h3>Tenant Maintenance Portal</h3>
                   <div class="one-liner">Maintenance request app for property managers</div>
                   <div class="row" style="margin-top: 10px;">
-                    <span class="pill inprog"><span class="dot"></span> In Progress</span>
+                    <span class="pill inprog"><span class="dot"></span> Build</span>
                     <span class="more-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></span>
                   </div>
                 </div>
@@ -1615,7 +1643,7 @@
                   <h3>Yoga Studio Booking</h3>
                   <div class="one-liner">Class scheduling + membership for a single studio</div>
                   <div class="row" style="margin-top: 10px;">
-                    <span class="pill review"><span class="dot"></span> In Review</span>
+                    <span class="pill inprog"><span class="dot"></span> Design</span>
                     <span class="more-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></span>
                   </div>
                 </div>
@@ -1628,7 +1656,7 @@
                   <h3>Internal Timesheet</h3>
                   <div class="one-liner">Track billable hours across the small studio team</div>
                   <div class="row" style="margin-top: 10px;">
-                    <span class="pill todo"><span class="dot"></span> Planning</span>
+                    <span class="pill inprog"><span class="dot"></span> Intake</span>
                     <span class="more-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></span>
                   </div>
                 </div>
@@ -1641,7 +1669,7 @@
                   <h3>Field Service Tracker</h3>
                   <div class="one-liner">Mobile-friendly job tracking for one engineer</div>
                   <div class="row" style="margin-top: 10px;">
-                    <span class="pill blocked"><span class="dot"></span> Blocked</span>
+                    <span class="pill blocked"><span class="dot"></span> Requirements · Blocked</span>
                     <span class="more-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></span>
                   </div>
                 </div>
@@ -1667,11 +1695,16 @@
                   <h3>Neighborhood Library</h3>
                   <div class="one-liner">A lending platform for tools, books and board games</div>
                   <div class="row" style="margin-top: 10px;">
-                    <span class="pill draft"><span class="dot"></span> Drafting</span>
+                    <span class="pill inprog"><span class="dot"></span> Intake</span>
                     <span class="more-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></span>
                   </div>
                 </div>
               </div>
+            </div>
+            <div class="expand-row">
+              <button class="expand-btn" aria-label="Show more active projects" title="Show more active projects">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
             </div>
           </div>
 
@@ -1687,19 +1720,11 @@
                 <div class="num">65%</div>
               </div>
               <div class="ring-legend">
-                <div class="item"><span class="swatch" style="background:var(--mint)"></span><span class="lbl">Deployed</span><span class="val">2</span></div>
-                <div class="item"><span class="swatch" style="background:var(--green)"></span><span class="lbl">Done</span><span class="val">1</span></div>
-                <div class="item"><span class="swatch" style="background:var(--amber)"></span><span class="lbl">Review</span><span class="val">1</span></div>
-                <div class="item"><span class="swatch" style="background:var(--blue)"></span><span class="lbl">In progress</span><span class="val">1</span></div>
-                <div class="item"><span class="swatch" style="background:var(--purple)"></span><span class="lbl">Planning</span><span class="val">1</span></div>
-                <div class="item"><span class="swatch" style="background:var(--coral)"></span><span class="lbl">Drafting</span><span class="val">1</span></div>
+                <div class="item"><span class="swatch" style="background:var(--blue)"></span><span class="lbl">Active</span><span class="val">3</span></div>
                 <div class="item"><span class="swatch" style="background:var(--rose)"></span><span class="lbl">Blocked</span><span class="val">1</span></div>
-              </div>
-              <div style="margin-left:auto; display:flex; flex-direction:column; gap:6px; min-width: 180px;">
-                <div style="font-size:11.5px; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.06em;">Next milestone</div>
-                <div style="font-size: 14px; font-weight: 600;">Tenant Maintenance — Build</div>
-                <div class="days"><svg class="clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> 5 days left</div>
-                <button class="btn btn-primary btn-pill" style="margin-top:8px; align-self:flex-start;">+ New Project</button>
+                <div class="item"><span class="swatch" style="background:var(--amber)"></span><span class="lbl">On hold</span><span class="val">0</span></div>
+                <div class="item"><span class="swatch" style="background:var(--ink-2)"></span><span class="lbl">Cancelled</span><span class="val">0</span></div>
+                <div class="item"><span class="swatch" style="background:var(--mint)"></span><span class="lbl">Done</span><span class="val">2</span></div>
               </div>
             </div>
           </div>
@@ -1710,22 +1735,19 @@
               <div style="display:flex; gap:8px; align-items:center;">
                 <button class="btn btn-soft btn-pill"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 5h18 M6 12h12 M10 19h4"/></svg> Filter</button>
                 <button class="btn btn-soft btn-pill"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 4v16 M17 4v16 M3 8h4 M3 16h4 M17 8h4 M17 16h4"/></svg> Sort</button>
-                <button class="btn btn-primary btn-pill">+ New Project</button>
+                <button class="btn btn-primary btn-pill">+ New idea</button>
               </div>
             </div>
             <div class="rows">
               <div class="row head">
-                <span>Project</span><span>Tasks</span><span>Chats</span><span>Status</span><span>Priority</span><span>Stage</span><span>Progress</span><span></span>
+                <span>Project</span><span>Tasks</span><span>Status</span><span>Stage</span><span>Progress</span><span></span>
               </div>
               <div class="row">
                 <div class="ttl">
                   <b>Tenant Maintenance Portal</b>
-                  <span><svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7l9-4 9 4-9 4-9-4z M3 12l9 4 9-4 M3 17l9 4 9-4"/></svg> Maintenance · Updated 2h ago</span>
                 </div>
                 <span class="stage-pt">12 / 21</span>
-                <span class="stage-pt">3</span>
-                <span class="pill review"><span class="dot"></span> In Review</span>
-                <span class="prio high"><span class="ring"></span> High</span>
+                <span class="pill inprog"><span class="dot"></span> Build</span>
                 <span class="stage-pt">Build</span>
                 <div class="progress" style="--p:62%"></div>
                 <button class="more">⋯</button>
@@ -1733,12 +1755,9 @@
               <div class="row">
                 <div class="ttl">
                   <b>Yoga Studio Booking</b>
-                  <span><svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7l9-4 9 4-9 4-9-4z M3 12l9 4 9-4 M3 17l9 4 9-4"/></svg> Booking · Updated 1d ago</span>
                 </div>
                 <span class="stage-pt">7 / 12</span>
-                <span class="stage-pt">2</span>
-                <span class="pill inprog"><span class="dot"></span> In Progress</span>
-                <span class="prio medium"><span class="ring"></span> Med</span>
+                <span class="pill inprog"><span class="dot"></span> Design</span>
                 <span class="stage-pt">Design</span>
                 <div class="progress" style="--p:55%"></div>
                 <button class="more">⋯</button>
@@ -1746,12 +1765,9 @@
               <div class="row">
                 <div class="ttl">
                   <b>Field Service Tracker</b>
-                  <span><svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7l9-4 9 4-9 4-9-4z M3 12l9 4 9-4 M3 17l9 4 9-4"/></svg> Tracking · Updated 3d ago</span>
                 </div>
                 <span class="stage-pt">4 / 32</span>
-                <span class="stage-pt">1</span>
                 <span class="pill blocked"><span class="dot"></span> Blocked</span>
-                <span class="prio high"><span class="ring"></span> High</span>
                 <span class="stage-pt">Requirements</span>
                 <div class="progress" style="--p:14%"></div>
                 <button class="more">⋯</button>
@@ -1759,12 +1775,9 @@
               <div class="row">
                 <div class="ttl">
                   <b>Internal Timesheet</b>
-                  <span><svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7l9-4 9 4-9 4-9-4z M3 12l9 4 9-4 M3 17l9 4 9-4"/></svg> Operations · Updated 4d ago</span>
                 </div>
                 <span class="stage-pt">2 / 8</span>
-                <span class="stage-pt">1</span>
-                <span class="pill todo"><span class="dot"></span> Planning</span>
-                <span class="prio low"><span class="ring"></span> Low</span>
+                <span class="pill inprog"><span class="dot"></span> Intake</span>
                 <span class="stage-pt">Intake</span>
                 <div class="progress" style="--p:8%"></div>
                 <button class="more">⋯</button>
@@ -1772,12 +1785,9 @@
               <div class="row">
                 <div class="ttl">
                   <b>Personal Bookmarks</b>
-                  <span><svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7l9-4 9 4-9 4-9-4z M3 12l9 4 9-4 M3 17l9 4 9-4"/></svg> Personal · Updated 1w ago</span>
                 </div>
                 <span class="stage-pt">11 / 11</span>
-                <span class="stage-pt">0</span>
                 <span class="pill shipped"><span class="dot"></span> Deployed</span>
-                <span class="prio low"><span class="ring"></span> Low</span>
                 <span class="stage-pt">Deployed</span>
                 <div class="progress" style="--p:100%"></div>
                 <button class="more">⋯</button>
@@ -1842,6 +1852,7 @@
               <a href="#" class="active"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12l9-9 9 9 M5 10v10h14V10"/></svg> Overview</a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h11l3 3v13H5z M16 4v3h3 M8 11h8 M8 14h8 M8 17h5"/></svg> Project Background <span class="count">7</span></a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3h7v7 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> Requirements <span class="count">14</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Sprint <span class="count">12</span></a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z M4 9h16 M9 4v16"/></svg> Design</a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Build <span class="count">12</span></a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="9" r="3"/><path d="M3 19c0-3 2.7-5 6-5s6 2 6 5 M14 19c0-3 2.7-5 6-5"/></svg> Agents</a>
@@ -1864,8 +1875,6 @@
           <div class="topbar">
             <a href="#" style="font-size:13px; color: var(--ink-2);">← Projects</a>
             <div class="search" style="opacity:.6; pointer-events:none;"><input placeholder="Search this project…" /></div>
-            <button class="btn btn-soft btn-pill">Share</button>
-            <button class="btn btn-primary btn-pill">Open in Claude Code →</button>
           </div>
 
           <!-- Project header -->
@@ -1906,7 +1915,7 @@
             <div class="card">
               <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 8px;">
                 <h3>Current stage — Design</h3>
-                <span class="pill inprog"><span class="dot"></span> In Progress</span>
+                <span class="pill inprog"><span class="dot"></span> Design</span>
               </div>
               <div class="callout">
                 <span class="pulse"></span>
@@ -1994,6 +2003,7 @@
               <a href="#" class="active"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12l9-9 9 9 M5 10v10h14V10"/></svg> Overview</a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h11l3 3v13H5z M16 4v3h3 M8 11h8 M8 14h8 M8 17h5"/></svg> Project Background <span class="count">7</span></a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3h7v7 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> Requirements <span class="count">14</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Sprint <span class="count">12</span></a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z M4 9h16 M9 4v16"/></svg> Design</a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Build <span class="count">12</span></a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="9" r="3"/><path d="M3 19c0-3 2.7-5 6-5s6 2 6 5 M14 19c0-3 2.7-5 6-5"/></svg> Agents</a>
@@ -2010,8 +2020,6 @@
           <div class="topbar">
             <a href="#" style="font-size:13px; color: var(--ink-2);">← Projects</a>
             <div class="search" style="opacity:.6;"><input placeholder="Search this project…" /></div>
-            <button class="btn btn-soft btn-pill">Share</button>
-            <button class="btn btn-primary btn-pill">Open in Claude Code →</button>
           </div>
 
           <div class="card">
@@ -2041,57 +2049,52 @@
           </div>
 
           <div class="detail-grid">
-            <!-- Left: current stage -->
-            <div class="card">
-              <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 8px;">
-                <h3>Current stage — Requirements</h3>
-                <span class="pill inprog"><span class="dot"></span> In Progress</span>
-              </div>
-              <div class="callout">
-                <span class="pulse"></span>
-                <div class="lbl"><b>BA Agent + Requirements Reviewer</b> are iterating on user stories &amp; acceptance criteria</div>
-                <div class="who">Started 1d ago</div>
-              </div>
-
-              <h3 style="margin-top: 22px;">Requirements checklist</h3>
-              <div>
-                <div class="check done"><div class="box">✓</div><div class="lbl">Intake captured — idea, personas, journeys documented</div><span class="meta">1d ago</span></div>
-                <div class="check done"><div class="box">✓</div><div class="lbl">User stories drafted (9 candidates)</div><span class="meta">yesterday</span></div>
-                <div class="check done"><div class="box">✓</div><div class="lbl">Acceptance criteria written for first-pass stories</div><span class="meta">today</span></div>
-                <div class="check"><div class="box"></div><div class="lbl">Edge cases (offline, conflict resolution) added</div><span class="meta">in progress</span></div>
-                <div class="check"><div class="box"></div><div class="lbl">Non-functional requirements (perf, security, a11y)</div></div>
-                <div class="check"><div class="box"></div><div class="lbl">Reviewer sign-off on all user stories</div></div>
-                <div class="check"><div class="box"></div><div class="lbl">Traceability matrix — story → AC → test plan</div></div>
-              </div>
-
-              <div style="display:flex; gap: 8px; margin-top: 18px;">
-                <button class="btn btn-primary">Mark Requirements complete</button>
-                <button class="btn btn-ghost">Pause stage</button>
-              </div>
-            </div>
-
-            <!-- Right column -->
+            <!-- Left: current stage + outstanding questions -->
             <div style="display:flex; flex-direction: column; gap: 18px;">
+              <div class="card">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 8px;">
+                  <h3>Current stage — Requirements</h3>
+                  <span class="pill blocked"><span class="dot"></span> Requirements · Blocked</span>
+                </div>
+                <div class="callout">
+                  <span class="pulse"></span>
+                  <div class="lbl"><b>BA Agent + Requirements Reviewer</b> are iterating on user stories &amp; acceptance criteria</div>
+                  <div class="who">Started 1d ago</div>
+                </div>
+
+                <h3 style="margin-top: 22px;">Requirements checklist</h3>
+                <div>
+                  <div class="check done"><div class="box">✓</div><div class="lbl">Intake captured — idea, personas, journeys documented</div><span class="meta">1d ago</span></div>
+                  <div class="check done"><div class="box">✓</div><div class="lbl">User stories drafted (9 candidates)</div><span class="meta">yesterday</span></div>
+                  <div class="check done"><div class="box">✓</div><div class="lbl">Acceptance criteria written for first-pass stories</div><span class="meta">today</span></div>
+                  <div class="check"><div class="box"></div><div class="lbl">Edge cases (offline, conflict resolution) added</div><span class="meta">in progress</span></div>
+                  <div class="check"><div class="box"></div><div class="lbl">Non-functional requirements (perf, security, a11y)</div></div>
+                  <div class="check"><div class="box"></div><div class="lbl">Reviewer sign-off on all user stories</div></div>
+                  <div class="check"><div class="box"></div><div class="lbl">Traceability matrix — story → AC → test plan</div></div>
+                </div>
+
+                <div style="display:flex; gap: 8px; margin-top: 18px;">
+                  <button class="btn btn-primary">Mark Requirements complete</button>
+                  <button class="btn btn-ghost">Pause stage</button>
+                </div>
+              </div>
+
               <div class="card">
                 <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 4px;">
                   <h3 style="margin: 0;">Outstanding questions</h3>
                   <span class="pill inprog"><span class="dot"></span> 3 open</span>
                 </div>
-                <div style="font-size: 12px; color: var(--ink-2); opacity:.75; margin-bottom: 14px;">BA Agent is waiting on these answers before finalising the requirements. Reply inline or open the full chat.</div>
+                <div style="font-size: 12px; color: var(--ink-2); opacity:.75; margin-bottom: 14px;">BA Agent is waiting on these answers before finalising the requirements. Open the chat to respond.</div>
 
-                <div style="display:flex; flex-direction: column; gap: 14px;">
+                <div class="q-scroll">
                   <div style="background: var(--butter); border-radius: 12px; padding: 12px 14px;">
                     <div style="display:flex; align-items:flex-start; gap:8px;">
                       <div class="av-sm ba" style="margin-top: 2px;">BA</div>
                       <div style="flex:1;">
                         <div style="font-weight: 600; font-size: 13px; color: var(--ink);">Does the app need to work offline for field engineers?</div>
                         <div style="font-size: 11.5px; color: var(--ink); opacity:.65; margin-top: 2px;">Asked 1d ago · Blocks story <b>FS-04 Sync jobs offline</b></div>
-                        <div style="display:flex; gap: 6px; margin-top: 10px;">
-                          <textarea class="ta" rows="2" placeholder="Type your answer…" style="flex:1; resize: none; font-size: 12.5px; padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(43,37,71,.15); background: white; font-family: inherit;"></textarea>
-                        </div>
-                        <div style="display:flex; gap: 6px; margin-top: 8px; justify-content: flex-end;">
-                          <button class="btn btn-ghost" style="padding: 6px 10px; font-size: 12px;">Skip — BA decides</button>
-                          <button class="btn btn-primary" style="padding: 6px 12px; font-size: 12px;">Send answer</button>
+                        <div style="margin-top: 10px;">
+                          <button class="btn btn-soft btn-pill" style="padding: 5px 11px; font-size: 11.5px;">Open chat to answer →</button>
                         </div>
                       </div>
                     </div>
@@ -2103,12 +2106,8 @@
                       <div style="flex:1;">
                         <div style="font-weight: 600; font-size: 13px; color: var(--ink);">Where do uploaded photos get stored? (S3 / Cloudinary / local?)</div>
                         <div style="font-size: 11.5px; color: var(--ink); opacity:.65; margin-top: 2px;">Asked 1d ago · Blocks story <b>FS-07 Attach photos to a job</b></div>
-                        <div style="display:flex; gap: 6px; margin-top: 10px;">
-                          <textarea class="ta" rows="2" placeholder="Type your answer…" style="flex:1; resize: none; font-size: 12.5px; padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(43,37,71,.15); background: white; font-family: inherit;"></textarea>
-                        </div>
-                        <div style="display:flex; gap: 6px; margin-top: 8px; justify-content: flex-end;">
-                          <button class="btn btn-ghost" style="padding: 6px 10px; font-size: 12px;">Skip — BA decides</button>
-                          <button class="btn btn-primary" style="padding: 6px 12px; font-size: 12px;">Send answer</button>
+                        <div style="margin-top: 10px;">
+                          <button class="btn btn-soft btn-pill" style="padding: 5px 11px; font-size: 11.5px;">Open chat to answer →</button>
                         </div>
                       </div>
                     </div>
@@ -2120,23 +2119,18 @@
                       <div style="flex:1;">
                         <div style="font-weight: 600; font-size: 13px; color: var(--ink);">Confirm pricing tier — free for one engineer, paid for team?</div>
                         <div style="font-size: 11.5px; color: var(--ink); opacity:.65; margin-top: 2px;">Asked 1d ago · Blocks story <b>FS-12 Billing &amp; seat limits</b></div>
-                        <div style="display:flex; gap: 6px; margin-top: 10px;">
-                          <textarea class="ta" rows="2" placeholder="Type your answer…" style="flex:1; resize: none; font-size: 12.5px; padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(43,37,71,.15); background: white; font-family: inherit;"></textarea>
-                        </div>
-                        <div style="display:flex; gap: 6px; margin-top: 8px; justify-content: flex-end;">
-                          <button class="btn btn-ghost" style="padding: 6px 10px; font-size: 12px;">Skip — BA decides</button>
-                          <button class="btn btn-primary" style="padding: 6px 12px; font-size: 12px;">Send answer</button>
+                        <div style="margin-top: 10px;">
+                          <button class="btn btn-soft btn-pill" style="padding: 5px 11px; font-size: 11.5px;">Open chat to answer →</button>
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
-
-                <div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(43,37,71,.08); display:flex; justify-content: space-between; align-items: center;">
-                  <span style="font-size: 12px; color: var(--ink-2); opacity:.7;">Need more context? Switch to the full chat with the BA Agent.</span>
-                  <button class="btn btn-soft btn-pill" style="padding: 6px 12px; font-size: 12px;">Open chat →</button>
-                </div>
               </div>
+            </div>
+
+            <!-- Right column -->
+            <div style="display:flex; flex-direction: column; gap: 18px;">
               <div class="card">
                 <h3>Activity</h3>
                 <div class="tl">
@@ -2182,6 +2176,7 @@
 
   <!-- ═════════════ 5 · Overview — Deployed ═════════════ -->
   <section class="screen" id="s5">
+  <section class="screen" id="s5">
     <div class="screen-label">
       <span class="num">5</span>
       <span class="name">Overview — Deployed</span>
@@ -2197,6 +2192,7 @@
               <a href="#" class="active"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12l9-9 9 9 M5 10v10h14V10"/></svg> Overview</a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h11l3 3v13H5z M16 4v3h3 M8 11h8 M8 14h8 M8 17h5"/></svg> Project Background <span class="count">7</span></a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3h7v7 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> Requirements <span class="count">11</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Sprint <span class="count">12</span></a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z M4 9h16 M9 4v16"/></svg> Design</a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Build <span class="count">12</span></a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="9" r="3"/><path d="M3 19c0-3 2.7-5 6-5s6 2 6 5 M14 19c0-3 2.7-5 6-5"/></svg> Agents</a>
@@ -2213,8 +2209,6 @@
           <div class="topbar">
             <a href="#" style="font-size:13px; color: var(--ink-2);">← Projects</a>
             <div class="search" style="opacity:.6;"><input placeholder="Search this project…" /></div>
-            <button class="btn btn-soft btn-pill">Share</button>
-            <button class="btn btn-primary btn-pill">Open in Claude Code →</button>
           </div>
 
           <div class="card">
@@ -2260,7 +2254,7 @@
                     <div style="font-size: 20px; font-weight: 700;">11 days</div>
                   </div>
                   <div style="background: var(--peach); border-radius: 12px; padding: 12px;">
-                    <div style="font-size:11px; color:var(--ink); opacity:.7;">Features shipped</div>
+                    <div style="font-size:11px; color:var(--ink); opacity:.7;">Features deployed</div>
                     <div style="font-size: 20px; font-weight: 700;">11 / 11</div>
                   </div>
                 </div>
@@ -2299,8 +2293,9 @@
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12l9-9 9 9 M5 10v10h14V10"/></svg> Overview</a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h11l3 3v13H5z M16 4v3h3 M8 11h8 M8 14h8 M8 17h5"/></svg> Project Background <span class="count">7</span></a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3h7v7 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> Requirements <span class="count">14</span></a>
+              <a href="#" class="active"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Sprint <span class="count">12</span></a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z M4 9h16 M9 4v16"/></svg> Design</a>
-              <a href="#" class="active"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Build <span class="count">12</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Build <span class="count">12</span></a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="9" r="3"/><path d="M3 19c0-3 2.7-5 6-5s6 2 6 5 M14 19c0-3 2.7-5 6-5"/></svg> Agents</a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 12l2 2 4-4 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg> QA <span class="count">3</span></a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> Activity</a>
@@ -2335,8 +2330,8 @@
                 <div class="path">~/Code/tenant-maintenance · Build stage · 3 Code Agents in parallel</div>
               </div>
               <div class="actions">
-                <span class="pill inprog"><span class="dot"></span> In Progress</span>
-                <span class="stage-pt">Jira · TM-12 to TM-42</span>
+                <span class="pill inprog"><span class="dot"></span> Build</span>
+                <span class="stage-pt">12 Jira tickets · TM-12 to TM-23</span>
               </div>
             </div>
 
@@ -2433,12 +2428,12 @@
                 <div class="kcard">
                   <div class="krow"><span class="ktag tm">TM-12</span><span class="kprio high"></span></div>
                   <div class="ktitle">Vite + React + TS scaffold (CI green)</div>
-                  <div class="kfoot"><span class="kagent a-c1">C1</span><span class="kpts">2 pts</span><span class="kprog">shipped</span></div>
+                  <div class="kfoot"><span class="kagent a-c1">C1</span><span class="kpts">2 pts</span><span class="kprog">done</span></div>
                 </div>
                 <div class="kcard">
                   <div class="krow"><span class="ktag tm">TM-13</span><span class="kprio med"></span></div>
                   <div class="ktitle">Design tokens wired into Tailwind config</div>
-                  <div class="kfoot"><span class="kagent a-c1">C1</span><span class="kpts">3 pts</span><span class="kprog">shipped</span></div>
+                  <div class="kfoot"><span class="kagent a-c1">C1</span><span class="kpts">3 pts</span><span class="kprog">done</span></div>
                 </div>
               </div>
             </div>
@@ -2604,7 +2599,7 @@
               </div>
               <div class="crumbs">Captured</div>
               <h1>Tenant Maintenance Portal</h1>
-              <p class="sub" style="text-align: center;">Your idea was saved to <code style="font-family: var(--font-mono);">~/Code/tenant-maintenance/idea.md</code>. The project is now in <b>Intake</b> — next stop is the PRD.</p>
+              <p class="sub" style="text-align: center;">Your idea was saved to <code style="font-family: var(--font-mono);">~/Code/tenant-maintenance/idea.md</code>. The project is now in <b>Intake</b> — next stop is Project Background.</p>
 
               <div style="background: var(--lavender); border-radius: 12px; padding: 14px; margin: 22px 0; text-align: left;">
                 <div style="font-size: 11.5px; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px;">What was written</div>
@@ -2768,11 +2763,10 @@
           <div class="kit-section">
             <h3>Status pills</h3>
             <div class="row">
-              <span class="pill todo"><span class="dot"></span> Planning</span>
-              <span class="pill draft"><span class="dot"></span> Drafting</span>
-              <span class="pill inprog"><span class="dot"></span> In Progress</span>
-              <span class="pill review"><span class="dot"></span> In Review</span>
-              <span class="pill blocked"><span class="dot"></span> Blocked</span>
+              <span class="pill inprog"><span class="dot"></span> Active</span>
+              <span class="pill blocked"><span class="dot"></span> Stage · Blocked</span>
+              <span class="pill onhold"><span class="dot"></span> Stage · On hold</span>
+              <span class="pill cancelled"><span class="dot"></span> Cancelled</span>
               <span class="pill done"><span class="dot"></span> Done</span>
               <span class="pill shipped"><span class="dot"></span> Deployed</span>
             </div>
@@ -2895,7 +2889,7 @@
                 <h3>Sample Idea</h3>
                 <div class="one-liner">A one-liner about what the app does</div>
                 <div class="row" style="margin-top: 10px;">
-                  <span class="pill inprog"><span class="dot"></span> In Progress</span>
+                  <span class="pill inprog"><span class="dot"></span> Active</span>
                 </div>
                 <div class="pipeline-mini">
                   <span class="done"></span><span class="done"></span><span class="active"></span><span></span><span></span><span></span><span></span>

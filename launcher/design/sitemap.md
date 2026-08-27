@@ -72,13 +72,36 @@ When a project is opened, the route lands on **Overview**. The stage's own tab i
 **The gate (two-step, one-shot unlock).** Downstream tabs (Sprint, Design, Build, QA) are locked until the project context is confirmed.
 1. A user transitions all 17 Project Background docs to **Approved**.
 2. A dedicated **"Project context ready"** confirmation view (State D — a dedicated view, not a banner/modal) lets the user confirm the whole context.
-That confirmation fires a **one-shot unlock** of Sprint + Design + Build + QA and finalizes Requirements. Auto-unlock does **not** fire on the last file approval. *(Open: if a file is un-Approved after confirmation, do downstream tabs re-lock? Proposed: yes, re-lock + warn.)*
+That confirmation fires a **one-shot unlock** of Sprint + Design + Build + QA and finalizes Requirements. Auto-unlock does **not** fire on the last file approval. Once confirmed, downstream tabs stay accessible even if a file is later un-Approved — a banner warns "context changed since confirmation" but the unlock does not re-arm.
 
 **Requirements is always visible** and auto-updates as Project Background is reviewed (Background is the source; Requirements is derived).
 
 ### Every stage tab has two halves
 
-Each stage tab (Sprint, Design, Build, QA) is both a **status/info half** and an **editable rules half**. Rule edits **write back to the project's on-disk folder** (`project-dir.txt` workspace root) so the agents that run each stage pick up the changes. This is the control-console pattern: the launcher is how a human *steers* the agents, not just watches them.
+Each **stage tab that has editable rules** (Design, Build, QA) is split into two halves via a tabbed **Status / Rules switch** at the top of the tab body:
+
+- **Status half** — the live status/info view (per-story status, queues, summary stats, evidence viewers).
+- **Rules half** — the editable rules surface that **writes back to the project's on-disk folder** (`project-dir.txt` workspace root) so the agents that run each stage pick up the changes. This is the control-console pattern: the launcher is how a human *steers* the agents, not just watches them.
+
+**Sprint is the exception** — it is **status-only** (no Rules tab). The board IS the steerable surface (story moves happen here, not in a Rules half). The 3-Code-Agent strip also moves off Sprint onto the **Agents tab**, leaving Sprint focused on the board.
+
+Rule write-back targets by stage:
+
+| Stage tab | Rules write to |
+|---|---|
+| Design | `design-system/` (maps to `../skills/accessibility-guidelines.md`, `../skills/ui-best-practices.md`) |
+| Build | `code-builder/` + `../skills/coding-guidelines.md` |
+| QA | `testing/` (maps to `../skills/`, `../testing/playwright/`) |
+
+### Locked tabs — greyed-out but WCAG-compliant
+
+Tabs gated behind project-context confirmation (Sprint, Design, Build, QA in pre-confirmation) render as **greyed-out but accessible** — never `display:none`, never contrast-disabled. The lock label keeps sufficient contrast, gets `aria-disabled="true"`, an accessible name that names the gate, a tooltip ("Confirm project context first"), and stays keyboard-reachable. Once confirmation fires, the lock lifts and the active style applies.
+
+### In-project topbar — minimal
+
+The in-project topbar is intentionally minimal: `← Projects` (back to `/projects`) · `Search this project…` (artifacts + requirements, extensible). **No Share. No "Open in Claude Code".** Those affordances were removed in the 2026-08-27 walkthrough.
+
+Projects-screen ⌘F (Screen 1) is a **different scope** — it filters the projects list only (not the in-project search). The two scopes stay separate.
 
 ### DB migration (deferred to implementation)
 
@@ -128,11 +151,12 @@ At-a-glance launchpad. Two jobs: **"what should I work on next?"** and **"start 
 2. **Stage vocabulary** — canonical 7 stages + 5 statuses (see Global conventions). Terminal stage = `Deployed`.
 3. **Next milestone removed** — pipeline ring shows aggregate % + legend only; no milestone card, no due dates.
 4. **Tasks column kept** = Jira cards done/total (shows `—` before Build). **Chats column removed.**
+5. **⌘F search scope = this-list-only** — filters the projects list (separate scope from the in-project topbar search).
+6. **Default sort = `updated_at desc`** — user-changeable via the Sort control.
+7. **Notifications bell** — decorative for now; deferred feature. Future scope: surface blocked projects, SA comments awaiting reply, failed QA.
 
 ### Open / deferred
-- **Topbar search scope** — is ⌘F a filter for *this* list, or a global search across projects/artifacts? Decide when we walk the Topbar.
-- **Sort control** — mockup shows a Sort control on the table; not yet built. Decide default sort (updated_at desc?) and whether user can change it.
-- **Notifications bell** — designed in topbar, no behavior yet. Decide if it surfaces anything real (blocked projects, SA comments awaiting reply, failed QA).
+- *(none beyond what is locked)*
 
 ---
 
@@ -169,7 +193,7 @@ At-a-glance launchpad. Two jobs: **"what should I work on next?"** and **"start 
 3. **Import = adopt folder** — not a file upload. The launcher inspects an on-disk project folder and adopts it.
 
 ### Open / deferred
-- **Stage-inference rules for an adopted folder** — proposed default: if `PRD/` exists with N approved files → `Requirements`; if `design-system/` populated → `Design`; if code + Jira cards → `Build`; only `idea.md` → `Intake`; nothing recognizable → `Intake` with a warning. Settle during implementation.
+- **Stage-inference rules for an adopted folder** — proposed default: if `PRD/` exists with N approved files → `Requirements`; if `design-system/` populated → `Design`; if code + Jira cards → `Build`; only `idea.md` → `Intake`; nothing recognizable → `Intake` with a warning. **Deferred to implementation** — no post-import confirmation state designed.
 
 ---
 
@@ -221,7 +245,7 @@ Pick (or create) the on-disk project folder that will hold the framework artifac
 | **Mockup** | `mockups.html` `#s8` |
 
 ### Entry
-- From Screen 7 after the folder is picked. Also the target of the **"Open chat →"** link in Overview-blocked (resumes the intake BA chat — *open: or a project-level thread?*).
+- From Screen 7 after the folder is picked. Also the target of the **"Open chat →"** link in Overview-blocked and Project Background open-questions banner — both resume the intake BA chat (this screen).
 
 ### Purpose
 The BA Agent interviews the user about their idea and writes `idea.md`. Two-column: the conversation on the left, what's been captured on the right.
@@ -229,7 +253,8 @@ The BA Agent interviews the user about their idea and writes `idea.md`. Two-colu
 ### Zones
 1. **Chat thread** (left) — BA ↔ user bubbles; streaming via `POST /api/chat` (NDJSON).
 2. **Interview progress** (right) — checklist of captured fields (Problem, Users & scale, MVP scope, Business rules, Brand & design, Tech stack…) with ✓/current/pending states.
-3. **Header** — workspace name = folder path; "← Change folder" link back to step 1.
+3. **Outstanding questions** (right, below Interview progress) — read-only list grouped by `Blocker-for:` (e.g. `Blocker-for: PRD-approval`, `Blocker-for: Design`). **Always visible** in the chat side panel. Uses the same greyed-out WCAG locked-tab treatment (see Global conventions § Locked tabs) while there are no outstanding questions; unlocks to the active style once questions exist. No per-item action button — the user is already in the chat.
+4. **Header** — workspace name = folder path; "← Change folder" link back to step 1.
 
 ### State
 - `POST /api/chat` — NDJSON stream to the model, `idea` fence detection, `idea.md` write + backup.
@@ -243,9 +268,11 @@ The BA Agent interviews the user about their idea and writes `idea.md`. Two-colu
 ### Decisions locked
 1. Reuses the existing BA-Agent chat (system prompt unchanged) — just hosted in the app shell.
 2. Interview progress sidebar surfaces what's been captured.
+3. **Outstanding questions section lives here** (chat side panel), NOT as a tab on the per-project sidebar. The 10-tab per-project sidebar is unchanged.
+4. **"Open chat →" target = this screen** (intake BA chat), not a project-level thread. Applies from Overview-blocked and the Project Background open-questions banner.
 
 ### Open / deferred
-- **"Open chat →" target** (Overview blocked) — resumes intake BA chat (this screen) or a project-level thread? — open.
+- *(none beyond what is locked)*
 
 ---
 
@@ -273,15 +300,14 @@ Confirm the idea was captured and hand off into the project. The project record 
 
 ### Actions
 - `Open project →` → `/projects/:id` (stage = `Intake`, lands on Overview).
-- `View idea.md` → in-app viewer or external editor (*open*).
+- `View idea.md` → **in-app markdown viewer**.
 
 ### Exit → `/projects/:id` · `/projects` (back)
 
 ### Decisions locked
 1. Project is created at `Intake` stage; the Overview focus tab is Project Background (next stage), but landing is still Overview.
-
-### Open / deferred
-- **"View idea.md"** — in-app viewer or external editor? — open.
+2. `View idea.md` = in-app markdown viewer.
+3. **Next stop is Project Background** (not the legacy "PRD" surface).
 
 ---
 
@@ -295,10 +321,10 @@ Every screen inside a project (`/projects/:id/*`) shares this chrome. Tab contra
 | **Layout** | two-column: aside (sidebar) + main |
 
 ### Zones
-1. **Aside — per-project sidebar** — 10-item menu (see Global conventions § Per-project sidebar) with live-tally badges; active item gets the dark-navy pill + `aria-current="page"`; locked tabs render disabled with a tooltip ("Confirm project context first").
+1. **Aside — per-project sidebar** — 10-item menu (see Global conventions § Per-project sidebar) with live-tally badges; active item gets the dark-navy pill + `aria-current="page"`; locked tabs use the **greyed-out but WCAG-compliant** treatment (see Global conventions § Locked tabs) — not contrast-disabled, not `display:none`. Tooltip: "Confirm project context first".
 2. **Aside foot** — `← All projects`, `Help & support`.
-3. **"Linked project" promo** — small card reminding the user that `idea.md` lives at the project root (framework-level, not under `PRD/`), with `Open idea.md →`.
-4. **Topbar** — `← Projects`, `Search this project…`, `Share`, `Open in Claude Code`.
+3. **"Linked project" promo** — small card reminding the user that `idea.md` lives at the project root (framework-level, not under `PRD/`), with `Open idea.md →` (in-app markdown viewer).
+4. **Topbar** — `← Projects` · `Search this project…` only. **No Share. No "Open in Claude Code"** (removed 2026-08-27). In-project search scope = artifacts + requirements (extensible to other types later).
 
 ### State
 - `GET /api/projects/:id` — project header (name, one-liner, mono path, team avatars), 7-stage stepper state, current stage/status.
@@ -308,13 +334,9 @@ Every screen inside a project (`/projects/:id/*`) shares this chrome. Tab contra
 1. **10-item menu with live-tally badges** (see Global conventions).
 2. **Default landing = Overview always**; the stage's tab is "focus" but does not auto-open.
 3. The shell is shared so each tab contract only describes its main column.
-
-### Open / deferred
-- **Topbar search scope** — "Search this project…" — artifacts? requirements? activity? — open.
-- **"Open in Claude Code →"** — launches the project folder in the CLI? Deep link? — open.
-- **"Open idea.md →" promo** — in-app viewer or external editor? — open.
-- **"Share"** — share link, invite teammate, or export? — open.
-- **Notifications bell** — surface blocked projects / SA comments awaiting reply / failed QA? — open.
+4. **Topbar cleaned** — no Share, no Open in Claude Code.
+5. **In-project search scope = artifacts + requirements** (extensible).
+6. **"Open idea.md →" promo = in-app markdown viewer.**
 
 ---
 
@@ -344,23 +366,22 @@ One dynamic tab, **three states**: `active` · `blocked` · `done` (Deployed). S
 - **Right column** — Activity + Artifacts.
 
 ### State — blocked (Screen 4)
-- **Current-stage panel** (rose, Blocked) + checklist.
-- **Outstanding-questions panel** — count, each question with asker / age / blocks-story, inline answer field, `Skip — BA decides` / `Send answer` / `Open chat →`. *(Mockup shows both checklist and outstanding questions — plan.md said "replaces"; mockup wins: both render.)*
+- **Current-stage panel** (rose, pill = `Requirements · Blocked` or whichever stage · Blocked) + checklist.
+- **Outstanding-questions panel** — **read-only**. Count + each question (asker · age · blocks-story). No inline textarea, no `Skip — BA decides`, no `Send answer`. Subtext: "The BA Agent is waiting on these before finalising requirements. Open the chat to answer." Sole action = `Open chat →` (resumes intake BA chat, see Screen 8).
 - **Right column** — Activity + Artifacts.
 
 ### State — done / Deployed (Screen 5)
 - **Journey timeline** — all 7 stages ✓ + durations + `Deployed to <url>`.
-- **Ship summary card** — total time, features n/n.
+- **Ship summary card** — total time, **features deployed** n/n.
 - **Right column** — **Artifacts only** (no Activity).
 
 ### State (data)
 - `GET /api/projects/:id` → header, stepper, current-stage panel, checklist, outstanding questions, journey timeline (done).
 
 ### Actions
-- `Mark <stage> complete` → `POST /api/projects/:id/stage` (transition). *(Open: can it fire with open blockers? Proposed: hard-block with a tooltip listing open questions.)*
+- `Mark <stage> complete` → `POST /api/projects/:id/stage` (transition). **Warn but allow**: the button stays enabled even with open blockers; clicking opens a confirm dialog that warns of open outstanding questions, then the user proceeds.
 - `Pause stage` → status `on_hold`.
-- In blocked: answer / skip / open chat on each outstanding question.
-- `Open chat →` → resumes intake BA chat (Screen 8) — *open: or project-level thread?*
+- In blocked: read the question list; `Open chat →` resumes the intake BA chat (Screen 8).
 
 ### Exit → sibling tabs (focus tab for the current stage)
 
@@ -369,10 +390,10 @@ One dynamic tab, **three states**: `active` · `blocked` · `done` (Deployed). S
 2. Blocked state shows **both** checklist and outstanding questions (mockup wins over plan.md "replaces").
 3. Done state right column = Artifacts only (no Activity).
 4. Default landing = Overview always.
-
-### Open / deferred
-- **Stage-complete gating** — can `Mark <stage> complete` fire with open blockers? Proposed: hard-block with tooltip. — open.
-- **"Open chat →" target** — open (see Screen 8).
+5. **Blocked questions are read-only** — no inline answer affordances; the `Open chat →` action is the sole way to answer.
+6. **Blocked pill = `Stage · Blocked`** (rose), e.g. `Requirements · Blocked`. Never bare `Blocked`.
+7. **Stage-complete gating = warn-but-allow** — confirm dialog lists open outstanding questions, then the user proceeds.
+8. **Done state copy = "Features deployed"** (was "Features shipped").
 
 ---
 
@@ -393,7 +414,7 @@ One dynamic tab, **three states**: `active` · `blocked` · `done` (Deployed). S
 
 ### Zones
 1. **Stage banner** — live counts (`9 Draft / 2 In Review / 1 Returned / 3 Approved`), not a bulk action.
-2. **Open-questions banner** (butter-yellow) — when `open-questions.md` has `Blocker-for: PRD-approval` items; deep-links to `prd.md` §11.
+2. **Open-questions banner** (butter-yellow) — when `open-questions.md` has `Blocker-for: PRD-approval` items; **deep-links into the intake BA chat (Screen 8) Outstanding questions section, filtered to `Blocker-for: PRD-approval`** (not `prd.md` §11).
 3. **Left rail — 5-band file tree** — Core PRD · Scope & rules · Data & access · Planning & risk · SA handoff. 17 artifacts total. Each row: colored status dot (Draft purple / In Review amber / Returned rose / Approved green), dirty inset (coral) when editing.
 4. **Right pane — document viewer** — `View` / `Edit` tabs. View renders markdown; Edit = BA-only monospace textarea.
 5. **Inline review thread** (State C) — below the document when a file is `In Review (SA)`; interleaves SA + BA comments; Compose box.
@@ -446,9 +467,10 @@ Edits persist to the project's on-disk `PRD/`. 7 API endpoints in `PROJECT-BACKG
 4. **Stage banner = live counts**, not a bulk action.
 5. **Write-back to on-disk `PRD/`**; no destructive deletes.
 6. Terminal state renamed "Completed" → "Approved"; button "Mark Completed ✓" → "Approve ✓".
+7. **Re-lock on revoke = keep unlocked, warn only** — once confirmed, downstream tabs stay accessible; if a file is later un-Approved, a banner warns "context changed since confirmation". The unlock does not re-arm.
+8. **Open-questions banner** deep-links into the intake chat's Outstanding questions section (filtered to `Blocker-for: PRD-approval`), not `prd.md` §11.
 
 ### Open / deferred
-- **Re-lock on revoke** — if a file is un-Approved after confirmation, do downstream tabs re-lock? Proposed: yes, re-lock + warn.
 - Markdown renderer choice (`react-markdown` + `remark-gfm`) — implementation detail.
 
 ---
@@ -505,8 +527,8 @@ Edits persist to the project's on-disk `PRD/`. 7 API endpoints in `PROJECT-BACKG
 
 ### Zones
 1. **Jira-sync banner** — `role="status"`; "Two-way Jira sync is on… Status changes in Jira update this board within 30s." + `Open in Jira ↗`.
-2. **Kanban board** — 4 columns: To do / In progress / In review / Done. Each card: ticket ID (`TM-*`), title, priority dot, Code Agent avatar, point estimate, live status (in progress / PR open / shipped).
-3. **Agent strip** (below the board) — the 3 Code Agents' current work + ETA. *(Open: the strip may move to the Agents tab — the strip below the Kanban is the Code Agents status.)*
+2. **Kanban board** — 4 columns: To do / In progress / In review / Done. Each card: ticket ID (`TM-*`), title, priority dot, Code Agent avatar, point estimate, live status (in progress / PR open / done — not "shipped").
+3. **(Empty/setup state — no Jira link)** When Sprint is unlocked but no Jira link is configured, the Sprint tab shows a **Connect Jira setup state** instead of the board: configure project key, base URL, sync direction, auth. Jira is required for the board to function.
 
 ### State
 - `GET /api/projects/:id/build/board` (now the Sprint board) → columns + cards.
@@ -517,6 +539,7 @@ Edits persist to the project's on-disk `PRD/`. 7 API endpoints in `PROJECT-BACKG
 - Open a card → story detail.
 - `Open in Jira ↗` → external Jira.
 - Manual sync (if exposed).
+- `Connect Jira` setup actions (project key, base URL, sync, auth) when no link exists.
 
 ### Exit → Design (stories in design) · Build (stories in build + rework) · QA (stories in QA)
 
@@ -524,10 +547,12 @@ Edits persist to the project's on-disk `PRD/`. 7 API endpoints in `PROJECT-BACKG
 1. **Sprint = the Jira board** (moved out of Build). Master story tracker across all stages.
 2. **Jira is integrated via Sprint.**
 3. Old Screen 6 contract is the Sprint board; the *Build* tab is no longer the board.
+4. **Sprint is status-only — NO Rules tab** (exception to the two-halves pattern). The board IS the steerable surface.
+5. **Jira is required** to use the Sprint tab. Without a link, the Connect Jira setup state replaces the board.
+6. **3-Code-Agent strip moves to the Agents tab** — Sprint is board-only.
 
 ### Open / deferred
-- **Standalone without Jira** — does the board work without a Jira link? Proposed: internal board with optional Jira sync.
-- **Agent strip placement** — stays here or moves to the Agents tab? — open.
+- **Jira config home** — proposed default: in-Sprint Connect Jira setup state (locked). Alternative considered: dedicated global Settings screen. To confirm in Phase 2 session.
 
 ---
 
@@ -564,16 +589,16 @@ Edits persist to the project's on-disk `PRD/`. 7 API endpoints in `PROJECT-BACKG
 ### Exit → sibling tabs (Sprint for story status; Build once "Ready for development")
 
 ### Decisions locked
-1. Design tab = design-journey output + editable design rules (two halves).
+1. Design tab = design-journey output + editable design rules (two halves — Status / Rules switch).
 2. Design agent updates the story to **"Ready for development"** on design complete (ties to the Sprint board).
 3. Design rules **write back to the `design-system/` folder** (control-console pattern).
 4. Peer review is Design Agent A ↔ B (per the framework), surfaced in the agent strip.
+5. **Artifacts viewer = hybrid** — tokens + interaction states rendered in-app; wireframes + hi-fi link to Figma.
+6. **Peer-review surface = per-story review thread** — A↔B comments + disagreements shown inline per story.
+7. **Everything is editable** — the user can edit both the design rules (Rules tab) AND the per-story design checklist/status (not agent-managed-only).
 
 ### Open / deferred
 - **Mockup not yet created** — design the visual first.
-- Design artifacts viewer: render wireframes/hi-fi in-app (image/SVG) or link to Figma? — open.
-- Peer-review (A↔B) surface — how disagreements/revisions shown? — open.
-- Design checklist editability — which items are user-editable vs agent-managed? — open.
 
 ---
 
@@ -610,10 +635,10 @@ Edits persist to the project's on-disk `PRD/`. 7 API endpoints in `PROJECT-BACKG
 1. **Build = config + architecture + rework**, not a board. Old Screen 6 contract is **discarded**.
 2. Build rules **write back to the project folder** (control-console pattern).
 3. QA fail / review fail → back to Build rework queue.
+4. **Architecture panel is read-only** — inferred by agents; the user steers build behavior via the Rules tab only (single steering surface). No edit affordances on the architecture row.
 
 ### Open / deferred
 - **Mockup not yet created** — design the visual first.
-- Architecture panel depth — editable or read-only? — open.
 
 ---
 
@@ -651,16 +676,16 @@ Edits persist to the project's on-disk `PRD/`. 7 API endpoints in `PROJECT-BACKG
 ### Exit → sibling tabs (Sprint for story status; Build rework queue on fail)
 
 ### Decisions locked
-1. QA tab = test results + screenshots + editable QA rules (two halves).
+1. QA tab = test results + screenshots + editable QA rules (two halves — Status / Rules switch).
 2. **Screenshots are first-class** — visible confirmations (pass) and issue screenshots (fail) per test step.
 3. QA rules **write back to the `testing/` folder** (control-console pattern).
 4. QA pass → **deployed to QA environment** (Build tab shows deploy status); QA fail → **back to Build rework queue**.
+5. **Manual re-run available** — a `Re-run tests` action on the QA tab (per story/test) runs alongside the QA agent's autonomous runs.
+6. **Tools panel = Playwright only** for now (scope tight); extend later.
 
 ### Open / deferred
 - **Mockup not yet created** — design the visual first.
-- Screenshot storage/retention — where Playwright screenshots live, how many kept? — open.
-- Manual re-run vs fully agent-driven — open.
-- QA tools beyond Playwright — open.
+- Screenshot storage/retention — where Playwright screenshots live, how many kept — implementation detail.
 
 ---
 
@@ -678,17 +703,18 @@ Edits persist to the project's on-disk `PRD/`. 7 API endpoints in `PROJECT-BACKG
 
 ### Zones (proposed)
 1. **Agent roster** — BA, Design A/B, Code 1/2/3, QA, Reviewer — avatar, role, current task, status (active/idle/blocked), elapsed/ETA.
-2. **Agent detail** — selected agent's current work + recent activity.
+2. **Code Agent strip** — the 3 Code Agents' current work + ETA. **Moved here from the Sprint tab** so Sprint stays board-only.
+3. **Agent detail** — selected agent's current work + recent activity.
 
 ### State
 - `GET /api/projects/:id/agents` → currently active agents + status.
 
 ### Decisions locked
-- Agent roster lives here (the strip may move from Sprint to here).
+1. Agent roster lives here.
+2. **3-Code-Agent strip moved here from Sprint.**
 
 ### Open / deferred
 - **Mockup not yet created** — design the visual first.
-- Whether the Sprint agent strip moves here — open.
 
 ---
 
@@ -704,14 +730,17 @@ Edits persist to the project's on-disk `PRD/`. 7 API endpoints in `PROJECT-BACKG
 "What's happened on this project?" Standalone activity feed (the Overview right-column feed, full-width with filters).
 
 ### Zones (proposed)
-1. **Activity timeline** — agent-coloured avatars (BA peach, Design sky, Code mint, Review butter, QA lavender, Orchestrator navy), message, timestamp. Filter by agent / stage / kind.
+1. **Activity timeline** — agent-coloured avatars (BA peach, Design sky, Code mint, Review butter, QA lavender, Orchestrator navy), message, timestamp.
+2. **Filters** — agent / stage / kind (proposed default).
 
 ### State
 - `GET /api/projects/:id/activity` → timeline (paginated).
 
+### Decisions locked
+1. Filters = **agent / stage / kind** (proposed default — confirm during Phase 2 mockup).
+
 ### Open / deferred
 - **Mockup not yet created** — design the visual first.
-- Filter controls — open.
 
 ---
 
@@ -727,14 +756,16 @@ Edits persist to the project's on-disk `PRD/`. 7 API endpoints in `PROJECT-BACKG
 "What's been generated?" Standalone artifact list (the Overview right-column list, full-width).
 
 ### Zones (proposed)
-1. **Artifact file tree** — generated docs, code, designs; kind tag, path, size, created_at. Links open the file (in-app viewer or external — *open*).
+1. **Artifact file tree** — generated docs, code, designs; kind tag, path, size, created_at. Opens via **in-app viewer**.
 
 ### State
 - `GET /api/projects/:id/artifacts` → artifact list.
 
+### Decisions locked
+1. Opens via **in-app viewer**.
+
 ### Open / deferred
 - **Mockup not yet created** — design the visual first.
-- In-app viewer vs external editor — open.
 
 ---
 
@@ -893,12 +924,13 @@ Review comments for a file in `In Review (SA)` are **not** a file — they live 
 
 ## Cross-links
 
-- Every stage tab (Sprint, Design, Build, QA) references the **Sprint tab** as the master story tracker.
+- **Design, Build, QA** (the two-halves tabs) reference the **Sprint tab** as the master story tracker.
 - Every stage tab references **Project Background** as the gate.
 - **Requirements** is derived from **Project Background** and is always visible.
+- **Sprint** is status-only (no Rules tab) and references the **Agents tab** for the 3-Code-Agent strip.
 
 ---
 
 ## One-line summary
 
-The canonical 10-tab launcher site map: Project Background is the gate; Sprint is split from Build; Overview collapses Screens 3/4/5; every stage tab has a status half + an editable rules half that writes back to the project folder.
+The canonical 10-tab launcher site map: Project Background is the gate; Sprint is split from Build; Overview collapses Screens 3/4/5; Design/Build/QA use a Status/Rules two-halves pattern (Rules writes back to disk); Sprint is status-only with a Connect-Jira setup state.

@@ -1187,7 +1187,7 @@
   .file-status.draft     { background: var(--purple); }
   .file-status.review    { background: var(--amber); box-shadow: 0 0 0 3px rgba(232, 185, 74, 0.18); }
   .file-status.returned  { background: var(--rose); box-shadow: 0 0 0 3px rgba(217, 122, 142, 0.18); }
-  .file-status.completed { background: var(--green); }
+  .file-status.approved { background: var(--green); }
 
   /* File row tooltips for the status dot — accessed via aria-label on the
    * <span class="file-status"> in the mockup; documented in plan.md. */
@@ -1565,8 +1565,8 @@
   <section class="screen" id="s12">
     <div class="screen-label">
       <span class="num">12</span>
-      <span class="name">BA Workspace — view (PRD stage, draft)</span>
-      <span class="route">/projects/:id · Project Background (default landing for PRD-stage projects)</span>
+      <span class="name">BA Workspace — view (Requirements stage, draft)</span>
+      <span class="route">/projects/:id · Project Background (focus tab for Requirements-stage projects)</span>
     </div>
     <div class="screen-body">
       <div class="app">
@@ -1578,8 +1578,9 @@
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12l9-9 9 9 M5 10v10h14V10"/></svg> Overview</a>
               <a href="#" class="active"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h11l3 3v13H5z M16 4v3h3 M8 11h8 M8 14h8 M8 17h5"/></svg> Project Background <span class="count">17</span></a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3h7v7 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> Requirements <span class="count">15</span></a>
+              <a href="#" aria-disabled="true" title="Confirm project context first"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Sprint <span class="count">12</span></a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z M4 9h16 M9 4v16"/></svg> Design</a>
-              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Build <span class="count">Jira</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Build <span class="count">12</span></a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="9" r="3"/><path d="M3 19c0-3 2.7-5 6-5s6 2 6 5 M14 19c0-3 2.7-5 6-5"/></svg> Agents</a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 12l2 2 4-4 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg> QA</a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> Activity</a>
@@ -1595,9 +1596,7 @@
             <a href="#" style="font-size:13px; color: var(--ink-2);">← Projects</a>
             <h1>Neighborhood Library</h1>
             <div style="margin-left: auto; display:flex; align-items:center; gap: 10px;">
-              <span class="pill inprog"><span class="dot"></span> PRD · In Progress</span>
-              <button class="btn btn-soft btn-pill">Share</button>
-              <button class="btn btn-soft btn-pill">Open in Claude Code →</button>
+              <span class="pill inprog"><span class="dot"></span> Requirements</span>
             </div>
           </div>
 
@@ -1613,15 +1612,15 @@
               <span class="count-pill"><span class="file-status draft"></span><b>9</b> Draft</span>
               <span class="count-pill"><span class="file-status review"></span><b>2</b> In Review</span>
               <span class="count-pill"><span class="file-status returned"></span><b>1</b> Returned</span>
-              <span class="count-pill"><span class="file-status completed"></span><b>3</b> Approved</span>
+              <span class="count-pill"><span class="file-status approved"></span><b>3</b> Approved</span>
             </div>
           </div>
 
-          <!-- Optional: open questions banner -->
+          <!-- Optional: open questions banner — deep-links into the intake chat's Outstanding questions section, filtered to Blocker-for: PRD-approval. On-disk file stays prd.md. -->
           <div class="oqa">
             <svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3 M12 17h.01"/></svg>
-            <div class="body"><b>3 open questions</b> need your input before SA review — all <code style="font-family: var(--font-mono);">Blocker-for: PRD-approval</code>. See §11 in prd.md.</div>
-            <a href="#">Open prd.md §11 →</a>
+            <div class="body"><b>3 open questions</b> need your input before SA review — all <code style="font-family: var(--font-mono);">Blocker-for: PRD-approval</code>. See <code style="font-family: var(--font-mono);">§11 Open Questions</code> in the intake chat.</div>
+            <a href="#intake-chat?section=outstanding&filter=Blocker-for%3A%20PRD-approval">Open in intake chat →</a>
           </div>
 
           <!-- Two-column workspace -->
@@ -1810,8 +1809,9 @@
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12l9-9 9 9 M5 10v10h14V10"/></svg> Overview</a>
               <a href="#" class="active"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h11l3 3v13H5z M16 4v3h3 M8 11h8 M8 14h8 M8 17h5"/></svg> Project Background <span class="count">17</span></a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3h7v7 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> Requirements <span class="count">15</span></a>
+              <a href="#" aria-disabled="true" title="Confirm project context first"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Sprint <span class="count">12</span></a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z M4 9h16 M9 4v16"/></svg> Design</a>
-              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Build <span class="count">Jira</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Build <span class="count">12</span></a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="9" r="3"/><path d="M3 19c0-3 2.7-5 6-5s6 2 6 5 M14 19c0-3 2.7-5 6-5"/></svg> Agents</a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 12l2 2 4-4 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg> QA</a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> Activity</a>
@@ -1827,9 +1827,7 @@
             <a href="#" style="font-size:13px; color: var(--ink-2);">← Projects</a>
             <h1>Neighborhood Library</h1>
             <div style="margin-left: auto; display:flex; align-items:center; gap: 10px;">
-              <span class="pill inprog"><span class="dot"></span> PRD · In Progress</span>
-              <button class="btn btn-soft btn-pill">Share</button>
-              <button class="btn btn-soft btn-pill">Open in Claude Code →</button>
+              <span class="pill inprog"><span class="dot"></span> Requirements</span>
             </div>
           </div>
 
@@ -2009,8 +2007,9 @@ available  ──request──▶ pending   ──approve──▶ on_loan
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12l9-9 9 9 M5 10v10h14V10"/></svg> Overview</a>
               <a href="#" class="active"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h11l3 3v13H5z M16 4v3h3 M8 11h8 M8 14h8 M8 17h5"/></svg> Project Background <span class="count">17</span></a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3h7v7 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> Requirements <span class="count">15</span></a>
+              <a href="#" aria-disabled="true" title="Confirm project context first"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Sprint <span class="count">12</span></a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z M4 9h16 M9 4v16"/></svg> Design</a>
-              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Build <span class="count">Jira</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Build <span class="count">12</span></a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="9" r="3"/><path d="M3 19c0-3 2.7-5 6-5s6 2 6 5 M14 19c0-3 2.7-5 6-5"/></svg> Agents</a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 12l2 2 4-4 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg> QA</a>
               <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> Activity</a>
@@ -2026,9 +2025,7 @@ available  ──request──▶ pending   ──approve──▶ on_loan
             <a href="#" style="font-size:13px; color: var(--ink-2);">← Projects</a>
             <h1>Neighborhood Library</h1>
             <div style="margin-left: auto; display:flex; align-items:center; gap: 10px;">
-              <span class="pill inprog"><span class="dot"></span> PRD · In Progress</span>
-              <button class="btn btn-soft btn-pill">Share</button>
-              <button class="btn btn-soft btn-pill">Open in Claude Code →</button>
+              <span class="pill inprog"><span class="dot"></span> Requirements</span>
             </div>
           </div>
 
@@ -2043,7 +2040,7 @@ available  ──request──▶ pending   ──approve──▶ on_loan
               <span class="count-pill"><span class="file-status draft"></span><b>8</b> Draft</span>
               <span class="count-pill"><span class="file-status review"></span><b>3</b> In Review</span>
               <span class="count-pill"><span class="file-status returned"></span><b>1</b> Returned</span>
-              <span class="count-pill"><span class="file-status completed"></span><b>3</b> Approved</span>
+              <span class="count-pill"><span class="file-status approved"></span><b>3</b> Approved</span>
             </div>
           </div>
 
