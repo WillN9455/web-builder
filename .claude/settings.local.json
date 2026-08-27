@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/workspaces/web-builder/.claude/hooks/discord-permission-notify.sh\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
