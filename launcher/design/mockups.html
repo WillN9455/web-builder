@@ -133,6 +133,11 @@
   .screen-label .route { font-family: var(--font-mono); color: var(--ink-2); }
   .screen-body { padding: 0; }
 
+  /* Screens 5–11: same .screen panel as 1–4 — explicit --panel for clarity. */
+  #s5, #s6, #s7, #s8, #s9, #s10, #s11 {
+    background: var(--panel);
+  }
+
   /* App frame lives inside every screen (so they all look like the same product) */
   .app {
     display: grid;
@@ -1570,9 +1575,9 @@
   <header class="doc-header">
     <div>
       <div class="doc-title">Idea Hub — Designs (v5.2)</div>
-      <div class="doc-sub">v5.2 renames the previous <b>Requirements</b> landing to <b>Project Background</b> (long-form source docs: idea, personas, journeys, full PRD, glossary, business rules, risks — same BA Workspace content, just relabeled). The <b>Requirements</b> tab is now a curated list of business &amp; technical requirements grouped by user story, read by SA, devs, designers, and QA as the source of truth for what must be built. Screens 12–14 (Project Background) and screen 15 (Requirements) now live in their own design docs — see <a href="background.html"><b>background.html</b></a> and <a href="requirements.html"><b>requirements.html</b></a>.</div>
+      <div class="doc-sub">v5.2 renames the previous <b>Requirements</b> landing to <b>Project Background</b> (long-form source docs: idea, personas, journeys, full PRD, glossary, business rules, risks — same BA Workspace content, just relabeled). The <b>Requirements</b> tab is now a curated list of business &amp; technical requirements grouped by user story, read by SA, devs, designers, and QA as the source of truth for what must be built. Screen 6 (Sprint), Screens 12–14 (Project Background), and Screen 15 (Requirements) now live in their own design docs — see <a href="sprint.html"><b>sprint.html</b></a>, <a href="background.html"><b>background.html</b></a>, and <a href="requirements.html"><b>requirements.html</b></a>.</div>
     </div>
-    <div class="doc-meta">v5.2 · launcher/design/mockups.html<br/>11 screens + 2 doc links</div>
+    <div class="doc-meta">v5.2 · launcher/design/mockups.html<br/>10 screens + 3 doc links</div>
   </header>
 
   <nav class="toc">
@@ -1581,7 +1586,7 @@
     <a href="#s3"><b>3</b> Overview — Design active</a>
     <a href="#s4"><b>4</b> Overview — Blocked</a>
     <a href="#s5"><b>5</b> Overview — Deployed</a>
-    <a href="#s6"><b>6</b> Sprint — Jira Kanban</a>
+    <a href="sprint.html"><b>6</b> Sprint — Jira Kanban → sprint.html</a>
     <a href="#s7"><b>7</b> New idea — folder pick</a>
     <a href="#s8"><b>8</b> New idea — BA-Agent chat</a>
     <a href="#s9"><b>9</b> New idea — captured</a>
@@ -1924,7 +1929,7 @@
               </div>
 
               <h3 style="margin-top: 22px;">Design checklist</h3>
-              <div>
+              <div class="q-scroll" style="max-height: 220px;">
                 <div class="check done"><div class="box">✓</div><div class="lbl">Design tokens defined (colors, type, spacing)</div><span class="meta">2 days ago</span></div>
                 <div class="check done"><div class="box">✓</div><div class="lbl">Wireframes — request submission flow</div><span class="meta">2 days ago</span></div>
                 <div class="check done"><div class="box">✓</div><div class="lbl">Wireframes — manager dashboard</div><span class="meta">yesterday</span></div>
@@ -1933,6 +1938,10 @@
                 <div class="check"><div class="box"></div><div class="lbl">All UI states documented (loading, error, empty, success)</div></div>
                 <div class="check"><div class="box"></div><div class="lbl">Accessibility audit (WCAG AA)</div></div>
                 <div class="check"><div class="box"></div><div class="lbl">Design review with BA + stakeholder</div></div>
+                <div class="check"><div class="box"></div><div class="lbl">Mobile breakpoints (390, 768, 1280)</div></div>
+                <div class="check"><div class="box"></div><div class="lbl">Dark mode variants</div></div>
+                <div class="check"><div class="box"></div><div class="lbl">Empty state illustrations</div></div>
+                <div class="check"><div class="box"></div><div class="lbl">Form validation copy reviewed</div></div>
               </div>
 
               <div style="display:flex; gap: 8px; margin-top: 18px;">
@@ -1945,7 +1954,7 @@
             <div style="display:flex; flex-direction: column; gap: 18px;">
               <div class="card">
                 <h3>Activity</h3>
-                <div class="tl">
+                <div class="tl q-scroll" style="max-height: 260px;">
                   <div class="tl-item">
                     <div class="av-lg da">D1</div>
                     <div class="body">
@@ -1967,16 +1976,41 @@
                       <div class="msg">Wrote 12 user stories + acceptance criteria. Out of scope: SMS notifications.</div>
                     </div>
                   </div>
+                  <div class="tl-item">
+                    <div class="av-lg code">C1</div>
+                    <div class="body">
+                      <div class="who">Code Agent 1 <span>·</span> <span>2 days ago</span></div>
+                      <div class="msg">Branched <code>feature/intake-folder-pick</code> from main; scaffolded API routes.</div>
+                    </div>
+                  </div>
+                  <div class="tl-item">
+                    <div class="av-lg da">D2</div>
+                    <div class="body">
+                      <div class="who">Design Agent B <span>·</span> <span>2 days ago</span></div>
+                      <div class="msg">Reviewed wireframes; flagged 4 accessibility issues for Design Agent A to address.</div>
+                    </div>
+                  </div>
+                  <div class="tl-item">
+                    <div class="av-lg ba">BA</div>
+                    <div class="body">
+                      <div class="who">BA Agent <span>·</span> <span>3 days ago</span></div>
+                      <div class="msg">Captured intake chat — 3 personas, 2 core journeys, primary success metric agreed.</div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
               <div class="card">
                 <h3>Artifacts</h3>
-                <div class="art">
+                <div class="art q-scroll" style="max-height: 220px;">
                   <div class="art-item"><span class="ftag">MD</span><span class="lbl">idea.md</span><span class="path">/idea.md</span></div>
                   <div class="art-item"><span class="ftag">MD</span><span class="lbl">PRD</span><span class="path">/PRD/tenant-maintenance.md</span></div>
                   <div class="art-item"><span class="ftag">Figma</span><span class="lbl">Wireframes</span><span class="path">design/wireframes.fig</span></div>
                   <div class="art-item"><span class="ftag">PNG</span><span class="lbl">Mockup — Request flow</span><span class="path">design/hi-fi-request.png</span></div>
+                  <div class="art-item"><span class="ftag">PNG</span><span class="lbl">Mockup — Manager dashboard</span><span class="path">design/hi-fi-dashboard.png</span></div>
+                  <div class="art-item"><span class="ftag">Tokens</span><span class="lbl">Design tokens</span><span class="path">design-system/tokens.json</span></div>
+                  <div class="art-item"><span class="ftag">SVG</span><span class="lbl">Icon set</span><span class="path">design-system/icons.svg</span></div>
+                  <div class="art-item"><span class="ftag">MD</span><span class="lbl">Accessibility notes</span><span class="path">design/a11y.md</span></div>
                 </div>
               </div>
             </div>
@@ -2063,7 +2097,7 @@
                 </div>
 
                 <h3 style="margin-top: 22px;">Requirements checklist</h3>
-                <div>
+                <div class="q-scroll" style="max-height: 220px;">
                   <div class="check done"><div class="box">✓</div><div class="lbl">Intake captured — idea, personas, journeys documented</div><span class="meta">1d ago</span></div>
                   <div class="check done"><div class="box">✓</div><div class="lbl">User stories drafted (9 candidates)</div><span class="meta">yesterday</span></div>
                   <div class="check done"><div class="box">✓</div><div class="lbl">Acceptance criteria written for first-pass stories</div><span class="meta">today</span></div>
@@ -2071,6 +2105,10 @@
                   <div class="check"><div class="box"></div><div class="lbl">Non-functional requirements (perf, security, a11y)</div></div>
                   <div class="check"><div class="box"></div><div class="lbl">Reviewer sign-off on all user stories</div></div>
                   <div class="check"><div class="box"></div><div class="lbl">Traceability matrix — story → AC → test plan</div></div>
+                  <div class="check"><div class="box"></div><div class="lbl">Out-of-scope list confirmed with stakeholder</div></div>
+                  <div class="check"><div class="box"></div><div class="lbl">Glossary of domain terms reviewed</div></div>
+                  <div class="check"><div class="box"></div><div class="lbl">Success metrics tied to each persona</div></div>
+                  <div class="check"><div class="box"></div><div class="lbl">BA Agent handoff to Design scheduled</div></div>
                 </div>
 
                 <div style="display:flex; gap: 8px; margin-top: 18px;">
@@ -2125,6 +2163,58 @@
                       </div>
                     </div>
                   </div>
+
+                  <div style="background: var(--butter); border-radius: 12px; padding: 12px 14px;">
+                    <div style="display:flex; align-items:flex-start; gap:8px;">
+                      <div class="av-sm ba" style="margin-top: 2px;">BA</div>
+                      <div style="flex:1;">
+                        <div style="font-weight: 600; font-size: 13px; color: var(--ink);">Should job conflicts surface a banner, modal, or inline toast?</div>
+                        <div style="font-size: 11.5px; color: var(--ink); opacity:.65; margin-top: 2px;">Asked 18h ago · Blocks story <b>FS-09 Resolve scheduling conflicts</b></div>
+                        <div style="margin-top: 10px;">
+                          <button class="btn btn-soft btn-pill" style="padding: 5px 11px; font-size: 11.5px;">Open chat to answer →</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style="background: var(--butter); border-radius: 12px; padding: 12px 14px;">
+                    <div style="display:flex; align-items:flex-start; gap:8px;">
+                      <div class="av-sm ba" style="margin-top: 2px;">BA</div>
+                      <div style="flex:1;">
+                        <div style="font-weight: 600; font-size: 13px; color: var(--ink);">Map provider — Google Maps, Mapbox, or OpenStreetMap?</div>
+                        <div style="font-size: 11.5px; color: var(--ink); opacity:.65; margin-top: 2px;">Asked 12h ago · Blocks story <b>FS-11 Show job on a map</b></div>
+                        <div style="margin-top: 10px;">
+                          <button class="btn btn-soft btn-pill" style="padding: 5px 11px; font-size: 11.5px;">Open chat to answer →</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style="background: var(--butter); border-radius: 12px; padding: 12px 14px;">
+                    <div style="display:flex; align-items:flex-start; gap:8px;">
+                      <div class="av-sm ba" style="margin-top: 2px;">BA</div>
+                      <div style="flex:1;">
+                        <div style="font-weight: 600; font-size: 13px; color: var(--ink);">Retain completed jobs for 90 days or indefinitely?</div>
+                        <div style="font-size: 11.5px; color: var(--ink); opacity:.65; margin-top: 2px;">Asked 6h ago · Blocks story <b>FS-15 Job history &amp; retention</b></div>
+                        <div style="margin-top: 10px;">
+                          <button class="btn btn-soft btn-pill" style="padding: 5px 11px; font-size: 11.5px;">Open chat to answer →</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style="background: var(--butter); border-radius: 12px; padding: 12px 14px;">
+                    <div style="display:flex; align-items:flex-start; gap:8px;">
+                      <div class="av-sm ba" style="margin-top: 2px;">BA</div>
+                      <div style="flex:1;">
+                        <div style="font-weight: 600; font-size: 13px; color: var(--ink);">Two-factor auth for the engineer login, or device-only?</div>
+                        <div style="font-size: 11.5px; color: var(--ink); opacity:.65; margin-top: 2px;">Asked 4h ago · Blocks story <b>FS-02 Authenticate engineer</b></div>
+                        <div style="margin-top: 10px;">
+                          <button class="btn btn-soft btn-pill" style="padding: 5px 11px; font-size: 11.5px;">Open chat to answer →</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2133,7 +2223,7 @@
             <div style="display:flex; flex-direction: column; gap: 18px;">
               <div class="card">
                 <h3>Activity</h3>
-                <div class="tl">
+                <div class="tl q-scroll" style="max-height: 260px;">
                   <div class="tl-item">
                     <div class="av-lg ba">BA</div>
                     <div class="body">
@@ -2155,16 +2245,41 @@
                       <div class="msg">Drafted 9 user stories from intake. Out of scope: invoicing.</div>
                     </div>
                   </div>
+                  <div class="tl-item">
+                    <div class="av-lg ba">BA</div>
+                    <div class="body">
+                      <div class="who">BA Agent <span>·</span> <span>1d ago</span></div>
+                      <div class="msg">Asked 4 clarifying questions in chat — answers will unblock <b>FS-04</b>, <b>FS-07</b>, <b>FS-11</b>, <b>FS-12</b>.</div>
+                    </div>
+                  </div>
+                  <div class="tl-item">
+                    <div class="av-lg code">C1</div>
+                    <div class="body">
+                      <div class="who">Code Agent 1 <span>·</span> <span>2d ago</span></div>
+                      <div class="msg">Wired intake chat endpoint and tested folder picker against project-dir.txt resolution.</div>
+                    </div>
+                  </div>
+                  <div class="tl-item">
+                    <div class="av-lg rev">RV</div>
+                    <div class="body">
+                      <div class="who">Requirements Reviewer <span>·</span> <span>2d ago</span></div>
+                      <div class="msg">Initial review pass — 6 of 9 stories accepted, 3 returned for tightening acceptance criteria.</div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
               <div class="card">
                 <h3>Artifacts</h3>
-                <div class="art">
+                <div class="art q-scroll" style="max-height: 220px;">
                   <div class="art-item"><span class="ftag">MD</span><span class="lbl">idea.md</span><span class="path">/idea.md</span></div>
                   <div class="art-item"><span class="ftag">MD</span><span class="lbl">Project Background</span><span class="path">/PRD/field-service/background.md</span></div>
                   <div class="art-item"><span class="ftag">MD</span><span class="lbl">Requirements</span><span class="path">/PRD/field-service/requirements.md</span></div>
                   <div class="art-item"><span class="ftag">Spec</span><span class="lbl">Glossary</span><span class="path">/PRD/field-service/glossary.md</span></div>
+                  <div class="art-item"><span class="ftag">MD</span><span class="lbl">Personas</span><span class="path">/PRD/field-service/personas.md</span></div>
+                  <div class="art-item"><span class="ftag">MD</span><span class="lbl">Non-functional reqs</span><span class="path">/PRD/field-service/nfr.md</span></div>
+                  <div class="art-item"><span class="ftag">Spec</span><span class="lbl">Traceability matrix</span><span class="path">/PRD/field-service/traceability.md</span></div>
+                  <div class="art-item"><span class="ftag">MD</span><span class="lbl">Open questions log</span><span class="path">/PRD/field-service/open-questions.md</span></div>
                 </div>
               </div>
             </div>
@@ -2175,7 +2290,6 @@
   </section>
 
   <!-- ═════════════ 5 · Overview — Deployed ═════════════ -->
-  <section class="screen" id="s5">
   <section class="screen" id="s5">
     <div class="screen-label">
       <span class="num">5</span>
@@ -2237,13 +2351,19 @@
           <div class="detail-grid">
             <div class="card">
               <h3>Journey</h3>
-              <div class="check done"><div class="box">✓</div><div class="lbl">Intake — captured via BA chat on Mar 12</div><span class="meta">2h</span></div>
-              <div class="check done"><div class="box">✓</div><div class="lbl">Requirements — 7 user stories approved</div><span class="meta">1d</span></div>
-              <div class="check done"><div class="box">✓</div><div class="lbl">Design — 4 screens, full state coverage</div><span class="meta">2d</span></div>
-              <div class="check done"><div class="box">✓</div><div class="lbl">Build — Next.js + Postgres on Vercel</div><span class="meta">4d</span></div>
-              <div class="check done"><div class="box">✓</div><div class="lbl">Review — code review + accessibility check</div><span class="meta">1d</span></div>
-              <div class="check done"><div class="box">✓</div><div class="lbl">QA — 18 Playwright tests passing</div><span class="meta">1d</span></div>
-              <div class="check done"><div class="box">✓</div><div class="lbl">Deployed to personal-bookmarks.app</div><span class="meta">1w</span></div>
+              <div class="q-scroll" style="max-height: 260px;">
+                <div class="check done"><div class="box">✓</div><div class="lbl">Intake — captured via BA chat on Mar 12</div><span class="meta">2h</span></div>
+                <div class="check done"><div class="box">✓</div><div class="lbl">Requirements — 7 user stories approved</div><span class="meta">1d</span></div>
+                <div class="check done"><div class="box">✓</div><div class="lbl">Design — 4 screens, full state coverage</div><span class="meta">2d</span></div>
+                <div class="check done"><div class="box">✓</div><div class="lbl">Build — Next.js + Postgres on Vercel</div><span class="meta">4d</span></div>
+                <div class="check done"><div class="box">✓</div><div class="lbl">Review — code review + accessibility check</div><span class="meta">1d</span></div>
+                <div class="check done"><div class="box">✓</div><div class="lbl">QA — 18 Playwright tests passing</div><span class="meta">1d</span></div>
+                <div class="check done"><div class="box">✓</div><div class="lbl">Deployed to personal-bookmarks.app</div><span class="meta">1w</span></div>
+                <div class="check done"><div class="box">✓</div><div class="lbl">Custom domain SSL provisioned</div><span class="meta">1w</span></div>
+                <div class="check done"><div class="box">✓</div><div class="lbl">Backup schedule configured (daily)</div><span class="meta">1w</span></div>
+                <div class="check done"><div class="box">✓</div><div class="lbl">Observability — error tracking + uptime</div><span class="meta">1w</span></div>
+                <div class="check done"><div class="box">✓</div><div class="lbl">Post-launch analytics reviewed</div><span class="meta">3d</span></div>
+              </div>
             </div>
             <div style="display:flex; flex-direction: column; gap: 18px;">
               <div class="card">
@@ -2261,12 +2381,17 @@
               </div>
               <div class="card">
                 <h3>Artifacts</h3>
-                <div class="art">
+                <div class="art q-scroll" style="max-height: 220px;">
                   <div class="art-item"><span class="ftag">MD</span><span class="lbl">idea.md</span><span class="path">/idea.md</span></div>
                   <div class="art-item"><span class="ftag">MD</span><span class="lbl">PRD</span><span class="path">/PRD/personal-bookmarks.md</span></div>
                   <div class="art-item"><span class="ftag">FIG</span><span class="lbl">Final design</span><span class="path">design/final.fig</span></div>
                   <div class="art-item"><span class="ftag">Spec</span><span class="lbl">OpenAPI</span><span class="path">/api/openapi.yaml</span></div>
                   <div class="art-item"><span class="ftag">Test</span><span class="lbl">Playwright suite</span><span class="path">/testing/personal-bookmarks/</span></div>
+                  <div class="art-item"><span class="ftag">Tokens</span><span class="lbl">Design tokens</span><span class="path">design-system/tokens.json</span></div>
+                  <div class="art-item"><span class="ftag">YAML</span><span class="lbl">Deploy config</span><span class="path">/deploy/vercel.yaml</span></div>
+                  <div class="art-item"><span class="ftag">MD</span><span class="lbl">Runbook</span><span class="path">/ops/runbook.md</span></div>
+                  <div class="art-item"><span class="ftag">SQL</span><span class="lbl">Migrations</span><span class="path">/db/migrations/</span></div>
+                  <div class="art-item"><span class="ftag">MD</span><span class="lbl">Release notes</span><span class="path">/releases/v1.0.md</span></div>
                 </div>
               </div>
             </div>
@@ -2276,203 +2401,9 @@
     </div>
   </section>
 
-  <!-- ═════════════ 6 · Sprint — Jira Kanban ═════════════ -->
-  <section class="screen" id="s6">
-    <div class="screen-label">
-      <span class="num">6</span>
-      <span class="name">Sprint — Jira Kanban</span>
-      <span class="route">/projects/tenant-maintenance · Sprint</span>
-    </div>
-    <div class="screen-body">
-      <div class="app">
-        <aside class="side">
-          <div class="brand"><div class="brand-mark">IH</div><div class="brand-name">Idea Hub</div></div>
-          <div>
-            <div class="menu-label">Menu</div>
-            <nav class="nav">
-              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12l9-9 9 9 M5 10v10h14V10"/></svg> Overview</a>
-              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h11l3 3v13H5z M16 4v3h3 M8 11h8 M8 14h8 M8 17h5"/></svg> Project Background <span class="count">7</span></a>
-              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3h7v7 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> Requirements <span class="count">14</span></a>
-              <a href="#" class="active"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Sprint <span class="count">12</span></a>
-              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z M4 9h16 M9 4v16"/></svg> Design</a>
-              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Build <span class="count">12</span></a>
-              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="9" r="3"/><path d="M3 19c0-3 2.7-5 6-5s6 2 6 5 M14 19c0-3 2.7-5 6-5"/></svg> Agents</a>
-              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 12l2 2 4-4 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg> QA <span class="count">3</span></a>
-              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> Activity</a>
-              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 8H3 M21 16H3 M5 4h14v16H5z"/></svg> Artifacts</a>
-            </nav>
-          </div>
-          <div class="side-promo">
-            <h4>Jira board</h4>
-            <p>Issues on this board are created from PRD requirements and updated as code agents pick them up.</p>
-            <button>Open in Jira ↗</button>
-          </div>
-          <div class="side-foot">
-            <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 3h6v6 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> ← All projects</a>
-          </div>
-        </aside>
-        <main class="main">
-          <div class="topbar">
-            <a href="#" style="font-size:13px; color: var(--ink-2);">← Projects</a>
-            <div class="search" style="opacity:.6; pointer-events:none;"><input placeholder="Search tasks, tickets, agents…" /></div>
-            <button class="btn btn-soft btn-pill">Filter</button>
-            <button class="btn btn-soft btn-pill">Sprint</button>
-            <button class="btn btn-primary btn-pill">+ Add issue</button>
-          </div>
 
-          <!-- Project header -->
-          <div class="card">
-            <div class="proj-head">
-              <div class="ico-lg tile-peach"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2b2547" stroke-width="1.8"><path d="M3 12l9-9 9 9 M5 10v10h14V10"/></svg></div>
-              <div>
-                <h1>Tenant Maintenance Portal</h1>
-                <div class="one">Maintenance request app for property managers</div>
-                <div class="path">~/Code/tenant-maintenance · Build stage · 3 Code Agents in parallel</div>
-              </div>
-              <div class="actions">
-                <span class="pill inprog"><span class="dot"></span> Build</span>
-                <span class="stage-pt">12 Jira tickets · TM-12 to TM-23</span>
-              </div>
-            </div>
-
-            <!-- 7-stage stepper (Build now active) -->
-            <div class="stepper" style="margin-top: 18px;">
-              <div class="step done"><div class="num"><b>1</b></div><div class="lbl">Intake</div><div class="bar"></div></div>
-              <div class="step done"><div class="num"><b>2</b></div><div class="lbl">Requirements</div><div class="bar"></div></div>
-              <div class="step done"><div class="num"><b>3</b></div><div class="lbl">Design</div><div class="bar"></div></div>
-              <div class="step active"><div class="num"><b>4</b></div><div class="lbl">Build</div><div class="bar"></div></div>
-              <div class="step"><div class="num"><b>5</b></div><div class="lbl">Review</div><div class="bar"></div></div>
-              <div class="step"><div class="num"><b>6</b></div><div class="lbl">QA</div><div class="bar"></div></div>
-              <div class="step"><div class="num"><b>7</b></div><div class="lbl">Deployed</div></div>
-            </div>
-          </div>
-
-          <!-- Jira-sync banner -->
-          <div class="banner banner-info">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8v4 M12 16h.01"/></svg>
-            <div><b>Two-way Jira sync is on.</b> Tickets created here appear in the <code>TM</code> Jira project. Status changes in Jira update this board within 30s.</div>
-          </div>
-
-          <!-- Kanban board -->
-          <div class="card" style="padding: 22px 22px 26px;">
-            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 16px;">
-              <div style="display:flex; gap: 10px; align-items:center;">
-                <h3 style="margin:0;">Build board</h3>
-                <span class="stage-pt">Sprint 3 · 12 of 31 done</span>
-              </div>
-              <div style="display:flex; gap: 6px;">
-                <button class="btn btn-soft btn-pill" style="padding: 5px 10px;">Board</button>
-                <button class="btn btn-primary btn-pill" style="padding: 5px 10px;">Backlog</button>
-              </div>
-            </div>
-
-            <div class="kanban">
-              <!-- Column 1: To do -->
-              <div class="kcol">
-                <div class="khead"><span class="dot" style="background:var(--ink-3)"></span> To do <span class="kcount">5</span></div>
-                <div class="kcard">
-                  <div class="krow"><span class="ktag tm">TM-21</span><span class="kprio high"></span></div>
-                  <div class="ktitle">Photo upload for maintenance requests</div>
-                  <div class="kfoot"><span class="kagent a-c1">C1</span><span class="kpts">5 pts</span></div>
-                </div>
-                <div class="kcard">
-                  <div class="krow"><span class="ktag tm">TM-23</span><span class="kprio med"></span></div>
-                  <div class="ktitle">Manager dashboard filters (status, priority, date)</div>
-                  <div class="kfoot"><span class="kagent a-c1">C1</span><span class="kpts">3 pts</span></div>
-                </div>
-                <div class="kcard">
-                  <div class="krow"><span class="ktag tm">TM-27</span><span class="kprio low"></span></div>
-                  <div class="ktitle">Settings page — account preferences</div>
-                  <div class="kfoot"><span class="kagent a-c2">C2</span><span class="kpts">2 pts</span></div>
-                </div>
-              </div>
-
-              <!-- Column 2: In progress (Code agents) -->
-              <div class="kcol">
-                <div class="khead"><span class="dot" style="background:var(--blue)"></span> In progress <span class="kcount">3</span></div>
-                <div class="kcard">
-                  <div class="krow"><span class="ktag tm">TM-18</span><span class="kprio high"></span></div>
-                  <div class="ktitle">Auth flow — tenant sign in / sign out</div>
-                  <div class="kfoot"><span class="kagent a-c1">C1</span><span class="kpts">8 pts</span><span class="kprog">in progress</span></div>
-                </div>
-                <div class="kcard">
-                  <div class="krow"><span class="ktag tm">TM-22</span><span class="kprio high"></span></div>
-                  <div class="ktitle">Maintenance request form + validation</div>
-                  <div class="kfoot"><span class="kagent a-c2">C2</span><span class="kpts">5 pts</span><span class="kprog">in progress</span></div>
-                </div>
-                <div class="kcard">
-                  <div class="krow"><span class="ktag tm">TM-25</span><span class="kprio med"></span></div>
-                  <div class="ktitle">Notification preferences UI</div>
-                  <div class="kfoot"><span class="kagent a-c3">C3</span><span class="kpts">3 pts</span><span class="kprog">in progress</span></div>
-                </div>
-              </div>
-
-              <!-- Column 3: In review -->
-              <div class="kcol">
-                <div class="khead"><span class="dot" style="background:var(--amber)"></span> In review <span class="kcount">2</span></div>
-                <div class="kcard">
-                  <div class="krow"><span class="ktag tm">TM-15</span><span class="kprio high"></span></div>
-                  <div class="ktitle">Empty / loading / error states for request list</div>
-                  <div class="kfoot"><span class="kagent a-c1">C1</span><span class="kpts">5 pts</span><span class="kprog">PR open</span></div>
-                </div>
-                <div class="kcard">
-                  <div class="krow"><span class="ktag tm">TM-19</span><span class="kprio med"></span></div>
-                  <div class="ktitle">Request detail screen + status updates</div>
-                  <div class="kfoot"><span class="kagent a-c2">C2</span><span class="kpts">5 pts</span><span class="kprog">PR open</span></div>
-                </div>
-              </div>
-
-              <!-- Column 4: Done -->
-              <div class="kcol">
-                <div class="khead"><span class="dot" style="background:var(--green)"></span> Done <span class="kcount">2</span></div>
-                <div class="kcard">
-                  <div class="krow"><span class="ktag tm">TM-12</span><span class="kprio high"></span></div>
-                  <div class="ktitle">Vite + React + TS scaffold (CI green)</div>
-                  <div class="kfoot"><span class="kagent a-c1">C1</span><span class="kpts">2 pts</span><span class="kprog">done</span></div>
-                </div>
-                <div class="kcard">
-                  <div class="krow"><span class="ktag tm">TM-13</span><span class="kprio med"></span></div>
-                  <div class="ktitle">Design tokens wired into Tailwind config</div>
-                  <div class="kfoot"><span class="kagent a-c1">C1</span><span class="kpts">3 pts</span><span class="kprog">done</span></div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Agent status strip -->
-          <div class="card" style="padding: 18px 22px;">
-            <h3 style="margin:0 0 12px;">Code agents working now</h3>
-            <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 14px;">
-              <div class="agent-row">
-                <div class="av a-c1" style="width:28px; height:28px; font-size:11px;">C1</div>
-                <div>
-                  <b>Code Agent 1 · Auth & requests</b>
-                  <div class="agent-sub">Working on TM-18 · ~2h elapsed · ETA 4h</div>
-                </div>
-                <span class="pill inprog"><span class="dot"></span> Active</span>
-              </div>
-              <div class="agent-row">
-                <div class="av a-c2" style="width:28px; height:28px; font-size:11px;">C2</div>
-                <div>
-                  <b>Code Agent 2 · Forms & status</b>
-                  <div class="agent-sub">Working on TM-22 · ~45m elapsed · ETA 3h</div>
-                </div>
-                <span class="pill inprog"><span class="dot"></span> Active</span>
-              </div>
-              <div class="agent-row">
-                <div class="av a-c3" style="width:28px; height:28px; font-size:11px;">C3</div>
-                <div>
-                  <b>Code Agent 3 · Settings & notifs</b>
-                  <div class="agent-sub">Working on TM-25 · ~20m elapsed · ETA 2h</div>
-                </div>
-                <span class="pill inprog"><span class="dot"></span> Active</span>
-              </div>
-            </div>
-          </div>
-        </main>
-      </div>
-    </div>
-  </section>
+  <!-- ═════════════ 6 · Sprint — moved to sprint.html ═════════════ -->
+  <p style="text-align:center; color: var(--ink-2); font-size: 13px; padding: 32px;">Screen 6 (Sprint — Jira Kanban) moved to <a href="sprint.html" style="color: var(--navy); font-weight: 600; text-decoration: underline;"><b>sprint.html</b></a>.</p>
 
   <!-- ═════════════ 7 · New idea — folder pick ═════════════ -->
   <section class="screen" id="s7">
