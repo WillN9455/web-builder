@@ -1,0 +1,27 @@
+{
+  "name": "Idea-to-Web-Solution Framework",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:20",
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {}
+  },
+  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y tmux && npm install -g @anthropic-ai/claude-code && cd launcher && npm install && npm run db:reset && npm run db:seed",
+  "customizations": {
+    "vscode": {
+ "extensions": ["dbaeumer.vscode-eslint", "esbenp.prettier-vscode"]
+    }
+  },
+  "portsAttributes": {
+    "5173": { "label": "Vite web", "onAutoForward": "notify" },
+    "3001": { "label": "Express API", "onAutoForward": "notify" }
+  },
+  "remoteEnv": {
+    // Provider secrets (ANTHROPIC_BASE_URL, ANTHROPIC_API_KEY/AUTH_TOKEN,
+    // ANTHROPIC_DEFAULT_*_MODEL, CLAUDE_CODE_SUBAGENT_MODEL) are injected
+    // automatically as env vars from GitHub Codespaces Secrets — do NOT put
+    // their values here. Set them once at github.com/settings/codespaces.
+    "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "128000"
+  },
+  "settings": {
+    "files.eol": "\n"
+  }
+}
