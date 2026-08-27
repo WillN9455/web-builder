@@ -1,0 +1,724 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Idea Hub — Build tab (v5.2)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ─── Design tokens (mirror mockups.html / design-tab.html) ─────────── */
+  :root {
+    --ground-a: #d9d5ec;
+    --ground-b: #c3cde8;
+    --panel:    rgba(255, 255, 255, 0.72);
+    --panel-stroke: rgba(255, 255, 255, 0.6);
+    --ink:      #2b2547;
+    --ink-2:    #8b87a5;
+    --ink-3:    #b6b2cc;
+    --shadow:   0 30px 60px -30px rgba(50, 42, 92, 0.25), 0 8px 24px -10px rgba(50, 42, 92, 0.12);
+
+    --navy:     #322a5c;
+    --navy-2:   #4a4080;
+
+    --peach:    #fbdcbe;
+    --sky:      #cfe0f4;
+    --lavender: #e6e1f7;
+    --mint:     #d7efe4;
+    --butter:   #f7edc6;
+    --blush:    #fadcd9;
+    --sea:      #cde6ea;
+
+    --coral:    #ef7f57;
+    --blue:     #6fa9e0;
+    --purple:   #9b7fde;
+    --green:    #5fbf95;
+    --amber:    #e8b94a;
+    --rose:     #d97a8e;
+
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+
+    --r-sm: 10px;
+    --r-md: 16px;
+    --r-lg: 20px;
+    --r-xl: 24px;
+    --r-2xl: 28px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { font-family: var(--font-sans); color: var(--ink); -webkit-font-smoothing: antialiased; }
+  body {
+    min-height: 100vh;
+    background:
+      radial-gradient(120% 80% at 10% 0%, #e3dff2 0%, transparent 60%),
+      linear-gradient(135deg, var(--ground-a) 0%, var(--ground-b) 100%);
+    padding: 40px 32px 80px;
+  }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; cursor: pointer; border: 0; background: none; color: inherit; }
+
+  /* ─── Document chrome ─────────────────────────────────────────────────── */
+  .doc { max-width: 1440px; margin: 0 auto 64px; }
+  .doc-header { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 28px; color: var(--ink); }
+  .doc-title { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; }
+  .doc-sub { color: var(--ink-2); font-size: 14px; max-width: 720px; line-height: 1.55; margin-top: 6px; }
+  .doc-sub a { color: var(--ink); font-weight: 600; text-decoration: underline; }
+  .doc-meta { font-family: var(--font-mono); font-size: 12px; color: var(--ink-2); white-space: nowrap; }
+
+  .toc { display: flex; flex-direction: column; gap: 4px; margin: -8px 0 24px; font-size: 12px; color: var(--ink-2); }
+  .toc a { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 8px; width: fit-content; }
+  .toc a:hover { background: rgba(255,255,255,0.6); color: var(--ink); }
+  .toc a b { color: var(--ink); margin-right: 6px; }
+
+  /* ─── Section frame ───────────────────────────────────────────────────── */
+  .screen { background: var(--panel); border: 1px solid var(--panel-stroke); border-radius: var(--r-xl); margin-bottom: 64px; overflow: hidden; backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); }
+  .screen-label { display: flex; align-items: center; gap: 12px; padding: 16px 22px; border-bottom: 1px solid rgba(50,42,92,0.06); font-size: 13px; }
+  .screen-label .num { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 6px; background: var(--navy); color: #fff; font-size: 12px; font-weight: 700; }
+  .screen-label .name { font-weight: 600; color: var(--ink); }
+  .screen-label .route { font-family: var(--font-mono); color: var(--ink-2); margin-left: auto; }
+  .screen-body { padding: 0; }
+
+  /* ─── App shell ───────────────────────────────────────────────────────── */
+  .app { display: grid; grid-template-columns: 248px 1fr; min-height: 980px; }
+  .side { border-right: 1px solid rgba(50,42,92,0.08); background: rgba(255,255,255,0.4); padding: 18px 14px; display: flex; flex-direction: column; gap: 18px; }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 4px 6px 10px; }
+  .brand-mark { width: 28px; height: 28px; border-radius: 8px; background: var(--navy); color: #fff; display: grid; place-items: center; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; }
+  .brand-name { font-size: 14px; font-weight: 700; color: var(--ink); }
+  .menu-label { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-2); padding: 0 8px 6px; }
+  .nav { display: flex; flex-direction: column; gap: 1px; }
+  .nav a { display: flex; align-items: center; gap: 9px; padding: 7px 9px; border-radius: 8px; color: var(--ink); font-size: 13px; font-weight: 500; position: relative; }
+  .nav a:hover { background: rgba(255,255,255,0.6); }
+  .nav a.active { background: rgba(50,42,92,0.08); color: var(--ink); font-weight: 600; }
+  .nav a .count { margin-left: auto; font-size: 11px; color: var(--ink-2); background: rgba(50,42,92,0.08); border-radius: 6px; padding: 1px 6px; }
+  .nav a.active .count { background: var(--navy); color: #fff; }
+  .nav .ico { width: 16px; height: 16px; flex: none; }
+
+  .side-promo { margin-top: auto; background: var(--lavender); border-radius: 12px; padding: 12px 14px; font-size: 12px; line-height: 1.5; }
+  .side-promo h4 { font-size: 12px; font-weight: 700; margin-bottom: 4px; }
+  .side-promo p { color: var(--ink-2); }
+  .side-promo button { margin-top: 8px; color: var(--ink); font-weight: 600; text-decoration: underline; }
+  .side-foot { padding: 6px 8px 2px; font-size: 12px; }
+  .side-foot a { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); }
+  .side-foot a:hover { color: var(--ink); }
+
+  /* ─── Main + topbar + cards ──────────────────────────────────────────── */
+  .main { padding: 18px 26px 60px; }
+  .topbar { display: flex; align-items: center; gap: 10px; padding: 0 4px 14px; }
+  .search { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.7); border: 1px solid rgba(50,42,92,0.08); border-radius: 10px; padding: 7px 12px; width: 360px; }
+  .search input { border: 0; outline: 0; flex: 1; background: transparent; color: var(--ink); font: inherit; }
+  .search .ico { color: var(--ink-2); width: 14px; height: 14px; }
+
+  .card { background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: var(--r-lg); box-shadow: var(--shadow); }
+
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 999px; font-size: 13px; font-weight: 500; border: 1px solid transparent; transition: background 0.12s ease; }
+  .btn-primary { background: var(--navy); color: #fff; }
+  .btn-primary:hover { background: var(--navy-2); }
+  .btn-ghost { background: #fff; color: var(--ink); border: 1px solid rgba(50,42,92,0.1); }
+  .btn-ghost:hover { background: rgba(50,42,92,0.04); }
+  .btn-soft { background: rgba(255,255,255,0.6); color: var(--ink); border: 1px solid rgba(50,42,92,0.08); }
+  .btn-soft:hover { background: rgba(255,255,255,0.85); }
+  .btn-pill { padding: 6px 12px; font-size: 12px; }
+
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 500; background: var(--peach); color: var(--ink); }
+  .pill .dot { width: 6px; height: 6px; border-radius: 50%; }
+  .pill.todo     { background: var(--lavender); color: var(--ink); }
+  .pill.todo     .dot { background: var(--purple); }
+  .pill.inprog   { background: var(--sky);     color: var(--ink); }
+  .pill.inprog   .dot { background: var(--blue); }
+  .pill.review   { background: var(--butter);  color: var(--ink); }
+  .pill.review   .dot { background: var(--amber); }
+  .pill.done     { background: var(--mint);    color: var(--ink); }
+  .pill.done     .dot { background: var(--green); }
+  .pill.blocked  { background: var(--blush);   color: var(--ink); }
+  .pill.blocked  .dot { background: var(--rose); }
+  .pill.draft    { background: var(--peach);   color: var(--ink); }
+  .pill.draft    .dot { background: var(--coral); }
+
+  /* Project header */
+  .proj-head { display: flex; align-items: center; gap: 16px; padding: 22px; }
+  .proj-head .ico-lg { width: 56px; height: 56px; border-radius: 14px; display: grid; place-items: center; background: var(--peach); color: var(--ink); }
+  .proj-head h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
+  .proj-head .one { color: var(--ink-2); font-size: 13.5px; margin-top: 2px; }
+  .proj-head .path { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-2); margin-top: 6px; }
+  .proj-head .actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+  .stage-pt { font-size: 11.5px; color: var(--ink-2); font-family: var(--font-mono); }
+
+  /* 7-stage stepper */
+  .stepper { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0; align-items: center; }
+  .step { display: flex; align-items: center; gap: 8px; }
+  .step .num { width: 22px; height: 22px; border-radius: 50%; background: rgba(50,42,92,0.08); color: var(--ink-2); display: grid; place-items: center; font-size: 11px; font-weight: 700; }
+  .step .lbl { font-size: 12px; color: var(--ink-2); }
+  .step .bar { flex: 1; height: 2px; background: rgba(50,42,92,0.08); margin: 0 6px; }
+  .step.done .num { background: var(--green); color: #fff; }
+  .step.done .lbl { color: var(--ink); }
+  .step.done .bar { background: var(--green); }
+  .step.active .num { background: var(--navy); color: #fff; box-shadow: 0 0 0 4px rgba(50,42,92,0.12); }
+  .step.active .lbl { color: var(--ink); font-weight: 600; }
+
+  /* ─── Tab bar (Status / Rules switch — same kit) ──────────────────────── */
+  .kit-tabs { display: inline-flex; background: var(--peach); border-radius: 999px; padding: 4px; gap: 2px; }
+  .kit-tabs button { padding: 6px 18px; font-size: 12px; font-weight: 600; color: var(--ink-2); border-radius: 999px; background: transparent; }
+  .kit-tabs button.on { background: #fff; color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+
+  .tab-bar { display: flex; align-items: center; gap: 14px; padding: 16px 22px 0; }
+  .tab-bar .writeback { margin-left: auto; font-size: 11.5px; color: var(--ink-2); font-family: var(--font-mono); }
+  .tab-bar .writeback code { background: rgba(50,42,92,0.06); padding: 1px 6px; border-radius: 4px; color: var(--ink); }
+
+  /* ─── Build summary stats (4 tiles) ──────────────────────────────────── */
+  .bd-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 18px 22px; }
+  .bd-stat { background: rgba(50,42,92,0.04); border-radius: 12px; padding: 14px 16px; }
+  .bd-stat .n { font-size: 22px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+  .bd-stat .lbl { font-size: 11px; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
+  .bd-stat .sub { font-size: 11.5px; color: var(--ink-2); margin-top: 6px; }
+  .bd-stat .sub.warn { color: var(--rose); }
+  .bd-stat .sub.ok { color: var(--green); }
+
+  /* Per-story build list */
+  .stories-head { display: flex; align-items: center; gap: 10px; padding: 6px 22px 12px; }
+  .stories-head h3 { margin: 0; font-size: 14px; font-weight: 700; }
+  .stories-head .filter { margin-left: auto; display: flex; gap: 4px; }
+  .stories-head .filter button { padding: 4px 10px; font-size: 11.5px; border-radius: 999px; background: transparent; color: var(--ink-2); }
+  .stories-head .filter button.on { background: rgba(50,42,92,0.08); color: var(--ink); }
+
+  .story-row { display: grid; grid-template-columns: 110px 1fr 320px 130px; gap: 14px; align-items: center; padding: 12px 22px; border-top: 1px solid rgba(50,42,92,0.06); }
+  .story-row.selected { background: rgba(155,127,222,0.06); }
+  .story-row .id { font-family: var(--font-mono); font-size: 12px; color: var(--ink-2); }
+  .story-row .title { font-size: 13.5px; font-weight: 500; }
+  .story-row .title .sub { display: block; color: var(--ink-2); font-size: 11.5px; font-weight: 400; margin-top: 2px; }
+
+  /* 5-state build stepper (Picked up → Building → Self-review → Ready for review → Ready for QA) */
+  .bd-stepper { display: flex; align-items: center; gap: 0; }
+  .bd-stepper .node { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--ink-2); white-space: nowrap; }
+  .bd-stepper .node .dot { width: 14px; height: 14px; border-radius: 50%; background: rgba(50,42,92,0.08); display: grid; place-items: center; font-size: 9px; font-weight: 700; color: var(--ink-2); }
+  .bd-stepper .node.done .dot { background: var(--green); color: #fff; }
+  .bd-stepper .node.active .dot { background: var(--navy); color: #fff; box-shadow: 0 0 0 3px rgba(50,42,92,0.12); }
+  .bd-stepper .node.done { color: var(--ink); }
+  .bd-stepper .node.active { color: var(--ink); font-weight: 600; }
+  .bd-stepper .bar { flex: 1; height: 2px; background: rgba(50,42,92,0.08); margin: 0 4px; min-width: 12px; }
+  .bd-stepper .bar.done { background: var(--green); }
+  .bd-stepper .bar.active { background: linear-gradient(90deg, var(--green) 50%, rgba(50,42,92,0.08) 50%); }
+
+  .story-row .assign { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-2); }
+  .story-row .assign .av-sm { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 10px; font-weight: 700; }
+  .av-sm.a-c1 { background: var(--sky);    color: var(--ink); }
+  .av-sm.a-c2 { background: var(--sea);    color: var(--ink); }
+  .av-sm.a-c3 { background: var(--butter); color: var(--ink); }
+  .av-sm.a-rev { background: var(--lavender); color: var(--ink); }
+
+  /* ─── Selected story detail: architecture (read-only) + code-review thread ─ */
+  .story-detail { background: rgba(50,42,92,0.02); border-top: 1px solid rgba(50,42,92,0.06); padding: 18px 22px 22px; display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+
+  /* Architecture panel (read-only — sitemap decision) */
+  .arch { display: flex; flex-direction: column; gap: 12px; }
+  .arch-h { display: flex; align-items: center; gap: 10px; }
+  .arch-h h4 { margin: 0; font-size: 12.5px; font-weight: 700; }
+  .arch-h .ro { margin-left: auto; font-size: 10.5px; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.06em; display: inline-flex; align-items: center; gap: 4px; }
+  .arch-card { background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: 12px; padding: 12px 14px; }
+  .arch-row { display: grid; grid-template-columns: 60px 1fr; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid rgba(50,42,92,0.05); }
+  .arch-row:first-child { border-top: 0; }
+  .arch-row .k { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-2); }
+  .arch-row .v { font-size: 12.5px; color: var(--ink); }
+  .arch-row .v code { font-family: var(--font-mono); font-size: 11.5px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px; margin-right: 4px; }
+  .arch-row .v .lock { color: var(--ink-2); font-size: 10.5px; margin-left: 6px; display: inline-flex; align-items: center; gap: 3px; }
+
+  /* Per-story code-review thread (Code Agent + Reviewer) */
+  .thread { display: flex; flex-direction: column; gap: 10px; }
+  .thread .thread-head { display: flex; align-items: center; gap: 8px; font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-2); }
+  .thread .thread-head .who { margin-left: auto; font-size: 11px; color: var(--ink-2); font-weight: 500; text-transform: none; letter-spacing: 0; }
+  .comment { background: #fff; border: 1px solid rgba(50,42,92,0.06); border-left: 3px solid var(--sky); border-radius: 10px; padding: 10px 12px; }
+  .comment.c1 { border-left-color: var(--sky); }
+  .comment.c2 { border-left-color: var(--sea); }
+  .comment.c3 { border-left-color: var(--butter); }
+  .comment.rev { border-left-color: var(--lavender); }
+  .comment .body { font-size: 12.5px; line-height: 1.5; }
+  .comment .body .who { font-size: 11.5px; font-weight: 600; color: var(--ink); }
+  .comment .body .who span { color: var(--ink-2); font-weight: 400; margin-left: 6px; }
+  .comment .body p { margin: 4px 0 0; color: var(--ink); }
+  .comment .meta { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 11px; color: var(--ink-2); }
+  .comment .meta code { font-family: var(--font-mono); font-size: 10.5px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px; }
+  .comment .meta .pass { color: var(--green); font-weight: 600; }
+  .comment .meta .fail { color: var(--rose); font-weight: 600; }
+  .compose { display: flex; gap: 10px; align-items: end; background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: 10px; padding: 8px 10px; }
+  .compose textarea { flex: 1; border: 0; outline: 0; resize: none; font: inherit; font-size: 12.5px; color: var(--ink); background: transparent; min-height: 36px; }
+  .compose .who { font-size: 11px; color: var(--ink-2); }
+
+  /* ─── Rework queue mini-card (failed QA / review) ────────────────────── */
+  .rework { padding: 0 22px 22px; }
+  .rework-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .rework-head h3 { margin: 0; font-size: 14px; font-weight: 700; }
+  .rework-row { display: grid; grid-template-columns: 110px 1fr 120px 130px 110px; gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid rgba(50,42,92,0.06); }
+  .rework-row .id { font-family: var(--font-mono); font-size: 12px; color: var(--ink-2); }
+  .rework-row .why { font-size: 12.5px; }
+  .rework-row .why b { font-weight: 600; color: var(--ink); }
+  .rework-row .why .sub { display: block; color: var(--ink-2); font-size: 11.5px; margin-top: 2px; }
+  .rework-row .ev { font-size: 11.5px; color: var(--navy); font-weight: 600; }
+  .rework-row .ev a { color: var(--navy); }
+  .rework-row .ev .sub { display: block; color: var(--ink-2); font-size: 10.5px; font-weight: 400; margin-top: 2px; }
+
+  /* ─── Code agent strip (3 agents: C1, C2, C3) ────────────────────────── */
+  .agent-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 16px 22px 22px; }
+  .agent-card { background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: 12px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; }
+  .agent-card .av { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; color: var(--ink); flex: none; }
+  .agent-card.c1 .av { background: var(--sky); }
+  .agent-card.c2 .av { background: var(--sea); }
+  .agent-card.c3 .av { background: var(--butter); }
+  .agent-card .meta b { display: block; font-size: 13px; font-weight: 600; }
+  .agent-card .meta .sub { display: block; font-size: 11.5px; color: var(--ink-2); }
+  .agent-card .right { margin-left: auto; display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
+  .pass-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 500; background: var(--mint); color: var(--ink); }
+  .pass-chip .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--green); }
+  .pass-chip.warn { background: var(--butter); }
+  .pass-chip.warn .dot { background: var(--amber); }
+
+  /* Rules preview (secondary; full Rules tab is its own screen) */
+  .rules-preview { margin: 0 22px 22px; background: rgba(50,42,92,0.02); border: 1px dashed rgba(50,42,92,0.15); border-radius: 12px; padding: 16px 18px; display: flex; align-items: center; gap: 14px; font-size: 12.5px; color: var(--ink-2); }
+  .rules-preview b { color: var(--ink); font-weight: 600; }
+  .rules-preview .right { margin-left: auto; display: flex; gap: 6px; }
+</style>
+</head>
+<body>
+<div class="doc">
+
+  <header class="doc-header">
+    <div>
+      <div class="doc-title">Idea Hub — Build tab (v5.2)</div>
+      <div class="doc-sub">Build stage workspace. <b>Two-halves</b> — Status (stories-in-build stats, per-story build step, architecture panel, code-review thread, rework queue, 3-Code-Agent strip) and Rules (editable build rules writing back to <code style="font-family: var(--font-mono); font-size: 12px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">code-builder/</code> + <code style="font-family: var(--font-mono); font-size: 12px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">../skills/coding-guidelines.md</code>). <b>Architecture panel is read-only</b> — agents infer it; users steer build behavior via the Rules tab only. <b>Rework queue</b> surfaces failed QA / review with evidence links. Source of truth: <a href="sitemap.md">sitemap.md § Build</a>.</div>
+    </div>
+    <div class="doc-meta">v5.2 · launcher/design/build-tab.html<br/>1 screen (Build · Status half)</div>
+  </header>
+
+  <nav class="toc">
+    <a href="mockups.html"><b>←</b> All screens → mockups.html</a>
+    <a href="design-tab.html"><b>D</b> Design tab mockup →</a>
+    <a href="#sbu"><b>BU</b> Build tab — Status half (per-story code review + rework)</a>
+  </nav>
+
+  <!-- ═════════════ BU · Build tab — Status half ═════════════ -->
+  <section class="screen" id="sbu">
+    <div class="screen-label">
+      <span class="num">BU</span>
+      <span class="name">Build tab — Status half</span>
+      <span class="route">/projects/tenant-maintenance · Build</span>
+    </div>
+    <div class="screen-body">
+      <div class="app">
+        <aside class="side">
+          <div class="brand"><div class="brand-mark">IH</div><div class="brand-name">Idea Hub</div></div>
+          <div>
+            <div class="menu-label">Menu</div>
+            <nav class="nav">
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12l9-9 9 9 M5 10v10h14V10"/></svg> Overview</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h11l3 3v13H5z M16 4v3h3 M8 11h8 M8 14h8 M8 17h5"/></svg> Project Background <span class="count">17</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3h7v7 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> Requirements <span class="count">14</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Sprint <span class="count">14</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z M4 9h16 M9 4v16"/></svg> Design</a>
+              <a href="#" class="active"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Build <span class="count">14</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="9" r="3"/><path d="M3 19c0-3 2.7-5 6-5s6 2 6 5 M14 19c0-3 2.7-5 6-5"/></svg> Agents</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 12l2 2 4-4 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg> QA <span class="count">2</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> Activity</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 8H3 M21 16H3 M5 4h14v16H5z"/></svg> Artifacts</a>
+            </nav>
+          </div>
+          <div class="side-promo">
+            <h4>Build rules</h4>
+            <p>Edits to build/deploy rules, environments, and coding guidelines write back to <code style="font-family: var(--font-mono); font-size: 11px;">code-builder/</code>. Code Agents pick them up on the next run.</p>
+            <button>View code-builder/ →</button>
+          </div>
+          <div class="side-foot">
+            <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 3h6v6 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> ← All projects</a>
+          </div>
+        </aside>
+
+        <main class="main">
+          <div class="topbar">
+            <a href="#" style="font-size:13px; color: var(--ink-2);">← Projects</a>
+            <div class="search">
+              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+              <input placeholder="Search this project…" />
+            </div>
+            <button class="btn btn-soft btn-pill">Filter</button>
+            <button class="btn btn-soft btn-pill">Export</button>
+            <button class="btn btn-primary btn-pill">+ New build rule</button>
+          </div>
+
+          <!-- Project header -->
+          <div class="card">
+            <div class="proj-head">
+              <div class="ico-lg tile-peach"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2b2547" stroke-width="1.8"><path d="M3 12l9-9 9 9 M5 10v10h14V10"/></svg></div>
+              <div>
+                <h1>Tenant Maintenance Portal</h1>
+                <div class="one">Maintenance request app for property managers</div>
+                <div class="path">~/Code/tenant-maintenance · Build stage · 14 stories in flight</div>
+              </div>
+              <div class="actions">
+                <span class="pill inprog"><span class="dot"></span> Build</span>
+                <span class="stage-pt">TM-12 … TM-25</span>
+              </div>
+            </div>
+
+            <!-- 7-stage stepper (Build active) -->
+            <div class="stepper" style="padding: 0 22px 22px;">
+              <div class="step done"><div class="num"><b>1</b></div><div class="lbl">Intake</div><div class="bar"></div></div>
+              <div class="step done"><div class="num"><b>2</b></div><div class="lbl">Requirements</div><div class="bar"></div></div>
+              <div class="step done"><div class="num"><b>3</b></div><div class="lbl">Design</div><div class="bar"></div></div>
+              <div class="step active"><div class="num"><b>4</b></div><div class="lbl">Build</div><div class="bar"></div></div>
+              <div class="step"><div class="num"><b>5</b></div><div class="lbl">Review</div><div class="bar"></div></div>
+              <div class="step"><div class="num"><b>6</b></div><div class="lbl">QA</div><div class="bar"></div></div>
+              <div class="step"><div class="num"><b>7</b></div><div class="lbl">Deployed</div></div>
+            </div>
+          </div>
+
+          <!-- Status / Rules tab switch (the two-halves pattern) -->
+          <div class="tab-bar">
+            <div class="kit-tabs" role="tablist" aria-label="Build tab — status or rules">
+              <button class="on" role="tab" aria-selected="true">Status</button>
+              <button role="tab" aria-selected="false">Rules</button>
+            </div>
+            <span style="font-size: 12px; color: var(--ink-2);">Two halves · the Rules half writes back to the build rules + coding guidelines.</span>
+            <span class="writeback">writes to → <code>code-builder/</code> + <code>skills/coding-guidelines.md</code></span>
+          </div>
+
+          <!-- ══════ STATUS HALF ══════ -->
+
+          <!-- Build summary stats -->
+          <div class="card" style="margin-top: 14px;">
+            <div class="bd-stats">
+              <div class="bd-stat">
+                <div class="n">4</div>
+                <div class="lbl">Being built</div>
+                <div class="sub">3 Code Agents currently working</div>
+              </div>
+              <div class="bd-stat">
+                <div class="n">3</div>
+                <div class="lbl">Ready for review</div>
+                <div class="sub">PR open, Reviewer pending</div>
+              </div>
+              <div class="bd-stat">
+                <div class="n">2</div>
+                <div class="lbl">Ready for QA</div>
+                <div class="sub">Reflected on QA tab as TM-*</div>
+              </div>
+              <div class="bd-stat">
+                <div class="n">5</div>
+                <div class="lbl">Deployed to QA env</div>
+                <div class="sub ok">Build · 5 passed · 0 failed · 2 in rework</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Per-story build list -->
+          <div class="card" style="margin-top: 14px;">
+            <div class="stories-head">
+              <h3>Story build status</h3>
+              <span class="pill todo"><span class="dot"></span> 14 total</span>
+              <div class="filter">
+                <button class="on">All</button>
+                <button>Building</button>
+                <button>In review</button>
+                <button>Done</button>
+              </div>
+            </div>
+
+            <!-- Story 1: Picked up -->
+            <div class="story-row">
+              <div>
+                <div class="id">TM-25</div>
+                <span class="pill todo"><span class="dot"></span> Picked up</span>
+              </div>
+              <div>
+                <div class="title">Manager dashboard — filters and saved views<span class="sub">From DSGN-11 · 3 pts · High priority</span></div>
+              </div>
+              <div class="bd-stepper">
+                <div class="node active"><div class="dot">1</div> Picked up</div>
+                <div class="bar"></div>
+                <div class="node"><div class="dot">2</div> Building</div>
+                <div class="bar"></div>
+                <div class="node"><div class="dot">3</div> Self-review</div>
+                <div class="bar"></div>
+                <div class="node"><div class="dot">4</div> For review</div>
+                <div class="bar"></div>
+                <div class="node"><div class="dot">5</div> Ready for QA</div>
+              </div>
+              <div class="assign">
+                <div class="av-sm a-c1">C1</div>
+                <span>Code 1 · ~10m</span>
+              </div>
+            </div>
+
+            <!-- Story 2: Building -->
+            <div class="story-row">
+              <div>
+                <div class="id">TM-23</div>
+                <span class="pill inprog"><span class="dot"></span> Building</span>
+              </div>
+              <div>
+                <div class="title">Photo upload for maintenance requests<span class="sub">From DSGN-12 · 5 pts · High priority</span></div>
+              </div>
+              <div class="bd-stepper">
+                <div class="node done"><div class="dot">✓</div> Picked up</div>
+                <div class="bar done"></div>
+                <div class="node active"><div class="dot">2</div> Building</div>
+                <div class="bar active"></div>
+                <div class="node"><div class="dot">3</div> Self-review</div>
+                <div class="bar"></div>
+                <div class="node"><div class="dot">4</div> For review</div>
+                <div class="bar"></div>
+                <div class="node"><div class="dot">5</div> Ready for QA</div>
+              </div>
+              <div class="assign">
+                <div class="av-sm a-c2">C2</div>
+                <span>Code 2 · ~2h</span>
+              </div>
+            </div>
+
+            <!-- Story 3: Ready for review (selected) -->
+            <div class="story-row selected">
+              <div>
+                <div class="id">TM-19</div>
+                <span class="pill review"><span class="dot"></span> Ready for review</span>
+              </div>
+              <div>
+                <div class="title">Request detail screen + status updates<span class="sub">From DSGN-08 · 5 pts · Med priority · PR #214 open</span></div>
+              </div>
+              <div class="bd-stepper">
+                <div class="node done"><div class="dot">✓</div> Picked up</div>
+                <div class="bar done"></div>
+                <div class="node done"><div class="dot">✓</div> Building</div>
+                <div class="bar done"></div>
+                <div class="node done"><div class="dot">✓</div> Self-review</div>
+                <div class="bar done"></div>
+                <div class="node active"><div class="dot">4</div> For review</div>
+                <div class="bar active"></div>
+                <div class="node"><div class="dot">5</div> Ready for QA</div>
+              </div>
+              <div class="assign">
+                <div class="av-sm a-c1">C1</div>
+                <div class="av-sm a-rev" style="margin-left: -8px;">RV</div>
+                <span>Code 1 → Reviewer</span>
+              </div>
+            </div>
+
+            <!-- Story 3 detail: architecture (read-only) + code-review thread -->
+            <div class="story-detail">
+              <!-- Architecture panel (read-only — sitemap decision) -->
+              <div class="arch">
+                <div class="arch-h">
+                  <h4>Story architecture</h4>
+                  <span style="font-size: 10.5px; color: var(--ink-2); font-family: var(--font-mono);">inferred by agents</span>
+                  <span class="ro">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+                    Read-only
+                  </span>
+                </div>
+
+                <div class="arch-card">
+                  <div class="arch-row">
+                    <div class="k">FE</div>
+                    <div class="v"><code>React 18</code> <code>TypeScript</code> <code>Vite</code> <code>react-router v6</code></div>
+                  </div>
+                  <div class="arch-row">
+                    <div class="k">BFF</div>
+                    <div class="v"><code>Express</code> · /api/* · same origin</div>
+                  </div>
+                  <div class="arch-row">
+                    <div class="k">BE</div>
+                    <div class="v"><code>Node 22</code> · <code>tsx watch</code> · route-handler style</div>
+                  </div>
+                  <div class="arch-row">
+                    <div class="k">DB</div>
+                    <div class="v"><code>SQLite</code> (better-sqlite3) · <code>./data/dev.db</code></div>
+                  </div>
+                  <div class="arch-row">
+                    <div class="k">Host</div>
+                    <div class="v">Vercel (FE) · Fly.io (BFF + BE) <span class="lock"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>edit Rules</span></div>
+                  </div>
+                </div>
+
+                <div style="font-size: 11.5px; color: var(--ink-2); padding: 0 4px;">
+                  Architecture is <b style="color: var(--ink);">inferred by agents</b> from the project folder. To change stack or hosting, edit the <b style="color: var(--ink);">Rules</b> tab — your steering surface is one place, not two.
+                </div>
+              </div>
+
+              <!-- Per-story code-review thread (Code Agent + Reviewer) -->
+              <div class="thread">
+                <div class="thread-head">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                  Code review · PR #214
+                  <span class="who">2 comments · CI ✓ · 1 unresolved</span>
+                </div>
+
+                <div class="comment c1">
+                  <div class="body">
+                    <div class="who">Code Agent 1 <span>· 1h ago</span></div>
+                    <p>PR ready for review. Built the request detail screen with status timeline, photo gallery, and the comment thread. Self-review pass found one unused import — cleaned up. Story now waiting on Reviewer sign-off.</p>
+                  </div>
+                  <div class="meta">
+                    <code>PR #214</code> · 5 files · +312 / −24
+                    <span class="pass">✓ Self-review pass</span>
+                  </div>
+                </div>
+
+                <div class="comment rev">
+                  <div class="body">
+                    <div class="who">Reviewer Agent <span>· 22m ago</span></div>
+                    <p>Two nits in <code style="font-family: var(--font-mono); font-size: 11px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">RequestDetail.tsx</code> — the status timeline is not keyboard reachable (focus order skips `Completed` on a screen-reader walk), and the photo gallery has no alt-text fallback when an image 404s. Both are quick fixes. Will approve once those are in.</p>
+                  </div>
+                  <div class="meta">
+                    <code>src/pages/RequestDetail.tsx</code> · 2 nits
+                    <span class="fail">✗ 1 unresolved (a11y)</span>
+                  </div>
+                </div>
+
+                <div class="compose">
+                  <textarea placeholder="Reply as the user, or @-mention Code 1 / Reviewer…"></textarea>
+                  <span class="who">Posting as <b>Will</b></span>
+                  <button class="btn btn-primary btn-pill">Post</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Story 4: Ready for QA -->
+            <div class="story-row">
+              <div>
+                <div class="id">TM-18</div>
+                <span class="pill done"><span class="dot"></span> Ready for QA</span>
+              </div>
+              <div>
+                <div class="title">Auth flow — tenant sign in / sign out<span class="sub">From DSGN-04 · 8 pts · High priority · PR #208 merged</span></div>
+              </div>
+              <div class="bd-stepper">
+                <div class="node done"><div class="dot">✓</div> Picked up</div>
+                <div class="bar done"></div>
+                <div class="node done"><div class="dot">✓</div> Building</div>
+                <div class="bar done"></div>
+                <div class="node done"><div class="dot">✓</div> Self-review</div>
+                <div class="bar done"></div>
+                <div class="node done"><div class="dot">✓</div> For review</div>
+                <div class="bar done"></div>
+                <div class="node active"><div class="dot">5</div> Ready for QA</div>
+              </div>
+              <div class="assign">
+                <div class="av-sm a-c3">C3</div>
+                <span>→ QA Agent</span>
+              </div>
+            </div>
+
+            <!-- Story 5: Deployed to QA env -->
+            <div class="story-row">
+              <div>
+                <div class="id">TM-12</div>
+                <span class="pill done"><span class="dot"></span> Deployed · QA env</span>
+              </div>
+              <div>
+                <div class="title">Vite + React + TS scaffold (CI green)<span class="sub">From DSGN-02 · 2 pts · High priority · deployed 2h ago</span></div>
+              </div>
+              <div class="bd-stepper">
+                <div class="node done"><div class="dot">✓</div> Picked up</div>
+                <div class="bar done"></div>
+                <div class="node done"><div class="dot">✓</div> Building</div>
+                <div class="bar done"></div>
+                <div class="node done"><div class="dot">✓</div> Self-review</div>
+                <div class="bar done"></div>
+                <div class="node done"><div class="dot">✓</div> For review</div>
+                <div class="bar done"></div>
+                <div class="node done"><div class="dot">✓</div> Ready for QA</div>
+              </div>
+              <div class="assign">
+                <span style="font-size: 11.5px; color: var(--ink-2);">qa-env-3d1a · preview URL</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Rework queue (failed QA / review — sitemap § Build) -->
+          <div class="card" style="margin-top: 14px;">
+            <div class="rework" style="padding-top: 18px;">
+              <div class="rework-head">
+                <h3>Rework queue</h3>
+                <span class="pill blocked"><span class="dot"></span> 2 stories back from QA / Review</span>
+                <span style="margin-left: auto; font-size: 11.5px; color: var(--ink-2);">QA fail / review fail → Build. Fix, re-PR, re-QA.</span>
+              </div>
+
+              <div class="rework-row">
+                <div class="id">TM-17</div>
+                <div class="why"><b>Property list — filter chip a11y</b><span class="sub">From DSGN-06 · 3 pts · failed at QA · Playwright</span></div>
+                <div><span class="pill blocked"><span class="dot"></span> QA · failed</span></div>
+                <div class="ev"><a href="#">qa-evidence/tm-17/chip-focus.png →</a><span class="sub">Screenshot + step log · 2h ago</span></div>
+                <div><button class="btn btn-soft btn-pill">Open →</button></div>
+              </div>
+
+              <div class="rework-row">
+                <div class="id">TM-15</div>
+                <div class="why"><b>Maintenance list — empty state missing icon</b><span class="sub">From DSGN-09 · 2 pts · failed at Review · PR #199</span></div>
+                <div><span class="pill review"><span class="dot"></span> Review · failed</span></div>
+                <div class="ev"><a href="#">pr-199/empty-state.png →</a><span class="sub">Screenshot + nits · 4h ago</span></div>
+                <div><button class="btn btn-soft btn-pill">Open →</button></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Code agent strip (3 agents — moved here from Sprint) -->
+          <div class="card" style="margin-top: 14px;">
+            <div class="stories-head" style="padding-bottom: 8px;">
+              <h3>Code agents</h3>
+              <span class="pill inprog"><span class="dot"></span> 3 active</span>
+              <span style="margin-left: auto; font-size: 11.5px; color: var(--ink-2);">Full roster lives on the <b style="color: var(--ink);">Agents</b> tab.</span>
+            </div>
+            <div class="agent-strip">
+              <div class="agent-card c1">
+                <div class="av">C1</div>
+                <div class="meta">
+                  <b>Code Agent 1</b>
+                  <span class="sub">PR #214 review (TM-19) · ~1h elapsed</span>
+                </div>
+                <div class="right">
+                  <span class="pill review"><span class="dot"></span> Reviewing</span>
+                  <span class="pass-chip"><span class="dot"></span> 4/5 reviews</span>
+                </div>
+              </div>
+              <div class="agent-card c2">
+                <div class="av">C2</div>
+                <div class="meta">
+                  <b>Code Agent 2</b>
+                  <span class="sub">Building TM-23 (Photo upload) · ~2h elapsed · ETA 90m</span>
+                </div>
+                <div class="right">
+                  <span class="pill inprog"><span class="dot"></span> Building</span>
+                  <span class="pass-chip"><span class="dot"></span> 5/5 reviews</span>
+                </div>
+              </div>
+              <div class="agent-card c3">
+                <div class="av">C3</div>
+                <div class="meta">
+                  <b>Code Agent 3</b>
+                  <span class="sub">Idle · last shipped TM-18 1h ago · ETA next pickup 20m</span>
+                </div>
+                <div class="right">
+                  <span class="pill todo"><span class="dot"></span> Idle</span>
+                  <span class="pass-chip warn"><span class="dot"></span> 3/5 reviews</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Rules preview (secondary; full Rules tab is its own screen) -->
+          <div class="rules-preview">
+            <div>
+              <b>Rules half</b> — editable build rules, deployment rules, environments, coding guidelines, and the build lifecycle.
+              Switch to the <b>Rules</b> tab to edit; changes write back to <code style="font-family: var(--font-mono); font-size: 11.5px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">code-builder/</code> and <code style="font-family: var(--font-mono); font-size: 11.5px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">../skills/coding-guidelines.md</code>, and Code Agents pick them up on the next run.
+            </div>
+            <div class="right">
+              <button class="btn btn-soft btn-pill">View code-builder/</button>
+              <button class="btn btn-primary btn-pill">Open Rules tab →</button>
+            </div>
+          </div>
+
+        </main>
+      </div>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

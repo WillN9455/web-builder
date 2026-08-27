@@ -1543,6 +1543,71 @@
     color: var(--ink); font-weight: 600;
     text-decoration: underline;
   }
+
+  /* ===== N1 · State D — context-ready confirmation view ===== */
+  .state-d {
+    background: #fff;
+    border: 1px solid rgba(50,42,92,0.08);
+    border-radius: 16px;
+    padding: 28px 32px;
+    max-width: 760px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+  .state-d-head { display: flex; align-items: center; gap: 12px; }
+  .state-d-check {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: var(--mint);
+    display: grid; place-items: center;
+    color: var(--green); flex: none;
+  }
+  .state-d-head h3 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
+  .state-d-head p { margin: 2px 0 0; font-size: 13px; color: var(--ink-2); }
+  .state-d-summary {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;
+  }
+  .state-d-band {
+    background: var(--mint);
+    border-radius: 10px;
+    padding: 12px;
+    text-align: center;
+  }
+  .state-d-band .n { font-size: 22px; font-weight: 700; color: var(--ink); }
+  .state-d-band .lbl { font-size: 11px; color: var(--ink-2); margin-top: 2px; }
+  .state-d-explainer {
+    background: var(--lavender);
+    border-radius: 12px;
+    padding: 14px 16px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--ink);
+  }
+  .state-d-list {
+    border: 1px solid rgba(50,42,92,0.08);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .state-d-list-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    padding: 10px 14px;
+    font-size: 13px;
+    border-bottom: 1px solid rgba(50,42,92,0.06);
+  }
+  .state-d-list-row:last-child { border-bottom: 0; }
+  .state-d-list-row .path { font-family: var(--font-mono); font-size: 12px; color: var(--ink-2); }
+  .state-d-list-row .ok {
+    color: var(--green); font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .state-d-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .state-d-foot {
+    font-size: 11px; color: var(--ink-2);
+    display: flex; align-items: center; gap: 6px;
+  }
 </style>
 <body>
 <div class="doc">
@@ -2235,6 +2300,131 @@ available  ──request──▶ pending   ──approve──▶ on_loan
           </div>
 
         </main>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════════ State D · context-ready confirmation view ═════════════ -->
+  <section class="screen" id="sD">
+    <div class="screen-label">
+      <span class="num">D</span>
+      <span class="name">Project context ready</span>
+      <span class="route">/projects/:id/background · State D</span>
+    </div>
+    <div class="screen-body">
+      <div class="app full">
+        <div class="project-shell">
+
+          <!-- Per-project topbar (canonical: ← Projects + Search only) -->
+          <header class="topbar">
+            <a class="crumb" href="#">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg>
+              Projects
+            </a>
+            <div class="search">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+              <input placeholder="Search this project…" />
+            </div>
+          </header>
+
+          <div class="shell">
+
+            <!-- Per-project sidebar — Project Background is the focus tab (pre-confirmation) -->
+            <aside class="sidebar" aria-label="Project tabs">
+              <div class="sb-project">
+                <div class="sb-ico"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12l9-9 9 9 M5 10v10h14V10"/></svg></div>
+                <div class="sb-meta">
+                  <div class="sb-title">Tenant Maintenance</div>
+                  <div class="sb-sub">17 of 17 approved · awaiting confirm</div>
+                </div>
+              </div>
+              <nav class="sb-nav">
+                <a class="side-link" href="#"><span class="dot" style="background: var(--green);"></span><span class="lbl">Overview</span></a>
+                <a class="side-link active" href="#"><span class="dot" style="background: var(--purple);"></span><span class="lbl">Project Background</span></a>
+                <a class="side-link" href="#"><span class="dot"></span><span class="lbl">Requirements</span></a>
+                <a class="side-link locked" href="#" aria-disabled="true" tabindex="0"><span class="dot"></span><span class="lbl">Sprint</span></a>
+                <a class="side-link locked" href="#" aria-disabled="true" tabindex="0"><span class="dot"></span><span class="lbl">Design</span></a>
+                <a class="side-link locked" href="#" aria-disabled="true" tabindex="0"><span class="dot"></span><span class="lbl">Build</span></a>
+                <a class="side-link" href="#"><span class="dot"></span><span class="lbl">Agents</span></a>
+                <a class="side-link locked" href="#" aria-disabled="true" tabindex="0"><span class="dot"></span><span class="lbl">QA</span></a>
+                <a class="side-link" href="#"><span class="dot"></span><span class="lbl">Activity</span></a>
+                <a class="side-link" href="#"><span class="dot"></span><span class="lbl">Artifacts</span></a>
+              </nav>
+            </aside>
+
+            <main class="main">
+              <div class="main-head">
+                <div>
+                  <div class="crumbs">Project Background</div>
+                  <h2 class="title">Project context ready</h2>
+                  <div class="sub">Confirm to finalize Requirements and unlock Sprint, Design, Build, and QA.</div>
+                </div>
+              </div>
+
+              <!-- State D card -->
+              <div class="state-d" role="region" aria-labelledby="sD-h">
+
+                <!-- Mint checkmark header -->
+                <div class="state-d-head">
+                  <div class="state-d-check">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg>
+                  </div>
+                  <div>
+                    <h3 id="sD-h">Project context ready</h3>
+                    <p>All 17 background documents are approved. This is the one-shot that locks context into Requirements and opens the four downstream tabs.</p>
+                  </div>
+                </div>
+
+                <!-- 5-band Approved summary (17/17) -->
+                <div class="state-d-summary" aria-label="Approved count per band">
+                  <div class="state-d-band"><div class="n">3 / 3</div><div class="lbl">Core PRD</div></div>
+                  <div class="state-d-band"><div class="n">5 / 5</div><div class="lbl">Scope &amp; rules</div></div>
+                  <div class="state-d-band"><div class="n">4 / 4</div><div class="lbl">Data &amp; access</div></div>
+                  <div class="state-d-band"><div class="n">4 / 4</div><div class="lbl">Planning &amp; risk</div></div>
+                  <div class="state-d-band"><div class="n">1 / 1</div><div class="lbl">SA handoff</div></div>
+                </div>
+
+                <!-- Lavender explainer -->
+                <div class="state-d-explainer">
+                  Confirming writes the locked context into Requirements and unlocks Sprint, Design, Build, and QA in one shot.
+                  The Design, Build, and QA agents read these docs as the brief for every story. Once confirmed you can still
+                  revoke individual files, but the tabs stay open (warn-only) — we don't re-lock.
+                </div>
+
+                <!-- Compact 17-artifact Approved list -->
+                <div class="state-d-list" aria-label="17 approved artifacts">
+                  <div class="state-d-list-row"><div><div>Main PRD</div><div class="path">PRD/prd.md</div></div><div class="ok">Approved ✓</div></div>
+                  <div class="state-d-list-row"><div><div>Personas</div><div class="path">PRD/personas.md</div></div><div class="ok">Approved ✓</div></div>
+                  <div class="state-d-list-row"><div><div>User journeys</div><div class="path">PRD/user-journeys.md</div></div><div class="ok">Approved ✓</div></div>
+                  <div class="state-d-list-row"><div><div>Glossary</div><div class="path">PRD/glossary.md</div></div><div class="ok">Approved ✓</div></div>
+                  <div class="state-d-list-row"><div><div>Stakeholder map</div><div class="path">PRD/stakeholder-map.md</div></div><div class="ok">Approved ✓</div></div>
+                  <div class="state-d-list-row"><div><div>Business rules</div><div class="path">PRD/business-rules.md</div></div><div class="ok">Approved ✓</div></div>
+                  <div class="state-d-list-row"><div><div>Assumptions</div><div class="path">PRD/assumptions.md</div></div><div class="ok">Approved ✓</div></div>
+                  <div class="state-d-list-row"><div><div>Open questions log</div><div class="path">PRD/open-questions.md</div></div><div class="ok">Approved ✓</div></div>
+                  <div class="state-d-list-row"><div><div>Data model</div><div class="path">PRD/data-model.md</div></div><div class="ok">Approved ✓</div></div>
+                  <div class="state-d-list-row"><div><div>Data flow</div><div class="path">PRD/data-flow.md</div></div><div class="ok">Approved ✓</div></div>
+                  <div class="state-d-list-row"><div><div>RBAC matrix</div><div class="path">PRD/rbac-matrix.md</div></div><div class="ok">Approved ✓</div></div>
+                  <div class="state-d-list-row"><div><div>NFR catalog</div><div class="path">PRD/nfr-catalog.md</div></div><div class="ok">Approved ✓</div></div>
+                  <div class="state-d-list-row"><div><div>Phasing plan</div><div class="path">PRD/phasing-plan.md</div></div><div class="ok">Approved ✓</div></div>
+                  <div class="state-d-list-row"><div><div>Traffic profile</div><div class="path">PRD/traffic-profile.md</div></div><div class="ok">Approved ✓</div></div>
+                  <div class="state-d-list-row"><div><div>Cost model</div><div class="path">PRD/cost-model.md</div></div><div class="ok">Approved ✓</div></div>
+                  <div class="state-d-list-row"><div><div>Risks</div><div class="path">PRD/risks.md</div></div><div class="ok">Approved ✓</div></div>
+                  <div class="state-d-list-row"><div><div>Tech decision brief</div><div class="path">PRD/tech-decision-brief.md</div></div><div class="ok">Approved ✓</div></div>
+                </div>
+
+                <!-- Actions + footnote -->
+                <div class="state-d-actions">
+                  <button class="btn btn-primary">Confirm project context →</button>
+                  <button class="btn btn-ghost">← Back to artifacts</button>
+                  <span class="state-d-foot">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8v5 M12 16h.01"/></svg>
+                    One-shot — only runs when 17/17 are Approved.
+                  </span>
+                </div>
+              </div>
+            </main>
+          </div>
+        </div>
       </div>
     </div>
   </section>

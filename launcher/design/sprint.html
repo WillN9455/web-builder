@@ -1562,20 +1562,70 @@
   }
   .oqa .ico { color: var(--amber); flex: none; }
   .oqa .body b { font-weight: 700; }
-  .oqa a {
+
+
+  /* N4 · Connect Jira setup state (Sprint tab when unlocked but no Jira link) */
+  .setup-card {
+    background: #fff;
+    border: 1px solid rgba(50,42,92,0.08);
+    border-radius: 14px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    max-width: 640px;
+  }
+  .setup-h {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .setup-h .ico {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: var(--butter);
+    display: grid; place-items: center;
+    color: var(--ink);
+    flex: none;
+  }
+  .setup-h h3 { margin: 0; font-size: 16px; font-weight: 600; }
+  .setup-h p { margin: 2px 0 0; font-size: 12px; color: var(--ink-2); }
+  .setup-row { display: grid; grid-template-columns: 140px 1fr; gap: 8px 12px; align-items: center; font-size: 13px; }
+  .setup-row label { color: var(--ink-2); font-size: 12px; font-weight: 500; }
+  .setup-row .input { width: 100%; }
+  .setup-row .input:disabled { color: var(--ink-2); background: rgba(50,42,92,0.03); cursor: not-allowed; }
+  .setup-actions { display: flex; gap: 8px; align-items: center; }
+  .setup-help { font-size: 12px; color: var(--ink-2); line-height: 1.5; }
+  .setup-help b { color: var(--ink); font-weight: 600; }
+  .setup-divider { height: 1px; background: rgba(50,42,92,0.08); margin: 4px 0; }
+
+  /* N4 · Connect Jira setup state — Sprint banner explaining the gated state */
+  .jira-gate {
+    display: flex; align-items: flex-start; gap: 12px;
+    background: var(--lavender);
+    border: 1px solid rgba(155, 127, 222, 0.25);
+    border-radius: 12px;
+    padding: 14px 16px;
+    font-size: 13px;
+    color: var(--ink);
+  }
+  .jira-gate .ico { color: var(--purple); flex: none; margin-top: 1px; }
+  .jira-gate b { font-weight: 700; }
+  .jira-gate .sub { display: block; color: var(--ink-2); font-size: 12px; margin-top: 4px; }
+  .jira-gate .right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
 </style></head><body>
 <div class="doc">
 
   <header class="doc-header">
     <div>
       <div class="doc-title">Idea Hub — Sprint (v5.2)</div>
-      <div class="doc-sub">Sprint tab — Jira-synced Kanban board. The <b>Sprint tab</b> is the master story board; cards reflect PRD requirements pulled in from <a href="requirements.html"><b>requirements.html</b></a>. Story status drives the per-stage columns and the code-agent status strip below the board. See the rest of the design system in <a href="mockups.html"><b>mockups.html</b></a>.</div>
+      <div class="doc-sub">Sprint tab — Jira-synced Kanban board. The <b>Sprint tab</b> is the master story board; cards reflect PRD requirements pulled in from <a href="requirements.html"><b>requirements.html</b></a>. Story status drives the per-stage columns and the code-agent status strip below the board. When Sprint is unlocked but no Jira link is configured, the board is replaced by a <b>Connect Jira setup state</b> (section 6b). See the rest of the design system in <a href="mockups.html"><b>mockups.html</b></a>.</div>
     </div>
-    <div class="doc-meta">v5.2 · launcher/design/sprint.html<br/>1 screen (Sprint · Jira Kanban)</div>
+    <div class="doc-meta">v5.2 · launcher/design/sprint.html<br/>2 screens (Sprint · Jira Kanban · Connect Jira setup)</div>
   </header>
 
   <nav class="toc" style="margin-top:-8px;">
     <a href="mockups.html"><b>←</b> All screens → mockups.html</a>
+    <a href="#s6b" style="margin-top:6px;"><b>6b</b> Sprint — Connect Jira setup state</a>
   </nav>
   <!-- ═════════════ 6 · Sprint — Jira Kanban ═════════════ -->
   <section class="screen" id="s6">
@@ -1769,6 +1819,162 @@
                 <span class="pill inprog"><span class="dot"></span> Active</span>
               </div>
             </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════════ 6b · Sprint — Connect Jira setup state ═════════════ -->
+  <section class="screen" id="s6b">
+    <div class="screen-label">
+      <span class="num">6b</span>
+      <span class="name">Sprint — Connect Jira setup state</span>
+      <span class="route">/projects/tenant-maintenance · Sprint (no Jira link)</span>
+    </div>
+    <div class="screen-body">
+      <div class="app">
+        <aside class="side">
+          <div class="brand"><div class="brand-mark">IH</div><div class="brand-name">Idea Hub</div></div>
+          <div>
+            <div class="menu-label">Menu</div>
+            <nav class="nav">
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12l9-9 9 9 M5 10v10h14V10"/></svg> Overview</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h11l3 3v13H5z M16 4v3h3 M8 11h8 M8 14h8 M8 17h5"/></svg> Project Background <span class="count">17</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3h7v7 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1-2 2h5"/></svg> Requirements <span class="count">14</span></a>
+              <a href="#" class="active"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Sprint</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z M4 9h16 M9 4v16"/></svg> Design</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Build</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="9" r="3"/><path d="M3 19c0-3 2.7-5 6-5s6 2 6 5 M14 19c0-3 2.7-5 6-5"/></svg> Agents</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 12l2 2 4-4 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg> QA</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> Activity</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 8H3 M21 16H3 M5 4h14v16H5z"/></svg> Artifacts</a>
+            </nav>
+          </div>
+          <div class="side-promo">
+            <h4>Jira not connected</h4>
+            <p>Finish the setup below to start creating tickets from your Requirements.</p>
+            <button>Connect Jira →</button>
+          </div>
+          <div class="side-foot">
+            <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 3h6v6 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> ← All projects</a>
+          </div>
+        </aside>
+        <main class="main">
+          <div class="topbar">
+            <a href="#" style="font-size:13px; color: var(--ink-2);">← Projects</a>
+            <div class="search" style="opacity:.6; pointer-events:none;"><input placeholder="Search this project…" /></div>
+            <button class="btn btn-soft btn-pill">Help</button>
+            <button class="btn btn-primary btn-pill">Connect Jira →</button>
+          </div>
+
+          <!-- Project header -->
+          <div class="card">
+            <div class="proj-head">
+              <div class="ico-lg tile-peach"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2b2547" stroke-width="1.8"><path d="M3 12l9-9 9 9 M5 10v10h14V10"/></svg></div>
+              <div>
+                <h1>Tenant Maintenance Portal</h1>
+                <div class="one">Maintenance request app for property managers</div>
+                <div class="path">~/Code/tenant-maintenance · Build stage · no Jira link yet</div>
+              </div>
+              <div class="actions">
+                <span class="pill blocked"><span class="dot"></span> Sprint · Blocked</span>
+                <span class="stage-pt">0 Jira tickets · setup required</span>
+              </div>
+            </div>
+
+            <!-- 7-stage stepper (Build active; Sprint ahead of board) -->
+            <div class="stepper" style="margin-top: 18px;">
+              <div class="step done"><div class="num"><b>1</b></div><div class="lbl">Intake</div><div class="bar"></div></div>
+              <div class="step done"><div class="num"><b>2</b></div><div class="lbl">Requirements</div><div class="bar"></div></div>
+              <div class="step done"><div class="num"><b>3</b></div><div class="lbl">Design</div><div class="bar"></div></div>
+              <div class="step active"><div class="num"><b>4</b></div><div class="lbl">Build</div><div class="bar"></div></div>
+              <div class="step"><div class="num"><b>5</b></div><div class="lbl">Review</div><div class="bar"></div></div>
+              <div class="step"><div class="num"><b>6</b></div><div class="lbl">QA</div><div class="bar"></div></div>
+              <div class="step"><div class="num"><b>7</b></div><div class="lbl">Deployed</div></div>
+            </div>
+          </div>
+
+          <!-- Jira-gate banner (why this state exists) -->
+          <div class="jira-gate" role="status">
+            <div class="ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8v4 M12 16h.01"/></svg></div>
+            <div>
+              <b>Sprint is the master story board</b> — every Requirements item, Design pickup, Build task, and QA run is reflected here as a Jira ticket. Until a Jira project is linked, the board can’t render.
+              <span class="sub">Link a Jira project to start creating tickets from your 14 approved requirements. Status changes in Jira sync back here within 30s.</span>
+            </div>
+            <div class="right">
+              <a href="#" style="font-size: 12px; color: var(--ink-2); text-decoration: none;">Learn more →</a>
+            </div>
+          </div>
+
+          <!-- Connect Jira setup card -->
+          <div class="card" style="padding: 24px;">
+            <div class="setup-card" style="max-width: none;">
+              <div class="setup-h">
+                <div class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2v6 M12 22v-6 M2 12h6 M22 12h-6"/><circle cx="12" cy="12" r="4"/></svg></div>
+                <div>
+                  <h3>Connect Jira</h3>
+                  <p>Sprint needs a Jira link to create and sync stories. Auth is scoped to a single API token — your Jira password is never stored.</p>
+                </div>
+              </div>
+
+              <div class="setup-row">
+                <label for="jk">Project key</label>
+                <input id="jk" class="input mono" value="TEN" />
+              </div>
+              <div class="setup-row">
+                <label for="ju">Base URL</label>
+                <input id="ju" class="input" value="https://studio.atlassian.net" />
+              </div>
+              <div class="setup-row">
+                <label for="ja">Account email</label>
+                <input id="ja" class="input" value="will@studio.com" />
+              </div>
+              <div class="setup-row">
+                <label for="jt">API token</label>
+                <input id="jt" class="input" type="password" value="••••••••••••••••" />
+              </div>
+              <div class="setup-row">
+                <label for="js">Sync direction</label>
+                <select id="js" class="input">
+                  <option>Two-way — Launcher ↔ Jira (recommended)</option>
+                  <option>One-way — Launcher → Jira</option>
+                  <option>One-way — Jira → Launcher</option>
+                </select>
+              </div>
+              <div class="setup-row">
+                <label for="jauto">Auto-create</label>
+                <select id="jauto" class="input">
+                  <option>Create Jira ticket when Requirements move to Sprint-ready</option>
+                  <option>Manual — I’ll create tickets from the board</option>
+                </select>
+              </div>
+
+              <div class="setup-divider"></div>
+
+              <div class="setup-help">
+                <b>What gets shared:</b> project name, requirement IDs, story status changes, and code-agent commits.
+                <b>What stays local:</b> artifact files, design-system rules, and the live activity feed.
+                <a href="#" style="color: var(--navy); margin-left: 4px;">View permission detail →</a>
+              </div>
+
+              <div class="setup-actions">
+                <button class="btn btn-primary">Connect Jira</button>
+                <button class="btn btn-ghost">Use CSV export instead</button>
+                <span class="setup-help" style="margin-left: auto;">Takes ~30s. You can disconnect anytime from Settings.</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- What happens after connect (preview state) -->
+          <div class="card" style="padding: 20px 22px;">
+            <h3 style="margin: 0 0 10px;">After you connect</h3>
+            <ol style="margin: 0; padding-left: 18px; font-size: 13px; color: var(--ink-2); line-height: 1.7;">
+              <li>The BA agent pushes the 14 approved requirements into Jira as <code style="font-family: var(--font-mono); font-size: 12px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">TM-1 … TM-14</code> in <i>To do</i>.</li>
+              <li>Design Agent A and B pick up stories from <i>To do</i> and move them through <i>Design</i> with peer review.</li>
+              <li>Code Agents 1, 2, 3 pick up “Ready for development” stories in parallel. The Sprint board becomes the master status view across all stages.</li>
+              <li>Status changes in Jira (comments, reassigns, transitions) sync back here within 30s. Manual moves are mirrored automatically.</li>
+            </ol>
           </div>
         </main>
       </div>

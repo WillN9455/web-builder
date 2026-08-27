@@ -1,0 +1,943 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Idea Hub — Design tab (v5.2)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ─── Design tokens (mirror mockups.html / sprint.html) ─────────────── */
+  :root {
+    --ground-a: #d9d5ec;
+    --ground-b: #c3cde8;
+    --panel:    rgba(255, 255, 255, 0.72);
+    --panel-stroke: rgba(255, 255, 255, 0.6);
+    --ink:      #2b2547;
+    --ink-2:    #8b87a5;
+    --ink-3:    #b6b2cc;
+    --shadow:   0 30px 60px -30px rgba(50, 42, 92, 0.25), 0 8px 24px -10px rgba(50, 42, 92, 0.12);
+
+    --navy:     #322a5c;
+    --navy-2:   #4a4080;
+
+    --peach:    #fbdcbe;
+    --sky:      #cfe0f4;
+    --lavender: #e6e1f7;
+    --mint:     #d7efe4;
+    --butter:   #f7edc6;
+    --blush:    #fadcd9;
+    --sea:      #cde6ea;
+
+    --coral:    #ef7f57;
+    --blue:     #6fa9e0;
+    --purple:   #9b7fde;
+    --green:    #5fbf95;
+    --amber:    #e8b94a;
+    --rose:     #d97a8e;
+
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+
+    --r-sm: 10px;
+    --r-md: 16px;
+    --r-lg: 20px;
+    --r-xl: 24px;
+    --r-2xl: 28px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { font-family: var(--font-sans); color: var(--ink); -webkit-font-smoothing: antialiased; }
+  body {
+    min-height: 100vh;
+    background:
+      radial-gradient(120% 80% at 10% 0%, #e3dff2 0%, transparent 60%),
+      linear-gradient(135deg, var(--ground-a) 0%, var(--ground-b) 100%);
+    padding: 40px 32px 80px;
+  }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; cursor: pointer; border: 0; background: none; color: inherit; }
+
+  /* ─── Document chrome ─────────────────────────────────────────────────── */
+  .doc { max-width: 1440px; margin: 0 auto 64px; }
+  .doc-header { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 28px; color: var(--ink); }
+  .doc-title { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; }
+  .doc-sub { color: var(--ink-2); font-size: 14px; max-width: 720px; line-height: 1.55; margin-top: 6px; }
+  .doc-sub a { color: var(--ink); font-weight: 600; text-decoration: underline; }
+  .doc-meta { font-family: var(--font-mono); font-size: 12px; color: var(--ink-2); white-space: nowrap; }
+
+  .toc {
+    display: flex; flex-direction: column; gap: 4px; margin: -8px 0 24px;
+    font-size: 12px; color: var(--ink-2);
+  }
+  .toc a {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 10px; border-radius: 8px; width: fit-content;
+  }
+  .toc a:hover { background: rgba(255,255,255,0.6); color: var(--ink); }
+  .toc a b { color: var(--ink); margin-right: 6px; }
+
+  /* ─── Section frame ───────────────────────────────────────────────────── */
+  .screen {
+    background: var(--panel);
+    border: 1px solid var(--panel-stroke);
+    border-radius: var(--r-xl);
+    margin-bottom: 64px;
+    overflow: hidden;
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+  }
+  .screen-label {
+    display: flex; align-items: center; gap: 12px;
+    padding: 16px 22px;
+    border-bottom: 1px solid rgba(50,42,92,0.06);
+    font-size: 13px;
+  }
+  .screen-label .num {
+    display: grid; place-items: center;
+    width: 24px; height: 24px;
+    border-radius: 6px;
+    background: var(--navy); color: #fff;
+    font-size: 12px; font-weight: 700;
+  }
+  .screen-label .name { font-weight: 600; color: var(--ink); }
+  .screen-label .route { font-family: var(--font-mono); color: var(--ink-2); margin-left: auto; }
+  .screen-body { padding: 0; }
+
+  /* ─── App shell (per-project) ─────────────────────────────────────────── */
+  .app { display: grid; grid-template-columns: 248px 1fr; min-height: 920px; }
+  .side {
+    border-right: 1px solid rgba(50,42,92,0.08);
+    background: rgba(255,255,255,0.4);
+    padding: 18px 14px;
+    display: flex; flex-direction: column; gap: 18px;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 4px 6px 10px; }
+  .brand-mark {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: var(--navy); color: #fff;
+    display: grid; place-items: center;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
+  }
+  .brand-name { font-size: 14px; font-weight: 700; color: var(--ink); }
+  .menu-label {
+    font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--ink-2); padding: 0 8px 6px;
+  }
+  .nav { display: flex; flex-direction: column; gap: 1px; }
+  .nav a {
+    display: flex; align-items: center; gap: 9px;
+    padding: 7px 9px; border-radius: 8px;
+    color: var(--ink); font-size: 13px; font-weight: 500;
+    position: relative;
+  }
+  .nav a:hover { background: rgba(255,255,255,0.6); }
+  .nav a.active {
+    background: rgba(50,42,92,0.08); color: var(--ink); font-weight: 600;
+  }
+  .nav a .count {
+    margin-left: auto; font-size: 11px; color: var(--ink-2);
+    background: rgba(50,42,92,0.08); border-radius: 6px; padding: 1px 6px;
+  }
+  .nav a.active .count { background: var(--navy); color: #fff; }
+  .nav .ico { width: 16px; height: 16px; flex: none; }
+
+  .side-promo {
+    margin-top: auto;
+    background: var(--lavender);
+    border-radius: 12px; padding: 12px 14px;
+    font-size: 12px; line-height: 1.5;
+  }
+  .side-promo h4 { font-size: 12px; font-weight: 700; margin-bottom: 4px; }
+  .side-promo p { color: var(--ink-2); }
+  .side-promo button {
+    margin-top: 8px; color: var(--ink); font-weight: 600;
+    text-decoration: underline;
+  }
+  .side-foot { padding: 6px 8px 2px; font-size: 12px; }
+  .side-foot a { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); }
+  .side-foot a:hover { color: var(--ink); }
+
+  /* ─── Main + topbar + cards ──────────────────────────────────────────── */
+  .main { padding: 18px 26px 60px; }
+  .topbar {
+    display: flex; align-items: center; gap: 10px;
+    padding: 0 4px 14px;
+  }
+  .search {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,0.7);
+    border: 1px solid rgba(50,42,92,0.08);
+    border-radius: 10px; padding: 7px 12px;
+    width: 360px;
+  }
+  .search input { border: 0; outline: 0; flex: 1; background: transparent; color: var(--ink); font: inherit; }
+  .search .ico { color: var(--ink-2); width: 14px; height: 14px; }
+
+  .card {
+    background: #fff;
+    border: 1px solid rgba(50,42,92,0.08);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow);
+  }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 14px; border-radius: 999px;
+    font-size: 13px; font-weight: 500;
+    border: 1px solid transparent;
+    transition: background 0.12s ease;
+  }
+  .btn-primary { background: var(--navy); color: #fff; }
+  .btn-primary:hover { background: var(--navy-2); }
+  .btn-ghost { background: #fff; color: var(--ink); border: 1px solid rgba(50,42,92,0.1); }
+  .btn-ghost:hover { background: rgba(50,42,92,0.04); }
+  .btn-soft { background: rgba(255,255,255,0.6); color: var(--ink); border: 1px solid rgba(50,42,92,0.08); }
+  .btn-soft:hover { background: rgba(255,255,255,0.85); }
+  .btn-pill { padding: 6px 12px; font-size: 12px; }
+
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 3px 9px; border-radius: 999px;
+    font-size: 11.5px; font-weight: 500;
+    background: var(--peach); color: var(--ink);
+  }
+  .pill .dot { width: 6px; height: 6px; border-radius: 50%; }
+  .pill.todo     { background: var(--lavender); color: var(--ink); }
+  .pill.todo     .dot { background: var(--purple); }
+  .pill.inprog   { background: var(--sky);     color: var(--ink); }
+  .pill.inprog   .dot { background: var(--blue); }
+  .pill.review   { background: var(--butter);  color: var(--ink); }
+  .pill.review   .dot { background: var(--amber); }
+  .pill.done     { background: var(--mint);    color: var(--ink); }
+  .pill.done     .dot { background: var(--green); }
+  .pill.blocked  { background: var(--blush);   color: var(--ink); }
+  .pill.blocked  .dot { background: var(--rose); }
+  .pill.draft    { background: var(--peach);   color: var(--ink); }
+  .pill.draft    .dot { background: var(--coral); }
+
+  /* Project header */
+  .proj-head { display: flex; align-items: center; gap: 16px; padding: 22px; }
+  .proj-head .ico-lg {
+    width: 56px; height: 56px; border-radius: 14px;
+    display: grid; place-items: center;
+    background: var(--peach); color: var(--ink);
+  }
+  .proj-head h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
+  .proj-head .one { color: var(--ink-2); font-size: 13.5px; margin-top: 2px; }
+  .proj-head .path { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-2); margin-top: 6px; }
+  .proj-head .actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+  .stage-pt { font-size: 11.5px; color: var(--ink-2); font-family: var(--font-mono); }
+
+  /* 7-stage stepper */
+  .stepper { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0; align-items: center; }
+  .step { display: flex; align-items: center; gap: 8px; }
+  .step .num {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: rgba(50,42,92,0.08); color: var(--ink-2);
+    display: grid; place-items: center;
+    font-size: 11px; font-weight: 700;
+  }
+  .step .lbl { font-size: 12px; color: var(--ink-2); }
+  .step .bar { flex: 1; height: 2px; background: rgba(50,42,92,0.08); margin: 0 6px; }
+  .step.done .num { background: var(--green); color: #fff; }
+  .step.done .lbl { color: var(--ink); }
+  .step.done .bar { background: var(--green); }
+  .step.active .num { background: var(--navy); color: #fff; box-shadow: 0 0 0 4px rgba(50,42,92,0.12); }
+  .step.active .lbl { color: var(--ink); font-weight: 600; }
+
+  /* ─── N5 · Design tab — Status / Rules switch ─────────────────────────── */
+  .kit-tabs {
+    display: inline-flex;
+    background: var(--peach);
+    border-radius: 999px;
+    padding: 4px;
+    gap: 2px;
+  }
+  .kit-tabs button {
+    padding: 6px 18px;
+    font-size: 12px; font-weight: 600;
+    color: var(--ink-2);
+    border-radius: 999px;
+    background: transparent;
+  }
+  .kit-tabs button.on {
+    background: #fff; color: var(--ink);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  }
+
+  .tab-bar {
+    display: flex; align-items: center; gap: 14px;
+    padding: 16px 22px 0;
+  }
+  .tab-bar .writeback {
+    margin-left: auto; font-size: 11.5px; color: var(--ink-2);
+    font-family: var(--font-mono);
+  }
+  .tab-bar .writeback code {
+    background: rgba(50,42,92,0.06); padding: 1px 6px; border-radius: 4px;
+    color: var(--ink);
+  }
+
+  /* Design summary stats */
+  .ds-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 18px 22px; }
+  .ds-stat {
+    background: rgba(50,42,92,0.04);
+    border-radius: 12px;
+    padding: 14px 16px;
+  }
+  .ds-stat .n { font-size: 22px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+  .ds-stat .lbl { font-size: 11px; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
+  .ds-stat .sub { font-size: 11.5px; color: var(--ink-2); margin-top: 6px; }
+
+  /* Per-story design list — 5-state inline stepper */
+  .stories-head { display: flex; align-items: center; gap: 10px; padding: 6px 22px 12px; }
+  .stories-head h3 { margin: 0; font-size: 14px; font-weight: 700; }
+  .stories-head .filter { margin-left: auto; display: flex; gap: 4px; }
+  .stories-head .filter button {
+    padding: 4px 10px; font-size: 11.5px; border-radius: 999px;
+    background: transparent; color: var(--ink-2);
+  }
+  .stories-head .filter button.on { background: rgba(50,42,92,0.08); color: var(--ink); }
+
+  .story-row {
+    display: grid; grid-template-columns: 110px 1fr 320px 110px;
+    gap: 14px; align-items: center;
+    padding: 12px 22px;
+    border-top: 1px solid rgba(50,42,92,0.06);
+  }
+  .story-row.selected { background: rgba(155,127,222,0.06); }
+  .story-row .id { font-family: var(--font-mono); font-size: 12px; color: var(--ink-2); }
+  .story-row .title { font-size: 13.5px; font-weight: 500; }
+  .story-row .title .sub { display: block; color: var(--ink-2); font-size: 11.5px; font-weight: 400; margin-top: 2px; }
+
+  /* 5-state design stepper */
+  .ds-stepper { display: flex; align-items: center; gap: 0; }
+  .ds-stepper .node {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px; color: var(--ink-2); white-space: nowrap;
+  }
+  .ds-stepper .node .dot {
+    width: 14px; height: 14px; border-radius: 50%;
+    background: rgba(50,42,92,0.08);
+    display: grid; place-items: center;
+    font-size: 9px; font-weight: 700; color: var(--ink-2);
+  }
+  .ds-stepper .node.done .dot { background: var(--green); color: #fff; }
+  .ds-stepper .node.active .dot { background: var(--navy); color: #fff; box-shadow: 0 0 0 3px rgba(50,42,92,0.12); }
+  .ds-stepper .node.done { color: var(--ink); }
+  .ds-stepper .node.active { color: var(--ink); font-weight: 600; }
+  .ds-stepper .bar { flex: 1; height: 2px; background: rgba(50,42,92,0.08); margin: 0 4px; min-width: 14px; }
+  .ds-stepper .bar.done { background: var(--green); }
+  .ds-stepper .bar.active { background: linear-gradient(90deg, var(--green) 50%, rgba(50,42,92,0.08) 50%); }
+
+  .story-row .assign { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-2); }
+  .story-row .assign .av-sm {
+    width: 22px; height: 22px; border-radius: 50%;
+    display: grid; place-items: center;
+    font-size: 10px; font-weight: 700;
+  }
+  .av-sm.a-da { background: var(--lavender); color: var(--ink); }
+  .av-sm.a-db { background: var(--peach); color: var(--ink); }
+
+  /* ─── Selected story detail (per-story A↔B review thread) ─────────── */
+  .story-detail {
+    background: rgba(50,42,92,0.02);
+    border-top: 1px solid rgba(50,42,92,0.06);
+    padding: 18px 22px 22px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 18px;
+  }
+
+  /* Artifacts viewer (hybrid: tokens in-app, wireframes/hi-fi → Figma) */
+  .art-viewer { display: flex; flex-direction: column; gap: 12px; }
+  .art-tabs {
+    display: inline-flex; align-self: flex-start;
+    background: rgba(50,42,92,0.06);
+    border-radius: 8px; padding: 3px; gap: 1px;
+  }
+  .art-tabs button {
+    padding: 5px 12px; font-size: 11.5px; font-weight: 500;
+    color: var(--ink-2); border-radius: 6px; background: transparent;
+  }
+  .art-tabs button.on { background: #fff; color: var(--ink); }
+  .art-card {
+    background: #fff;
+    border: 1px solid rgba(50,42,92,0.08);
+    border-radius: 12px;
+    padding: 14px;
+  }
+  .art-card .art-h { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .art-card .art-h .ico { color: var(--purple); }
+  .art-card .art-h h4 { font-size: 12.5px; font-weight: 700; margin: 0; }
+  .art-card .art-h .open { margin-left: auto; font-size: 11.5px; color: var(--navy); font-weight: 600; }
+  .art-card .art-h .open.locked { color: var(--ink-2); }
+
+  /* in-app token swatch preview */
+  .swatch-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .swatch { aspect-ratio: 1/1; border-radius: 6px; border: 1px solid rgba(50,42,92,0.06); }
+  .swatch-meta {
+    display: flex; justify-content: space-between; align-items: end;
+    font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-2);
+    margin-top: 8px;
+  }
+
+  /* interaction-states preview */
+  .state-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .state-cell {
+    aspect-ratio: 4/3; border-radius: 6px; border: 1px solid rgba(50,42,92,0.08);
+    display: grid; place-items: center;
+    font-size: 10.5px; color: var(--ink-2); font-weight: 500;
+    background: var(--lavender);
+  }
+  .state-cell.s-loading { background: var(--sky); }
+  .state-cell.s-error { background: var(--blush); color: var(--ink); }
+  .state-cell.s-success { background: var(--mint); }
+
+  /* Figma handoff card (external link) */
+  .figma-card {
+    background: linear-gradient(135deg, #fff 0%, var(--lavender) 100%);
+    border: 1px solid rgba(155,127,222,0.25);
+    border-radius: 12px; padding: 14px;
+  }
+  .figma-card .figma-h { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .figma-card .figma-h .fig-ico {
+    width: 22px; height: 22px; border-radius: 6px;
+    background: #f24e1e; color: #fff;
+    display: grid; place-items: center; font-size: 11px; font-weight: 700;
+  }
+  .figma-card .figma-h h4 { font-size: 12.5px; font-weight: 700; margin: 0; }
+  .figma-card .figma-h .open { margin-left: auto; font-size: 11.5px; color: var(--navy); font-weight: 600; }
+  .figma-card .figma-meta {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+    font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-2);
+  }
+  .figma-card .figma-meta b { color: var(--ink); font-weight: 600; }
+
+  /* Per-story A↔B review thread */
+  .thread { display: flex; flex-direction: column; gap: 10px; }
+  .thread .thread-head {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11.5px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--ink-2);
+  }
+  .thread .thread-head .who { margin-left: auto; font-size: 11px; color: var(--ink-2); font-weight: 500; text-transform: none; letter-spacing: 0; }
+  .comment {
+    background: #fff;
+    border: 1px solid rgba(50,42,92,0.06);
+    border-left: 3px solid var(--lavender);
+    border-radius: 10px;
+    padding: 10px 12px;
+  }
+  .comment.a { border-left-color: var(--lavender); }
+  .comment.b { border-left-color: var(--peach); }
+  .comment .body { font-size: 12.5px; line-height: 1.5; }
+  .comment .body .who { font-size: 11.5px; font-weight: 600; color: var(--ink); }
+  .comment .body .who span { color: var(--ink-2); font-weight: 400; margin-left: 6px; }
+  .comment .body p { margin: 4px 0 0; color: var(--ink); }
+  .comment .disagree {
+    margin-top: 6px;
+    background: var(--butter);
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: 11.5px; color: var(--ink);
+    display: flex; gap: 6px; align-items: center;
+  }
+  .comment .disagree svg { color: var(--amber); flex: none; }
+  .compose {
+    display: flex; gap: 10px; align-items: end;
+    background: #fff;
+    border: 1px solid rgba(50,42,92,0.08);
+    border-radius: 10px; padding: 8px 10px;
+  }
+  .compose textarea {
+    flex: 1; border: 0; outline: 0; resize: none;
+    font: inherit; font-size: 12.5px;
+    color: var(--ink); background: transparent;
+    min-height: 36px;
+  }
+  .compose .who { font-size: 11px; color: var(--ink-2); }
+
+  /* Design agent strip */
+  .agent-strip { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 16px 22px 22px; }
+  .agent-card {
+    background: #fff;
+    border: 1px solid rgba(50,42,92,0.08);
+    border-radius: 12px;
+    padding: 14px 16px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .agent-card .av {
+    width: 36px; height: 36px; border-radius: 50%;
+    display: grid; place-items: center;
+    font-size: 12px; font-weight: 700; color: var(--ink);
+    flex: none;
+  }
+  .agent-card.a .av { background: var(--lavender); }
+  .agent-card.b .av { background: var(--peach); }
+  .agent-card .meta b { display: block; font-size: 13px; font-weight: 600; }
+  .agent-card .meta .sub { display: block; font-size: 11.5px; color: var(--ink-2); }
+  .agent-card .right { margin-left: auto; display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
+
+  /* a11y audit summary chip */
+  .a11y-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 3px 8px; border-radius: 999px;
+    font-size: 11px; font-weight: 500;
+    background: var(--mint); color: var(--ink);
+  }
+  .a11y-chip .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--green); }
+  .a11y-chip.warn { background: var(--butter); }
+  .a11y-chip.warn .dot { background: var(--amber); }
+  .a11y-chip.fail { background: var(--blush); }
+  .a11y-chip.fail .dot { background: var(--rose); }
+
+  /* Rules half preview (inline secondary) */
+  .rules-preview {
+    margin: 0 22px 22px;
+    background: rgba(50,42,92,0.02);
+    border: 1px dashed rgba(50,42,92,0.15);
+    border-radius: 12px;
+    padding: 16px 18px;
+    display: flex; align-items: center; gap: 14px;
+    font-size: 12.5px; color: var(--ink-2);
+  }
+  .rules-preview b { color: var(--ink); font-weight: 600; }
+  .rules-preview .right { margin-left: auto; display: flex; gap: 6px; }
+</style>
+</head>
+<body>
+<div class="doc">
+
+  <header class="doc-header">
+    <div>
+      <div class="doc-title">Idea Hub — Design tab (v5.2)</div>
+      <div class="doc-sub">Design stage workspace. <b>Two-halves</b> — Status (design journey + per-story review) and Rules (editable design rules writing back to <code style="font-family: var(--font-mono); font-size: 12px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">design-system/</code>). <b>Hybrid</b> artifacts viewer — tokens + interaction states render in-app; wireframes + hi-fi link out to Figma. <b>Per-story A↔B review thread</b> is the peer-review surface. Source of truth: <a href="sitemap.md">sitemap.md § Design</a>. See <a href="mockups.html">mockups.html</a> for the rest of the design system.</div>
+    </div>
+    <div class="doc-meta">v5.2 · launcher/design/design-tab.html<br/>1 screen (Design · Status half)</div>
+  </header>
+
+  <nav class="toc">
+    <a href="mockups.html"><b>←</b> All screens → mockups.html</a>
+    <a href="#sd"><b>D</b> Design tab — Status half (per-story A↔B review)</a>
+  </nav>
+
+  <!-- ═════════════ D · Design tab — Status half ═════════════ -->
+  <section class="screen" id="sd">
+    <div class="screen-label">
+      <span class="num">D</span>
+      <span class="name">Design tab — Status half</span>
+      <span class="route">/projects/tenant-maintenance · Design</span>
+    </div>
+    <div class="screen-body">
+      <div class="app">
+        <aside class="side">
+          <div class="brand"><div class="brand-mark">IH</div><div class="brand-name">Idea Hub</div></div>
+          <div>
+            <div class="menu-label">Menu</div>
+            <nav class="nav">
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12l9-9 9 9 M5 10v10h14V10"/></svg> Overview</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h11l3 3v13H5z M16 4v3h3 M8 11h8 M8 14h8 M8 17h5"/></svg> Project Background <span class="count">17</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3h7v7 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> Requirements <span class="count">14</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Sprint <span class="count">14</span></a>
+              <a href="#" class="active"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z M4 9h16 M9 4v16"/></svg> Design</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Build <span class="count">14</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="9" r="3"/><path d="M3 19c0-3 2.7-5 6-5s6 2 6 5 M14 19c0-3 2.7-5 6-5"/></svg> Agents</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 12l2 2 4-4 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg> QA <span class="count">2</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> Activity</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 8H3 M21 16H3 M5 4h14v16H5z"/></svg> Artifacts</a>
+            </nav>
+          </div>
+          <div class="side-promo">
+            <h4>Design agents A &amp; B</h4>
+            <p>Two design agents run peer review on every story. Edits in the Rules tab take effect on their next run.</p>
+            <button>View design-system →</button>
+          </div>
+          <div class="side-foot">
+            <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 3h6v6 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> ← All projects</a>
+          </div>
+        </aside>
+
+        <main class="main">
+          <div class="topbar">
+            <a href="#" style="font-size:13px; color: var(--ink-2);">← Projects</a>
+            <div class="search">
+              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+              <input placeholder="Search this project…" />
+            </div>
+            <button class="btn btn-soft btn-pill">Filter</button>
+            <button class="btn btn-soft btn-pill">Export</button>
+            <button class="btn btn-primary btn-pill">+ New design rule</button>
+          </div>
+
+          <!-- Project header -->
+          <div class="card">
+            <div class="proj-head">
+              <div class="ico-lg tile-peach"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2b2547" stroke-width="1.8"><path d="M3 12l9-9 9 9 M5 10v10h14V10"/></svg></div>
+              <div>
+                <h1>Tenant Maintenance Portal</h1>
+                <div class="one">Maintenance request app for property managers</div>
+                <div class="path">~/Code/tenant-maintenance · Design stage · 14 stories in flight</div>
+              </div>
+              <div class="actions">
+                <span class="pill inprog"><span class="dot"></span> Design</span>
+                <span class="stage-pt">DSGN-01 … DSGN-14</span>
+              </div>
+            </div>
+
+            <!-- 7-stage stepper (Design active) -->
+            <div class="stepper" style="padding: 0 22px 22px;">
+              <div class="step done"><div class="num"><b>1</b></div><div class="lbl">Intake</div><div class="bar"></div></div>
+              <div class="step done"><div class="num"><b>2</b></div><div class="lbl">Requirements</div><div class="bar"></div></div>
+              <div class="step active"><div class="num"><b>3</b></div><div class="lbl">Design</div><div class="bar"></div></div>
+              <div class="step"><div class="num"><b>4</b></div><div class="lbl">Build</div><div class="bar"></div></div>
+              <div class="step"><div class="num"><b>5</b></div><div class="lbl">Review</div><div class="bar"></div></div>
+              <div class="step"><div class="num"><b>6</b></div><div class="lbl">QA</div><div class="bar"></div></div>
+              <div class="step"><div class="num"><b>7</b></div><div class="lbl">Deployed</div></div>
+            </div>
+          </div>
+
+          <!-- Status / Rules tab switch (the two-halves pattern) -->
+          <div class="tab-bar">
+            <div class="kit-tabs" role="tablist" aria-label="Design tab — status or rules">
+              <button class="on" role="tab" aria-selected="true">Status</button>
+              <button role="tab" aria-selected="false">Rules</button>
+            </div>
+            <span style="font-size: 12px; color: var(--ink-2);">Two halves · the Rules half writes back to the design-system folder.</span>
+            <span class="writeback">writes to → <code>design-system/</code></span>
+          </div>
+
+          <!-- ══════ STATUS HALF ══════ -->
+
+          <!-- Design summary stats -->
+          <div class="card" style="margin-top: 14px;">
+            <div class="ds-stats">
+              <div class="ds-stat">
+                <div class="n">3</div>
+                <div class="lbl">Being designed</div>
+                <div class="sub">Design Agent A &amp; B currently working</div>
+              </div>
+              <div class="ds-stat">
+                <div class="n">2</div>
+                <div class="lbl">In peer review</div>
+                <div class="sub">A↔B review thread open</div>
+              </div>
+              <div class="ds-stat">
+                <div class="n">5</div>
+                <div class="lbl">Design complete</div>
+                <div class="sub">Ready to flip to “Ready for development”</div>
+              </div>
+              <div class="ds-stat">
+                <div class="n">4</div>
+                <div class="lbl">Ready for development</div>
+                <div class="sub">Reflected on Sprint board as TM-*</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Per-story design list -->
+          <div class="card" style="margin-top: 14px;">
+            <div class="stories-head">
+              <h3>Story design status</h3>
+              <span class="pill todo"><span class="dot"></span> 14 total</span>
+              <div class="filter">
+                <button class="on">All</button>
+                <button>In design</button>
+                <button>Peer review</button>
+                <button>Done</button>
+              </div>
+            </div>
+
+            <!-- Story 1: Picked up -->
+            <div class="story-row">
+              <div>
+                <div class="id">DSGN-11</div>
+                <span class="pill todo"><span class="dot"></span> Picked up</span>
+              </div>
+              <div>
+                <div class="title">Manager dashboard — filters and saved views<span class="sub">From TM-23 · 3 pts · High priority</span></div>
+              </div>
+              <div class="ds-stepper">
+                <div class="node active"><div class="dot">1</div> Picked up</div>
+                <div class="bar"></div>
+                <div class="node"><div class="dot">2</div> In design</div>
+                <div class="bar"></div>
+                <div class="node"><div class="dot">3</div> Peer review</div>
+                <div class="bar"></div>
+                <div class="node"><div class="dot">4</div> Design complete</div>
+                <div class="bar"></div>
+                <div class="node"><div class="dot">5</div> Ready for dev</div>
+              </div>
+              <div class="assign">
+                <div class="av-sm a-da">DA</div>
+                <span>Design A · ~12m</span>
+              </div>
+            </div>
+
+            <!-- Story 2: In design -->
+            <div class="story-row">
+              <div>
+                <div class="id">DSGN-12</div>
+                <span class="pill inprog"><span class="dot"></span> In design</span>
+              </div>
+              <div>
+                <div class="title">Photo upload for maintenance requests<span class="sub">From TM-21 · 5 pts · High priority</span></div>
+              </div>
+              <div class="ds-stepper">
+                <div class="node done"><div class="dot">✓</div> Picked up</div>
+                <div class="bar done"></div>
+                <div class="node active"><div class="dot">2</div> In design</div>
+                <div class="bar active"></div>
+                <div class="node"><div class="dot">3</div> Peer review</div>
+                <div class="bar"></div>
+                <div class="node"><div class="dot">4</div> Design complete</div>
+                <div class="bar"></div>
+                <div class="node"><div class="dot">5</div> Ready for dev</div>
+              </div>
+              <div class="assign">
+                <div class="av-sm a-db">DB</div>
+                <span>Design B · ~1h</span>
+              </div>
+            </div>
+
+            <!-- Story 3: Peer review (selected) -->
+            <div class="story-row selected">
+              <div>
+                <div class="id">DSGN-08</div>
+                <span class="pill review"><span class="dot"></span> Peer review</span>
+              </div>
+              <div>
+                <div class="title">Request detail screen + status updates<span class="sub">From TM-19 · 5 pts · Med priority · A↔B open thread</span></div>
+              </div>
+              <div class="ds-stepper">
+                <div class="node done"><div class="dot">✓</div> Picked up</div>
+                <div class="bar done"></div>
+                <div class="node done"><div class="dot">✓</div> In design</div>
+                <div class="bar done"></div>
+                <div class="node active"><div class="dot">3</div> Peer review</div>
+                <div class="bar active"></div>
+                <div class="node"><div class="dot">4</div> Design complete</div>
+                <div class="bar"></div>
+                <div class="node"><div class="dot">5</div> Ready for dev</div>
+              </div>
+              <div class="assign">
+                <div class="av-sm a-da">DA</div>
+                <div class="av-sm a-db" style="margin-left: -8px;">DB</div>
+                <span>A↔B reviewing</span>
+              </div>
+            </div>
+
+            <!-- Story 3 detail row: artifacts viewer + A↔B review thread -->
+            <div class="story-detail">
+              <!-- Artifacts viewer (hybrid) -->
+              <div class="art-viewer">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <h4 style="margin: 0; font-size: 12.5px; font-weight: 700;">Story artifacts</h4>
+                  <span class="a11y-chip"><span class="dot"></span> a11y 4/5</span>
+                  <div class="art-tabs" role="tablist" style="margin-left: auto;">
+                    <button class="on">Tokens</button>
+                    <button>States</button>
+                    <button>Wireframe</button>
+                    <button>Hi-fi</button>
+                  </div>
+                </div>
+
+                <!-- Tokens tab (in-app) -->
+                <div class="art-card">
+                  <div class="art-h">
+                    <svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18 M3 12h18"/></svg>
+                    <h4>Request status tokens</h4>
+                    <span style="font-size: 10.5px; color: var(--ink-2); font-family: var(--font-mono);">design-system/tokens/status.json</span>
+                    <a class="open" href="#">Open in viewer →</a>
+                  </div>
+                  <div class="swatch-grid">
+                    <div class="swatch" style="background: var(--mint);"></div>
+                    <div class="swatch" style="background: var(--butter);"></div>
+                    <div class="swatch" style="background: var(--blush);"></div>
+                    <div class="swatch" style="background: var(--lavender);"></div>
+                    <div class="swatch" style="background: var(--sky);"></div>
+                  </div>
+                  <div class="swatch-meta">
+                    <span>5 swatches · WCAG AA verified</span>
+                    <span>updated 2h ago by DA</span>
+                  </div>
+                </div>
+
+                <!-- Interaction states tab (in-app) -->
+                <div class="art-card">
+                  <div class="art-h">
+                    <svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18 M9 21V9"/></svg>
+                    <h4>Status pill — interaction states</h4>
+                    <span style="font-size: 10.5px; color: var(--ink-2); font-family: var(--font-mono);">design-system/states/status-pill.md</span>
+                    <a class="open" href="#">Open in viewer →</a>
+                  </div>
+                  <div class="state-grid">
+                    <div class="state-cell">default</div>
+                    <div class="state-cell s-loading">loading</div>
+                    <div class="state-cell s-error">error</div>
+                    <div class="state-cell s-success">success</div>
+                  </div>
+                </div>
+
+                <!-- Wireframe tab (→ Figma) -->
+                <div class="figma-card">
+                  <div class="figma-h">
+                    <div class="fig-ico">F</div>
+                    <h4>Request detail — wireframe</h4>
+                    <a class="open" href="#">Open in Figma ↗</a>
+                  </div>
+                  <div class="figma-meta">
+                    <span>File: <b>Tenant Maintenance / Design</b></span>
+                    <span>Page: <b>03 · Request detail</b></span>
+                    <span>Frame: <b>Request detail / default</b></span>
+                    <span>Last edit: <b>1h ago · DB</b></span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- A↔B review thread -->
+              <div class="thread">
+                <div class="thread-head">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                  Peer review · A↔B
+                  <span class="who">2 comments · 1 disagreement</span>
+                </div>
+
+                <div class="comment a">
+                  <div class="body">
+                    <div class="who">Design Agent A <span>· 1h ago</span></div>
+                    <p>Status pill is too quiet in <i>success</i> state. On a 13” laptop the green-on-mint contrast reads as “decorative” — let me boost the dot size and darken the text one step.</p>
+                  </div>
+                </div>
+
+                <div class="comment b">
+                  <div class="body">
+                    <div class="who">Design Agent B <span>· 45m ago</span></div>
+                    <p>Agree on the dot, disagree on the text darken — the WCAG check already passes at AA. Darkening shifts the whole palette. Let’s leave the text and double the dot weight instead.</p>
+                    <div class="disagree">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 9v4 M12 17h.01 M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/></svg>
+                      Disagreement · 1 reply needed from the user
+                    </div>
+                  </div>
+                </div>
+
+                <div class="comment a">
+                  <div class="body">
+                    <div class="who">Design Agent A <span>· 38m ago</span></div>
+                    <p>Works for me. Bumping the dot weight + adding a 1px outline to lift it on the mint background. Will ship a revised state sheet after lunch.</p>
+                  </div>
+                </div>
+
+                <div class="compose">
+                  <textarea placeholder="Reply as the user, or @-mention DA / DB…"></textarea>
+                  <span class="who">Posting as <b>Will</b></span>
+                  <button class="btn btn-primary btn-pill">Post</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Story 4: Design complete -->
+            <div class="story-row">
+              <div>
+                <div class="id">DSGN-04</div>
+                <span class="pill done"><span class="dot"></span> Design complete</span>
+              </div>
+              <div>
+                <div class="title">Auth flow — tenant sign in / sign out<span class="sub">From TM-18 · 8 pts · High priority · a11y pass</span></div>
+              </div>
+              <div class="ds-stepper">
+                <div class="node done"><div class="dot">✓</div> Picked up</div>
+                <div class="bar done"></div>
+                <div class="node done"><div class="dot">✓</div> In design</div>
+                <div class="bar done"></div>
+                <div class="node done"><div class="dot">✓</div> Peer review</div>
+                <div class="bar done"></div>
+                <div class="node active"><div class="dot">4</div> Design complete</div>
+                <div class="bar active"></div>
+                <div class="node"><div class="dot">5</div> Ready for dev</div>
+              </div>
+              <div class="assign">
+                <div class="av-sm a-da">DA</div>
+                <span>Flip → dev</span>
+              </div>
+            </div>
+
+            <!-- Story 5: Ready for development -->
+            <div class="story-row">
+              <div>
+                <div class="id">DSGN-02</div>
+                <span class="pill done"><span class="dot"></span> Ready for dev</span>
+              </div>
+              <div>
+                <div class="title">Vite + React + TS scaffold (CI green)<span class="sub">From TM-12 · 2 pts · High priority · flipped 2h ago</span></div>
+              </div>
+              <div class="ds-stepper">
+                <div class="node done"><div class="dot">✓</div> Picked up</div>
+                <div class="bar done"></div>
+                <div class="node done"><div class="dot">✓</div> In design</div>
+                <div class="bar done"></div>
+                <div class="node done"><div class="dot">✓</div> Peer review</div>
+                <div class="bar done"></div>
+                <div class="node done"><div class="dot">✓</div> Design complete</div>
+                <div class="bar done"></div>
+                <div class="node active"><div class="dot">5</div> Ready for dev</div>
+              </div>
+              <div class="assign">
+                <span style="font-size: 11.5px; color: var(--ink-2);">→ TM-12 on Sprint board</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Design agent strip (A + B) -->
+          <div class="card" style="margin-top: 14px;">
+            <div class="stories-head" style="padding-bottom: 8px;">
+              <h3>Design agents</h3>
+              <span class="pill inprog"><span class="dot"></span> 2 active</span>
+            </div>
+            <div class="agent-strip">
+              <div class="agent-card a">
+                <div class="av">DA</div>
+                <div class="meta">
+                  <b>Design Agent A</b>
+                  <span class="sub">Working on DSGN-12 (Photo upload) · ~1h elapsed · ETA 90m</span>
+                </div>
+                <div class="right">
+                  <span class="pill inprog"><span class="dot"></span> Active</span>
+                  <span class="a11y-chip"><span class="dot"></span> 4/5 a11y</span>
+                </div>
+              </div>
+              <div class="agent-card b">
+                <div class="av">DB</div>
+                <div class="meta">
+                  <b>Design Agent B</b>
+                  <span class="sub">Peer-reviewing DSGN-08 (Request detail) · ~45m elapsed · ETA 20m</span>
+                </div>
+                <div class="right">
+                  <span class="pill review"><span class="dot"></span> Reviewing</span>
+                  <span class="a11y-chip warn"><span class="dot"></span> 3/5 a11y</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Rules preview (secondary; full Rules tab is its own screen) -->
+          <div class="rules-preview">
+            <div>
+              <b>Rules half</b> — editable design guidelines, accessibility rules (WCAG 2.1 AA), component-spec rules, token rules, and constraints.
+              Switch to the <b>Rules</b> tab to edit; changes write back to <code style="font-family: var(--font-mono); font-size: 11.5px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">design-system/</code> and the design agents pick them up on the next story.
+            </div>
+            <div class="right">
+              <button class="btn btn-soft btn-pill">View design-system/</button>
+              <button class="btn btn-primary btn-pill">Open Rules tab →</button>
+            </div>
+          </div>
+
+        </main>
+      </div>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

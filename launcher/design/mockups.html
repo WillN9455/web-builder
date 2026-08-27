@@ -1568,6 +1568,204 @@
     text-decoration: underline;
   }
 
+  /* ===== N11 · UI kit additions — Status/Rules tabs, locked-tab WCAG, OQ section, Connect Jira, State D ===== */
+
+  /* Status/Rules tab switch (two-halves pattern) */
+  .kit-tabs {
+    display: inline-flex;
+    background: var(--peach);
+    border-radius: 999px;
+    padding: 4px;
+    gap: 2px;
+  }
+  .kit-tabs button {
+    border: 0;
+    background: transparent;
+    padding: 6px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-2);
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  .kit-tabs button.on {
+    background: #fff;
+    color: var(--ink);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  }
+  .kit-tabs-meta {
+    font-size: 11px;
+    color: var(--ink-2);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-top: 14px;
+    margin-bottom: 6px;
+  }
+
+  /* Locked-tab greyed WCAG treatment — not contrast-disabled; keeps sufficient contrast + aria-disabled + tooltip */
+  .side-link.locked {
+    opacity: 0.62;
+    cursor: not-allowed;
+    position: relative;
+  }
+  .side-link.locked .lbl {
+    color: var(--ink-2);
+  }
+  .side-link.locked::after {
+    content: "Confirm project context first";
+    position: absolute;
+    left: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    margin-left: 12px;
+    background: var(--ink);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 5px 10px;
+    border-radius: 6px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.12s ease;
+    z-index: 5;
+  }
+  .side-link.locked:hover::after,
+  .side-link.locked:focus-within::after { opacity: 1; }
+
+  /* Outstanding questions — locked (no questions yet) and active (questions exist, read-only) */
+  .oq-list { display: flex; flex-direction: column; gap: 10px; }
+  .oq-item {
+    background: #fff;
+    border: 1px solid rgba(50,42,92,0.08);
+    border-radius: 10px;
+    padding: 10px 12px;
+  }
+  .oq-q { font-size: 13px; font-weight: 500; line-height: 1.4; }
+  .oq-meta {
+    margin-top: 4px;
+    font-size: 11px;
+    color: var(--ink-2);
+  }
+  .oq-group {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ink-2);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 12px 0 6px;
+  }
+  .oq-group:first-child { margin-top: 0; }
+  .oq-empty {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--ink-2);
+    padding: 10px 12px;
+    background: rgba(50,42,92,0.04);
+    border-radius: 10px;
+  }
+  .oq-empty svg { flex: none; opacity: 0.7; }
+
+  /* Connect Jira setup state — Sprint tab empty/setup */
+  .setup-card {
+    background: #fff;
+    border: 1px solid rgba(50,42,92,0.08);
+    border-radius: 14px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    max-width: 640px;
+  }
+  .setup-h {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .setup-h .ico {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: var(--butter);
+    display: grid; place-items: center;
+    color: var(--ink);
+    flex: none;
+  }
+  .setup-h h3 { margin: 0; font-size: 16px; font-weight: 600; }
+  .setup-h p { margin: 2px 0 0; font-size: 12px; color: var(--ink-2); }
+  .setup-row { display: grid; grid-template-columns: 140px 1fr; gap: 8px 12px; align-items: center; font-size: 13px; }
+  .setup-row label { color: var(--ink-2); font-size: 12px; font-weight: 500; }
+  .setup-row .input { width: 100%; }
+  .setup-actions { display: flex; gap: 8px; }
+
+  /* State D — confirmation view */
+  .state-d {
+    background: #fff;
+    border: 1px solid rgba(50,42,92,0.08);
+    border-radius: 16px;
+    padding: 28px 32px;
+    max-width: 760px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+  .state-d-head {
+    display: flex; align-items: center; gap: 12px;
+  }
+  .state-d-check {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: var(--mint);
+    display: grid; place-items: center;
+    color: var(--green);
+    flex: none;
+  }
+  .state-d-head h3 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
+  .state-d-head p { margin: 2px 0 0; font-size: 13px; color: var(--ink-2); }
+  .state-d-summary {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;
+  }
+  .state-d-band {
+    background: var(--mint);
+    border-radius: 10px;
+    padding: 12px;
+    text-align: center;
+  }
+  .state-d-band .n { font-size: 22px; font-weight: 700; color: var(--ink); }
+  .state-d-band .lbl { font-size: 11px; color: var(--ink-2); margin-top: 2px; }
+  .state-d-explainer {
+    background: var(--lavender);
+    border-radius: 12px;
+    padding: 14px 16px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--ink);
+  }
+  .state-d-list {
+    border: 1px solid rgba(50,42,92,0.08);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .state-d-list-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    padding: 10px 14px;
+    font-size: 13px;
+    border-bottom: 1px solid rgba(50,42,92,0.06);
+  }
+  .state-d-list-row:last-child { border-bottom: 0; }
+  .state-d-list-row .path { font-family: var(--font-mono); font-size: 12px; color: var(--ink-2); }
+  .state-d-list-row .ok {
+    color: var(--green); font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .state-d-actions { display: flex; gap: 8px; align-items: center; }
+  .state-d-foot {
+    font-size: 11px; color: var(--ink-2);
+    display: flex; align-items: center; gap: 6px;
+  }
+
 </style><body>
 <div class="doc">
 
@@ -2120,101 +2318,44 @@
               <div class="card">
                 <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 4px;">
                   <h3 style="margin: 0;">Outstanding questions</h3>
-                  <span class="pill inprog"><span class="dot"></span> 3 open</span>
+                  <span class="pill inprog"><span class="dot"></span> 7 open</span>
                 </div>
-                <div style="font-size: 12px; color: var(--ink-2); opacity:.75; margin-bottom: 14px;">BA Agent is waiting on these answers before finalising the requirements. Open the chat to respond.</div>
+                <div style="font-size: 12px; color: var(--ink-2); opacity:.75; margin-bottom: 14px;">The BA Agent is waiting on these before finalising requirements. Open the chat to answer.</div>
 
-                <div class="q-scroll">
-                  <div style="background: var(--butter); border-radius: 12px; padding: 12px 14px;">
-                    <div style="display:flex; align-items:flex-start; gap:8px;">
-                      <div class="av-sm ba" style="margin-top: 2px;">BA</div>
-                      <div style="flex:1;">
-                        <div style="font-weight: 600; font-size: 13px; color: var(--ink);">Does the app need to work offline for field engineers?</div>
-                        <div style="font-size: 11.5px; color: var(--ink); opacity:.65; margin-top: 2px;">Asked 1d ago · Blocks story <b>FS-04 Sync jobs offline</b></div>
-                        <div style="margin-top: 10px;">
-                          <button class="btn btn-soft btn-pill" style="padding: 5px 11px; font-size: 11.5px;">Open chat to answer →</button>
-                        </div>
-                      </div>
-                    </div>
+                <div class="oq-list">
+                  <div class="oq-group">Blocker for: Requirements</div>
+                  <div class="oq-item">
+                    <div class="oq-q">Does the app need to work offline for field engineers?</div>
+                    <div class="oq-meta">Asked 1d ago · Blocks story <b>FS-04 Sync jobs offline</b></div>
                   </div>
+                  <div class="oq-item">
+                    <div class="oq-q">Where do uploaded photos get stored? (S3 / Cloudinary / local?)</div>
+                    <div class="oq-meta">Asked 1d ago · Blocks story <b>FS-07 Attach photos to a job</b></div>
+                  </div>
+                  <div class="oq-item">
+                    <div class="oq-q">Confirm pricing tier — free for one engineer, paid for team?</div>
+                    <div class="oq-meta">Asked 1d ago · Blocks story <b>FS-12 Billing &amp; seat limits</b></div>
+                  </div>
+                  <div class="oq-item">
+                    <div class="oq-q">Should job conflicts surface a banner, modal, or inline toast?</div>
+                    <div class="oq-meta">Asked 18h ago · Blocks story <b>FS-09 Resolve scheduling conflicts</b></div>
+                  </div>
+                  <div class="oq-item">
+                    <div class="oq-q">Map provider — Google Maps, Mapbox, or OpenStreetMap?</div>
+                    <div class="oq-meta">Asked 12h ago · Blocks story <b>FS-11 Show job on a map</b></div>
+                  </div>
+                  <div class="oq-item">
+                    <div class="oq-q">Retain completed jobs for 90 days or indefinitely?</div>
+                    <div class="oq-meta">Asked 6h ago · Blocks story <b>FS-15 Job history &amp; retention</b></div>
+                  </div>
+                  <div class="oq-item">
+                    <div class="oq-q">Two-factor auth for the engineer login, or device-only?</div>
+                    <div class="oq-meta">Asked 4h ago · Blocks story <b>FS-02 Authenticate engineer</b></div>
+                  </div>
+                </div>
 
-                  <div style="background: var(--butter); border-radius: 12px; padding: 12px 14px;">
-                    <div style="display:flex; align-items:flex-start; gap:8px;">
-                      <div class="av-sm ba" style="margin-top: 2px;">BA</div>
-                      <div style="flex:1;">
-                        <div style="font-weight: 600; font-size: 13px; color: var(--ink);">Where do uploaded photos get stored? (S3 / Cloudinary / local?)</div>
-                        <div style="font-size: 11.5px; color: var(--ink); opacity:.65; margin-top: 2px;">Asked 1d ago · Blocks story <b>FS-07 Attach photos to a job</b></div>
-                        <div style="margin-top: 10px;">
-                          <button class="btn btn-soft btn-pill" style="padding: 5px 11px; font-size: 11.5px;">Open chat to answer →</button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div style="background: var(--butter); border-radius: 12px; padding: 12px 14px;">
-                    <div style="display:flex; align-items:flex-start; gap:8px;">
-                      <div class="av-sm ba" style="margin-top: 2px;">BA</div>
-                      <div style="flex:1;">
-                        <div style="font-weight: 600; font-size: 13px; color: var(--ink);">Confirm pricing tier — free for one engineer, paid for team?</div>
-                        <div style="font-size: 11.5px; color: var(--ink); opacity:.65; margin-top: 2px;">Asked 1d ago · Blocks story <b>FS-12 Billing &amp; seat limits</b></div>
-                        <div style="margin-top: 10px;">
-                          <button class="btn btn-soft btn-pill" style="padding: 5px 11px; font-size: 11.5px;">Open chat to answer →</button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div style="background: var(--butter); border-radius: 12px; padding: 12px 14px;">
-                    <div style="display:flex; align-items:flex-start; gap:8px;">
-                      <div class="av-sm ba" style="margin-top: 2px;">BA</div>
-                      <div style="flex:1;">
-                        <div style="font-weight: 600; font-size: 13px; color: var(--ink);">Should job conflicts surface a banner, modal, or inline toast?</div>
-                        <div style="font-size: 11.5px; color: var(--ink); opacity:.65; margin-top: 2px;">Asked 18h ago · Blocks story <b>FS-09 Resolve scheduling conflicts</b></div>
-                        <div style="margin-top: 10px;">
-                          <button class="btn btn-soft btn-pill" style="padding: 5px 11px; font-size: 11.5px;">Open chat to answer →</button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div style="background: var(--butter); border-radius: 12px; padding: 12px 14px;">
-                    <div style="display:flex; align-items:flex-start; gap:8px;">
-                      <div class="av-sm ba" style="margin-top: 2px;">BA</div>
-                      <div style="flex:1;">
-                        <div style="font-weight: 600; font-size: 13px; color: var(--ink);">Map provider — Google Maps, Mapbox, or OpenStreetMap?</div>
-                        <div style="font-size: 11.5px; color: var(--ink); opacity:.65; margin-top: 2px;">Asked 12h ago · Blocks story <b>FS-11 Show job on a map</b></div>
-                        <div style="margin-top: 10px;">
-                          <button class="btn btn-soft btn-pill" style="padding: 5px 11px; font-size: 11.5px;">Open chat to answer →</button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div style="background: var(--butter); border-radius: 12px; padding: 12px 14px;">
-                    <div style="display:flex; align-items:flex-start; gap:8px;">
-                      <div class="av-sm ba" style="margin-top: 2px;">BA</div>
-                      <div style="flex:1;">
-                        <div style="font-weight: 600; font-size: 13px; color: var(--ink);">Retain completed jobs for 90 days or indefinitely?</div>
-                        <div style="font-size: 11.5px; color: var(--ink); opacity:.65; margin-top: 2px;">Asked 6h ago · Blocks story <b>FS-15 Job history &amp; retention</b></div>
-                        <div style="margin-top: 10px;">
-                          <button class="btn btn-soft btn-pill" style="padding: 5px 11px; font-size: 11.5px;">Open chat to answer →</button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div style="background: var(--butter); border-radius: 12px; padding: 12px 14px;">
-                    <div style="display:flex; align-items:flex-start; gap:8px;">
-                      <div class="av-sm ba" style="margin-top: 2px;">BA</div>
-                      <div style="flex:1;">
-                        <div style="font-weight: 600; font-size: 13px; color: var(--ink);">Two-factor auth for the engineer login, or device-only?</div>
-                        <div style="font-size: 11.5px; color: var(--ink); opacity:.65; margin-top: 2px;">Asked 4h ago · Blocks story <b>FS-02 Authenticate engineer</b></div>
-                        <div style="margin-top: 10px;">
-                          <button class="btn btn-soft btn-pill" style="padding: 5px 11px; font-size: 11.5px;">Open chat to answer →</button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                <div style="display:flex; gap: 8px; margin-top: 16px;">
+                  <button class="btn btn-primary">Open chat →</button>
                 </div>
               </div>
             </div>
@@ -2506,6 +2647,95 @@
               <div style="background: var(--lavender); border-radius: 12px; padding: 12px; font-size: 12px; color: var(--ink); line-height: 1.5;">
                 <b>Tip:</b> Say <i>"just fill it in"</i> at any time and the BA Agent will finalise the idea doc itself, flagging any assumptions it made.
               </div>
+
+              <h4 style="margin-top: 22px;">Outstanding questions</h4>
+              <div class="oq-empty">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8v5 M12 16h.01"/></svg>
+                No outstanding questions.
+              </div>
+            </aside>
+          </div>
+        </main>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════════ 8b · New idea — BA-Agent chat (with outstanding questions, active state) ═════════════ -->
+  <section class="screen" id="s8b">
+    <div class="screen-label">
+      <span class="num">8b</span>
+      <span class="name">New idea — BA-Agent chat (outstanding questions active)</span>
+      <span class="route">/new · step 2 · after first question surfaces</span>
+    </div>
+    <div class="screen-body">
+      <div class="app full">
+        <main class="main" style="padding: 0;">
+          <div class="chat-grid" style="padding: 26px 36px 40px; height: auto;">
+            <div class="chat">
+              <div class="chat-head">
+                <a href="#" class="back">← Change folder</a>
+                <span style="color: var(--ink-3);">/</span>
+                <span class="crumb">Project · <b>~/Code/tenant-maintenance</b></span>
+                <div style="margin-left: auto; display:flex; align-items:center; gap: 10px;">
+                  <div class="av">BA</div>
+                  <div class="meta">
+                    <b>BA Agent</b><br/>
+                    <span>Online</span>
+                  </div>
+                </div>
+              </div>
+              <div class="chat-body">
+                <div class="msg ba">
+                  <div class="av-sm">BA</div>
+                  <div class="bubble">One more for now — should repairs be public to other tenants (community board) or private to the landlord?</div>
+                </div>
+                <div class="msg user">
+                  <div class="av-sm">WN</div>
+                  <div class="bubble">Private — only the property manager sees the full thread. Tenants only see status updates on their own repair.</div>
+                </div>
+                <div class="msg ba">
+                  <div class="av-sm">BA</div>
+                  <div class="bubble">Got it. I've logged that as REP-02. Two more to nail down before I draft requirements — see <i>Outstanding questions</i> on the right. Answer them there or just reply here.</div>
+                </div>
+              </div>
+              <div class="chat-foot">
+                <textarea class="ta" placeholder="Reply to the BA Agent…"></textarea>
+                <button class="btn btn-primary">Send</button>
+              </div>
+            </div>
+
+            <aside class="chat-side">
+              <h4>Interview progress</h4>
+              <div class="step done"><div class="num">✓</div><div class="body"><b>Project folder set</b><span>~/Code/tenant-maintenance</span></div></div>
+              <div class="step done"><div class="num">✓</div><div class="body"><b>Problem</b><span>Manual maintenance triage</span></div></div>
+              <div class="step done"><div class="num">✓</div><div class="body"><b>Users &amp; scale</b><span>40 tenants, 1 manager</span></div></div>
+              <div class="step done"><div class="num">✓</div><div class="body"><b>MVP scope</b><span>Tenant submits, manager assigns, tech resolves</span></div></div>
+              <div class="step current"><div class="num">5</div><div class="body"><b>Business rules</b><span>Permissions, automations</span></div></div>
+              <div class="step pending"><div class="num">6</div><div class="body"><b>Brand &amp; design</b><span>Style, references</span></div></div>
+              <div class="step pending"><div class="num">7</div><div class="body"><b>Tech stack</b><span>Optional — we can recommend</span></div></div>
+
+              <div style="background: var(--lavender); border-radius: 12px; padding: 12px; font-size: 12px; color: var(--ink); line-height: 1.5;">
+                <b>Tip:</b> Say <i>"just fill it in"</i> at any time and the BA Agent will finalise the idea doc itself, flagging any assumptions it made.
+              </div>
+
+              <h4 style="margin-top: 22px;">Outstanding questions</h4>
+              <div class="oq-list">
+                <div class="oq-group">Blocker for: Requirements</div>
+                <div class="oq-item">
+                  <div class="oq-q">How do tenants authenticate — phone, email, magic link?</div>
+                  <div class="oq-meta">Asked 2h ago · Blocks story ONB-04</div>
+                </div>
+                <div class="oq-item">
+                  <div class="oq-q">What's the SLA for first-response on a new repair?</div>
+                  <div class="oq-meta">Asked 1h ago · Blocks story REP-01</div>
+                </div>
+                <div class="oq-group" style="margin-top: 14px;">Blocker for: Design</div>
+                <div class="oq-item">
+                  <div class="oq-q">What's the brand voice — formal landlord or friendly community?</div>
+                  <div class="oq-meta">Asked 1h ago · Blocks DSGN-01</div>
+                </div>
+              </div>
+              <div style="font-size: 11px; color: var(--ink-2); margin-top: 10px; line-height: 1.4;">Read-only here. Answer in the chat on the left.</div>
             </aside>
           </div>
         </main>
@@ -2825,6 +3055,160 @@
                 <div class="pipeline-mini">
                   <span class="done"></span><span class="done"></span><span class="active"></span><span></span><span></span><span></span><span></span>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- N11a · Status / Rules tab switch (two-halves pattern — Design · Build · QA) -->
+          <div class="kit-section">
+            <h3>Status / Rules tab switch</h3>
+            <div style="font-size: 12px; color: var(--ink-2); margin-bottom: 10px;">Two-halves pattern on Design, Build, QA — Sprint is status-only.</div>
+            <div class="kit-tabs" role="tablist" aria-label="Status or rules">
+              <button type="button" class="on" role="tab" aria-selected="true">Status</button>
+              <button type="button" role="tab" aria-selected="false">Rules</button>
+            </div>
+            <div class="kit-tabs-meta">Sample tab label</div>
+            <div class="kit-tabs" role="tablist" aria-label="Status or rules">
+              <button type="button" role="tab" aria-selected="false">Status</button>
+              <button type="button" class="on" role="tab" aria-selected="true">Rules</button>
+            </div>
+            <div style="font-size: 11px; color: var(--ink-2); margin-top: 14px;">Rules tab writes back to on-disk project folder (control-console pattern).</div>
+          </div>
+
+          <!-- N11b · Locked-tab greyed WCAG treatment -->
+          <div class="kit-section">
+            <h3>Locked tab (WCAG-compliant)</h3>
+            <div style="font-size: 12px; color: var(--ink-2); margin-bottom: 10px;">Not contrast-disabled — label keeps sufficient contrast, aria-disabled, keyboard-reachable, tooltip on focus/hover.</div>
+            <div style="display: flex; flex-direction: column; gap: 4px; max-width: 220px; background: rgba(50,42,92,0.04); border-radius: 12px; padding: 10px;">
+              <a class="side-link" href="#"><span class="dot" style="background: var(--green);"></span><span class="lbl">Overview</span></a>
+              <a class="side-link" href="#"><span class="dot" style="background: var(--green);"></span><span class="lbl">Project Background</span></a>
+              <a class="side-link" href="#"><span class="dot" style="background: var(--ink-2);"></span><span class="lbl">Requirements</span></a>
+              <a class="side-link locked" href="#" aria-disabled="true" tabindex="0"><span class="dot"></span><span class="lbl">Sprint</span></a>
+              <a class="side-link locked" href="#" aria-disabled="true" tabindex="0"><span class="dot"></span><span class="lbl">Design</span></a>
+              <a class="side-link locked" href="#" aria-disabled="true" tabindex="0"><span class="dot"></span><span class="lbl">Build</span></a>
+              <a class="side-link" href="#"><span class="dot"></span><span class="lbl">Agents</span></a>
+              <a class="side-link locked" href="#" aria-disabled="true" tabindex="0"><span class="dot"></span><span class="lbl">QA</span></a>
+              <a class="side-link" href="#"><span class="dot"></span><span class="lbl">Activity</span></a>
+              <a class="side-link" href="#"><span class="dot"></span><span class="lbl">Artifacts</span></a>
+            </div>
+            <div style="font-size: 11px; color: var(--ink-2); margin-top: 10px;">Hover or focus any locked row → "Confirm project context first" tooltip.</div>
+          </div>
+
+          <!-- N11c · Outstanding questions section (locked + active states) -->
+          <div class="kit-section" style="max-width: 360px;">
+            <h3>Outstanding questions</h3>
+            <div style="font-size: 12px; color: var(--ink-2); margin-bottom: 10px;">Lives in the intake chat side panel (Screen 8), alongside Interview progress.</div>
+
+            <div style="font-size: 11px; font-weight: 600; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px;">Locked — no questions yet</div>
+            <div class="oq-empty">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8v5 M12 16h.01"/></svg>
+              No outstanding questions.
+            </div>
+
+            <div style="font-size: 11px; font-weight: 600; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.06em; margin: 18px 0 6px;">Active — read-only list (no per-item action)</div>
+            <div class="oq-list">
+              <div class="oq-group">Blocker for: Requirements</div>
+              <div class="oq-item">
+                <div class="oq-q">How do tenants authenticate — phone, email, magic link?</div>
+                <div class="oq-meta">Asked 2h ago · Blocks story ONB-04</div>
+              </div>
+              <div class="oq-item">
+                <div class="oq-q">Should repairs be public to other tenants or private to the landlord?</div>
+                <div class="oq-meta">Asked 2h ago · Blocks story REP-02</div>
+              </div>
+              <div class="oq-group" style="margin-top: 14px;">Blocker for: Design</div>
+              <div class="oq-item">
+                <div class="oq-q">What's the brand voice — formal landlord or friendly community?</div>
+                <div class="oq-meta">Asked 1h ago · Blocks DSGN-01</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- N11d · Connect Jira setup state (Sprint when unlocked but no link) -->
+          <div class="kit-section">
+            <h3>Connect Jira — Sprint setup state</h3>
+            <div style="font-size: 12px; color: var(--ink-2); margin-bottom: 10px;">Shown when Sprint is unlocked but no Jira link exists. Jira is required for the Sprint board.</div>
+            <div class="setup-card">
+              <div class="setup-h">
+                <div class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2v6 M12 22v-6 M2 12h6 M22 12h-6"/><circle cx="12" cy="12" r="4"/></svg></div>
+                <div>
+                  <h3>Connect Jira</h3>
+                  <p>Sprint needs a Jira link to create and sync stories.</p>
+                </div>
+              </div>
+              <div class="setup-row">
+                <label for="jk">Project key</label>
+                <input id="jk" class="input mono" value="TEN" />
+              </div>
+              <div class="setup-row">
+                <label for="ju">Base URL</label>
+                <input id="ju" class="input" value="https://studio.atlassian.net" />
+              </div>
+              <div class="setup-row">
+                <label for="js">Sync direction</label>
+                <input id="js" class="input" value="Launcher → Jira (one-way)" disabled />
+              </div>
+              <div class="setup-row">
+                <label for="ja">Auth</label>
+                <input id="ja" class="input" value="API token · linked to will@studio.com" disabled />
+              </div>
+              <div class="setup-actions">
+                <button class="btn btn-primary">Connect Jira</button>
+                <button class="btn btn-ghost">Cancel</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- N11e · State D — context-ready confirmation view -->
+          <div class="kit-section">
+            <h3>State D · Confirmation view</h3>
+            <div style="font-size: 12px; color: var(--ink-2); margin-bottom: 10px;">Reached when all 17 Project Background docs are Approved. Fires the one-shot unlock.</div>
+            <div class="state-d">
+              <div class="state-d-head">
+                <div class="state-d-check"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg></div>
+                <div>
+                  <h3>Project context ready</h3>
+                  <p>All 17 background documents are approved. Confirm to finalize Requirements and unlock Sprint, Design, Build, and QA.</p>
+                </div>
+              </div>
+              <div class="state-d-summary" aria-label="Approved count per band">
+                <div class="state-d-band"><div class="n">3</div><div class="lbl">Idea</div></div>
+                <div class="state-d-band"><div class="n">4</div><div class="lbl">Users</div></div>
+                <div class="state-d-band"><div class="n">5</div><div class="lbl">Scope</div></div>
+                <div class="state-d-band"><div class="n">3</div><div class="lbl">Constraints</div></div>
+                <div class="state-d-band"><div class="n">2</div><div class="lbl">Tech</div></div>
+              </div>
+              <div class="state-d-explainer">
+                Confirming writes the locked context into Requirements and unlocks the four downstream tabs.
+                The Design, Build, and QA agents read these docs as the brief for every story — once confirmed you can
+                still revoke individual files, but the tabs stay open (warn-only).
+              </div>
+              <div class="state-d-list" aria-label="17 approved artifacts">
+                <div class="state-d-list-row"><div><div>Executive brief</div><div class="path">PRD/exec-brief.md</div></div><div class="ok">Approved ✓</div></div>
+                <div class="state-d-list-row"><div><div>One-page pitch</div><div class="path">PRD/one-pager.md</div></div><div class="ok">Approved ✓</div></div>
+                <div class="state-d-list-row"><div><div>Idea long-form</div><div class="path">PRD/idea.md</div></div><div class="ok">Approved ✓</div></div>
+                <div class="state-d-list-row"><div><div>Persona — Property manager</div><div class="path">PRD/personas/property-manager.md</div></div><div class="ok">Approved ✓</div></div>
+                <div class="state-d-list-row"><div><div>Persona — Tenant</div><div class="path">PRD/personas/tenant.md</div></div><div class="ok">Approved ✓</div></div>
+                <div class="state-d-list-row"><div><div>Persona — Maintenance tech</div><div class="path">PRD/personas/tech.md</div></div><div class="ok">Approved ✓</div></div>
+                <div class="state-d-list-row"><div><div>Stakeholder map</div><div class="path">PRD/stakeholders.md</div></div><div class="ok">Approved ✓</div></div>
+                <div class="state-d-list-row"><div><div>Job stories</div><div class="path">PRD/jobs.md</div></div><div class="ok">Approved ✓</div></div>
+                <div class="state-d-list-row"><div><div>Feature list (in/out)</div><div class="path">PRD/features.md</div></div><div class="ok">Approved ✓</div></div>
+                <div class="state-d-list-row"><div><div>User flows</div><div class="path">PRD/flows.md</div></div><div class="ok">Approved ✓</div></div>
+                <div class="state-d-list-row"><div><div>Edge cases</div><div class="path">PRD/edge-cases.md</div></div><div class="ok">Approved ✓</div></div>
+                <div class="state-d-list-row"><div><div>Success metrics</div><div class="path">PRD/metrics.md</div></div><div class="ok">Approved ✓</div></div>
+                <div class="state-d-list-row"><div><div>Compliance checklist</div><div class="path">PRD/compliance.md</div></div><div class="ok">Approved ✓</div></div>
+                <div class="state-d-list-row"><div><div>Security &amp; privacy</div><div class="path">PRD/security.md</div></div><div class="ok">Approved ✓</div></div>
+                <div class="state-d-list-row"><div><div>Constraints &amp; assumptions</div><div class="path">PRD/constraints.md</div></div><div class="ok">Approved ✓</div></div>
+                <div class="state-d-list-row"><div><div>Tech brief</div><div class="path">PRD/tech-brief.md</div></div><div class="ok">Approved ✓</div></div>
+                <div class="state-d-list-row"><div><div>Open questions log</div><div class="path">PRD/open-questions.md</div></div><div class="ok">Approved ✓</div></div>
+              </div>
+              <div class="state-d-actions">
+                <button class="btn btn-primary">Confirm project context →</button>
+                <button class="btn btn-ghost">← Back to artifacts</button>
+                <span class="state-d-foot">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8v5 M12 16h.01"/></svg>
+                  One-shot — only runs when 17/17 are Approved.
+                </span>
               </div>
             </div>
           </div>
