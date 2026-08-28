@@ -107,19 +107,26 @@ if [ -n "$tp" ] && [ -f "$tp" ]; then
          elif $v == "node"   then "Run Node script"
          else "Run shell command" end);
 
-    # {label, full} for each tool_use awaiting approval: `label` is a short
-    # human description (the "specific task"), `full` is the raw command/path.
+    # {label, full, cdesc} for each tool_use awaiting approval:
+    #   label  - short human description (the "specific task")
+    #   full   - raw command/path
+    #   cdesc  - command description: the prose/text that accompanies the
+    #            command. For Write/Edit it is the content being written or
+    #            the new_text being applied; for NotebookEdit the source
+    #            cells; for everything else it is left empty (the broader
+    #            Claude-authored prose in the same turn is surfaced as the
+    #            "What I am doing" field instead).
     def toolInfo:
       [blocks | .[]
         | select(.type == "tool_use")
         | .name as $n | .input
-        | if $n == "Bash" then {label: bashLabel, full: ((.command // "") | tostring)}
-          elif $n == "Write"        then {label: "Write file",        full: ((.file_path // "") | tostring)}
-          elif $n == "Edit"         then {label: "Edit file",         full: ((.file_path // "") | tostring)}
-          elif $n == "Read"         then {label: "Read file",         full: ((.file_path // "") | tostring)}
-          elif $n == "NotebookEdit" then {label: "Update notebook",   full: ((.file_path // "") | tostring)}
-          elif $n == "WebFetch"     then {label: "Fetch URL",         full: ((.url // "") | tostring)}
-          else {label: ("Use " + $n), full: (. | tostring)} end];
+        | if $n == "Bash" then {label: bashLabel, full: ((.command // "") | tostring), cdesc: ((.description // "") | tostring)}
+          elif $n == "Write"        then {label: "Write file",        full: ((.file_path // "") | tostring),  cdesc: ((.content  // "") | tostring)}
+          elif $n == "Edit"         then {label: "Edit file",         full: ((.file_path // "") | tostring),  cdesc: ((.new_text // "") | tostring)}
+          elif $n == "Read"         then {label: "Read file",         full: ((.file_path // "") | tostring),  cdesc: ""}
+          elif $n == "NotebookEdit" then {label: "Update notebook",   full: ((.notebook_path // .file_path // "") | tostring), cdesc: ((.new_source // "") | tostring)}
+          elif $n == "WebFetch"     then {label: "Fetch URL",         full: ((.url // "") | tostring),        cdesc: ((.prompt // "") | tostring)}
+          else {label: ("Use " + $n), full: (. | tostring), cdesc: ""} end];
 
     # Latest real user request (skip tool_result-only entries + blanks).
     ([.[] | select(.type == "user" and (.message | type) == "object")
@@ -140,21 +147,23 @@ if [ -n "$tp" ] && [ -f "$tp" ]; then
             | join(" ")) // "" end) as $desc
     | # Latest assistant entry (the tool_use line) for tool info.
     ([.[] | select(.type == "assistant" and ((blocks) | length) > 0)]) as $a
-    | (if ($a | length) == 0 then {task: $task, label: "", full: "", desc: $desc}
+    | (if ($a | length) == 0 then {task: $task, label: "", full: "", desc: $desc, cdesc: ""}
        else ($a[-1] | toolInfo) as $t
             | {task: $task,
                label: ($t[0].label // ""),
-               full:  ([$t[] | .full] | join("\n")),
+               full:  ([$t[] | .full]  | join("\n")),
+               cdesc: ([$t[] | .cdesc] | join("\n")),
                desc:  $desc} end)
   ' "$tp" 2>/dev/null || printf '')
 fi
 
-task=""; label=""; full=""; desc=""
+task=""; label=""; full=""; desc=""; cdesc=""
 if [ -n "${content:-}" ]; then
   task=$(printf  '%s' "$content" | jq -r '.task  // ""' 2>/dev/null || printf '')
   label=$(printf '%s' "$content" | jq -r '.label // ""' 2>/dev/null || printf '')
   full=$(printf  '%s' "$content" | jq -r '.full  // ""' 2>/dev/null || printf '')
   desc=$(printf  '%s' "$content" | jq -r '.desc  // ""' 2>/dev/null || printf '')
+  cdesc=$(printf '%s' "$content" | jq -r '.cdesc // ""' 2>/dev/null || printf '')
 fi
 
 # Trim + truncate to stay well under Discord's 2000-char content limit.
@@ -162,13 +171,15 @@ task=${task:0:200}
 label=${label:0:150}
 full=${full:0:1100}
 desc=${desc:0:400}
-# Flatten the description to one line so it doesn't break the layout.
+cdesc=${cdesc:0:600}
+# Flatten the descriptions to one line so they don't break the layout.
 desc=$(printf '%s' "$desc" | tr '\n\r' ' ' | tr -s ' ' | sed 's/^ //; s/ $//')
+cdesc=$(printf '%s' "$cdesc" | tr '\n\r' ' ' | tr -s ' ' | sed 's/^ //; s/ $//')
 
 # Fallbacks when fields are empty.
-[ -n "$task" ]  || task="(no task title found)"
-[ -n "$label" ] || label="$msg"
-[ -n "$full" ]  || full="$msg"
+[ -n "$task" ]   || task="(no task title found)"
+[ -n "$label" ]  || label="$msg"
+[ -n "$full" ]   || full="$msg"
 
 # Stable key for the overall task name: normalize whitespace + lowercase,
 # then hash so the state file stays clean and lookups are robust to minor
@@ -184,20 +195,32 @@ task_key=$(printf '%s' "$task" \
 thread_name=$(printf '%s' "$task" | tr '\n\r' ' ' | tr -s ' ' | sed 's/^ //; s/ $//' | cut -c1-100)
 
 # Message body: the specific task, Claude's own description of what it's
-# doing (when present), then the full command.
-if [ -n "$desc" ]; then
-  content=$(printf '🔔 **Claude needs your permission**\n\n**Task:** %s\n**What I'\''m doing:** %s\n**Command:**\n```\n%s\n```' \
-    "$label" "$desc" "$full")
+# doing (when present), the command description (the text accompanying the
+# command — e.g. the new file content for Write/Edit, or the prose passed
+# to Bash as `description`), then the full command. Top and bottom rules
+# (made of ─/═) give a clear visual frame so each notification stands out
+# in the thread.
+TOP_RULE='━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+BOT_RULE='══════════════════════════════════════════════════'
+if [ -n "$desc" ] && [ -n "$cdesc" ]; then
+  content=$(printf '%s\n🔔 **Claude needs your permission**\n%s\n\n**Task:** %s\n**What I'\''m doing:** %s\n**Command description:** %s\n**Command:**\n```\n%s\n```\n%s' \
+    "$TOP_RULE" "$BOT_RULE" "$label" "$desc" "$cdesc" "$full" "$TOP_RULE")
+elif [ -n "$cdesc" ]; then
+  content=$(printf '%s\n🔔 **Claude needs your permission**\n%s\n\n**Task:** %s\n**Command description:** %s\n**Command:**\n```\n%s\n```\n%s' \
+    "$TOP_RULE" "$BOT_RULE" "$label" "$cdesc" "$full" "$TOP_RULE")
+elif [ -n "$desc" ]; then
+  content=$(printf '%s\n🔔 **Claude needs your permission**\n%s\n\n**Task:** %s\n**What I'\''m doing:** %s\n**Command:**\n```\n%s\n```\n%s' \
+    "$TOP_RULE" "$BOT_RULE" "$label" "$desc" "$full" "$TOP_RULE")
 else
-  content=$(printf '🔔 **Claude needs your permission**\n\n**Task:** %s\n**Command:**\n```\n%s\n```' \
-    "$label" "$full")
+  content=$(printf '%s\n🔔 **Claude needs your permission**\n%s\n\n**Task:** %s\n**Command:**\n```\n%s\n```\n%s' \
+    "$TOP_RULE" "$BOT_RULE" "$label" "$full" "$TOP_RULE")
 fi
 
-log "sending: task=${task:0:60} | label=${label:0:40} | desc=${desc:0:40} | key=${task_key:0:8}"
+log "sending: task=${task:0:60} | label=${label:0:40} | cdesc=${cdesc:0:40} | desc=${desc:0:40} | key=${task_key:0:8}"
 
 # Debug mode: print the message that would be sent and skip the webhook call.
 if [ "${DISCORD_NOTIFY_DEBUG:-}" = "1" ]; then
-  printf 'TASK(overall): %s\nTHREAD NAME: %s\nKEY: %s\nDESC: %s\n---\n%s\n' "$task" "$thread_name" "$task_key" "$desc" "$content"
+  printf 'TASK(overall): %s\nTHREAD NAME: %s\nKEY: %s\nDESC: %s\nCDESC: %s\n---\n%s\n' "$task" "$thread_name" "$task_key" "$desc" "$cdesc" "$content"
   exit 0
 fi
 
