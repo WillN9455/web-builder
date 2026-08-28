@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Idea Hub — Design tab (v5.2)</title>
+<title>Idea Hub — Design tab (v5.5)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -291,7 +291,7 @@
   .ds-stat .lbl { font-size: 11px; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
   .ds-stat .sub { font-size: 11.5px; color: var(--ink-2); margin-top: 6px; }
 
-  /* Per-story design list — 5-state inline stepper */
+  /* Per-story design list — flat row + drill-down arrow */
   .stories-head { display: flex; align-items: center; gap: 10px; padding: 6px 22px 12px; }
   .stories-head h3 { margin: 0; font-size: 14px; font-weight: 700; }
   .stories-head .filter { margin-left: auto; display: flex; gap: 4px; }
@@ -302,7 +302,7 @@
   .stories-head .filter button.on { background: rgba(50,42,92,0.08); color: var(--ink); }
 
   .story-row {
-    display: grid; grid-template-columns: 110px 1fr 320px 110px;
+    display: grid; grid-template-columns: 110px 1fr 110px;
     gap: 14px; align-items: center;
     padding: 12px 22px;
     border-top: 1px solid rgba(50,42,92,0.06);
@@ -311,26 +311,6 @@
   .story-row .id { font-family: var(--font-mono); font-size: 12px; color: var(--ink-2); }
   .story-row .title { font-size: 13.5px; font-weight: 500; }
   .story-row .title .sub { display: block; color: var(--ink-2); font-size: 11.5px; font-weight: 400; margin-top: 2px; }
-
-  /* 5-state design stepper */
-  .ds-stepper { display: flex; align-items: center; gap: 0; }
-  .ds-stepper .node {
-    display: flex; align-items: center; gap: 6px;
-    font-size: 11px; color: var(--ink-2); white-space: nowrap;
-  }
-  .ds-stepper .node .dot {
-    width: 14px; height: 14px; border-radius: 50%;
-    background: rgba(50,42,92,0.08);
-    display: grid; place-items: center;
-    font-size: 9px; font-weight: 700; color: var(--ink-2);
-  }
-  .ds-stepper .node.done .dot { background: var(--green); color: #fff; }
-  .ds-stepper .node.active .dot { background: var(--navy); color: #fff; box-shadow: 0 0 0 3px rgba(50,42,92,0.12); }
-  .ds-stepper .node.done { color: var(--ink); }
-  .ds-stepper .node.active { color: var(--ink); font-weight: 600; }
-  .ds-stepper .bar { flex: 1; height: 2px; background: rgba(50,42,92,0.08); margin: 0 4px; min-width: 14px; }
-  .ds-stepper .bar.done { background: var(--green); }
-  .ds-stepper .bar.active { background: linear-gradient(90deg, var(--green) 50%, rgba(50,42,92,0.08) 50%); }
 
   .story-row .assign { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-2); }
   .story-row .assign .av-sm {
@@ -341,13 +321,18 @@
   .av-sm.a-da { background: var(--lavender); color: var(--ink); }
   .av-sm.a-db { background: var(--peach); color: var(--ink); }
 
-  /* ─── Selected story detail (per-story A↔B review thread) ─────────── */
-  .story-detail {
-    background: rgba(50,42,92,0.02);
-    border-top: 1px solid rgba(50,42,92,0.06);
-    padding: 18px 22px 22px;
-    display: grid; grid-template-columns: 1fr 1fr; gap: 18px;
+  /* Row open arrow (drill-down to Story detail) */
+  .row-open {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 5px 10px; border-radius: 999px;
+    font-size: 11.5px; font-weight: 600;
+    color: var(--ink); background: rgba(50,42,92,0.04);
+    border: 1px solid rgba(50,42,92,0.08);
+    justify-self: end;
+    transition: background 0.12s ease;
   }
+  .row-open:hover { background: rgba(50,42,92,0.08); }
+  .row-open svg { width: 12px; height: 12px; }
 
   /* Artifacts viewer (hybrid: tokens in-app, wireframes/hi-fi → Figma) */
   .art-viewer { display: flex; flex-direction: column; gap: 12px; }
@@ -503,8 +488,300 @@
     display: flex; align-items: center; gap: 14px;
     font-size: 12.5px; color: var(--ink-2);
   }
+  
+  .agent-md-card { background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: 12px; padding: 12px 16px; }
+  .agent-md-card .h { display: flex; align-items: center; gap: 10px; }
+  .agent-md-card .h .av { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 700; color: var(--ink); flex: none; }
+  .agent-md-card.da1 .av { background: var(--lavender); }
+  .agent-md-card.da2 .av { background: var(--peach); }
+  .agent-md-card.dr1 .av { background: var(--sky); }
+  .agent-md-card.dr2 .av { background: var(--mint); }
+  .agent-md-card .h b { font-size: 13px; font-weight: 600; }
+  .agent-md-card .h .sub { display: block; font-size: 11.5px; color: var(--ink-2); }
+  .agent-md-card .h .right { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+  .agent-md-card .body { display: none; margin-top: 10px; }
+  .agent-md-card.open .body { display: block; }
+  .agent-md-card.open { box-shadow: 0 8px 24px -16px rgba(50,42,92,0.18); }
+
+
   .rules-preview b { color: var(--ink); font-weight: 600; }
   .rules-preview .right { margin-left: auto; display: flex; gap: 6px; }
+/* Rules half — Design (configurations, device widths, per-agent guidelines) */
+  .rules-section { padding: 18px 22px; display: flex; flex-direction: column; gap: 16px; }
+
+  /* Architecture / design system context (read-only) */
+  .arch-card { background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: 12px; padding: 14px 16px; }
+  .arch-h { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .arch-h h4 { margin: 0; font-size: 13px; font-weight: 700; }
+  .arch-h .ro { margin-left: auto; font-size: 10.5px; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.06em; display: inline-flex; align-items: center; gap: 4px; }
+  .arch-row { display: grid; grid-template-columns: 110px 1fr; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid rgba(50,42,92,0.05); }
+  .arch-row:first-of-type { border-top: 0; }
+  .arch-row .k { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-2); }
+  .arch-row .v { font-size: 12.5px; color: var(--ink); }
+  .arch-row .v code { font-family: var(--font-mono); font-size: 11.5px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px; margin-right: 4px; }
+  .arch-row .v .lock { color: var(--ink-2); font-size: 10.5px; margin-left: 6px; display: inline-flex; align-items: center; gap: 3px; }
+  .arch-cap { font-size: 11.5px; color: var(--ink-2); margin-top: 10px; }
+  .arch-cap b { color: var(--ink); font-weight: 600; }
+
+  /* Configurations grid (2-col) */
+  .config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; }
+  .config-row { display: flex; flex-direction: column; gap: 4px; }
+  .config-row .k { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-2); }
+  .config-row .v { display: flex; align-items: center; gap: 8px; }
+  .config-row .v .val { font-size: 12.5px; font-family: var(--font-mono); color: var(--ink); background: rgba(50,42,92,0.04); padding: 4px 10px; border-radius: 6px; }
+  .config-row .v .pencil { margin-left: auto; color: var(--ink-2); display: inline-flex; align-items: center; gap: 3px; font-size: 11px; padding: 2px 6px; border-radius: 4px; }
+  .config-row .v .pencil:hover { background: rgba(50,42,92,0.06); color: var(--ink); }
+
+  /* Markdown editor card */
+  .md-card { background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: 12px; padding: 14px 16px; }
+  .md-h { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .md-h h4 { margin: 0; font-size: 13px; font-weight: 700; }
+  .md-h .who { font-size: 11.5px; color: var(--ink-2); }
+  .md-h .who code { font-family: var(--font-mono); font-size: 11px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px; }
+  .md-h .actions { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+  .md-body { font-size: 12.5px; line-height: 1.6; color: var(--ink); }
+  .md-body p { margin: 0 0 8px; }
+  .md-body ul { margin: 0 0 8px 18px; }
+  .md-body li { margin-bottom: 4px; }
+  .md-body code { font-family: var(--font-mono); font-size: 11.5px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px; }
+  .md-body strong { font-weight: 600; }
+
+  /* Device-width rules table */
+  .bp-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .bp-table th, .bp-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid rgba(50,42,92,0.06); }
+  .bp-table th { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-2); font-weight: 700; }
+  .bp-table td code { font-family: var(--font-mono); font-size: 11.5px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px; }
+  .bp-table .bp-class { font-weight: 600; }
+  .bp-table .bp-mob { color: var(--coral); }
+  .bp-table .bp-tab { color: var(--blue); }
+  .bp-table .bp-desk { color: var(--green); }
+  .bp-table .bp-row-foot { color: var(--ink-2); font-size: 11.5px; }
+
+  /* Per-agent design guidelines — collapsible cards */
+  .agent-list { display: flex; flex-direction: column; gap: 10px; }
+
+  /* ─── E · Design — Story detail screen ──────────────────────────── */
+  .crumb { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-2); }
+  .crumb a { color: var(--ink); font-weight: 600; }
+  .crumb .sep { color: var(--ink-3); }
+  .crumb .cur { color: var(--ink); }
+
+  /* Story detail header — matches proj-head rhythm: align-items: center
+     with a 56px icon-block on the left, title+subtitle stacked center,
+     actions flush right. Same shape as the parent Design list. */
+  .story-head {
+    display: flex; align-items: center; gap: 16px;
+    padding: 22px;
+  }
+  .story-head .ico-lg {
+    width: 56px; height: 56px; border-radius: 14px;
+    display: grid; place-items: center;
+    background: var(--butter); color: var(--ink);
+    flex: none;
+  }
+  .story-head .title-stack { flex: 1; min-width: 0; }
+  .story-head h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.25; }
+  .story-head .one { color: var(--ink-2); font-size: 13px; margin-top: 4px; }
+  .story-head .actions { margin-left: auto; display: flex; gap: 8px; align-items: center; flex: none; }
+  /* Card holding the story-head — add bottom padding so the rows below
+     have breathing room from the header. v5.4 layout is fully stacked. */
+  .card > .story-head { padding-bottom: 22px; }
+
+  /* Linked requirement — full-width row directly under the story head */
+  .req-add-row { padding: 0; margin-top: 14px; }
+  .req-card {
+    background: #fff;
+    border: 1px solid rgba(50,42,92,0.08);
+    border-radius: 14px;
+    padding: 14px 16px;
+  }
+  .req-card .h { display: flex; align-items: center; gap: 8px; }
+  .req-card .h h4 { font-size: 12.5px; font-weight: 700; margin: 0; }
+  .req-card .h .id { font-family: var(--font-mono); font-size: 11px; color: var(--ink-2); }
+  .req-card .h .open { margin-left: auto; font-size: 11.5px; color: var(--navy); font-weight: 600; }
+  .req-card .desc { font-size: 12.5px; line-height: 1.55; color: var(--ink); margin-top: 8px; }
+  .req-card .users-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .req-card .users-row .lbl { font-size: 11px; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+  .req-card .user-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 9px; border-radius: 999px;
+    font-size: 11.5px; font-weight: 500;
+    background: var(--lavender); color: var(--ink);
+  }
+  .req-card .user-chip.u-tenant { background: var(--sky); }
+  .req-card .user-chip.u-admin { background: var(--peach); }
+  .req-card .user-chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--purple); }
+  .req-card .user-chip.u-tenant .dot { background: var(--blue); }
+  .req-card .user-chip.u-admin .dot { background: var(--coral); }
+
+  /* ─── Jira artifacts panel (replaces Add source / Upload HTML) ─── */
+  /* Pulls design artifacts tagged to the story's Jira ticket.
+     Two-way Jira sync is on; artifacts are read-only here. */
+  .jira-art-panel {
+    background: #fff;
+    border: 1px solid rgba(50,42,92,0.08);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .jira-art-panel .h {
+    display: flex; align-items: center; gap: 8px;
+    padding: 14px 16px;
+    border-bottom: 1px solid rgba(50,42,92,0.06);
+  }
+  .jira-art-panel .h h4 { font-size: 12.5px; font-weight: 700; margin: 0; }
+  .jira-art-panel .h .jira-ico {
+    width: 18px; height: 18px; border-radius: 4px;
+    background: #0052cc; color: #fff;
+    display: grid; place-items: center;
+    font-size: 9px; font-weight: 800; letter-spacing: 0.04em;
+    flex: none;
+  }
+  .jira-art-panel .h .ticket {
+    font-family: var(--font-mono); font-size: 11px; color: var(--ink-2);
+    padding: 2px 6px; border-radius: 4px; background: rgba(50,42,92,0.06);
+  }
+  .jira-art-panel .h .sync {
+    margin-left: auto; display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11px; color: var(--ink-2);
+  }
+  .jira-art-panel .h .sync .dot {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--green);
+  }
+  .jira-art-panel .h .open {
+    font-size: 11.5px; color: var(--navy); font-weight: 600;
+  }
+  .jira-art-list { padding: 6px 0; }
+  .jira-art {
+    display: grid; grid-template-columns: 32px 1fr auto;
+    gap: 10px; align-items: center;
+    padding: 10px 16px;
+    border-top: 1px solid rgba(50,42,92,0.04);
+  }
+  .jira-art:first-child { border-top: 0; }
+  .jira-art .ic {
+    width: 28px; height: 28px; border-radius: 7px;
+    display: grid; place-items: center;
+    font-size: 11px; font-weight: 700; color: #fff;
+  }
+  .jira-art .ic.figma { background: #f24e1e; }
+  .jira-art .ic.html   { background: var(--green); }
+  .jira-art .ic.image  { background: var(--blue); }
+  .jira-art .ic.pdf    { background: var(--rose); }
+  .jira-art .ic.video  { background: var(--purple); }
+  .jira-art .ic.link   { background: var(--amber); }
+  .jira-art .meta b { font-size: 12.5px; font-weight: 600; color: var(--ink); display: block; }
+  .jira-art .meta .sub {
+    display: block; font-size: 11.5px; color: var(--ink-2);
+    font-family: var(--font-mono); margin-top: 2px;
+  }
+  .jira-art .meta .sub .tag {
+    display: inline-block; padding: 1px 5px; border-radius: 3px;
+    background: rgba(50,42,92,0.06); color: var(--ink-2);
+    font-family: var(--font-sans); font-size: 10.5px; font-weight: 600;
+    margin-left: 6px;
+  }
+  .jira-art .meta .sub .tag.design-system { background: var(--lavender); color: var(--ink); }
+  .jira-art .meta .sub .tag.reference    { background: var(--sky); color: var(--ink); }
+  .jira-art .right { display: flex; align-items: center; gap: 8px; }
+  .jira-art .right a {
+    font-size: 11.5px; font-weight: 600; color: var(--navy);
+  }
+  .jira-art .right a:hover { text-decoration: underline; }
+  .jira-art .right .preview {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 10px; border-radius: 999px;
+    background: rgba(50,42,92,0.06); color: var(--ink);
+    font-size: 11.5px; font-weight: 600;
+  }
+  .jira-art .right .preview:hover { background: rgba(50,42,92,0.12); }
+  .jira-art .right .preview svg { width: 11px; height: 11px; }
+  .jira-art.on { background: rgba(155,127,222,0.06); }
+  .jira-art.on .right .preview { background: var(--navy); color: #fff; }
+  .jira-art[hidden] { display: none; }
+
+  .jira-art-empty {
+    padding: 18px 16px;
+    text-align: center;
+    color: var(--ink-2);
+  }
+  .jira-art-empty .ic {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: var(--lavender); color: var(--purple);
+    display: grid; place-items: center; margin: 0 auto 8px;
+  }
+  .jira-art-empty b { color: var(--ink); font-weight: 600; }
+  .jira-art-empty .hint { font-size: 12px; margin-top: 4px; line-height: 1.55; }
+  .jira-art-empty .hint code {
+    font-family: var(--font-mono); font-size: 11px;
+    background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;
+    color: var(--ink);
+  }
+
+  /* Design preview card (full width) */
+  .preview-card { padding: 14px 0 0; }
+  .preview-card .pv-card {
+    background: #fff;
+    border: 1px solid rgba(50,42,92,0.08);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .preview-card .pv-h {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 14px;
+    border-bottom: 1px solid rgba(50,42,92,0.06);
+  }
+  .preview-card .pv-h h4 { margin: 0; font-size: 12.5px; font-weight: 700; }
+  .preview-card .pv-h .src-pill {
+    font-size: 10.5px; font-family: var(--font-mono);
+    color: var(--ink-2); padding: 2px 6px; border-radius: 4px;
+    background: rgba(50,42,92,0.06);
+  }
+  .preview-card .pv-h .a11y-chip { margin-left: auto; }
+
+  /* 4-state toggle group (Default / Loading / Error / Success) */
+  .state-toggle-group {
+    display: inline-flex; gap: 0;
+    background: var(--peach);
+    border-radius: 999px; padding: 4px;
+  }
+  .state-toggle-group button {
+    padding: 5px 14px; font-size: 11.5px; font-weight: 600;
+    color: var(--ink-2); border-radius: 999px; background: transparent;
+  }
+  .state-toggle-group button.on { background: #fff; color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+  .state-toggle-group button:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
+
+  .pv-body { padding: 14px; display: grid; grid-template-columns: 1fr; gap: 12px; }
+  .pv-frame {
+    width: 100%; min-height: 360px;
+    border: 1px solid rgba(50,42,92,0.08);
+    border-radius: 10px;
+    background: #fafafe;
+  }
+  .pv-frame[hidden] { display: none; }
+
+  /* Empty state when no source linked */
+  .preview-empty {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 10px;
+    padding: 48px 24px;
+    text-align: center;
+  }
+  .preview-empty .ic {
+    width: 56px; height: 56px; border-radius: 14px;
+    display: grid; place-items: center;
+    background: var(--lavender); color: var(--purple);
+  }
+  .preview-empty h4 { font-size: 14px; font-weight: 700; margin: 0; }
+  .preview-empty p { font-size: 12.5px; color: var(--ink-2); max-width: 360px; line-height: 1.55; margin: 0; }
+
+  /* Story page thread uses same .thread classes from above; just spacing */
+  .story-thread-wrap { padding: 14px 0 0; }
+
+  /* Jira artifacts row — full-width, sits below the preview card.
+     v5.4: design artifacts are pulled from Jira and live under the preview,
+     not in a side column. */
+  .jira-art-row { padding: 14px 0 0; }
 </style>
 </head>
 <body>
@@ -512,15 +789,18 @@
 
   <header class="doc-header">
     <div>
-      <div class="doc-title">Idea Hub — Design tab (v5.2)</div>
-      <div class="doc-sub">Design stage workspace. <b>Two-halves</b> — Status (design journey + per-story review) and Rules (editable design rules writing back to <code style="font-family: var(--font-mono); font-size: 12px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">design-system/</code>). <b>Hybrid</b> artifacts viewer — tokens + interaction states render in-app; wireframes + hi-fi link out to Figma. <b>Per-story A↔B review thread</b> is the peer-review surface. Source of truth: <a href="sitemap.md">sitemap.md § Design</a>. See <a href="mockups.html">mockups.html</a> for the rest of the design system.</div>
+      <div class="doc-title">Idea Hub — Design tab (v5.4)</div>
+      <div class="doc-sub">Design stage workspace. <b>Two-halves</b> — Status (per-story design journey, list view) and Rules (editable design rules writing back to <code style="font-family: var(--font-mono); font-size: 12px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">design-system/</code>). <b>Drill-down</b> — each story row has an `Open story →` arrow that opens a focused Story detail screen (linked requirement, embedded design preview with 4-state toggles, <b>Jira artifacts panel</b>, A↔B review thread). <b>Per-story A↔B review thread</b> lives on the Story detail page. <b>v5.4 change</b> — design sources (Figma / HTML / images / video) are now pulled in from Jira artifacts tagged to the story's ticket; the local `Add Figma link` / `Upload HTML` controls and the `Linked source` card are removed. Source of truth: <a href="sitemap.md">sitemap.md § Design</a>. See <a href="mockups.html">mockups.html</a> for the rest of the design system.</div>
     </div>
-    <div class="doc-meta">v5.2 · launcher/design/design-tab.html<br/>1 screen (Design · Status half)</div>
+    <div class="doc-meta">v5.4 · launcher/design/design-tab.html<br/>2 screens (Design · list + Story detail)</div>
   </header>
 
   <nav class="toc">
     <a href="mockups.html"><b>←</b> All screens → mockups.html</a>
-    <a href="#sd"><b>D</b> Design tab — Status half (per-story A↔B review)</a>
+    <a href="#sd"><b>D</b> Design tab — Status half (per-story list)</a>
+    <a href="#dsgn-08"><b>E</b> Design — Story detail (DSGN-08 · embedded preview + A↔B thread)</a>
+    <a href="#dsgn-11"><b>F</b> Design — Story detail · empty state (DSGN-11 · no source yet)</a>
+    <a href="#sd-rules"><b>G</b> Design tab — Rules (configurations, device widths, per-agent design guidelines)</a>
   </nav>
 
   <!-- ═════════════ D · Design tab — Status half ═════════════ -->
@@ -658,21 +938,10 @@
               <div>
                 <div class="title">Manager dashboard — filters and saved views<span class="sub">From TM-23 · 3 pts · High priority</span></div>
               </div>
-              <div class="ds-stepper">
-                <div class="node active"><div class="dot">1</div> Picked up</div>
-                <div class="bar"></div>
-                <div class="node"><div class="dot">2</div> In design</div>
-                <div class="bar"></div>
-                <div class="node"><div class="dot">3</div> Peer review</div>
-                <div class="bar"></div>
-                <div class="node"><div class="dot">4</div> Design complete</div>
-                <div class="bar"></div>
-                <div class="node"><div class="dot">5</div> Ready for dev</div>
-              </div>
-              <div class="assign">
-                <div class="av-sm a-da">DA</div>
-                <span>Design A · ~12m</span>
-              </div>
+              <a class="row-open" href="#dsgn-11" data-story="DSGN-11">
+                Open story
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+              </a>
             </div>
 
             <!-- Story 2: In design -->
@@ -684,21 +953,10 @@
               <div>
                 <div class="title">Photo upload for maintenance requests<span class="sub">From TM-21 · 5 pts · High priority</span></div>
               </div>
-              <div class="ds-stepper">
-                <div class="node done"><div class="dot">✓</div> Picked up</div>
-                <div class="bar done"></div>
-                <div class="node active"><div class="dot">2</div> In design</div>
-                <div class="bar active"></div>
-                <div class="node"><div class="dot">3</div> Peer review</div>
-                <div class="bar"></div>
-                <div class="node"><div class="dot">4</div> Design complete</div>
-                <div class="bar"></div>
-                <div class="node"><div class="dot">5</div> Ready for dev</div>
-              </div>
-              <div class="assign">
-                <div class="av-sm a-db">DB</div>
-                <span>Design B · ~1h</span>
-              </div>
+              <a class="row-open" href="#dsgn-12" data-story="DSGN-12">
+                Open story
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+              </a>
             </div>
 
             <!-- Story 3: Peer review (selected) -->
@@ -710,131 +968,10 @@
               <div>
                 <div class="title">Request detail screen + status updates<span class="sub">From TM-19 · 5 pts · Med priority · A↔B open thread</span></div>
               </div>
-              <div class="ds-stepper">
-                <div class="node done"><div class="dot">✓</div> Picked up</div>
-                <div class="bar done"></div>
-                <div class="node done"><div class="dot">✓</div> In design</div>
-                <div class="bar done"></div>
-                <div class="node active"><div class="dot">3</div> Peer review</div>
-                <div class="bar active"></div>
-                <div class="node"><div class="dot">4</div> Design complete</div>
-                <div class="bar"></div>
-                <div class="node"><div class="dot">5</div> Ready for dev</div>
-              </div>
-              <div class="assign">
-                <div class="av-sm a-da">DA</div>
-                <div class="av-sm a-db" style="margin-left: -8px;">DB</div>
-                <span>A↔B reviewing</span>
-              </div>
-            </div>
-
-            <!-- Story 3 detail row: artifacts viewer + A↔B review thread -->
-            <div class="story-detail">
-              <!-- Artifacts viewer (hybrid) -->
-              <div class="art-viewer">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                  <h4 style="margin: 0; font-size: 12.5px; font-weight: 700;">Story artifacts</h4>
-                  <span class="a11y-chip"><span class="dot"></span> a11y 4/5</span>
-                  <div class="art-tabs" role="tablist" style="margin-left: auto;">
-                    <button class="on">Tokens</button>
-                    <button>States</button>
-                    <button>Wireframe</button>
-                    <button>Hi-fi</button>
-                  </div>
-                </div>
-
-                <!-- Tokens tab (in-app) -->
-                <div class="art-card">
-                  <div class="art-h">
-                    <svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18 M3 12h18"/></svg>
-                    <h4>Request status tokens</h4>
-                    <span style="font-size: 10.5px; color: var(--ink-2); font-family: var(--font-mono);">design-system/tokens/status.json</span>
-                    <a class="open" href="#">Open in viewer →</a>
-                  </div>
-                  <div class="swatch-grid">
-                    <div class="swatch" style="background: var(--mint);"></div>
-                    <div class="swatch" style="background: var(--butter);"></div>
-                    <div class="swatch" style="background: var(--blush);"></div>
-                    <div class="swatch" style="background: var(--lavender);"></div>
-                    <div class="swatch" style="background: var(--sky);"></div>
-                  </div>
-                  <div class="swatch-meta">
-                    <span>5 swatches · WCAG AA verified</span>
-                    <span>updated 2h ago by DA</span>
-                  </div>
-                </div>
-
-                <!-- Interaction states tab (in-app) -->
-                <div class="art-card">
-                  <div class="art-h">
-                    <svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18 M9 21V9"/></svg>
-                    <h4>Status pill — interaction states</h4>
-                    <span style="font-size: 10.5px; color: var(--ink-2); font-family: var(--font-mono);">design-system/states/status-pill.md</span>
-                    <a class="open" href="#">Open in viewer →</a>
-                  </div>
-                  <div class="state-grid">
-                    <div class="state-cell">default</div>
-                    <div class="state-cell s-loading">loading</div>
-                    <div class="state-cell s-error">error</div>
-                    <div class="state-cell s-success">success</div>
-                  </div>
-                </div>
-
-                <!-- Wireframe tab (→ Figma) -->
-                <div class="figma-card">
-                  <div class="figma-h">
-                    <div class="fig-ico">F</div>
-                    <h4>Request detail — wireframe</h4>
-                    <a class="open" href="#">Open in Figma ↗</a>
-                  </div>
-                  <div class="figma-meta">
-                    <span>File: <b>Tenant Maintenance / Design</b></span>
-                    <span>Page: <b>03 · Request detail</b></span>
-                    <span>Frame: <b>Request detail / default</b></span>
-                    <span>Last edit: <b>1h ago · DB</b></span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- A↔B review thread -->
-              <div class="thread">
-                <div class="thread-head">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                  Peer review · A↔B
-                  <span class="who">2 comments · 1 disagreement</span>
-                </div>
-
-                <div class="comment a">
-                  <div class="body">
-                    <div class="who">Design Agent A <span>· 1h ago</span></div>
-                    <p>Status pill is too quiet in <i>success</i> state. On a 13” laptop the green-on-mint contrast reads as “decorative” — let me boost the dot size and darken the text one step.</p>
-                  </div>
-                </div>
-
-                <div class="comment b">
-                  <div class="body">
-                    <div class="who">Design Agent B <span>· 45m ago</span></div>
-                    <p>Agree on the dot, disagree on the text darken — the WCAG check already passes at AA. Darkening shifts the whole palette. Let’s leave the text and double the dot weight instead.</p>
-                    <div class="disagree">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 9v4 M12 17h.01 M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/></svg>
-                      Disagreement · 1 reply needed from the user
-                    </div>
-                  </div>
-                </div>
-
-                <div class="comment a">
-                  <div class="body">
-                    <div class="who">Design Agent A <span>· 38m ago</span></div>
-                    <p>Works for me. Bumping the dot weight + adding a 1px outline to lift it on the mint background. Will ship a revised state sheet after lunch.</p>
-                  </div>
-                </div>
-
-                <div class="compose">
-                  <textarea placeholder="Reply as the user, or @-mention DA / DB…"></textarea>
-                  <span class="who">Posting as <b>Will</b></span>
-                  <button class="btn btn-primary btn-pill">Post</button>
-                </div>
-              </div>
+              <a class="row-open" href="#dsgn-08" data-story="DSGN-08">
+                Open story
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+              </a>
             </div>
 
             <!-- Story 4: Design complete -->
@@ -846,21 +983,10 @@
               <div>
                 <div class="title">Auth flow — tenant sign in / sign out<span class="sub">From TM-18 · 8 pts · High priority · a11y pass</span></div>
               </div>
-              <div class="ds-stepper">
-                <div class="node done"><div class="dot">✓</div> Picked up</div>
-                <div class="bar done"></div>
-                <div class="node done"><div class="dot">✓</div> In design</div>
-                <div class="bar done"></div>
-                <div class="node done"><div class="dot">✓</div> Peer review</div>
-                <div class="bar done"></div>
-                <div class="node active"><div class="dot">4</div> Design complete</div>
-                <div class="bar active"></div>
-                <div class="node"><div class="dot">5</div> Ready for dev</div>
-              </div>
-              <div class="assign">
-                <div class="av-sm a-da">DA</div>
-                <span>Flip → dev</span>
-              </div>
+              <a class="row-open" href="#dsgn-04" data-story="DSGN-04">
+                Open story
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+              </a>
             </div>
 
             <!-- Story 5: Ready for development -->
@@ -872,20 +998,10 @@
               <div>
                 <div class="title">Vite + React + TS scaffold (CI green)<span class="sub">From TM-12 · 2 pts · High priority · flipped 2h ago</span></div>
               </div>
-              <div class="ds-stepper">
-                <div class="node done"><div class="dot">✓</div> Picked up</div>
-                <div class="bar done"></div>
-                <div class="node done"><div class="dot">✓</div> In design</div>
-                <div class="bar done"></div>
-                <div class="node done"><div class="dot">✓</div> Peer review</div>
-                <div class="bar done"></div>
-                <div class="node done"><div class="dot">✓</div> Design complete</div>
-                <div class="bar done"></div>
-                <div class="node active"><div class="dot">5</div> Ready for dev</div>
-              </div>
-              <div class="assign">
-                <span style="font-size: 11.5px; color: var(--ink-2);">→ TM-12 on Sprint board</span>
-              </div>
+              <a class="row-open" href="#dsgn-02" data-story="DSGN-02">
+                Open story
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+              </a>
             </div>
           </div>
 
@@ -938,6 +1054,846 @@
     </div>
   </section>
 
+  <!-- ═════════════ E · Design — Story detail (DSGN-08) ═════════════ -->
+  <section class="screen" id="dsgn-08">
+    <div class="screen-label">
+      <span class="num">E</span>
+      <span class="name">Design — Story detail (DSGN-08)</span>
+      <span class="route">/projects/:id/design/DSGN-08</span>
+    </div>
+    <div class="screen-body">
+      <div class="app">
+        <aside class="side">
+          <div class="brand"><div class="brand-mark">IH</div><div class="brand-name">Idea Hub</div></div>
+          <div>
+            <div class="menu-label">Menu</div>
+            <nav class="nav">
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12l9-9 9 9 M5 10v10h14V10"/></svg> Overview</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h11l3 3v13H5z M16 4v3h3 M8 11h8 M8 14h8 M8 17h5"/></svg> Project Background <span class="count">17</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3h7v7 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> Requirements <span class="count">14</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Sprint <span class="count">14</span></a>
+              <a href="#" class="active"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z M4 9h16 M9 4v16"/></svg> Design</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Build <span class="count">14</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="9" r="3"/><path d="M3 19c0-3 2.7-5 6-5s6 2 6 5 M14 19c0-3 2.7-5 6-5"/></svg> Agents</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 12l2 2 4-4 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg> QA <span class="count">2</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> Activity</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 8H3 M21 16H3 M5 4h14v16H5z"/></svg> Artifacts</a>
+            </nav>
+          </div>
+          <div class="side-promo">
+            <h4>DSGN-08 · Peer review</h4>
+            <p>Design Agent A and B are reviewing this story. Resolve the open disagreement to flip it to <b>Design complete</b>.</p>
+            <button>Open in Sprint board →</button>
+          </div>
+          <div class="side-foot">
+            <a href="#sd"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 3h6v6 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> ← Back to design list</a>
+          </div>
+        </aside>
+
+        <main class="main">
+          <div class="topbar">
+            <div class="crumb">
+              <a href="#sd">Design</a>
+              <span class="sep">/</span>
+              <span class="cur">DSGN-08</span>
+            </div>
+            <div class="search">
+              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+              <input placeholder="Search this project…" />
+            </div>
+            <button class="btn btn-soft btn-pill">Filter</button>
+            <button class="btn btn-soft btn-pill">Export</button>
+            <button class="btn btn-primary btn-pill">+ New design rule</button>
+          </div>
+
+          <!-- Story header card -->
+          <div class="card">
+            <div class="story-head">
+              <div class="ico-lg">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2b2547" stroke-width="1.8"><path d="M4 4h16v16H4z M4 9h16 M9 4v16"/></svg>
+              </div>
+              <div class="title-stack">
+                <h1>Request detail screen + status updates</h1>
+                <div class="one">DSGN-08 · From TM-19 · 5 pts · Med priority</div>
+              </div>
+              <div class="actions">
+                <span class="pill review"><span class="dot"></span> Peer review</span>
+                <button class="btn btn-soft btn-pill">Request changes</button>
+                <button class="btn btn-primary btn-pill">Mark design complete →</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Linked requirement — full-width row -->
+          <div class="req-add-row">
+            <div class="req-card">
+              <div class="h">
+                <svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="color: var(--purple);"><path d="M5 4h11l3 3v13H5z M16 4v3h3 M8 11h8 M8 14h8 M8 17h5"/></svg>
+                <h4>Linked requirement</h4>
+                <span class="id">TM-19</span>
+                <a class="open" href="requirements.html#tm-19">Open in Requirements →</a>
+              </div>
+              <p class="desc">Tenants open a maintenance request, see its current status, and watch it move through triage → scheduled → in-progress → resolved. Property managers update the status from the same screen with an audit trail. Photos, notes, and visit history are inline. <b>Out of scope:</b> payment, contractor assignment, in-app chat.</p>
+              <div class="users-row">
+                <span class="lbl">Intended users</span>
+                <span class="user-chip u-manager"><span class="dot"></span> Property manager</span>
+                <span class="user-chip u-tenant"><span class="dot"></span> Tenant</span>
+                <span class="user-chip u-admin"><span class="dot"></span> Admin</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Design preview card -->
+          <div class="preview-card">
+            <div class="pv-card">
+              <div class="pv-h">
+                <h4>Design preview</h4>
+                <span class="src-pill" data-source-label>HTML · design-system/preview/dsgn-08.html</span>
+                <span class="a11y-chip"><span class="dot"></span> a11y 4/5</span>
+                <div class="state-toggle-group" role="tablist" aria-label="Interaction state" style="margin-left: auto;">
+                  <button class="on" role="tab" aria-selected="true">Default</button>
+                  <button role="tab" aria-selected="false">Loading</button>
+                  <button role="tab" aria-selected="false">Error</button>
+                  <button role="tab" aria-selected="false">Success</button>
+                </div>
+              </div>
+
+              <div class="pv-body" aria-live="polite" aria-atomic="true">
+                <!-- Default: filled status detail -->
+                <iframe class="pv-frame" title="Request detail — default state"
+                  srcdoc="<!doctype html><html><body style='font-family: Inter, sans-serif; background: #fafafe; padding: 24px; margin: 0; color: #2b2547;'><div style='max-width: 480px; margin: 0 auto;'><div style='display: flex; gap: 8px; align-items: center; margin-bottom: 16px;'><span style='font-family: JetBrains Mono, monospace; font-size: 11px; color: #8b87a5;'>REQ-2041</span><span style='background: #d7efe4; color: #2b2547; padding: 3px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 500; display: inline-flex; gap: 6px; align-items: center;'><span style='width: 6px; height: 6px; background: #5fbf95; border-radius: 50%;'></span>In progress</span></div><h2 style='margin: 0 0 4px; font-size: 18px;'>Kitchen sink leak</h2><div style='color: #8b87a5; font-size: 12px; margin-bottom: 16px;'>Submitted 2 days ago · 224 Birch Ave · Apt 3B</div><div style='background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: 12px; padding: 14px; margin-bottom: 10px;'><div style='font-size: 12px; font-weight: 600; margin-bottom: 6px;'>Visit scheduled</div><div style='font-size: 12px; color: #8b87a5;'>Tomorrow · 9:00–10:00 AM · Dave (Plumbing)</div></div><div style='background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: 12px; padding: 14px;'><div style='font-size: 12px; font-weight: 600; margin-bottom: 6px;'>Status history</div><div style='font-size: 12px; color: #8b87a5; line-height: 1.6;'>Tue 9:14am · Submitted<br>Tue 11:02am · Triaged<br>Wed 8:30am · Scheduled</div></div></div></body></html>"></iframe>
+
+                <!-- Loading state -->
+                <iframe class="pv-frame" title="Request detail — loading state" hidden
+                  srcdoc="<!doctype html><html><body style='font-family: Inter, sans-serif; background: #fafafe; padding: 24px; margin: 0; color: #2b2547; display: grid; place-items: center; min-height: 320px;'><div style='max-width: 480px; width: 100%;'><div style='display: flex; align-items: center; gap: 10px; margin-bottom: 18px;'><div style='width: 80px; height: 12px; border-radius: 6px; background: linear-gradient(90deg, #e6e1f7 0%, #c3cde8 50%, #e6e1f7 100%); background-size: 200% 100%; animation: shim 1.4s linear infinite;'></div><div style='width: 64px; height: 18px; border-radius: 999px; background: linear-gradient(90deg, #e6e1f7 0%, #c3cde8 50%, #e6e1f7 100%); background-size: 200% 100%; animation: shim 1.4s linear infinite;'></div></div><div style='height: 24px; width: 70%; border-radius: 6px; margin-bottom: 8px; background: linear-gradient(90deg, #e6e1f7 0%, #c3cde8 50%, #e6e1f7 100%); background-size: 200% 100%; animation: shim 1.4s linear infinite;'></div><div style='height: 12px; width: 50%; border-radius: 4px; margin-bottom: 18px; background: linear-gradient(90deg, #e6e1f7 0%, #c3cde8 50%, #e6e1f7 100%); background-size: 200% 100%; animation: shim 1.4s linear infinite;'></div><div style='height: 70px; border-radius: 12px; background: linear-gradient(90deg, #e6e1f7 0%, #c3cde8 50%, #e6e1f7 100%); background-size: 200% 100%; animation: shim 1.4s linear infinite; margin-bottom: 10px;'></div><div style='height: 70px; border-radius: 12px; background: linear-gradient(90deg, #e6e1f7 0%, #c3cde8 50%, #e6e1f7 100%); background-size: 200% 100%; animation: shim 1.4s linear infinite;'></div><style>@keyframes shim { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }</style></div></body></html>"></iframe>
+
+                <!-- Error state -->
+                <iframe class="pv-frame" title="Request detail — error state" hidden
+                  srcdoc="<!doctype html><html><body style='font-family: Inter, sans-serif; background: #fafafe; padding: 24px; margin: 0; color: #2b2547;'><div style='max-width: 480px; margin: 0 auto; background: #fff; border: 1px solid #fadcd9; border-radius: 14px; padding: 20px; text-align: center;'><div style='width: 44px; height: 44px; border-radius: 50%; background: #fadcd9; color: #d97a8e; display: grid; place-items: center; margin: 0 auto 12px;'><svg width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'><path d='M12 9v4 M12 17h.01 M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z'/></svg></div><h3 style='margin: 0 0 6px; font-size: 15px; font-weight: 700;'>Couldn't load the request</h3><p style='font-size: 12.5px; color: #8b87a5; margin: 0 0 14px; line-height: 1.5;'>We hit a snag pulling REQ-2041. The status is still safe — try again in a moment.</p><button style='background: #322a5c; color: #fff; border: 0; border-radius: 999px; padding: 7px 16px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;'>Try again</button><a style='display: block; margin-top: 8px; font-size: 12px; color: #322a5c; font-weight: 600;'>View offline copy →</a></div></body></html>"></iframe>
+
+                <!-- Success state -->
+                <iframe class="pv-frame" title="Request detail — success state" hidden
+                  srcdoc="<!doctype html><html><body style='font-family: Inter, sans-serif; background: #fafafe; padding: 24px; margin: 0; color: #2b2547;'><div style='max-width: 480px; margin: 0 auto; background: #fff; border: 1px solid #d7efe4; border-radius: 14px; padding: 20px; text-align: center;'><div style='width: 44px; height: 44px; border-radius: 50%; background: #d7efe4; color: #5fbf95; display: grid; place-items: center; margin: 0 auto 12px;'><svg width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.4'><path d='M5 12l5 5 9-11'/></svg></div><h3 style='margin: 0 0 6px; font-size: 15px; font-weight: 700;'>Status updated</h3><p style='font-size: 12.5px; color: #8b87a5; margin: 0 0 4px; line-height: 1.5;'>REQ-2041 is now <b>Scheduled</b>.</p><p style='font-size: 12px; color: #8b87a5; margin: 0;'>Dave (Plumbing) · Tomorrow 9:00–10:00 AM</p></div></body></html>"></iframe>
+              </div>
+            </div>
+          </div>
+
+          <!-- Source card removed in v5.4 — designs are pulled in from Jira
+               artifacts tagged to TM-XX. See the Design artifacts panel below. -->
+
+          <!-- Jira artifacts panel — full-width, sits below the preview card.
+               Pulls design files (Figma / HTML / image / video / PDF / link)
+               tagged to TM-19 in Jira. Two-way Jira sync is on. -->
+          <div class="jira-art-row">
+            <div class="jira-art-panel" aria-label="Design artifacts linked from Jira">
+              <div class="h">
+                <span class="jira-ico" aria-hidden="true">J</span>
+                <h4>Design artifacts</h4>
+                <span class="ticket">TM-19</span>
+                <span class="sync" title="Jira two-way sync is on. Status: OK"><span class="dot"></span> Synced 12s ago</span>
+                <a class="open" href="sprint.html#jira-cfg">Open in Jira ↗</a>
+              </div>
+              <div class="jira-art-list">
+                <div class="jira-art" data-type="figma">
+                  <div class="ic figma" aria-hidden="true">F</div>
+                  <div class="meta">
+                    <b>Request detail — hi-fi frame</b>
+                    <span class="sub">03 · Request detail · 1.2 MB · updated 1h ago by DB<span class="tag design-system">design-system</span></span>
+                  </div>
+                  <div class="right">
+                    <a class="preview" href="#" data-preview="figma">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+                      Preview
+                    </a>
+                    <a href="#">Open in Figma ↗</a>
+                  </div>
+                </div>
+                <div class="jira-art" data-type="html">
+                  <div class="ic html" aria-hidden="true">H</div>
+                  <div class="meta">
+                    <b>Request detail — all states</b>
+                    <span class="sub">design-system/preview/dsgn-08.html · 1.2 MB · updated 1h ago by DB<span class="tag design-system">design-system</span></span>
+                  </div>
+                  <div class="right">
+                    <a class="preview" href="#" data-preview="html">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+                      Preview
+                    </a>
+                  </div>
+                </div>
+                <div class="jira-art" data-type="image">
+                  <div class="ic image" aria-hidden="true">⧉</div>
+                  <div class="meta">
+                    <b>Status timeline — annotated</b>
+                    <span class="sub">status-timeline-v3.png · 320 KB · updated 2d ago by DA<span class="tag reference">reference</span></span>
+                  </div>
+                  <div class="right">
+                    <a class="preview" href="#" data-preview="image">Preview</a>
+                    <a href="#">Open ↗</a>
+                  </div>
+                </div>
+                <div class="jira-art" data-type="video">
+                  <div class="ic video" aria-hidden="true">▶</div>
+                  <div class="meta">
+                    <b>Interaction walkthrough — manager</b>
+                    <span class="sub">walkthrough-manager.mp4 · 8.4 MB · updated 3d ago by DA<span class="tag reference">reference</span></span>
+                  </div>
+                  <div class="right">
+                    <a href="#">Open ↗</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- A↔B peer review thread -->
+          <div class="story-thread-wrap">
+            <div class="card">
+              <div class="thread" style="padding: 18px 22px 22px;">
+                <div class="thread-head">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                  Peer review · A↔B
+                  <span class="who">3 comments · 1 disagreement · last reply 38m ago</span>
+                </div>
+
+                <div class="comment a">
+                  <div class="body">
+                    <div class="who">Design Agent A <span>· 1h ago</span></div>
+                    <p>Status pill is too quiet in <i>success</i> state. On a 13” laptop the green-on-mint contrast reads as “decorative” — let me boost the dot size and darken the text one step.</p>
+                  </div>
+                </div>
+
+                <div class="comment b">
+                  <div class="body">
+                    <div class="who">Design Agent B <span>· 45m ago</span></div>
+                    <p>Agree on the dot, disagree on the text darken — the WCAG check already passes at AA. Darkening shifts the whole palette. Let’s leave the text and double the dot weight instead.</p>
+                    <div class="disagree">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 9v4 M12 17h.01 M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/></svg>
+                      Disagreement · 1 reply needed from the user
+                    </div>
+                  </div>
+                </div>
+
+                <div class="comment a">
+                  <div class="body">
+                    <div class="who">Design Agent A <span>· 38m ago</span></div>
+                    <p>Works for me. Bumping the dot weight + adding a 1px outline to lift it on the mint background. Will ship a revised state sheet after lunch.</p>
+                  </div>
+                </div>
+
+                <div class="compose">
+                  <textarea placeholder="Reply as the user, or @-mention DA / DB…"></textarea>
+                  <span class="who">Posting as <b>Will</b></span>
+                  <button class="btn btn-primary btn-pill">Post</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="font-family: var(--font-mono); font-size: 11px; color: var(--ink-2); text-align: right; padding: 14px 0 8px;">
+            Last updated 38m ago by Design Agent A · 4 artifacts synced from TM-19
+          </div>
+
+        </main>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════════ F · Design — Story detail · EMPTY STATE (DSGN-11) ═════════════ -->
+  <section class="screen" id="dsgn-11">
+    <div class="screen-label">
+      <span class="num">F</span>
+      <span class="name">Design — Story detail · empty state (DSGN-11)</span>
+      <span class="route">/projects/:id/design/DSGN-11</span>
+    </div>
+    <div class="screen-body">
+      <div class="app">
+        <aside class="side">
+          <div class="brand"><div class="brand-mark">IH</div><div class="brand-name">Idea Hub</div></div>
+          <div>
+            <div class="menu-label">Menu</div>
+            <nav class="nav">
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12l9-9 9 9 M5 10v10h14V10"/></svg> Overview</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h11l3 3v13H5z M16 4v3h3 M8 11h8 M8 14h8 M8 17h5"/></svg> Project Background <span class="count">17</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3h7v7 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> Requirements <span class="count">14</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Sprint <span class="count">14</span></a>
+              <a href="#" class="active"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z M4 9h16 M9 4v16"/></svg> Design</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Build <span class="count">14</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="9" r="3"/><path d="M3 19c0-3 2.7-5 6-5s6 2 6 5 M14 19c0-3 2.7-5 6-5"/></svg> Agents</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 12l2 2 4-4 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg> QA <span class="count">2</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> Activity</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 8H3 M21 16H3 M5 4h14v16H5z"/></svg> Artifacts</a>
+            </nav>
+          </div>
+          <div class="side-promo">
+            <h4>DSGN-11 · Picked up</h4>
+            <p>Design Agent A just picked this up. Tag a Figma frame or HTML preview on <b>TM-23</b> in Jira so reviewers can validate the design.</p>
+            <button>Open in Jira ↗</button>
+          </div>
+          <div class="side-foot">
+            <a href="#sd"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 3h6v6 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> ← Back to design list</a>
+          </div>
+        </aside>
+
+        <main class="main">
+          <div class="topbar">
+            <div class="crumb">
+              <a href="#sd">Design</a>
+              <span class="sep">/</span>
+              <span class="cur">DSGN-11</span>
+            </div>
+            <div class="search">
+              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+              <input placeholder="Search this project…" />
+            </div>
+            <button class="btn btn-soft btn-pill">Filter</button>
+            <button class="btn btn-soft btn-pill">Export</button>
+            <button class="btn btn-primary btn-pill">+ New design rule</button>
+          </div>
+
+          <!-- Story header -->
+          <div class="card">
+            <div class="story-head">
+              <div class="ico-lg">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2b2547" stroke-width="1.8"><path d="M4 4h16v16H4z M4 9h16 M9 4v16"/></svg>
+              </div>
+              <div class="title-stack">
+                <h1>Manager dashboard — filters and saved views</h1>
+                <div class="one">DSGN-11 · From TM-23 · 3 pts · High priority</div>
+              </div>
+              <div class="actions">
+                <span class="pill todo"><span class="dot"></span> Picked up</span>
+                <button class="btn btn-soft btn-pill" disabled style="opacity: 0.5; cursor: not-allowed;">Mark design complete</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Linked requirement — full-width row -->
+          <div class="req-add-row">
+            <div class="req-card">
+              <div class="h">
+                <svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="color: var(--purple);"><path d="M5 4h11l3 3v13H5z M16 4v3h3 M8 11h8 M8 14h8 M8 17h5"/></svg>
+                <h4>Linked requirement</h4>
+                <span class="id">TM-23</span>
+                <a class="open" href="requirements.html#tm-23">Open in Requirements →</a>
+              </div>
+              <p class="desc">Property managers need to filter the open-requests table by status, building, priority, and assignee — and save the filter combinations they use most as named views. <b>Out of scope:</b> cross-property filters, custom columns, export.</p>
+              <div class="users-row">
+                <span class="lbl">Intended users</span>
+                <span class="user-chip u-manager"><span class="dot"></span> Property manager</span>
+                <span class="user-chip u-admin"><span class="dot"></span> Admin</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Empty preview state -->
+          <div class="preview-card">
+            <div class="pv-card">
+              <div class="pv-h">
+                <h4>Design preview</h4>
+                <span class="src-pill" style="opacity: 0.6;">No Jira artifacts linked</span>
+                <span class="a11y-chip" style="opacity: 0.6;"><span class="dot" style="background: var(--ink-3);"></span> a11y —</span>
+                <div class="state-toggle-group" role="tablist" aria-label="Interaction state (disabled — no artifacts)" style="margin-left: auto; opacity: 0.5; pointer-events: none;" aria-disabled="true">
+                  <button class="on" role="tab" aria-selected="true" tabindex="-1">Default</button>
+                  <button role="tab" aria-selected="false" tabindex="-1">Loading</button>
+                  <button role="tab" aria-selected="false" tabindex="-1">Error</button>
+                  <button role="tab" aria-selected="false" tabindex="-1">Success</button>
+                </div>
+              </div>
+
+              <div class="pv-body">
+                <div class="preview-empty">
+                  <div class="ic">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 16l5-5 4 4 3-3 6 6 M21 16v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3"/></svg>
+                  </div>
+                  <h4>No design artifacts yet</h4>
+                  <p>Tag a Figma frame, HTML preview, or any design file to <b>TM-23</b> in Jira. The preview and state toggles light up as soon as one is attached.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Jira artifacts panel — empty state when no design is tagged yet.
+               Sits below the preview card, full-width. -->
+          <div class="jira-art-row">
+            <div class="jira-art-panel" aria-label="Design artifacts linked from Jira">
+              <div class="h">
+                <span class="jira-ico" aria-hidden="true">J</span>
+                <h4>Design artifacts</h4>
+                <span class="ticket">TM-23</span>
+                <span class="sync" title="Jira two-way sync is on. Status: OK"><span class="dot"></span> Synced 12s ago</span>
+                <a class="open" href="sprint.html#jira-cfg">Open in Jira ↗</a>
+              </div>
+              <div class="jira-art-empty">
+                <div class="ic">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3h7v7 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>
+                </div>
+                <b>No design artifacts on TM-23 yet</b>
+                <div class="hint">Tag a Figma frame, an HTML preview, or any design file to <code>TM-23</code> in Jira. The preview and state toggles light up as soon as one is attached. <a href="sprint.html#jira-cfg" style="color: var(--navy); font-weight: 600;">Set up Jira →</a></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Empty thread -->
+          <div class="story-thread-wrap">
+            <div class="card">
+              <div class="thread" style="padding: 18px 22px 22px;">
+                <div class="thread-head">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                  Peer review · A↔B
+                  <span class="who">No comments yet</span>
+                </div>
+
+                <div class="compose">
+                  <textarea placeholder="Open the thread when a design is attached — comments unlock here." disabled style="opacity: 0.5; cursor: not-allowed;"></textarea>
+                  <span class="who">Posting as <b>Will</b></span>
+                  <button class="btn btn-primary btn-pill" disabled style="opacity: 0.5; cursor: not-allowed;">Post</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="font-family: var(--font-mono); font-size: 11px; color: var(--ink-2); text-align: right; padding: 14px 0 8px;">
+            Last updated 12m ago by Design Agent A · no Jira artifacts on TM-23
+          </div>
+
+        </main>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════════ G · Design tab — Rules (configurations, device widths, per-agent design guidelines) ═════════════ -->
+  <section class="screen" id="sd-rules">
+    <div class="screen-label">
+      <span class="num">G</span>
+      <span class="name">Design tab — Rules (configurations, device widths, per-agent design guidelines)</span>
+      <span class="route">/projects/tenant-maintenance · Design · Rules</span>
+    </div>
+    <div class="screen-body">
+      <div class="app">
+        <aside class="side">
+          <div class="brand"><div class="brand-mark">IH</div><div class="brand-name">Idea Hub</div></div>
+          <div>
+            <div class="menu-label">Menu</div>
+            <nav class="nav">
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12l9-9 9 9 M5 10v10h14V10"/></svg> Overview</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h11l3 3v13H5z M16 4v3h3 M8 11h8 M8 14h8 M8 17h5"/></svg> Project Background <span class="count">17</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3h7v7 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> Requirements <span class="count">14</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Sprint <span class="count">14</span></a>
+              <a href="#" class="active"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z M4 9h16 M9 4v16"/></svg> Design</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Build <span class="count">14</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="9" r="3"/><path d="M3 19c0-3 2.7-5 6-5s6 2 6 5 M14 19c0-3 2.7-5 6-5"/></svg> Agents</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 12l2 2 4-4 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg> QA <span class="count">2</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> Activity</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 8H3 M21 16H3 M5 4h14v16H5z"/></svg> Artifacts</a>
+            </nav>
+          </div>
+          <div class="side-promo">
+            <h4>Design rules</h4>
+            <p>Edits to design configurations, device-width rules, and per-agent design guidelines write back to <code style="font-family: var(--font-mono); font-size: 11px;">design-system/</code>. Design agents pick them up on the next story.</p>
+            <button>View design-system/ →</button>
+          </div>
+          <div class="side-foot">
+            <a href="#sd"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 3h6v6 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> ← Back to design list</a>
+          </div>
+        </aside>
+
+        <main class="main">
+          <div class="topbar">
+            <a href="#sd" style="font-size:13px; color: var(--ink-2);">← Design list</a>
+            <div class="search">
+              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+              <input placeholder="Search this project…" />
+            </div>
+            <button class="btn btn-soft btn-pill">Filter</button>
+            <button class="btn btn-soft btn-pill">Export</button>
+            <button class="btn btn-primary btn-pill">+ New design rule</button>
+          </div>
+
+          <!-- Page header card (no 7-stage stepper on Rules) -->
+          <div class="card">
+            <div class="proj-head">
+              <div class="ico-lg" style="background: var(--lavender);"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2b2547" stroke-width="1.8"><path d="M4 4h16v16H4z M4 9h16 M9 4v16"/></svg></div>
+              <div>
+                <h1>Design rules</h1>
+                <div class="one">Configurations, design &amp; accessibility rules, device-width rules, and per-agent design guidelines.</div>
+                <div class="path">~/Code/tenant-maintenance · Design · Rules · writes to <code style="font-family: var(--font-mono); font-size: 11px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">design-system/</code> + <code style="font-family: var(--font-mono); font-size: 11px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">skills/accessibility-guidelines.md</code></div>
+              </div>
+              <div class="actions">
+                <span class="pill todo"><span class="dot"></span> Rules</span>
+                <span class="stage-pt">10 rules · 3 agents</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Status / Rules tab switch (Status default; Rules active) -->
+          <div class="tab-bar">
+            <div class="kit-tabs" role="tablist" aria-label="Design tab — status or rules">
+              <button role="tab" aria-selected="false" data-mode="status">Status</button>
+              <button class="on" role="tab" aria-selected="true" data-mode="rules">Rules</button>
+            </div>
+            <span style="font-size: 12px; color: var(--ink-2);">Two halves · the Rules half writes back to the design system + accessibility guidelines.</span>
+            <span class="writeback">writes to → <code>design-system/</code> + <code>skills/accessibility-guidelines.md</code></span>
+          </div>
+
+          <div class="rules-section">
+
+            <!-- 1. Design system context (read-only) -->
+            <div class="arch-card">
+              <div class="arch-h">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="color: var(--purple);"><path d="M12 3l9 4-9 4-9-4 9-4z M3 12l9 4 9-4 M3 17l9 4 9-4"/></svg>
+                <h4>Design system context</h4>
+                <span style="font-size: 10.5px; color: var(--ink-2); font-family: var(--font-mono);">inferred by agents</span>
+                <span class="ro">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+                  Read-only
+                </span>
+              </div>
+
+              <div class="arch-row">
+                <div class="k">Tokens</div>
+                <div class="v"><code>color.md</code> <code>spacing.md</code> <code>typography.md</code> · 41 named tokens</div>
+              </div>
+              <div class="arch-row">
+                <div class="k">Components</div>
+                <div class="v"><code>button</code> <code>card</code> <code>form-input</code> <code>navigation</code> <code>consent-banner</code> · 5 specs</div>
+              </div>
+              <div class="arch-row">
+                <div class="k">States</div>
+                <div class="v"><code>loading</code> <code>error</code> <code>empty</code> <code>success</code> <code>validation</code> <code>forbidden</code> <code>interaction</code> <code>consent</code> · 8 specs</div>
+              </div>
+              <div class="arch-row">
+                <div class="k">A11y</div>
+                <div class="v">WCAG 2.1 AA · <code>skills/accessibility-guidelines.md</code> · keyboard, contrast, ARIA, focus</div>
+              </div>
+              <div class="arch-row">
+                <div class="k">Handoff</div>
+                <div class="v">Figma (wireframes, hi-fi) <span class="lock"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>edit Rules</span></div>
+              </div>
+
+              <div class="arch-cap">
+                The design system is <b>inferred by agents</b> from the <code>design-system/</code> folder. To change a token, component spec, or handoff target, edit the <b>configurations</b> below — your steering surface is one place, not two.
+              </div>
+            </div>
+
+            <!-- 2. Configurations (editable) -->
+            <div class="arch-card">
+              <div class="arch-h">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="color: var(--blue);"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h.1a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v.1a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+                <h4>Configurations</h4>
+                <span style="font-size: 10.5px; color: var(--ink-2); font-family: var(--font-mono);">editable · writes to design-system/README.md</span>
+              </div>
+              <div class="config-grid">
+                <div class="config-row">
+                  <span class="k">Type scale</span>
+                  <div class="v"><span class="val">1.250 (Major Third)</span><button class="pencil" aria-label="Edit Type scale"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                </div>
+                <div class="config-row">
+                  <span class="k">Base font</span>
+                  <div class="v"><span class="val">Inter 16px / 1.5</span><button class="pencil" aria-label="Edit Base font"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                </div>
+                <div class="config-row">
+                  <span class="k">Mono font</span>
+                  <div class="v"><span class="val">JetBrains Mono</span><button class="pencil" aria-label="Edit Mono font"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                </div>
+                <div class="config-row">
+                  <span class="k">Spacing unit</span>
+                  <div class="v"><span class="val">4px (0.25rem base)</span><button class="pencil" aria-label="Edit Spacing unit"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                </div>
+                <div class="config-row">
+                  <span class="k">Radius scale</span>
+                  <div class="v"><span class="val">sm 10 · md 16 · lg 20</span><button class="pencil" aria-label="Edit Radius scale"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                </div>
+                <div class="config-row">
+                  <span class="k">Elevation</span>
+                  <div class="v"><span class="val">3 levels (card / modal / toast)</span><button class="pencil" aria-label="Edit Elevation"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                </div>
+                <div class="config-row">
+                  <span class="k">Contrast standard</span>
+                  <div class="v"><span class="val">WCAG 2.1 AA (4.5:1)</span><button class="pencil" aria-label="Edit Contrast standard"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                </div>
+                <div class="config-row">
+                  <span class="k">Icon library</span>
+                  <div class="v"><span class="val">Inline SVG (no icon font)</span><button class="pencil" aria-label="Edit Icon library"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 3. Design & accessibility rules (editable markdown) -->
+            <div class="md-card">
+              <div class="md-h">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="color: var(--amber);"><path d="M5 4h14v16H5z M9 8h6 M9 12h6 M9 16h4"/></svg>
+                <h4>Design &amp; accessibility rules</h4>
+                <span class="who">writes to <code>design-system/README.md</code> + <code>skills/accessibility-guidelines.md</code></span>
+                <div class="actions">
+                  <button class="btn btn-soft btn-pill" data-edit="design-rules">Edit</button>
+                </div>
+              </div>
+              <div class="md-body" data-md-view="design-rules">
+                <p><strong>Token discipline.</strong> Every color, spacing, type, and radius value in a Figma file or code file must reference a token from <code>design-system/tokens/</code>. No hex literals in components, no one-off fonts.</p>
+                <p><strong>Interaction states (required per component).</strong> Every component spec defines <code>default</code>, <code>hover</code>, <code>focus</code>, <code>active</code>, <code>disabled</code>, <code>loading</code>, <code>error</code>, and <code>empty</code>. Figma variants use these names verbatim; code maps them to <code>data-state</code> attributes.</p>
+                <p><strong>WCAG 2.1 AA, non-negotiable.</strong> All text and interactive elements meet the 4.5:1 contrast ratio (3:1 for large text ≥ 24px or 18.66px bold). Every form input has a <code>&lt;label&gt;</code> or <code>aria-label</code>. Every interactive element has a visible focus ring (2px navy with 2px offset).</p>
+                <p><strong>Keyboard navigation.</strong> Every flow is usable with the keyboard alone. <kbd>Tab</kbd> order matches visual order; <kbd>Esc</kbd> closes modals and popovers; <kbd>Enter</kbd> and <kbd>Space</kbd> activate controls; focus is moved into modals on open and restored on close.</p>
+                <p><strong>Layer naming.</strong> Figma layers use <code>PascalCase</code> for components and <code>camelCase</code> for variants and states (e.g. <code>Button/Primary/Hover</code>). No <code>Frame 247</code>, no <code>Rectangle copy 3</code>.</p>
+                <p><strong>Assets.</strong> SVG over raster wherever possible; if a raster is needed it ships at 2x. Icons are 24×24 with a 1.5px stroke and inherit <code>currentColor</code>.</p>
+              </div>
+            </div>
+
+            <!-- 4. Device-width rules (table) -->
+            <div class="md-card">
+              <div class="md-h">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="color: var(--rose);"><rect x="2" y="4" width="13" height="16" rx="2"/><rect x="16" y="8" width="6" height="12" rx="1"/><path d="M5 17h7"/></svg>
+                <h4>Device-width rules</h4>
+                <span class="who">writes to <code>design-system/README.md</code> · breakpoints, layout, navigation per class</span>
+                <div class="actions">
+                  <button class="btn btn-soft btn-pill" data-edit="breakpoints">Edit</button>
+                </div>
+              </div>
+
+              <table class="bp-table" aria-label="Device-width rules across desktop, tablet, and mobile">
+                <thead>
+                  <tr>
+                    <th scope="col">Class</th>
+                    <th scope="col">Width</th>
+                    <th scope="col">Layout</th>
+                    <th scope="col">Navigation</th>
+                    <th scope="col">Typography</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="bp-class bp-desk">Desktop</td>
+                    <td><code>≥ 1280px</code></td>
+                    <td>12-col grid · 24px gutter · max content width 1440px</td>
+                    <td>Left sidebar (248px) + top search; no hamburger</td>
+                    <td>Base 16px · headings scale to <code>h1 28px</code></td>
+                  </tr>
+                  <tr>
+                    <td class="bp-class bp-desk">Desktop (compact)</td>
+                    <td><code>1024–1279px</code></td>
+                    <td>12-col grid · 20px gutter · max content width 1200px</td>
+                    <td>Left sidebar collapses to icons-only (56px) at &lt; 1120px</td>
+                    <td>Base 15.5px · headings unchanged</td>
+                  </tr>
+                  <tr>
+                    <td class="bp-class bp-tab">Tablet (landscape)</td>
+                    <td><code>820–1023px</code></td>
+                    <td>8-col grid · 20px gutter · side panels become drawers</td>
+                    <td>Top nav (tabs) + hamburger sheet for overflow</td>
+                    <td>Base 15.5px · h1 24px · tighter line-height (1.45)</td>
+                  </tr>
+                  <tr>
+                    <td class="bp-class bp-tab">Tablet (portrait)</td>
+                    <td><code>768–819px</code></td>
+                    <td>6-col grid · 16px gutter · single-column for forms</td>
+                    <td>Top nav (tabs) only; no sidebar, no side panels</td>
+                    <td>Base 15px · h1 22px · touch targets ≥ 44×44</td>
+                  </tr>
+                  <tr>
+                    <td class="bp-class bp-mob">Mobile (large)</td>
+                    <td><code>481–767px</code></td>
+                    <td>4-col grid · 16px gutter · cards stack vertically</td>
+                    <td>Bottom tab bar (5 items max) + overflow in "More"</td>
+                    <td>Base 15px · h1 20px · body line-height 1.55</td>
+                  </tr>
+                  <tr>
+                    <td class="bp-class bp-mob">Mobile</td>
+                    <td><code>≤ 480px</code></td>
+                    <td>Single column · 16px page padding · no horizontal scroll</td>
+                    <td>Bottom tab bar · no top nav · modals become full-screen sheets</td>
+                    <td>Base 14.5px · h1 18px · primary CTA becomes sticky bottom button</td>
+                  </tr>
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colspan="5" class="bp-row-foot">
+                      <strong>Touch targets.</strong> ≥ 44×44 px on every breakpoint &lt; 1024px. <strong>Safe area.</strong> Mobile pages pad 16px from viewport edges; bottom tab bar adds <code>env(safe-area-inset-bottom)</code>. <strong>No-hover state.</strong> Touch breakpoints must not depend on <code>:hover</code> alone — every hover state has a paired <code>:focus</code> or <code>:active</code>.
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            <!-- 5. Per-agent design guidelines (collapsible cards) -->
+            <div class="md-card">
+              <div class="md-h">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="color: var(--green);"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="9" r="3"/><path d="M3 19c0-3 2.7-5 6-5s6 2 6 5 M14 19c0-3 2.7-5 6-5"/></svg>
+                <h4>Per-agent design guidelines</h4>
+                <span class="who">one per Design Agent + Design Reviewer · writes to <code>design-system/agents/{name}.md</code></span>
+                <div class="actions">
+                  <button class="btn btn-soft btn-pill" disabled style="opacity:0.5; cursor:not-allowed;" title="Open in design-system/ to add a new agent">+ Add agent</button>
+                </div>
+              </div>
+              <div class="agent-list">
+
+                <div class="agent-md-card da1">
+                  <div class="h">
+                    <div class="av">DA1</div>
+                    <div>
+                      <b>Design Agent 1 — Hi-fi &amp; components</b>
+                      <span class="sub">Active now · Designing TM-23 (Photo upload) · ~1h 20m elapsed</span>
+                    </div>
+                    <div class="right">
+                      <button class="btn btn-soft btn-pill" data-toggle-card>Read guidelines</button>
+                      <button class="btn btn-soft btn-pill" disabled style="opacity:0.5; cursor:not-allowed;" title="Only the active Design Agent can edit its own guidelines">Edit</button>
+                    </div>
+                  </div>
+                  <div class="body md-body">
+                    <p><strong>Scope.</strong> Owns high-fidelity frames, component variants, and interaction states inside Figma for assigned stories.</p>
+                    <ul>
+                      <li>Start from the matching component spec in <code>design-system/components/</code>; never duplicate an existing component.</li>
+                      <li>Token-first: every color, spacing, type, and radius pulls from <code>design-system/tokens/</code>. No hard-coded values.</li>
+                      <li>Every variant ships all 8 interaction states (<code>default</code>, <code>hover</code>, <code>focus</code>, <code>active</code>, <code>disabled</code>, <code>loading</code>, <code>error</code>, <code>empty</code>).</li>
+                      <li>Hi-fi frames at 1280px (desktop), 768px (tablet), and 375px (mobile) — same component, three frames.</li>
+                      <li>Layer naming: <code>PascalCase</code> for components, <code>camelCase</code> for variants and states.</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div class="agent-md-card da2">
+                  <div class="h">
+                    <div class="av">DA2</div>
+                    <div>
+                      <b>Design Agent 2 — Wireframes &amp; flows</b>
+                      <span class="sub">Idle · last shipped TM-18 wireframes 2h ago</span>
+                    </div>
+                    <div class="right">
+                      <button class="btn btn-soft btn-pill" data-toggle-card>Read guidelines</button>
+                      <button class="btn btn-soft btn-pill" disabled style="opacity:0.5; cursor:not-allowed;" title="Only the active Design Agent can edit its own guidelines">Edit</button>
+                    </div>
+                  </div>
+                  <div class="body md-body">
+                    <p><strong>Scope.</strong> Owns low-fidelity wireframes, user-flow diagrams, and edge-case enumeration for assigned stories.</p>
+                    <ul>
+                      <li>Wireframes are grayscale + placeholder text — no final color, no final imagery. Decisions live in the spec, not the wireframe.</li>
+                      <li>Every flow diagram must enumerate the empty, error, validation, and forbidden states, not just the happy path.</li>
+                      <li>Map every wireframe back to the linked requirement ID (e.g. <code>TM-23</code>). A wireframe with no parent requirement is rejected.</li>
+                      <li>Reuse primitives (cards, lists, form rows) — do not invent one-off layouts when an existing component already covers the need.</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div class="agent-md-card dr1">
+                  <div class="h">
+                    <div class="av">DR1</div>
+                    <div>
+                      <b>Design Reviewer (peer)</b>
+                      <span class="sub">Active now · Reviewing TM-19 hi-fi · ~18m elapsed</span>
+                    </div>
+                    <div class="right">
+                      <button class="btn btn-soft btn-pill" data-toggle-card>Read guidelines</button>
+                      <button class="btn btn-soft btn-pill" disabled style="opacity:0.5; cursor:not-allowed;" title="Only the active Reviewer can edit its own guidelines">Edit</button>
+                    </div>
+                  </div>
+                  <div class="body md-body">
+                    <p><strong>Scope.</strong> Reviews another Design Agent's frames against the linked requirement, the design system, and the rules in this section.</p>
+                    <ul>
+                      <li>Read the linked requirement first; the design exists to satisfy it. Drift from the requirement is a blocker, not a nit.</li>
+                      <li>Audit every component for token usage and the full state set — no hex literals, no missing states.</li>
+                      <li>Run the WCAG 2.1 AA checklist: contrast on every text/background pair, focus order, ARIA labels, keyboard reachability.</li>
+                      <li>Approve only if the design passes all checks; otherwise leave specific, actionable comments (frame URL + element name + what to change).</li>
+                    </ul>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+
+        </main>
+      </div>
+    </div>
+  </section>
+
+
 </div>
+
+<script>
+  // State-toggle group interactivity (4-state pill switch on the Story detail page)
+  document.querySelectorAll('.state-toggle-group').forEach(function (group) {
+    var tabs = Array.prototype.slice.call(group.querySelectorAll('button'));
+    var pvBody = group.closest('.pv-card').querySelector('.pv-body');
+    var frames = pvBody ? pvBody.querySelectorAll('iframe.pv-frame') : [];
+
+    function activate(idx) {
+      tabs.forEach(function (t, i) {
+        var on = i === idx;
+        t.classList.toggle('on', on);
+        t.setAttribute('aria-selected', on ? 'true' : 'false');
+        t.setAttribute('tabindex', on ? '0' : '-1');
+      });
+      frames.forEach(function (f, i) { f.hidden = (i !== idx); });
+    }
+
+    tabs.forEach(function (t, i) {
+      t.addEventListener('click', function () { activate(i); t.focus(); });
+      t.addEventListener('keydown', function (e) {
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+          e.preventDefault();
+          activate((i + 1) % tabs.length);
+          tabs[(i + 1) % tabs.length].focus();
+        } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+          e.preventDefault();
+          activate((i - 1 + tabs.length) % tabs.length);
+          tabs[(i - 1 + tabs.length) % tabs.length].focus();
+        } else if (e.key === 'Home') {
+          e.preventDefault(); activate(0); tabs[0].focus();
+        } else if (e.key === 'End') {
+          e.preventDefault(); activate(tabs.length - 1); tabs[tabs.length - 1].focus();
+        }
+      });
+    });
+  });
+
+  // ─── Jira artifacts panel — Preview click swaps the design preview iframe
+  // Each .jira-art with a [data-preview] link drives the .pv-card on the same page.
+  // .preview (Figma) → swaps iframe to a Figma embed shell (mocked here)
+  // .preview (HTML)  → swaps iframe back to the all-states HTML preview
+  // .preview (image) → swaps iframe to a centered image shell
+  document.querySelectorAll('.jira-art .preview[data-preview]').forEach(function (link) {
+    link.addEventListener('click', function (e) {
+      e.preventDefault();
+      var art = link.closest('.jira-art');
+      var type = link.getAttribute('data-preview') || (art && art.getAttribute('data-type')) || 'html';
+      var pvCard = document.querySelector('.preview-card .pv-card');
+      if (!pvCard) return;
+      var srcPill = pvCard.querySelector('[data-source-label]');
+      if (srcPill) {
+        var meta = art ? art.querySelector('.meta b') : null;
+        var sub  = art ? art.querySelector('.meta .sub') : null;
+        if (meta) {
+          var fname = meta.textContent.trim();
+          var tix   = (sub && sub.textContent.match(/TM-\d+/)) ? sub.textContent.match(/TM-\d+/)[0] : 'TM-19';
+          srcPill.textContent = type.toUpperCase() + ' · ' + tix + ' · ' + fname;
+        }
+      }
+      // Visual focus state on the active artifact row
+      document.querySelectorAll('.jira-art').forEach(function (a) { a.classList.remove('on'); });
+      if (art) art.classList.add('on');
+      // Reset the state toggle to "Default" so the swap is visible
+      var grp = pvCard.querySelector('.state-toggle-group');
+      if (grp) {
+        var tabs2 = grp.querySelectorAll('button');
+        tabs2.forEach(function (b, i) {
+          b.classList.toggle('on', i === 0);
+          b.setAttribute('aria-selected', i === 0 ? 'true' : 'false');
+        });
+      }
+      // Hide all state iframes, show only the Default one (which we treat
+      // as the "currently selected artifact" host).
+      var pvBody = pvCard.querySelector('.pv-body');
+      if (pvBody) {
+        var frames = pvBody.querySelectorAll('iframe.pv-frame');
+        frames.forEach(function (f) { f.hidden = true; });
+        var def = pvBody.querySelector('iframe.pv-frame');
+        if (def) {
+          def.hidden = false;
+          def.setAttribute('data-active-artifact', type);
+        }
+      }
+    });
+  });
+</script>
 </body>
 </html>

@@ -1396,6 +1396,388 @@
     background: rgba(50,42,92,0.06);
     padding: 2px 0; border-radius: 4px;
   }
+
+  /* Row actions (Edit / Delete) — sit in their own grid column */
+  .req-actions {
+    display: flex; align-items: center; justify-content: flex-end; gap: 4px;
+    opacity: 0.55;
+    transition: opacity 0.15s ease;
+  }
+  .req:hover .req-actions { opacity: 1; }
+  .req-action {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 26px; height: 26px;
+    border-radius: 6px;
+    color: var(--ink-2);
+    background: transparent;
+    transition: background 0.12s ease, color 0.12s ease;
+  }
+  .req-action:hover { background: rgba(50,42,92,0.06); color: var(--ink); }
+  .req-action.danger:hover { background: rgba(217, 122, 142, 0.16); color: var(--rose); }
+  .req-action svg { width: 14px; height: 14px; }
+  .req-action:focus-visible {
+    outline: 2px solid var(--navy-2);
+    outline-offset: 2px;
+  }
+  .req-action[aria-label] { cursor: pointer; }
+
+  /* Status dropdown — replaces the static status pill on hover/focus */
+  .req-status-dd {
+    position: relative;
+    display: inline-block;
+  }
+  .req-status-dd .req-status-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 3px 8px 3px 6px;
+    border-radius: 999px;
+    font-size: 11.5px; font-weight: 600;
+    background: rgba(50,42,92,0.04);
+    color: var(--ink-2);
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: background 0.12s ease, border-color 0.12s ease;
+  }
+  .req-status-dd .req-status-btn:hover { background: rgba(50,42,92,0.08); }
+  .req-status-dd .req-status-btn:focus-visible { outline: 2px solid var(--navy-2); outline-offset: 2px; }
+  .req-status-dd .req-status-btn .file-status { box-shadow: none; flex: none; }
+  .req-status-dd .req-status-btn .caret {
+    width: 10px; height: 10px; opacity: 0.5; flex: none;
+  }
+  .req-status-dd.status-done    .req-status-btn { color: var(--green); }
+  .req-status-dd.status-review  .req-status-btn { color: var(--amber); }
+  .req-status-dd.status-draft   .req-status-btn { color: var(--ink-2); }
+  .req-status-dd.status-blocked .req-status-btn { color: var(--rose); }
+  .req-status-dd.status-approved .req-status-btn { color: var(--green); }
+  .req-status-dd.status-returned .req-status-btn { color: var(--rose); }
+  .req-status-dd.status-on_hold  .req-status-btn { color: var(--ink-2); }
+  .req-status-dd.status-cancelled .req-status-btn { color: var(--ink-3); text-decoration: line-through; }
+
+  /* Status menu (popover) */
+  .status-menu {
+    position: absolute; top: calc(100% + 6px); right: 0;
+    min-width: 180px;
+    background: #fff;
+    border: 1px solid rgba(50,42,92,0.1);
+    border-radius: 10px;
+    box-shadow: 0 16px 40px -16px rgba(50,42,92,0.25);
+    padding: 4px;
+    z-index: 20;
+    display: none;
+  }
+  .req-status-dd.open .status-menu { display: block; }
+  .status-menu button {
+    display: flex; align-items: center; gap: 8px;
+    width: 100%; text-align: left;
+    padding: 7px 10px;
+    border-radius: 6px;
+    font-size: 12.5px;
+    color: var(--ink);
+  }
+  .status-menu button:hover { background: rgba(50,42,92,0.05); }
+  .status-menu button .file-status { flex: none; box-shadow: none; }
+  .status-menu button.current { background: rgba(50,42,92,0.04); font-weight: 600; }
+  .status-menu .menu-sep { height: 1px; background: rgba(50,42,92,0.08); margin: 4px 6px; }
+  .status-menu .menu-help { padding: 6px 10px; font-size: 11px; color: var(--ink-2); line-height: 1.4; }
+
+  /* Story header — actions + status dropdown on the right */
+  .story-actions {
+    display: flex; align-items: center; gap: 6px;
+    margin-top: 6px;
+  }
+  .story-actions .btn { padding: 4px 10px; font-size: 11.5px; }
+  .story-actions .btn svg { width: 12px; height: 12px; }
+
+  /* Manual add affordance — bar at top of the list, inline form below */
+  .req-add-bar {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px;
+    background: rgba(50,42,92,0.03);
+    border: 1px dashed rgba(50,42,92,0.16);
+    border-radius: 12px;
+    margin-bottom: 12px;
+  }
+  .req-add-bar .label {
+    font-size: 12.5px; color: var(--ink-2);
+    display: flex; align-items: center; gap: 8px; flex: 1;
+  }
+  .req-add-bar .label b { color: var(--ink); }
+  .req-add-bar .btn-primary,
+  .req-add-bar .btn-ghost { padding: 6px 12px; font-size: 12px; }
+
+  /* Inline "Add requirement / Add user story" form */
+  .add-form {
+    border: 1px solid var(--navy-2);
+    background: linear-gradient(180deg, rgba(74,64,128,0.04), transparent);
+    border-radius: 14px;
+    padding: 16px;
+    margin: 10px 0;
+  }
+  /* Edit-mode uses the same component — different framing only */
+  .add-form.mode-edit {
+    border-color: var(--amber);
+    background: linear-gradient(180deg, rgba(232,185,74,0.08), transparent);
+  }
+  .add-form.mode-edit .form-title { color: var(--ink); }
+  .add-form.mode-edit .form-id {
+    background: var(--butter); color: var(--ink);
+  }
+  .add-form .form-title .form-mode {
+    font-size: 10.5px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    padding: 2px 8px; border-radius: 999px;
+  }
+  .add-form.mode-add  .form-mode { background: var(--peach);  color: var(--coral); }
+  .add-form.mode-edit .form-mode { background: var(--butter); color: var(--ink); }
+  .add-form .form-title { flex-wrap: wrap; }
+  .add-form .form-foot-delete {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 10px;
+    margin: 0 -16px -16px;
+    border-top: 1px dashed rgba(217, 122, 142, 0.3);
+    background: rgba(217, 122, 142, 0.05);
+    border-radius: 0 0 13px 13px;
+    font-size: 11.5px; color: var(--ink-2);
+  }
+  .add-form .form-foot-delete b { color: var(--rose); }
+  .add-form .form-foot-delete .btn { padding: 5px 12px; font-size: 12px; }
+  .add-form .form-foot-delete .btn-danger {
+    background: var(--rose); color: #fff;
+  }
+  .add-form .form-foot-delete .btn-danger:hover { background: #c4677a; }
+  .add-form .form-title {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12.5px; font-weight: 700; color: var(--ink);
+    margin-bottom: 12px;
+  }
+  .add-form .form-title .form-id {
+    font-family: var(--font-mono); font-size: 11px;
+    color: var(--ink-2); font-weight: 600;
+    background: rgba(50,42,92,0.06);
+    padding: 2px 6px; border-radius: 4px;
+  }
+  .add-form .form-title svg { width: 16px; height: 16px; color: var(--navy-2); }
+  .add-form .grid-2 {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  }
+  .add-form .grid-3 {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;
+  }
+  .add-form .grid-4 {
+    display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px;
+  }
+  .add-form .field { display: flex; flex-direction: column; gap: 5px; }
+  .add-form .field.span-2 { grid-column: span 2; }
+  .add-form .field.span-3 { grid-column: span 3; }
+  .add-form .field.span-4 { grid-column: span 4; }
+  .add-form label {
+    font-size: 11px; font-weight: 700; color: var(--ink-2);
+    text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .add-form label .req-mark { color: var(--rose); margin-left: 2px; }
+  .add-form input[type="text"],
+  .add-form textarea,
+  .add-form select {
+    width: 100%;
+    border: 1px solid rgba(50,42,92,0.12);
+    background: #fff;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font: inherit;
+    font-size: 12.5px;
+    color: var(--ink);
+  }
+  .add-form textarea { min-height: 64px; resize: vertical; line-height: 1.5; }
+  .add-form input:focus,
+  .add-form textarea:focus,
+  .add-form select:focus {
+    outline: 2px solid var(--navy-2);
+    outline-offset: 0;
+    border-color: var(--navy-2);
+  }
+  .add-form .field-row {
+    display: flex; align-items: center; gap: 12px;
+    margin-top: 12px;
+  }
+  .add-form .field-row .help {
+    font-size: 11.5px; color: var(--ink-2); flex: 1;
+  }
+  .add-form .field-row .btn { padding: 6px 14px; font-size: 12.5px; }
+  .add-form .field-error {
+    font-size: 11.5px; color: var(--rose); margin-top: 2px; min-height: 14px;
+  }
+  .add-form .field.invalid input,
+  .add-form .field.invalid textarea,
+  .add-form .field.invalid select { border-color: var(--rose); }
+
+  /* Story-level inline edit form (toggled from the story header actions) */
+  .story-edit {
+    border-top: 1px solid rgba(50,42,92,0.06);
+    padding: 14px;
+    background: rgba(50,42,92,0.02);
+  }
+
+  /* Delete confirmation — small inline pattern */
+  .req-delete-confirm {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px;
+    background: rgba(217, 122, 142, 0.08);
+    border: 1px solid rgba(217, 122, 142, 0.3);
+    border-radius: 10px;
+    margin: 8px 0;
+    font-size: 12.5px;
+    color: var(--ink);
+  }
+  .req-delete-confirm .ico {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: rgba(217, 122, 142, 0.18);
+    display: grid; place-items: center;
+    color: var(--rose); flex: none;
+  }
+  .req-delete-confirm .ico svg { width: 16px; height: 16px; }
+  .req-delete-confirm .text { flex: 1; line-height: 1.4; }
+  .req-delete-confirm .text b { color: var(--rose); }
+  .req-delete-confirm .btn { padding: 5px 12px; font-size: 12px; }
+  .req-delete-confirm .btn-danger {
+    background: var(--rose); color: #fff;
+  }
+  .req-delete-confirm .btn-danger:hover { background: #c4677a; }
+
+  /* Edit view — when a row is in edit mode, the text becomes a textarea */
+  .req.edit-row { grid-template-columns: 64px 1fr 86px 64px 130px 50px 78px; }
+  .req.edit-row .req-text { display: none; }
+  .req.edit-row .req-edit-input {
+    display: block;
+    width: 100%;
+    border: 1px solid var(--navy-2);
+    background: #fff;
+    border-radius: 6px;
+    padding: 6px 8px;
+    font: inherit; font-size: 12.5px; color: var(--ink);
+    resize: vertical; min-height: 36px; line-height: 1.4;
+  }
+  .req.edit-row .req-edit-input:focus {
+    outline: 2px solid var(--navy-2); outline-offset: 0;
+  }
+  .req .req-edit-input { display: none; }
+  .req-actions.edit-mode {
+    display: flex; gap: 4px; justify-content: flex-end; opacity: 1;
+  }
+  .req-actions.edit-mode .btn { padding: 4px 10px; font-size: 11.5px; }
+  .req-actions.edit-mode .btn svg { width: 12px; height: 12px; }
+
+  /* ─── Build requirements spec (written contract at the top) ───────────── */
+  .spec-block {
+    margin: 0 0 28px;
+    padding: 22px 26px;
+    background: var(--panel);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--panel-stroke);
+    border-radius: var(--r-2xl);
+    box-shadow: var(--shadow);
+  }
+  .spec-block h2 {
+    font-size: 18px; font-weight: 700; color: var(--ink);
+    margin-bottom: 4px;
+  }
+  .spec-block .spec-sub {
+    font-size: 12.5px; color: var(--ink-2);
+    margin-bottom: 16px; line-height: 1.5;
+  }
+  .spec-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 18px;
+  }
+  .spec-section {
+    background: rgba(255,255,255,0.5);
+    border: 1px solid rgba(50,42,92,0.08);
+    border-radius: 14px;
+    padding: 14px 16px;
+  }
+  .spec-section.full { grid-column: span 2; }
+  .spec-section h3 {
+    font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--ink-2);
+    margin-bottom: 8px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .spec-section h3 .badge {
+    font-family: var(--font-mono);
+    background: var(--navy); color: #fff;
+    padding: 2px 6px; border-radius: 4px;
+    font-size: 9.5px; font-weight: 600;
+    letter-spacing: 0;
+  }
+  .spec-section ul {
+    list-style: none; padding: 0; margin: 0;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .spec-section li {
+    font-size: 12px; color: var(--ink);
+    line-height: 1.5;
+    padding-left: 18px; position: relative;
+  }
+  .spec-section li::before {
+    content: ''; position: absolute; left: 4px; top: 8px;
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--coral);
+  }
+  .spec-section li code, .spec-section code {
+    font-family: var(--font-mono); font-size: 11.5px;
+    background: rgba(50,42,92,0.06);
+    padding: 1px 5px; border-radius: 4px;
+    color: var(--ink);
+  }
+  .spec-section .endpoint {
+    display: grid; grid-template-columns: 60px 1fr 90px; gap: 8px;
+    align-items: center;
+    padding: 6px 0;
+    border-top: 1px dashed rgba(50,42,92,0.08);
+  }
+  .spec-section .endpoint:first-child { border-top: 0; }
+  .spec-section .endpoint .verb {
+    font-family: var(--font-mono); font-size: 10.5px;
+    font-weight: 700; padding: 2px 6px; border-radius: 4px;
+    text-align: center; color: #fff;
+  }
+  .spec-section .endpoint .verb.get    { background: var(--blue); }
+  .spec-section .endpoint .verb.post   { background: var(--green); }
+  .spec-section .endpoint .verb.patch  { background: var(--amber); }
+  .spec-section .endpoint .verb.delete { background: var(--rose); }
+  .spec-section .endpoint .path {
+    font-family: var(--font-mono); font-size: 11.5px;
+    color: var(--ink);
+  }
+  .spec-section .endpoint .purpose {
+    font-size: 11.5px; color: var(--ink-2); line-height: 1.4;
+    text-align: right;
+  }
+  .state-machine {
+    display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+    margin-top: 6px;
+  }
+  .state-node {
+    font-family: var(--font-mono); font-size: 11px;
+    padding: 4px 9px; border-radius: 999px;
+    font-weight: 600;
+  }
+  .state-node.draft    { background: var(--peach);   color: var(--coral); }
+  .state-node.review   { background: var(--butter);  color: var(--ink); }
+  .state-node.approved { background: var(--mint);    color: var(--green); }
+  .state-node.blocked  { background: var(--blush);   color: var(--rose); }
+  .state-node.returned { background: var(--blush);   color: var(--rose); }
+  .state-node.on_hold  { background: var(--lavender); color: var(--purple); }
+  .state-node.done     { background: var(--navy);    color: #fff; }
+  .state-node.cancelled{ background: rgba(50,42,92,0.08); color: var(--ink-2); }
+  .state-arrow { color: var(--ink-3); font-size: 12px; }
+  .spec-section .legend {
+    display: grid; grid-template-columns: auto 1fr; gap: 6px 10px;
+    margin-top: 4px;
+    font-size: 11.5px; color: var(--ink-2); line-height: 1.4;
+  }
+  .spec-section .legend b { color: var(--ink); }
+
   .story.more { background: rgba(50,42,92,0.02); border-style: dashed; }
   .story.more .story-head { background: transparent; }
   .story.more .story-id { background: var(--lavender); color: var(--purple); }
@@ -1540,13 +1922,154 @@
   <!-- Document header -->
   <header class="doc-header">
     <div>
-      <div class="doc-title">Idea Hub — Requirements (v5.2)</div>
-      <div class="doc-sub">Curated, signed-off list of <b>business &amp; technical requirements</b> grouped by user story (US-01 …). Read by SA, devs, designers, and QA as the source of truth for what must be built. Each row carries a stable <code style="font-family: var(--font-mono);">BR-xxx / TR-xxx</code> ID, a type tag, MoSCoW priority, status pill, and owner. No new endpoints — the list renders from the frontmatter of <code style="font-family: var(--font-mono);">prd.md</code> §8 (business requirements) and <code style="font-family: var(--font-mono);">user-journeys.md</code> per-story blocks (technical requirements). BA authors; everyone else reads. The authoring workspace for these and the other 15 PRD artifacts lives in the <a href="background.html"><b>Project Background</b></a> tab.</div>
+      <div class="doc-title">Idea Hub — Requirements (v5.3)</div>
+      <div class="doc-sub">Curated, signed-off list of <b>business &amp; technical requirements</b> grouped by user story (US-01 …). Read by SA, devs, designers, and QA as the source of truth for what must be built. Each row carries a stable <code style="font-family: var(--font-mono);">BR-xxx / TR-xxx</code> ID, a type tag, MoSCoW priority, status pill, and owner. <b>v5.3 adds</b>: per-row Edit / Delete actions, an inline status dropdown, and a <b>story-first add flow</b> — a user story must exist before its BR / TR requirements can be added. The top add bar offers only "Add user story"; each story header carries its own "Add requirement" button. All edits write back to <code style="font-family: var(--font-mono);">prd.md</code> §8 and the relevant per-story block in <code style="font-family: var(--font-mono);">user-journeys.md</code>. BA authors; everyone else reads. The authoring workspace for these and the other 15 PRD artifacts lives in the <a href="background.html"><b>Project Background</b></a> tab.</div>
     </div>
-    <div class="doc-meta">v5.2 · launcher/design/requirements.html<br/>1 screen (15)</div>
+    <div class="doc-meta">v5.3 · launcher/design/requirements.html<br/>1 screen (15) + build spec</div>
   </header>
 
+  <!-- v5.3 build spec — written contract for the implementation agents -->
+  <section class="spec-block" id="spec" aria-labelledby="spec-h">
+    <h2 id="spec-h">Build requirements — v5.3</h2>
+    <p class="spec-sub">What the code agents must deliver so the Requirements tab supports <b>editing, deleting, manually adding, and updating status</b> of user stories and requirements. These are non-negotiable acceptance criteria that accompany the mockup below.</p>
+
+    <div class="spec-grid">
+
+      <div class="spec-section full">
+        <h3><span class="badge">API</span> Endpoints — all write back to the project on disk</h3>
+        <div class="endpoint"><span class="verb get">GET</span><span class="path">/api/projects/:id/requirements</span><span class="purpose">List user stories + their BR/TR requirements.</span></div>
+        <div class="endpoint"><span class="verb post">POST</span><span class="path">/api/projects/:id/stories</span><span class="purpose">Create a new user story. Body: <code>title, asA, iWantTo, soThat</code>.</span></div>
+        <div class="endpoint"><span class="verb patch">PATCH</span><span class="path">/api/projects/:id/stories/:usId</span><span class="purpose">Edit a user story's title / As-a / I-want-to / So-that / story-status.</span></div>
+        <div class="endpoint"><span class="verb delete">DELETE</span><span class="path">/api/projects/:id/stories/:usId</span><span class="purpose">Delete a user story and all of its requirements (soft-delete; recoverable for 30 days).</span></div>
+        <div class="endpoint"><span class="verb post">POST</span><span class="path">/api/projects/:id/stories/:usId/requirements</span><span class="purpose">Add a new BR / TR to <b>an existing story</b>. Story is in the path — no body field. Body: <code>type, text, priority, status, owner</code>.</span></div>
+        <div class="endpoint"><span class="verb patch">PATCH</span><span class="path">/api/projects/:id/requirements/:reqId</span><span class="purpose">Edit requirement text, type, priority, owner, or status.</span></div>
+        <div class="endpoint"><span class="verb patch">PATCH</span><span class="path">/api/projects/:id/requirements/:reqId/status</span><span class="purpose">Status-only update (lightweight, used by the dropdown).</span></div>
+        <div class="endpoint"><span class="verb delete">DELETE</span><span class="path">/api/projects/:id/requirements/:reqId</span><span class="purpose">Delete a single requirement. Soft-delete; recoverable for 30 days.</span></div>
+      </div>
+
+      <div class="spec-section">
+        <h3><span class="badge">UI</span> Affordances that must exist</h3>
+        <ul>
+          <li><b>Unified InlineForm component</b> with <code>mode = 'add' | 'edit'</code>. Add and Edit use the <b>same</b> form layout, the same field set, the same validation, and the same submit/cancel pattern. The only differences are: (a) framing pill ("Add" peach vs "Edit" butter), (b) form-id line ("new US-NN" vs "<code>US-01 · last edited 2h ago by BA Agent</code>"), (c) submit button label ("Create …" vs "Save changes"), (d) an extra <b>form-foot-delete</b> strip in edit mode containing the Delete button, (e) border tint (navy-2 vs amber). Pre-filled values populate the same inputs the Add form uses.</li>
+          <li><b>Row-level Edit</b> icon (pencil) on every requirement row, hover-revealed + keyboard-accessible. Click → the row is replaced in place by the <code>InlineForm mode='edit'</code> for that requirement, pre-filled with the current values, focused on the first field. Pressing Esc collapses the form back to the read row.</li>
+          <li><b>Row-level Delete</b> icon (trash) on every requirement row. In edit mode, the Delete button lives in the form's <code>form-foot-delete</code> strip — no separate inline confirm step, since the Edit form is already in context. Outside edit mode the row trash icon is a shortcut that opens the same Edit form scrolled to the Delete strip.</li>
+          <li><b>Story-level Edit / Delete</b> on every story header, using the same <code>InlineForm mode='edit'</code> (story-shaped: Title + As-a/I-want-to/So-that + Priority + Story status + Owner).</li>
+          <li><b>Story-first add flow.</b> The top "add bar" has a single <b>Add user story</b> button — the only entry point for a new story. The "Add requirement" button does <b>not</b> live at the top; requirements can only be added <b>after</b> a story exists.</li>
+          <li><b>Add user story</b> button (top add bar) → opens the <code>InlineForm mode='add'</code> for a story (Title, As-a / I-want-to / So-that, Priority, Initial status, Owner). Save appends a new <code>US-NN</code> block to <code>user-journeys.md</code> and reveals an "Add requirement" button on the new story header.</li>
+          <li><b>Add requirement</b> button (per story header, next to Edit / Status / Delete) → opens the <code>InlineForm mode='add'</code> for a requirement (Type, Priority, Text, Status, Owner) scoped to that story. No story picker — the form is pre-attached to the story it was opened from.</li>
+          <li>When a project has <b>zero user stories</b>, the empty state replaces the list with a single CTA: "Add your first user story". The "Add requirement" affordance is hidden until at least one story exists.</li>
+          <li><b>Status dropdown</b> on every requirement row AND every story header, replacing the static status pill. Dropdown lists all 7 statuses with the current one checked.</li>
+        </ul>
+      </div>
+
+      <div class="spec-section">
+        <h3><span class="badge">STATE</span> Status state machine (reqs and stories share it)</h3>
+        <div class="state-machine">
+          <span class="state-node draft">draft</span><span class="state-arrow">→</span>
+          <span class="state-node review">in_review</span><span class="state-arrow">→</span>
+          <span class="state-node approved">approved</span><span class="state-arrow">→</span>
+          <span class="state-node done">done</span>
+        </div>
+        <div class="state-machine">
+          <span class="state-node review">in_review</span><span class="state-arrow">→</span>
+          <span class="state-node returned">returned</span><span class="state-arrow">→</span>
+          <span class="state-node draft">draft</span>
+        </div>
+        <div class="state-machine">
+          <span class="state-node review">in_review</span><span class="state-arrow">→</span>
+          <span class="state-node blocked">blocked</span>
+        </div>
+        <div class="state-machine">
+          <span class="state-node approved">approved</span><span class="state-arrow">↔</span>
+          <span class="state-node on_hold">on_hold</span>
+        </div>
+        <div class="state-machine">
+          <span class="state-node draft">draft</span><span class="state-arrow">→</span>
+          <span class="state-node cancelled">cancelled</span>
+        </div>
+      </div>
+
+      <div class="spec-section">
+        <h3><span class="badge">VALID</span> Validation rules</h3>
+        <ul>
+          <li><b>Story title</b>: required, 4–120 chars, trim whitespace.</li>
+          <li><b>As-a / I-want-to / So-that</b>: each required when creating a story; "As a" supports the role from existing personas when present, free text otherwise.</li>
+          <li><b>Requirement text</b>: required, 10–500 chars; must end with a period or be a complete sentence.</li>
+          <li><b>Type</b>: required, one of <code>BR</code> | <code>TR</code>. BR counts as "Business", TR as "Technical" in the stage banner.</li>
+          <li><b>Requirement must belong to a story</b>: the requirement-creation endpoint requires a story in the URL path. A 422 is returned if a BA tries to POST a requirement without a story (e.g. via direct API call). The UI never offers a story picker in the requirement form.</li>
+          <li><b>Priority</b>: required, one of <code>must</code> | <code>should</code> | <code>could</code> | <code>wont</code> (MoSCoW).</li>
+          <li><b>Owner</b>: required, one of <code>BA</code> | <code>SA</code> | <code>DEV</code> | <code>QA</code>.</li>
+          <li><b>Status</b>: required, one of <code>draft | in_review | approved | done | blocked | returned | on_hold | cancelled</code>. The dropdown may only offer transitions allowed by the state machine above; out-of-machine transitions are hidden, not disabled.</li>
+          <li><b>Delete</b>: blocked when a requirement is in <code>approved</code> or <code>done</code> AND another story references it; the inline confirm copy must explain why in that case.</li>
+          <li><b>ID stability</b>: BR/TR IDs are <b>never</b> renumbered on delete. The next add reuses the lowest free number in the project's sequence.</li>
+        </ul>
+      </div>
+
+      <div class="spec-section">
+        <h3><span class="badge">WCAG</span> Accessibility requirements</h3>
+        <ul>
+          <li>Every Edit / Delete action is a real <code>&lt;button&gt;</code> with an <code>aria-label</code> that includes the row's stable ID (e.g. <code>aria-label="Edit BR-007"</code>). Visible focus ring (2px navy-2, 2px offset) on every interactive element.</li>
+          <li>Status dropdown is a <code>&lt;button aria-haspopup="listbox" aria-expanded&gt;</code> + <code>&lt;ul role="listbox"&gt;</code> with <code>role="option" aria-selected</code> on items. Arrow-key navigation, Esc to close, focus returns to the trigger.</li>
+          <li>Delete confirmation is keyboard-discoverable. On activation, focus moves to the "Delete" button (rose-coloured, distinct from the navy primary). Pressing Esc cancels.</li>
+          <li>Inline edit row keeps the same role / focus order as the read row. The Save / Cancel pair lives at the end of the row so screen readers announce "Edit BR-007, Save button, Cancel button".</li>
+          <li>Add forms surface field errors with <code>aria-invalid="true"</code>, <code>aria-describedby</code> pointing at a visible error node, and a programmatic error summary at the top of the form.</li>
+          <li>All new icons are <code>aria-hidden="true"</code>; the visible text or <code>aria-label</code> carries the meaning.</li>
+          <li>Contrast on the new rose delete button against its background: 4.5:1 minimum (verified for <code>--rose</code> #d97a8e on white = 4.6:1).</li>
+        </ul>
+      </div>
+
+      <div class="spec-section">
+        <h3><span class="badge">UX</span> States the UI must handle</h3>
+        <ul>
+          <li><b>Loading</b>: skeleton rows while <code>GET /requirements</code> in flight (existing pattern, keep).</li>
+          <li><b>Empty</b>: when a project has zero user stories, the add bar sits above an empty-state illustration + CTA "Add your first user story".</li>
+          <li><b>Form open</b>: clicking Add (top bar / per-story) or Edit (row / story header) expands the <code>InlineForm</code> in place. The form replaces the row in the list, or sits directly under the story header. Focus moves to the first field. Pressing Esc (or clicking Cancel) collapses the form back to read mode and returns focus to the originating Edit / Add button.</li>
+          <li><b>Form open: only one at a time</b>. Opening an Edit form for a requirement closes any other open form on the same screen (and warns before discarding an unsaved draft).</li>
+          <li><b>Saving</b>: form submit button shows inline spinner and disables; submit is replaced with "Saving…". Concurrent edits blocked with a "Saving…" badge on the row.</li>
+          <li><b>Error on save</b>: form stays open; error toast at top; field-level errors show below the offending input; submit button re-enables.</li>
+          <li><b>Optimistic status change</b>: status pill updates instantly; if the PATCH fails, the pill snaps back and a toast explains.</li>
+          <li><b>Delete from form</b>: the Delete button in the <code>form-foot-delete</code> strip is a single-click action (no extra confirm step) when the row has no dependencies. When the requirement is referenced by another story, the Delete button is replaced by a "Cannot delete" notice explaining the dependency and offering "Open referencing story".</li>
+          <li><b>Concurrent edit</b>: if another BA is editing the same row, show a non-blocking notice "BA Sara is editing — your change will be queued".</li>
+        </ul>
+      </div>
+
+      <div class="spec-section">
+        <h3><span class="badge">SEC</span> Security + write-back</h3>
+        <ul>
+          <li>All endpoints require the existing project-scoped BA auth (read: any project member; write: BA role only). SA, devs, designers, and QA get a 403 on POST/PATCH/DELETE; the UI hides the Edit / Delete / Add affordances for them.</li>
+          <li>Write-back target files: <code>PRD/prd.md</code> §8 (business reqs) and <code>PRD/user-journeys.md</code> per-story blocks (technical reqs). Both writes are atomic (write to <code>.tmp</code> + rename) so a crash never leaves the PRD half-updated.</li>
+          <li>Soft-delete rows stay in the file as <code>~~struck through~~ BR-007</code> with a <code>&lt;!-- deleted 2026-08-27 by BA Will --&gt;</code> marker for 30 days; permanent removal is a separate admin action.</li>
+          <li>Input is length- and charset-validated server-side; client validation alone is not enough.</li>
+        </ul>
+      </div>
+
+      <div class="spec-section">
+        <h3><span class="badge">DATA</h3> Rule for IDs and stability</h3>
+        <ul>
+          <li>Requirement IDs are <code>BR-001</code> through <code>BR-NNN</code> / <code>TR-001</code> through <code>TR-NNN</code>, project-scoped, zero-padded to 3 digits.</li>
+          <li>User story IDs are <code>US-01</code> through <code>US-NN</code>, project-scoped, zero-padded to 2 digits.</li>
+          <li>On delete: do NOT renumber. The next add reuses the lowest free number in the project's sequence — referenced from the live requirements file, not a counter.</li>
+        </ul>
+      </div>
+
+      <div class="spec-section full">
+        <h3><span class="badge">LEGEND</span> Stage-banner pills (already on screen 15) — must stay in sync</h3>
+        <div class="legend">
+          <span class="count-pill"><span class="file-status approved"></span><b>9</b> Business</span>
+          <span>9 requirements with <code>type=BR</code> across all stories.</span>
+          <span class="count-pill"><span class="file-status review"></span><b>6</b> Technical</span>
+          <span>6 requirements with <code>type=TR</code> across all stories.</span>
+          <span class="count-pill"><span class="file-status returned"></span><b>3</b> Blocked</span>
+          <span>3 requirements or stories currently in <code>status=blocked</code> or <code>returned</code>.</span>
+        </div>
+        <p style="font-size: 11.5px; color: var(--ink-2); margin-top: 10px;">These counts must re-derive from the live data on every render — no static numbers.</p>
+      </div>
+
+    </div>
+  </section>
+
   <nav class="toc">
+    <a href="#spec"><b>★</b> Build requirements (v5.3 spec)</a>
     <a href="#s15"><b>15</b> Requirements — list of requirements by user story</a>
   </nav>
 
@@ -1613,6 +2136,191 @@
                 </div>
               </div>
 
+              <!-- v5.3 — manual add bar (BA only). Story-first: only "Add user story" lives here. -->
+              <div class="req-add-bar" role="region" aria-label="Add a new user story">
+                <div class="label">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v8 M8 12h8"/></svg>
+                  <span><b>BA controls.</b> Start with a <b>user story</b> — once a story exists you can add BR / TR requirements to it from inside that story's header.</span>
+                </div>
+                <button class="btn btn-primary" type="button" aria-label="Add a new user story">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14 M5 12h14"/></svg>
+                  Add user story
+                </button>
+              </div>
+
+              <!-- v5.3 — example of the "Add user story" form, expanded by default to demo the entry point. -->
+              <div class="add-form mode-add" role="form" aria-label="Add a new user story">
+                <div class="form-title">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14 M5 12h14"/></svg>
+                  <span>User story</span>
+                  <span class="form-mode">Add</span>
+                  <span class="form-id">new US-NN · auto-assigned as US-07</span>
+                </div>
+
+                <div class="grid-2">
+                  <div class="field span-2">
+                    <label for="us-title">Story title <span class="req-mark">*</span></label>
+                    <input id="us-title" type="text" required minlength="4" maxlength="120" value="Track loan history for repeat borrowers" placeholder="Short verb-led title (4–120 chars)" />
+                    <div class="field-error" id="err-us-title">1 / 120 characters</div>
+                  </div>
+                </div>
+
+                <div class="grid-2" style="margin-top: 12px;">
+                  <div class="field">
+                    <label for="us-asa"><b>As a</b> <span class="req-mark">*</span></label>
+                    <input id="us-asa" type="text" required minlength="2" maxlength="80" value="borrower" list="persona-roles" />
+                    <datalist id="persona-roles">
+                      <option value="household owner"></option>
+                      <option value="borrower"></option>
+                      <option value="lender"></option>
+                      <option value="member"></option>
+                      <option value="admin"></option>
+                    </datalist>
+                    <div class="field-error" id="err-us-asa">Pick from existing personas or type free text.</div>
+                  </div>
+                  <div class="field">
+                    <label for="us-iwant"><b>I want to</b> <span class="req-mark">*</span></label>
+                    <input id="us-iwant" type="text" required minlength="4" maxlength="200" value="see every past loan with the same owner in one place" />
+                    <div class="field-error" id="err-us-iwant">Action + object, 4–200 chars.</div>
+                  </div>
+                </div>
+
+                <div class="grid-2" style="margin-top: 12px;">
+                  <div class="field span-2">
+                    <label for="us-sothat"><b>So that</b> <span class="req-mark">*</span></label>
+                    <input id="us-sothat" type="text" required minlength="4" maxlength="200" value="I can decide if I want to lend to them again" />
+                    <div class="field-error" id="err-us-sothat">Outcome / benefit, 4–200 chars.</div>
+                  </div>
+                </div>
+
+                <div class="grid-3" style="margin-top: 12px;">
+                  <div class="field">
+                    <label for="us-prio">Priority</label>
+                    <select id="us-prio">
+                      <option value="must">Must</option>
+                      <option value="should" selected>Should</option>
+                      <option value="could">Could</option>
+                      <option value="wont">Won't (this release)</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="us-status">Initial story status</label>
+                    <select id="us-status">
+                      <option value="draft" selected>Draft</option>
+                      <option value="in_review">In review</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="us-owner">Owner</label>
+                    <select id="us-owner">
+                      <option value="BA" selected>BA</option>
+                      <option value="SA">SA</option>
+                      <option value="DEV">Dev</option>
+                      <option value="QA">QA</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="field-row">
+                  <div class="help">New <code>US-07</code> will be appended to <code>user-journeys.md</code>. You can add BR / TR requirements to it next.</div>
+                  <button class="btn btn-ghost" type="button">Cancel</button>
+                  <button class="btn btn-primary" type="button">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>
+                    Create user story
+                  </button>
+                </div>
+              </div>
+
+              <!-- v5.3 — same component, mode = edit, pre-filled. Demo: Edit US-01. -->
+              <div class="add-form mode-edit" role="form" aria-label="Edit user story US-01">
+                <div class="form-title">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4l10-10-4-4L4 16z M14 6l4 4"/></svg>
+                  <span>User story</span>
+                  <span class="form-mode">Edit</span>
+                  <span class="form-id">US-01 · last edited 2h ago by BA Agent</span>
+                </div>
+
+                <div class="grid-2">
+                  <div class="field span-2">
+                    <label for="us01-title">Story title <span class="req-mark">*</span></label>
+                    <input id="us01-title" type="text" required minlength="4" maxlength="120" value="List an item for lending" />
+                    <div class="field-error" id="err-us01-title">0 / 120 characters</div>
+                  </div>
+                </div>
+
+                <div class="grid-2" style="margin-top: 12px;">
+                  <div class="field">
+                    <label for="us01-asa"><b>As a</b> <span class="req-mark">*</span></label>
+                    <input id="us01-asa" type="text" required minlength="2" maxlength="80" value="household owner" list="persona-roles" />
+                    <div class="field-error" id="err-us01-asa">Pick from existing personas or type free text.</div>
+                  </div>
+                  <div class="field">
+                    <label for="us01-iwant"><b>I want to</b> <span class="req-mark">*</span></label>
+                    <input id="us01-iwant" type="text" required minlength="4" maxlength="200" value="list an item with title, photo, condition, and pickup window" />
+                    <div class="field-error" id="err-us01-iwant">Action + object, 4–200 chars.</div>
+                  </div>
+                </div>
+
+                <div class="grid-2" style="margin-top: 12px;">
+                  <div class="field span-2">
+                    <label for="us01-sothat"><b>So that</b> <span class="req-mark">*</span></label>
+                    <input id="us01-sothat" type="text" required minlength="4" maxlength="200" value="nearby borrowers can find and request it" />
+                    <div class="field-error" id="err-us01-sothat">Outcome / benefit, 4–200 chars.</div>
+                  </div>
+                </div>
+
+                <div class="grid-3" style="margin-top: 12px;">
+                  <div class="field">
+                    <label for="us01-prio">Priority</label>
+                    <select id="us01-prio">
+                      <option value="must" selected>Must</option>
+                      <option value="should">Should</option>
+                      <option value="could">Could</option>
+                      <option value="wont">Won't (this release)</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="us01-status">Story status</label>
+                    <select id="us01-status">
+                      <option value="draft">Draft</option>
+                      <option value="in_review">In review</option>
+                      <option value="approved" selected>Approved</option>
+                      <option value="done">Done</option>
+                      <option value="blocked">Blocked</option>
+                      <option value="returned">Returned</option>
+                      <option value="on_hold">On hold</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="us01-owner">Owner</label>
+                    <select id="us01-owner">
+                      <option value="BA" selected>BA</option>
+                      <option value="SA">SA</option>
+                      <option value="DEV">Dev</option>
+                      <option value="QA">QA</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="field-row">
+                  <div class="help">Updates the <code>US-01</code> block in <code>user-journeys.md</code>. The previous version is kept in the change log.</div>
+                  <button class="btn btn-ghost" type="button">Cancel</button>
+                  <button class="btn btn-primary" type="button">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>
+                    Save changes
+                  </button>
+                </div>
+
+                <div class="form-foot-delete">
+                  <span><b>Delete this user story?</b> Removes <code>US-01</code> and its 3 requirements from <code>user-journeys.md</code> and <code>prd.md</code> §8. Recoverable for 30 days.</span>
+                  <button class="btn btn-danger" type="button" aria-label="Delete US-01 from this form">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13"/></svg>
+                    Delete US-01
+                  </button>
+                </div>
+              </div>
+
               <div class="ba-doc-body view">
                 <!-- User story group -->
                 <div class="story">
@@ -1621,36 +2329,300 @@
                     <div class="story-body">
                       <div class="story-title">List an item for lending</div>
                       <div class="story-as"><b>As a</b> household owner, <b>I want to</b> list an item with title, photo, condition, and pickup window, <b>so that</b> nearby borrowers can find and request it.</div>
+                      <!-- v5.3 — story-level actions (BA only) -->
+                      <div class="story-actions">
+                        <button class="btn btn-soft" type="button" aria-label="Edit user story US-01">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4l10-10-4-4L4 16z M14 6l4 4"/></svg>
+                          Edit story
+                        </button>
+                        <button class="btn btn-ghost" type="button" aria-label="Add a requirement to US-01" style="color: var(--navy-2);">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14 M5 12h14"/></svg>
+                          Add requirement
+                        </button>
+                        <div class="req-status-dd status-approved" role="group" aria-label="Story status">
+                          <button class="req-status-btn" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="Story status, currently approved">
+                            <span class="file-status approved"></span>
+                            <span>Story approved</span>
+                            <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                          </button>
+                          <ul class="status-menu" role="listbox" aria-label="Change story status">
+                            <li><button role="option" aria-selected="false" type="button"><span class="file-status draft"></span> Draft</button></li>
+                            <li><button role="option" aria-selected="false" type="button"><span class="file-status review"></span> In review</button></li>
+                            <li><button role="option" aria-selected="true"  type="button" class="current"><span class="file-status approved"></span> Approved</button></li>
+                            <li><button role="option" aria-selected="false" type="button"><span class="file-status approved"></span> Done</button></li>
+                            <li><button role="option" aria-selected="false" type="button"><span class="file-status returned"></span> Returned</button></li>
+                            <li><button role="option" aria-selected="false" type="button"><span class="file-status returned"></span> Blocked</button></li>
+                            <li class="menu-sep" aria-hidden="true"></li>
+                            <li class="menu-help">Approved stories are read-only for SA / dev / QA. Move to <b>In review</b> to unlock edits.</li>
+                          </ul>
+                        </div>
+                        <button class="btn btn-soft" type="button" aria-label="Delete user story US-01" style="color: var(--rose);">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13"/></svg>
+                        </button>
+                      </div>
                     </div>
                     <div class="story-meta">
-                      <span class="pill" style="padding:2px 8px; font-size:10.5px;"><span class="dot" style="background: var(--green)"></span> Story approved</span>
                       <span class="story-count">3 reqs</span>
                     </div>
                   </div>
                   <div class="req-list">
-                    <div class="req">
+                    <!-- v5.3 — BR-001 in read mode; the Edit form for it is expanded below. -->
+                    <div class="req" role="listitem">
                       <span class="req-id">BR-001</span>
                       <span class="req-text">The list form must require title, photo, condition, and a pickup window before save.</span>
                       <span class="req-type type-br">Business</span>
                       <span class="req-prio prio-must">Must</span>
-                      <span class="req-status status-done"><span class="file-status approved"></span> Done</span>
+                      <div class="req-status-dd status-done" role="group" aria-label="Status for BR-001">
+                        <button class="req-status-btn" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="BR-001 status, currently done">
+                          <span class="file-status approved"></span>
+                          <span>Done</span>
+                          <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                        </button>
+                        <ul class="status-menu" role="listbox" aria-label="Change status">
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status draft"></span> Draft</button></li>
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status review"></span> In review</button></li>
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status approved"></span> Approved</button></li>
+                          <li><button role="option" aria-selected="true"  type="button" class="current"><span class="file-status approved"></span> Done</button></li>
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status returned"></span> Blocked</button></li>
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status returned"></span> Returned</button></li>
+                          <li><button role="option" aria-selected="false" type="button">On hold</button></li>
+                        </ul>
+                      </div>
                       <span class="req-owner">BA</span>
+                      <div class="req-actions">
+                        <button class="req-action" type="button" aria-label="Edit BR-001" title="Edit">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4l10-10-4-4L4 16z M14 6l4 4"/></svg>
+                        </button>
+                        <button class="req-action danger" type="button" aria-label="Delete BR-001" title="Delete">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13"/></svg>
+                        </button>
+                      </div>
+                    </div>
+
+                    <!-- v5.3 — Edit form for BR-001, same component as Add, pre-filled + mode-edit -->
+                    <div class="add-form mode-edit" role="form" aria-label="Edit requirement BR-001">
+                      <div class="form-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4l10-10-4-4L4 16z M14 6l4 4"/></svg>
+                        <span>Requirement in <b>US-01</b></span>
+                        <span class="form-mode">Edit</span>
+                        <span class="form-id">BR-001 · last edited 2h ago by BA Agent</span>
+                      </div>
+
+                      <div class="grid-2">
+                        <div class="field">
+                          <label for="br001-type">Type <span class="req-mark">*</span></label>
+                          <select id="br001-type" required>
+                            <option value="BR" selected>Business requirement (BR)</option>
+                            <option value="TR">Technical requirement (TR)</option>
+                          </select>
+                        </div>
+                        <div class="field">
+                          <label for="br001-prio">Priority <span class="req-mark">*</span></label>
+                          <select id="br001-prio" required>
+                            <option value="must" selected>Must</option>
+                            <option value="should">Should</option>
+                            <option value="could">Could</option>
+                            <option value="wont">Won't (this release)</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div class="grid-2" style="margin-top: 12px;">
+                        <div class="field span-2">
+                          <label for="br001-text">Requirement text <span class="req-mark">*</span></label>
+                          <textarea id="br001-text" required minlength="10" maxlength="500" rows="3">The list form must require title, photo, condition, and a pickup window before save.</textarea>
+                          <div class="field-error" id="err-br001-text">0 / 500 characters</div>
+                        </div>
+                      </div>
+
+                      <div class="grid-2" style="margin-top: 12px;">
+                        <div class="field">
+                          <label for="br001-status">Status <span class="req-mark">*</span></label>
+                          <select id="br001-status" required>
+                            <option value="draft">Draft</option>
+                            <option value="in_review">In review</option>
+                            <option value="approved">Approved</option>
+                            <option value="done" selected>Done</option>
+                            <option value="blocked">Blocked</option>
+                            <option value="returned">Returned</option>
+                            <option value="on_hold">On hold</option>
+                            <option value="cancelled">Cancelled</option>
+                          </select>
+                        </div>
+                        <div class="field">
+                          <label for="br001-owner">Owner <span class="req-mark">*</span></label>
+                          <select id="br001-owner" required>
+                            <option value="BA" selected>BA</option>
+                            <option value="SA">SA</option>
+                            <option value="DEV">Dev</option>
+                            <option value="QA">QA</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div class="field-row">
+                        <div class="help">Updates <code>prd.md</code> §8 and the US-01 block in <code>user-journeys.md</code>. The previous version is kept in the change log.</div>
+                        <button class="btn btn-ghost" type="button">Cancel</button>
+                        <button class="btn btn-primary" type="button">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>
+                          Save changes
+                        </button>
+                      </div>
+
+                      <div class="form-foot-delete">
+                        <span><b>Delete this requirement?</b> Removes <code>BR-001</code> from <code>prd.md</code> and the US-01 block. The row is recoverable for 30 days.</span>
+                        <button class="btn btn-danger" type="button" aria-label="Delete BR-001 from this form">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13"/></svg>
+                          Delete BR-001
+                        </button>
+                      </div>
                     </div>
                     <div class="req">
                       <span class="req-id">BR-002</span>
                       <span class="req-text">Saved items must be visible to all approved members in the same neighborhood within 5 seconds.</span>
                       <span class="req-type type-br">Business</span>
                       <span class="req-prio prio-must">Must</span>
-                      <span class="req-status status-done"><span class="file-status approved"></span> Done</span>
+                      <div class="req-status-dd status-done" role="group" aria-label="Status for BR-002">
+                        <button class="req-status-btn" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="BR-002 status, currently done">
+                          <span class="file-status approved"></span>
+                          <span>Done</span>
+                          <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                        </button>
+                        <ul class="status-menu" role="listbox" aria-label="Change status">
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status draft"></span> Draft</button></li>
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status review"></span> In review</button></li>
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status approved"></span> Approved</button></li>
+                          <li><button role="option" aria-selected="true"  type="button" class="current"><span class="file-status approved"></span> Done</button></li>
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status returned"></span> Blocked</button></li>
+                        </ul>
+                      </div>
                       <span class="req-owner">BA</span>
+                      <div class="req-actions">
+                        <button class="req-action" type="button" aria-label="Edit BR-002" title="Edit">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4l10-10-4-4L4 16z M14 6l4 4"/></svg>
+                        </button>
+                        <button class="req-action danger" type="button" aria-label="Delete BR-002" title="Delete">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13"/></svg>
+                        </button>
+                      </div>
                     </div>
                     <div class="req">
                       <span class="req-id">TR-001</span>
                       <span class="req-text">Photo uploads must use signed URLs and store objects in the project bucket with public-read disabled.</span>
                       <span class="req-type type-tr">Technical</span>
                       <span class="req-prio prio-must">Must</span>
-                      <span class="req-status status-review"><span class="file-status review"></span> In SA review</span>
+                      <div class="req-status-dd status-review" role="group" aria-label="Status for TR-001">
+                        <button class="req-status-btn" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="TR-001 status, currently in review">
+                          <span class="file-status review"></span>
+                          <span>In SA review</span>
+                          <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                        </button>
+                        <ul class="status-menu" role="listbox" aria-label="Change status">
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status draft"></span> Draft</button></li>
+                          <li><button role="option" aria-selected="true"  type="button" class="current"><span class="file-status review"></span> In review</button></li>
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status approved"></span> Approved</button></li>
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status returned"></span> Returned</button></li>
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status returned"></span> Blocked</button></li>
+                        </ul>
+                      </div>
                       <span class="req-owner">SA</span>
+                      <div class="req-actions">
+                        <button class="req-action" type="button" aria-label="Edit TR-001" title="Edit">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4l10-10-4-4L4 16z M14 6l4 4"/></svg>
+                        </button>
+                        <button class="req-action danger" type="button" aria-label="Delete TR-001" title="Delete">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13"/></svg>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- v5.3 — example of an inline delete-confirmation strip (sits between rows) -->
+                  <div class="req-delete-confirm" role="alertdialog" aria-labelledby="del-confirm-title" aria-describedby="del-confirm-desc">
+                    <div class="ico" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4 M12 17h.01 M10.3 3.86l-8.18 14.2A2 2 0 0 0 3.85 21h16.3a2 2 0 0 0 1.73-2.94L13.7 3.86a2 2 0 0 0-3.4 0z"/></svg>
+                    </div>
+                    <div class="text">
+                      <b id="del-confirm-title">Delete TR-002?</b>
+                      <span id="del-confirm-desc" style="color: var(--ink-2);"> This removes the requirement from US-02 and updates <code>prd.md</code> §8. The row is recoverable for 30 days.</span>
+                    </div>
+                    <button class="btn btn-ghost" type="button">Cancel</button>
+                    <button class="btn btn-danger" type="button" aria-label="Confirm delete TR-002">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13"/></svg>
+                      Delete
+                    </button>
+                  </div>
+
+                  <!-- v5.3 — second step of the story-first flow: "Add requirement" form, scoped to US-01. -->
+                  <div class="add-form mode-add" role="form" aria-label="Add a new requirement to US-01">
+                    <div class="form-title">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14 M5 12h14"/></svg>
+                      <span>Requirement in <b>US-01</b></span>
+                      <span class="form-mode">Add</span>
+                      <span class="form-id">new BR / TR</span>
+                    </div>
+
+                    <div class="grid-2">
+                      <div class="field">
+                        <label for="req-type">Type <span class="req-mark">*</span></label>
+                        <select id="req-type" required>
+                          <option value="BR">Business requirement (BR)</option>
+                          <option value="TR">Technical requirement (TR)</option>
+                        </select>
+                        <div class="field-error" id="err-type"></div>
+                      </div>
+                      <div class="field">
+                        <label for="req-prio">Priority <span class="req-mark">*</span></label>
+                        <select id="req-prio" required>
+                          <option value="must">Must</option>
+                          <option value="should">Should</option>
+                          <option value="could">Could</option>
+                          <option value="wont">Won't (this release)</option>
+                        </select>
+                        <div class="field-error" id="err-prio"></div>
+                      </div>
+                    </div>
+
+                    <div class="grid-2" style="margin-top: 12px;">
+                      <div class="field span-2">
+                        <label for="req-text">Requirement text <span class="req-mark">*</span></label>
+                        <textarea id="req-text" required minlength="10" maxlength="500" placeholder="One complete sentence. End with a period. 10–500 chars.">Saved items must display a 24-hour freshness badge so borrowers know listings are still active.</textarea>
+                        <div class="field-error" id="err-text">2 / 500 characters</div>
+                      </div>
+                    </div>
+
+                    <div class="grid-2" style="margin-top: 12px;">
+                      <div class="field">
+                        <label for="req-status">Status <span class="req-mark">*</span></label>
+                        <select id="req-status" required>
+                          <option value="draft" selected>Draft</option>
+                          <option value="in_review">In review</option>
+                          <option value="approved">Approved</option>
+                          <option value="done">Done</option>
+                          <option value="blocked">Blocked</option>
+                          <option value="returned">Returned</option>
+                          <option value="on_hold">On hold</option>
+                          <option value="cancelled">Cancelled</option>
+                        </select>
+                      </div>
+                      <div class="field">
+                        <label for="req-owner">Owner <span class="req-mark">*</span></label>
+                        <select id="req-owner" required>
+                          <option value="BA" selected>BA</option>
+                          <option value="SA">SA</option>
+                          <option value="DEV">Dev</option>
+                          <option value="QA">QA</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div class="field-row">
+                      <div class="help">New <code>BR-010</code> will be appended to <code>prd.md</code> §8 and the per-story block in <code>user-journeys.md</code> for US-01.</div>
+                      <button class="btn btn-ghost" type="button">Cancel</button>
+                      <button class="btn btn-primary" type="button">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>
+                        Create requirement
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -1661,9 +2633,36 @@
                     <div class="story-body">
                       <div class="story-title">Browse items nearby</div>
                       <div class="story-as"><b>As a</b> borrower, <b>I want to</b> browse items within a 1-mile radius, <b>so that</b> I only see what I can reasonably walk to.</div>
+                      <div class="story-actions">
+                        <button class="btn btn-soft" type="button" aria-label="Edit user story US-02">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4l10-10-4-4L4 16z M14 6l4 4"/></svg>
+                          Edit story
+                        </button>
+                        <button class="btn btn-ghost" type="button" aria-label="Add a requirement to US-02" style="color: var(--navy-2);">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14 M5 12h14"/></svg>
+                          Add requirement
+                        </button>
+                        <div class="req-status-dd status-approved" role="group" aria-label="Story status">
+                          <button class="req-status-btn" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="Story status, currently approved">
+                            <span class="file-status approved"></span>
+                            <span>Story approved</span>
+                            <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                          </button>
+                          <ul class="status-menu" role="listbox" aria-label="Change story status">
+                            <li><button role="option" aria-selected="false" type="button"><span class="file-status draft"></span> Draft</button></li>
+                            <li><button role="option" aria-selected="false" type="button"><span class="file-status review"></span> In review</button></li>
+                            <li><button role="option" aria-selected="true"  type="button" class="current"><span class="file-status approved"></span> Approved</button></li>
+                            <li><button role="option" aria-selected="false" type="button"><span class="file-status approved"></span> Done</button></li>
+                            <li><button role="option" aria-selected="false" type="button"><span class="file-status returned"></span> Returned</button></li>
+                            <li><button role="option" aria-selected="false" type="button"><span class="file-status returned"></span> Blocked</button></li>
+                          </ul>
+                        </div>
+                        <button class="btn btn-soft" type="button" aria-label="Delete user story US-02" style="color: var(--rose);">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13"/></svg>
+                        </button>
+                      </div>
                     </div>
                     <div class="story-meta">
-                      <span class="pill" style="padding:2px 8px; font-size:10.5px;"><span class="dot" style="background: var(--green)"></span> Story approved</span>
                       <span class="story-count">2 reqs</span>
                     </div>
                   </div>
@@ -1673,16 +2672,48 @@
                       <span class="req-text">Default search radius is 1 mile; users can adjust between 0.5 and 5 miles.</span>
                       <span class="req-type type-br">Business</span>
                       <span class="req-prio prio-must">Must</span>
-                      <span class="req-status status-done"><span class="file-status approved"></span> Done</span>
+                      <div class="req-status-dd status-done" role="group" aria-label="Status for BR-003">
+                        <button class="req-status-btn" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="BR-003 status, currently done">
+                          <span class="file-status approved"></span><span>Done</span>
+                          <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                        </button>
+                        <ul class="status-menu" role="listbox" aria-label="Change status">
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status draft"></span> Draft</button></li>
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status review"></span> In review</button></li>
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status approved"></span> Approved</button></li>
+                          <li><button role="option" aria-selected="true"  type="button" class="current"><span class="file-status approved"></span> Done</button></li>
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status returned"></span> Blocked</button></li>
+                        </ul>
+                      </div>
                       <span class="req-owner">BA</span>
+                      <div class="req-actions">
+                        <button class="req-action" type="button" aria-label="Edit BR-003" title="Edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4l10-10-4-4L4 16z M14 6l4 4"/></svg></button>
+                        <button class="req-action danger" type="button" aria-label="Delete BR-003" title="Delete"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13"/></svg></button>
+                      </div>
                     </div>
                     <div class="req">
                       <span class="req-id">TR-002</span>
                       <span class="req-text">Radius search must use a geo index — never a client-side filter over the full result set.</span>
                       <span class="req-type type-tr">Technical</span>
                       <span class="req-prio prio-must">Must</span>
-                      <span class="req-status status-draft"><span class="file-status draft"></span> Draft</span>
+                      <div class="req-status-dd status-draft" role="group" aria-label="Status for TR-002">
+                        <button class="req-status-btn" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="TR-002 status, currently draft">
+                          <span class="file-status draft"></span><span>Draft</span>
+                          <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                        </button>
+                        <ul class="status-menu" role="listbox" aria-label="Change status">
+                          <li><button role="option" aria-selected="true" type="button" class="current"><span class="file-status draft"></span> Draft</button></li>
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status review"></span> In review</button></li>
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status approved"></span> Approved</button></li>
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status returned"></span> Blocked</button></li>
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status returned"></span> Cancelled</button></li>
+                        </ul>
+                      </div>
                       <span class="req-owner">SA</span>
+                      <div class="req-actions">
+                        <button class="req-action" type="button" aria-label="Edit TR-002" title="Edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4l10-10-4-4L4 16z M14 6l4 4"/></svg></button>
+                        <button class="req-action danger" type="button" aria-label="Delete TR-002" title="Delete"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13"/></svg></button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1693,9 +2724,35 @@
                     <div class="story-body">
                       <div class="story-title">Request and approve a loan</div>
                       <div class="story-as"><b>As a</b> borrower, <b>I want to</b> request a loan and have the lender approve or decline, <b>so that</b> both sides commit to a pickup time.</div>
+                      <div class="story-actions">
+                        <button class="btn btn-soft" type="button" aria-label="Edit user story US-03">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4l10-10-4-4L4 16z M14 6l4 4"/></svg>
+                          Edit story
+                        </button>
+                        <button class="btn btn-ghost" type="button" aria-label="Add a requirement to US-03" style="color: var(--navy-2);">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14 M5 12h14"/></svg>
+                          Add requirement
+                        </button>
+                        <div class="req-status-dd status-review" role="group" aria-label="Story status">
+                          <button class="req-status-btn" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="Story status, currently in review">
+                            <span class="file-status review"></span>
+                            <span>Story in review</span>
+                            <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                          </button>
+                          <ul class="status-menu" role="listbox" aria-label="Change story status">
+                            <li><button role="option" aria-selected="false" type="button"><span class="file-status draft"></span> Draft</button></li>
+                            <li><button role="option" aria-selected="true" type="button" class="current"><span class="file-status review"></span> In review</button></li>
+                            <li><button role="option" aria-selected="false" type="button"><span class="file-status approved"></span> Approved</button></li>
+                            <li><button role="option" aria-selected="false" type="button"><span class="file-status returned"></span> Returned</button></li>
+                            <li><button role="option" aria-selected="false" type="button"><span class="file-status returned"></span> Blocked</button></li>
+                          </ul>
+                        </div>
+                        <button class="btn btn-soft" type="button" aria-label="Delete user story US-03" style="color: var(--rose);">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13"/></svg>
+                        </button>
+                      </div>
                     </div>
                     <div class="story-meta">
-                      <span class="pill" style="padding:2px 8px; font-size:10.5px;"><span class="dot" style="background: var(--amber)"></span> Story in review</span>
                       <span class="story-count">3 reqs</span>
                     </div>
                   </div>
@@ -1705,24 +2762,69 @@
                       <span class="req-text">Each loan request must capture pickup date, return date, and a free-text note.</span>
                       <span class="req-type type-br">Business</span>
                       <span class="req-prio prio-must">Must</span>
-                      <span class="req-status status-done"><span class="file-status approved"></span> Done</span>
+                      <div class="req-status-dd status-done" role="group" aria-label="Status for BR-004">
+                        <button class="req-status-btn" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="BR-004 status, currently done">
+                          <span class="file-status approved"></span><span>Done</span>
+                          <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                        </button>
+                        <ul class="status-menu" role="listbox" aria-label="Change status">
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status draft"></span> Draft</button></li>
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status review"></span> In review</button></li>
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status approved"></span> Approved</button></li>
+                          <li><button role="option" aria-selected="true" type="button" class="current"><span class="file-status approved"></span> Done</button></li>
+                        </ul>
+                      </div>
                       <span class="req-owner">BA</span>
+                      <div class="req-actions">
+                        <button class="req-action" type="button" aria-label="Edit BR-004" title="Edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4l10-10-4-4L4 16z M14 6l4 4"/></svg></button>
+                        <button class="req-action danger" type="button" aria-label="Delete BR-004" title="Delete"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13"/></svg></button>
+                      </div>
                     </div>
                     <div class="req">
                       <span class="req-id">BR-005</span>
                       <span class="req-text">A lender must explicitly approve or decline — no implicit acceptance on no-response.</span>
                       <span class="req-type type-br">Business</span>
                       <span class="req-prio prio-must">Must</span>
-                      <span class="req-status status-review"><span class="file-status review"></span> In SA review</span>
+                      <div class="req-status-dd status-review" role="group" aria-label="Status for BR-005">
+                        <button class="req-status-btn" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="BR-005 status, currently in review">
+                          <span class="file-status review"></span><span>In SA review</span>
+                          <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                        </button>
+                        <ul class="status-menu" role="listbox" aria-label="Change status">
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status draft"></span> Draft</button></li>
+                          <li><button role="option" aria-selected="true" type="button" class="current"><span class="file-status review"></span> In review</button></li>
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status approved"></span> Approved</button></li>
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status returned"></span> Returned</button></li>
+                        </ul>
+                      </div>
                       <span class="req-owner">BA</span>
+                      <div class="req-actions">
+                        <button class="req-action" type="button" aria-label="Edit BR-005" title="Edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4l10-10-4-4L4 16z M14 6l4 4"/></svg></button>
+                        <button class="req-action danger" type="button" aria-label="Delete BR-005" title="Delete"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13"/></svg></button>
+                      </div>
                     </div>
                     <div class="req">
                       <span class="req-id">TR-003</span>
                       <span class="req-text">Loan state transitions must be append-only; cancellations and declines are recorded events, not edits.</span>
                       <span class="req-type type-tr">Technical</span>
                       <span class="req-prio should">Should</span>
-                      <span class="req-status status-draft"><span class="file-status draft"></span> Draft</span>
+                      <div class="req-status-dd status-draft" role="group" aria-label="Status for TR-003">
+                        <button class="req-status-btn" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="TR-003 status, currently draft">
+                          <span class="file-status draft"></span><span>Draft</span>
+                          <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                        </button>
+                        <ul class="status-menu" role="listbox" aria-label="Change status">
+                          <li><button role="option" aria-selected="true" type="button" class="current"><span class="file-status draft"></span> Draft</button></li>
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status review"></span> In review</button></li>
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status approved"></span> Approved</button></li>
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status returned"></span> Cancelled</button></li>
+                        </ul>
+                      </div>
                       <span class="req-owner">SA</span>
+                      <div class="req-actions">
+                        <button class="req-action" type="button" aria-label="Edit TR-003" title="Edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4l10-10-4-4L4 16z M14 6l4 4"/></svg></button>
+                        <button class="req-action danger" type="button" aria-label="Delete TR-003" title="Delete"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13"/></svg></button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1733,9 +2835,35 @@
                     <div class="story-body">
                       <div class="story-title">Rate the other party after return</div>
                       <div class="story-as"><b>As a</b> lender or borrower, <b>I want to</b> submit a 1–5 star rating and short comment after the item is returned, <b>so that</b> the community has a record of trustworthiness.</div>
+                      <div class="story-actions">
+                        <button class="btn btn-soft" type="button" aria-label="Edit user story US-04">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4l10-10-4-4L4 16z M14 6l4 4"/></svg>
+                          Edit story
+                        </button>
+                        <button class="btn btn-ghost" type="button" aria-label="Add a requirement to US-04" style="color: var(--navy-2);">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14 M5 12h14"/></svg>
+                          Add requirement
+                        </button>
+                        <div class="req-status-dd status-blocked" role="group" aria-label="Story status">
+                          <button class="req-status-btn" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="Story status, currently blocked">
+                            <span class="file-status returned"></span>
+                            <span>Story blocked</span>
+                            <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                          </button>
+                          <ul class="status-menu" role="listbox" aria-label="Change story status">
+                            <li><button role="option" aria-selected="false" type="button"><span class="file-status draft"></span> Draft</button></li>
+                            <li><button role="option" aria-selected="false" type="button"><span class="file-status review"></span> In review</button></li>
+                            <li><button role="option" aria-selected="true" type="button" class="current"><span class="file-status returned"></span> Blocked</button></li>
+                            <li class="menu-sep" aria-hidden="true"></li>
+                            <li class="menu-help">Blocked stories stay read-only until the blocker is resolved and a BA moves them back to <b>In review</b>.</li>
+                          </ul>
+                        </div>
+                        <button class="btn btn-soft" type="button" aria-label="Delete user story US-04" style="color: var(--rose);" disabled aria-disabled="true" title="Delete blocked while story is referenced by another story">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13"/></svg>
+                        </button>
+                      </div>
                     </div>
                     <div class="story-meta">
-                      <span class="pill blocked" style="padding:2px 8px; font-size:10.5px;"><span class="dot" style="background: var(--rose)"></span> Story blocked</span>
                       <span class="story-count">2 reqs</span>
                     </div>
                   </div>
@@ -1745,16 +2873,44 @@
                       <span class="req-text">Both parties must be able to rate; the form is available for 14 days after return, then closes.</span>
                       <span class="req-type type-br">Business</span>
                       <span class="req-prio must">Must</span>
-                      <span class="req-status status-blocked"><span class="file-status returned"></span> Blocked</span>
+                      <div class="req-status-dd status-blocked" role="group" aria-label="Status for BR-006">
+                        <button class="req-status-btn" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="BR-006 status, currently blocked">
+                          <span class="file-status returned"></span><span>Blocked</span>
+                          <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                        </button>
+                        <ul class="status-menu" role="listbox" aria-label="Change status">
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status draft"></span> Draft</button></li>
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status review"></span> In review</button></li>
+                          <li><button role="option" aria-selected="true" type="button" class="current"><span class="file-status returned"></span> Blocked</button></li>
+                        </ul>
+                      </div>
                       <span class="req-owner">BA</span>
+                      <div class="req-actions">
+                        <button class="req-action" type="button" aria-label="Edit BR-006" title="Edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4l10-10-4-4L4 16z M14 6l4 4"/></svg></button>
+                        <button class="req-action danger" type="button" aria-label="Delete BR-006" title="Delete" disabled aria-disabled="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13"/></svg></button>
+                      </div>
                     </div>
                     <div class="req">
                       <span class="req-id">TR-004</span>
                       <span class="req-text">Ratings must be stored as a write-once record; a user can update their own rating only within the 14-day window.</span>
                       <span class="req-type type-tr">Technical</span>
                       <span class="req-prio should">Should</span>
-                      <span class="req-status status-blocked"><span class="file-status returned"></span> Blocked</span>
+                      <div class="req-status-dd status-blocked" role="group" aria-label="Status for TR-004">
+                        <button class="req-status-btn" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="TR-004 status, currently blocked">
+                          <span class="file-status returned"></span><span>Blocked</span>
+                          <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                        </button>
+                        <ul class="status-menu" role="listbox" aria-label="Change status">
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status draft"></span> Draft</button></li>
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status review"></span> In review</button></li>
+                          <li><button role="option" aria-selected="true" type="button" class="current"><span class="file-status returned"></span> Blocked</button></li>
+                        </ul>
+                      </div>
                       <span class="req-owner">SA</span>
+                      <div class="req-actions">
+                        <button class="req-action" type="button" aria-label="Edit TR-004" title="Edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4l10-10-4-4L4 16z M14 6l4 4"/></svg></button>
+                        <button class="req-action danger" type="button" aria-label="Delete TR-004" title="Delete" disabled aria-disabled="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13"/></svg></button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1765,9 +2921,34 @@
                     <div class="story-body">
                       <div class="story-title">Notify the other party on a state change</div>
                       <div class="story-as"><b>As a</b> lender, <b>I want to</b> get a notification when a borrower requests or cancels a loan, <b>so that</b> I can respond quickly.</div>
+                      <div class="story-actions">
+                        <button class="btn btn-soft" type="button" aria-label="Edit user story US-05">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4l10-10-4-4L4 16z M14 6l4 4"/></svg>
+                          Edit story
+                        </button>
+                        <button class="btn btn-ghost" type="button" aria-label="Add a requirement to US-05" style="color: var(--navy-2);">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14 M5 12h14"/></svg>
+                          Add requirement
+                        </button>
+                        <div class="req-status-dd status-draft" role="group" aria-label="Story status">
+                          <button class="req-status-btn" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="Story status, currently draft">
+                            <span class="file-status draft"></span>
+                            <span>Story draft</span>
+                            <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                          </button>
+                          <ul class="status-menu" role="listbox" aria-label="Change story status">
+                            <li><button role="option" aria-selected="true" type="button" class="current"><span class="file-status draft"></span> Draft</button></li>
+                            <li><button role="option" aria-selected="false" type="button"><span class="file-status review"></span> In review</button></li>
+                            <li><button role="option" aria-selected="false" type="button"><span class="file-status approved"></span> Approved</button></li>
+                            <li><button role="option" aria-selected="false" type="button"><span class="file-status returned"></span> Cancelled</button></li>
+                          </ul>
+                        </div>
+                        <button class="btn btn-soft" type="button" aria-label="Delete user story US-05" style="color: var(--rose);">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13"/></svg>
+                        </button>
+                      </div>
                     </div>
                     <div class="story-meta">
-                      <span class="pill draft" style="padding:2px 8px; font-size:10.5px;"><span class="dot" style="background: var(--purple)"></span> Story draft</span>
                       <span class="story-count">2 reqs</span>
                     </div>
                   </div>
@@ -1777,16 +2958,46 @@
                       <span class="req-text">Notifications are in-app and email; SMS is out of scope for v1.</span>
                       <span class="req-type type-br">Business</span>
                       <span class="req-prio could">Could</span>
-                      <span class="req-status status-draft"><span class="file-status draft"></span> Draft</span>
+                      <div class="req-status-dd status-draft" role="group" aria-label="Status for BR-007">
+                        <button class="req-status-btn" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="BR-007 status, currently draft">
+                          <span class="file-status draft"></span><span>Draft</span>
+                          <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                        </button>
+                        <ul class="status-menu" role="listbox" aria-label="Change status">
+                          <li><button role="option" aria-selected="true" type="button" class="current"><span class="file-status draft"></span> Draft</button></li>
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status review"></span> In review</button></li>
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status approved"></span> Approved</button></li>
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status returned"></span> Cancelled</button></li>
+                        </ul>
+                      </div>
                       <span class="req-owner">BA</span>
+                      <div class="req-actions">
+                        <button class="req-action" type="button" aria-label="Edit BR-007" title="Edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4l10-10-4-4L4 16z M14 6l4 4"/></svg></button>
+                        <button class="req-action danger" type="button" aria-label="Delete BR-007" title="Delete"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13"/></svg></button>
+                      </div>
                     </div>
                     <div class="req">
                       <span class="req-id">TR-005</span>
                       <span class="req-text">Notification delivery is event-driven; failed sends retry with exponential backoff up to 3 attempts.</span>
                       <span class="req-type type-tr">Technical</span>
                       <span class="req-prio could">Could</span>
-                      <span class="req-status status-draft"><span class="file-status draft"></span> Draft</span>
+                      <div class="req-status-dd status-draft" role="group" aria-label="Status for TR-005">
+                        <button class="req-status-btn" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="TR-005 status, currently draft">
+                          <span class="file-status draft"></span><span>Draft</span>
+                          <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                        </button>
+                        <ul class="status-menu" role="listbox" aria-label="Change status">
+                          <li><button role="option" aria-selected="true" type="button" class="current"><span class="file-status draft"></span> Draft</button></li>
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status review"></span> In review</button></li>
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status approved"></span> Approved</button></li>
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status returned"></span> Cancelled</button></li>
+                        </ul>
+                      </div>
                       <span class="req-owner">SA</span>
+                      <div class="req-actions">
+                        <button class="req-action" type="button" aria-label="Edit TR-005" title="Edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4l10-10-4-4L4 16z M14 6l4 4"/></svg></button>
+                        <button class="req-action danger" type="button" aria-label="Delete TR-005" title="Delete"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13"/></svg></button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1797,9 +3008,34 @@
                     <div class="story-body">
                       <div class="story-title">Block or report a member</div>
                       <div class="story-as"><b>As a</b> member, <b>I want to</b> block or report another member, <b>so that</b> I no longer see their listings and the team can review misconduct.</div>
+                      <div class="story-actions">
+                        <button class="btn btn-soft" type="button" aria-label="Edit user story US-06">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4l10-10-4-4L4 16z M14 6l4 4"/></svg>
+                          Edit story
+                        </button>
+                        <button class="btn btn-ghost" type="button" aria-label="Add a requirement to US-06" style="color: var(--navy-2);">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14 M5 12h14"/></svg>
+                          Add requirement
+                        </button>
+                        <div class="req-status-dd status-draft" role="group" aria-label="Story status">
+                          <button class="req-status-btn" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="Story status, currently draft">
+                            <span class="file-status draft"></span>
+                            <span>Story draft</span>
+                            <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                          </button>
+                          <ul class="status-menu" role="listbox" aria-label="Change story status">
+                            <li><button role="option" aria-selected="true" type="button" class="current"><span class="file-status draft"></span> Draft</button></li>
+                            <li><button role="option" aria-selected="false" type="button"><span class="file-status review"></span> In review</button></li>
+                            <li><button role="option" aria-selected="false" type="button"><span class="file-status approved"></span> Approved</button></li>
+                            <li><button role="option" aria-selected="false" type="button"><span class="file-status returned"></span> Cancelled</button></li>
+                          </ul>
+                        </div>
+                        <button class="btn btn-soft" type="button" aria-label="Delete user story US-06" style="color: var(--rose);">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13"/></svg>
+                        </button>
+                      </div>
                     </div>
                     <div class="story-meta">
-                      <span class="pill draft" style="padding:2px 8px; font-size:10.5px;"><span class="dot" style="background: var(--purple)"></span> Story draft</span>
                       <span class="story-count">3 reqs</span>
                     </div>
                   </div>
@@ -1809,24 +3045,69 @@
                       <span class="req-text">A blocked user must not appear in the blocker's search results, but can still exist in the system.</span>
                       <span class="req-type type-br">Business</span>
                       <span class="req-prio must">Must</span>
-                      <span class="req-status status-draft"><span class="file-status draft"></span> Draft</span>
+                      <div class="req-status-dd status-draft" role="group" aria-label="Status for BR-008">
+                        <button class="req-status-btn" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="BR-008 status, currently draft">
+                          <span class="file-status draft"></span><span>Draft</span>
+                          <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                        </button>
+                        <ul class="status-menu" role="listbox" aria-label="Change status">
+                          <li><button role="option" aria-selected="true" type="button" class="current"><span class="file-status draft"></span> Draft</button></li>
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status review"></span> In review</button></li>
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status approved"></span> Approved</button></li>
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status returned"></span> Cancelled</button></li>
+                        </ul>
+                      </div>
                       <span class="req-owner">BA</span>
+                      <div class="req-actions">
+                        <button class="req-action" type="button" aria-label="Edit BR-008" title="Edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4l10-10-4-4L4 16z M14 6l4 4"/></svg></button>
+                        <button class="req-action danger" type="button" aria-label="Delete BR-008" title="Delete"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13"/></svg></button>
+                      </div>
                     </div>
                     <div class="req">
                       <span class="req-id">BR-009</span>
                       <span class="req-text">Reports create a moderation queue item with the reporter, target, reason, and any evidence.</span>
                       <span class="req-type type-br">Business</span>
                       <span class="req-prio must">Must</span>
-                      <span class="req-status status-draft"><span class="file-status draft"></span> Draft</span>
+                      <div class="req-status-dd status-draft" role="group" aria-label="Status for BR-009">
+                        <button class="req-status-btn" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="BR-009 status, currently draft">
+                          <span class="file-status draft"></span><span>Draft</span>
+                          <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                        </button>
+                        <ul class="status-menu" role="listbox" aria-label="Change status">
+                          <li><button role="option" aria-selected="true" type="button" class="current"><span class="file-status draft"></span> Draft</button></li>
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status review"></span> In review</button></li>
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status approved"></span> Approved</button></li>
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status returned"></span> Cancelled</button></li>
+                        </ul>
+                      </div>
                       <span class="req-owner">BA</span>
+                      <div class="req-actions">
+                        <button class="req-action" type="button" aria-label="Edit BR-009" title="Edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4l10-10-4-4L4 16z M14 6l4 4"/></svg></button>
+                        <button class="req-action danger" type="button" aria-label="Delete BR-009" title="Delete"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13"/></svg></button>
+                      </div>
                     </div>
                     <div class="req">
                       <span class="req-id">TR-006</span>
                       <span class="req-text">Blocks apply at read time via the search index — never as a destructive delete.</span>
                       <span class="req-type type-tr">Technical</span>
                       <span class="req-prio must">Must</span>
-                      <span class="req-status status-draft"><span class="file-status draft"></span> Draft</span>
+                      <div class="req-status-dd status-draft" role="group" aria-label="Status for TR-006">
+                        <button class="req-status-btn" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="TR-006 status, currently draft">
+                          <span class="file-status draft"></span><span>Draft</span>
+                          <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                        </button>
+                        <ul class="status-menu" role="listbox" aria-label="Change status">
+                          <li><button role="option" aria-selected="true" type="button" class="current"><span class="file-status draft"></span> Draft</button></li>
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status review"></span> In review</button></li>
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status approved"></span> Approved</button></li>
+                          <li><button role="option" aria-selected="false" type="button"><span class="file-status returned"></span> Cancelled</button></li>
+                        </ul>
+                      </div>
                       <span class="req-owner">SA</span>
+                      <div class="req-actions">
+                        <button class="req-action" type="button" aria-label="Edit TR-006" title="Edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4l10-10-4-4L4 16z M14 6l4 4"/></svg></button>
+                        <button class="req-action danger" type="button" aria-label="Delete TR-006" title="Delete"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13"/></svg></button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1854,5 +3135,94 @@
   </section>
 
 </div>
+
+<script>
+  // v5.3 — make the mockup interactive: status dropdowns toggle, add forms collapse.
+  // The framework's real React component replaces this; the JS here is just for demoing the design.
+
+  (function () {
+    // Status dropdown: click toggle, click-outside to close, Esc to close.
+    document.querySelectorAll('.req-status-dd').forEach(function (dd) {
+      var btn = dd.querySelector('.req-status-btn');
+      if (!btn) return;
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var wasOpen = dd.classList.contains('open');
+        document.querySelectorAll('.req-status-dd.open').forEach(function (o) { o.classList.remove('open'); o.querySelector('.req-status-btn').setAttribute('aria-expanded', 'false'); });
+        if (!wasOpen) {
+          dd.classList.add('open');
+          btn.setAttribute('aria-expanded', 'true');
+        }
+      });
+      dd.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+          dd.classList.remove('open');
+          btn.setAttribute('aria-expanded', 'false');
+          btn.focus();
+        }
+      });
+    });
+    document.addEventListener('click', function () {
+      document.querySelectorAll('.req-status-dd.open').forEach(function (o) {
+        o.classList.remove('open');
+        var b = o.querySelector('.req-status-btn');
+        if (b) b.setAttribute('aria-expanded', 'false');
+      });
+    });
+
+    // v5.3 — Edit button on a row / story header opens the unified InlineForm (mode = edit)
+    // in place of the row. The form is pre-filled and Esc / Cancel collapses back to read.
+    document.querySelectorAll('.req-action[aria-label^="Edit "]').forEach(function (editBtn) {
+      editBtn.addEventListener('click', function () {
+        var row = editBtn.closest('.req');
+        if (!row) return;
+        row.classList.add('edit-row');
+        var ta = row.querySelector('.req-edit-input');
+        if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+      });
+    });
+    // Cancel button on the row's edit-mode flips it back.
+    document.querySelectorAll('.req-actions .btn-ghost').forEach(function (cancelBtn) {
+      cancelBtn.addEventListener('click', function () {
+        var row = cancelBtn.closest('.req');
+        if (row) row.classList.remove('edit-row');
+      });
+    });
+
+    // Edit story / Edit requirement forms (the full InlineForm) — Esc cancels.
+    document.querySelectorAll('.add-form[role="form"]').forEach(function (form) {
+      form.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+          // Visual only — production collapses the form back to its read row.
+          form.style.outline = '2px dashed var(--ink-3)';
+          setTimeout(function () { form.style.outline = ''; }, 600);
+        }
+      });
+    });
+
+    // Add bar (top) — single "Add user story" button scrolls to the expanded story form.
+    var addBar = document.querySelector('.req-add-bar');
+    if (addBar) {
+      addBar.querySelectorAll('button').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var target = document.querySelector('.add-form[aria-label="Add a new user story"]');
+          if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+      });
+    }
+
+    // Per-story "Add requirement" button (sits inside each story header) — scrolls to the
+    // requirement form scoped to that story. In the live build this would expand the form
+    // inside the story body; for the mockup we scroll to the nearest add-form below it.
+    document.querySelectorAll('.story-actions button[aria-label^="Add a requirement to "]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var story = b.closest('.story');
+        if (!story) return;
+        var form = story.querySelector('.add-form') || document.querySelector('.add-form');
+        if (form) form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+    });
+  })();
+</script>
 </body>
 </html>

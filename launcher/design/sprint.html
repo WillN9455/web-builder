@@ -1589,10 +1589,20 @@
   }
   .setup-h h3 { margin: 0; font-size: 16px; font-weight: 600; }
   .setup-h p { margin: 2px 0 0; font-size: 12px; color: var(--ink-2); }
-  .setup-row { display: grid; grid-template-columns: 140px 1fr; gap: 8px 12px; align-items: center; font-size: 13px; }
-  .setup-row label { color: var(--ink-2); font-size: 12px; font-weight: 500; }
+  /* Each field: label on its own line, input below — stacked layout
+     for comfortable vertical rhythm instead of an over-tight 2-col grid. */
+  .setup-row { display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+  .setup-row + .setup-row { margin-top: 18px; }
+  .setup-row label {
+    color: var(--ink-2);
+    font-size: 11.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
   .setup-row .input { width: 100%; }
   .setup-row .input:disabled { color: var(--ink-2); background: rgba(50,42,92,0.03); cursor: not-allowed; }
+  .setup-row .help { margin-top: 6px; }
   .setup-actions { display: flex; gap: 8px; align-items: center; }
   .setup-help { font-size: 12px; color: var(--ink-2); line-height: 1.5; }
   .setup-help b { color: var(--ink); font-weight: 600; }
@@ -1612,6 +1622,83 @@
   .jira-gate b { font-weight: 700; }
   .jira-gate .sub { display: block; color: var(--ink-2); font-size: 12px; margin-top: 4px; }
   .jira-gate .right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+
+  /* N5 · Settings cog + Edit-Jira panel — always reachable from the Sprint tab
+   * after Jira is connected so the user can change the project key, sync
+   * direction, auto-create rule, or rotate their API token. */
+  .icon-btn[aria-pressed="true"] {
+    background: var(--navy);
+    color: #fff;
+    border-color: var(--navy);
+  }
+  .icon-btn[aria-pressed="true"] .dot { display: none; }
+
+  /* Edit-Jira panel — appears in-line on the Sprint tab when ⚙ Settings is
+     clicked. Hides the board; shows the same setup form as screen 6b, with
+     Edit / Cancel / Save footer. */
+  #jira-config-panel { display: none; }
+  #jira-config-panel.open { display: flex; }
+
+  .config-card {
+    background: #fff;
+    border: 1px solid rgba(50,42,92,0.08);
+    border-radius: 14px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+  .config-card.readonly .setup-row .input { pointer-events: none; }
+  .config-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .config-head .ico {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: var(--mint);
+    color: var(--green);
+    display: grid; place-items: center;
+    flex: none;
+  }
+  .config-head .body h3 { margin: 0; font-size: 16px; font-weight: 600; }
+  .config-head .body p { margin: 2px 0 0; font-size: 12px; color: var(--ink-2); }
+  .config-head .close {
+    margin-left: auto;
+    width: 32px; height: 32px;
+    border-radius: 999px;
+    background: rgba(50,42,92,0.04);
+    color: var(--ink-2);
+    display: grid; place-items: center;
+  }
+  .config-head .close:hover { background: rgba(50,42,92,0.08); color: var(--ink); }
+  .config-foot {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-top: 4px;
+    border-top: 1px solid rgba(50,42,92,0.08);
+  }
+  .config-foot .left {
+    font-size: 12px;
+    color: var(--ink-2);
+  }
+  .config-foot .left b { color: var(--ink); font-weight: 600; }
+  .config-foot .right { margin-left: auto; display: flex; gap: 8px; }
+
+  /* Live status row in the config head — shows last-synced timestamp + a
+     status pill so the user knows the existing link is healthy before they
+     start editing. */
+  .config-status {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11.5px; color: var(--ink-2);
+    background: rgba(50,42,92,0.04);
+    padding: 4px 10px;
+    border-radius: 999px;
+    margin-left: 4px;
+  }
+  .config-status .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+  .config-status.stale .dot { background: var(--amber); }
 </style></head><body>
 <div class="doc">
 
@@ -1704,6 +1791,77 @@
             <div><b>Two-way Jira sync is on.</b> Tickets created here appear in the <code>TM</code> Jira project. Status changes in Jira update this board within 30s.</div>
           </div>
 
+          <!-- Edit-Jira panel (toggled open by the ⚙ Settings cog in the topbar).
+               Hidden by default; clicking ⚙ reveals this card below the banner
+               with the same form fields as screen 6b, pre-filled with current
+               values. Edit / Cancel / Save footer controls the workflow. -->
+          <div id="jira-config-panel" role="region" aria-labelledby="jira-cfg-title">
+            <div class="config-card readonly">
+              <div class="config-head">
+                <div class="ico">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <path d="M12 2v6 M12 22v-6 M2 12h6 M22 12h-6"/>
+                    <circle cx="12" cy="12" r="4"/>
+                  </svg>
+                </div>
+                <div class="body">
+                  <h3 id="jira-cfg-title">Jira connection <span class="config-status"><span class="dot"></span> Last synced 12s ago</span></h3>
+                  <p>Edit the project key, sync direction, auto-create rule, or rotate the API token. Changes sync within 30s.</p>
+                </div>
+                <button class="close" type="button" aria-label="Close Jira settings">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12 M18 6l-12 12"/></svg>
+                </button>
+              </div>
+
+              <div class="setup-row">
+                <label for="jk2">Project key</label>
+                <input id="jk2" class="input mono" value="TM" />
+                <span class="help">Short prefix used for all created tickets (e.g. <b>TM-12</b>).</span>
+              </div>
+              <div class="setup-row">
+                <label for="ju2">Base URL</label>
+                <input id="ju2" class="input" value="https://studio.atlassian.net" />
+                <span class="help">Your Atlassian Cloud or self-hosted Jira URL. Must include the protocol.</span>
+              </div>
+              <div class="setup-row">
+                <label for="ja2">Account email</label>
+                <input id="ja2" class="input" value="will@studio.com" />
+                <span class="help">The Atlassian account that owns the API token below.</span>
+              </div>
+              <div class="setup-row">
+                <label for="jt2">API token</label>
+                <input id="jt2" class="input" type="password" value="••••••••••••••••" />
+                <span class="help">Stored encrypted. Rotate at <b>id.atlassian.com/manage-profile/security/api-tokens</b>.</span>
+              </div>
+              <div class="setup-row">
+                <label for="js2">Sync direction</label>
+                <select id="js2" class="input">
+                  <option>Two-way — Launcher ↔ Jira (recommended)</option>
+                  <option>One-way — Launcher → Jira</option>
+                  <option>One-way — Jira → Launcher</option>
+                </select>
+                <span class="help">Two-way mirrors every status change in under 30s.</span>
+              </div>
+              <div class="setup-row">
+                <label for="jauto2">Auto-create</label>
+                <select id="jauto2" class="input">
+                  <option>Create Jira ticket when Requirements move to Sprint-ready</option>
+                  <option>Manual — I’ll create tickets from the board</option>
+                </select>
+                <span class="help">Pick manual if a human BA needs to triage each ticket first.</span>
+              </div>
+
+              <div class="config-foot">
+                <div class="left">Connected to <b>TM</b> · 12 tickets · last synced <b>12s ago</b></div>
+                <div class="right">
+                  <button class="btn btn-ghost" type="button">Disconnect</button>
+                  <button class="btn btn-soft" type="button">Cancel</button>
+                  <button class="btn btn-primary" type="button">Edit</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Kanban board -->
           <div class="card" style="padding: 22px 22px 26px;">
             <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 16px;">
@@ -1711,7 +1869,19 @@
                 <h3 style="margin:0;">Build board</h3>
                 <span class="stage-pt">Sprint 3 · 12 of 31 done</span>
               </div>
-              <div style="display:flex; gap: 6px;">
+              <div style="display:flex; gap: 6px; align-items:center;">
+                <!-- Board-level Settings cog: lives in the Build board card so it
+                     reads as "this board's settings", not project-wide settings. -->
+                <button class="icon-btn" type="button"
+                        aria-label="Board settings — edit Jira connection for this board"
+                        aria-pressed="false"
+                        aria-controls="jira-config-panel"
+                        title="Board settings — Jira connection">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h.1a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v.1a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>
+                  </svg>
+                </button>
                 <button class="btn btn-soft btn-pill" style="padding: 5px 10px;">Board</button>
                 <button class="btn btn-primary btn-pill" style="padding: 5px 10px;">Backlog</button>
               </div>
@@ -1865,7 +2035,7 @@
             <a href="#" style="font-size:13px; color: var(--ink-2);">← Projects</a>
             <div class="search" style="opacity:.6; pointer-events:none;"><input placeholder="Search this project…" /></div>
             <button class="btn btn-soft btn-pill">Help</button>
-            <button class="btn btn-primary btn-pill">Connect Jira →</button>
+            <button class="btn btn-primary btn-pill" onclick="document.getElementById('connect-jira-form').scrollIntoView({behavior:'smooth', block:'start'})">Connect Jira →</button>
           </div>
 
           <!-- Project header -->
@@ -1908,7 +2078,7 @@
           </div>
 
           <!-- Connect Jira setup card -->
-          <div class="card" style="padding: 24px;">
+          <div id="connect-jira-form" class="card" style="padding: 24px;">
             <div class="setup-card" style="max-width: none;">
               <div class="setup-h">
                 <div class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2v6 M12 22v-6 M2 12h6 M22 12h-6"/><circle cx="12" cy="12" r="4"/></svg></div>
@@ -1916,23 +2086,40 @@
                   <h3>Connect Jira</h3>
                   <p>Sprint needs a Jira link to create and sync stories. Auth is scoped to a single API token — your Jira password is never stored.</p>
                 </div>
+                <!-- Board-level Settings cog: lives in the setup card header so it
+                     reads as "this board's settings", not project-wide settings. -->
+                <button class="icon-btn" type="button"
+                        aria-label="Board settings — connect Jira for this board"
+                        aria-pressed="true"
+                        aria-controls="connect-jira-form"
+                        title="Board settings — Jira connection"
+                        style="margin-left: auto;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h.1a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v.1a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>
+                  </svg>
+                </button>
               </div>
 
               <div class="setup-row">
                 <label for="jk">Project key</label>
                 <input id="jk" class="input mono" value="TEN" />
+                <span class="help">Short prefix used for all created tickets (e.g. <b>TEN-12</b>).</span>
               </div>
               <div class="setup-row">
                 <label for="ju">Base URL</label>
                 <input id="ju" class="input" value="https://studio.atlassian.net" />
+                <span class="help">Your Atlassian Cloud or self-hosted Jira URL. Must include the protocol.</span>
               </div>
               <div class="setup-row">
                 <label for="ja">Account email</label>
                 <input id="ja" class="input" value="will@studio.com" />
+                <span class="help">The Atlassian account that owns the API token below.</span>
               </div>
               <div class="setup-row">
                 <label for="jt">API token</label>
                 <input id="jt" class="input" type="password" value="••••••••••••••••" />
+                <span class="help">Create one at <b>id.atlassian.com/manage-profile/security/api-tokens</b>. Your Jira password is never stored.</span>
               </div>
               <div class="setup-row">
                 <label for="js">Sync direction</label>
@@ -1941,6 +2128,7 @@
                   <option>One-way — Launcher → Jira</option>
                   <option>One-way — Jira → Launcher</option>
                 </select>
+                <span class="help">Two-way mirrors every status change in under 30s.</span>
               </div>
               <div class="setup-row">
                 <label for="jauto">Auto-create</label>
@@ -1948,6 +2136,7 @@
                   <option>Create Jira ticket when Requirements move to Sprint-ready</option>
                   <option>Manual — I’ll create tickets from the board</option>
                 </select>
+                <span class="help">Pick manual if a human BA needs to triage each ticket first.</span>
               </div>
 
               <div class="setup-divider"></div>

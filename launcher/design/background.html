@@ -1615,22 +1615,23 @@
   <!-- Document header -->
   <header class="doc-header">
     <div>
-      <div class="doc-title">Idea Hub — Project Background (v5.2)</div>
+      <div class="doc-title">Idea Hub — Project Background (v5.3)</div>
       <div class="doc-sub">Long-form source documents for a Requirements-stage project — <b>idea</b>, <b>personas</b>, <b>user journeys</b>, <b>PRD</b>, <b>glossary</b>, <b>business rules</b>, and <b>risks</b>. Every artifact moves through its own <code style="font-family: var(--font-mono);">Draft → In Review (SA) → Returned / Approved</code> workflow — no bulk handoff. Read-only for SA, devs, designers, and QA. For the curated, signed-off list of business &amp; technical requirements grouped by user story, see <a href="requirements.html"><b>requirements.html</b></a>.</div>
     </div>
-    <div class="doc-meta">v5.2 · launcher/design/background.html<br/>3 screens (12–14)</div>
+    <div class="doc-meta">v5.3 · launcher/design/background.html<br/>4 screens (12–14 + State D)</div>
   </header>
 
   <nav class="toc">
-    <a href="#s12"><b>12</b> Project Background — view (file tree + markdown reader)</a>
-    <a href="#s13"><b>13</b> Project Background — edit (in-place textarea)</a>
+    <a href="#s12"><b>12</b> Project Background — draft (file tree + editor)</a>
+    <a href="#s13"><b>13</b> Project Background — unsaved edits (dirty file)</a>
     <a href="#s14"><b>14</b> Project Background — file in SA review (comment thread)</a>
+    <a href="#sD"><b>D</b> Project context ready (confirmation gate)</a>
   </nav>
 
   <section class="screen" id="s12">
     <div class="screen-label">
       <span class="num">12</span>
-      <span class="name">BA Workspace — view (Requirements stage, draft)</span>
+      <span class="name">BA Workspace — draft (Requirements stage)</span>
       <span class="route">/projects/:id · Project Background (focus tab for Requirements-stage projects)</span>
     </div>
     <div class="screen-body">
@@ -1681,11 +1682,13 @@
             </div>
           </div>
 
-          <!-- Optional: open questions banner — deep-links into the intake chat's Outstanding questions section, filtered to Blocker-for: PRD-approval. On-disk file stays prd.md. -->
+          <!-- Optional: open questions banner — links to the Overview screen, which surfaces the
+               outstanding questions (Blocker-for: PRD-approval) in its Outstanding-questions panel.
+               On-disk file stays open-questions.md; Overview is the single place to read/answer them. -->
           <div class="oqa">
             <svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3 M12 17h.01"/></svg>
-            <div class="body"><b>3 open questions</b> need your input before SA review — all <code style="font-family: var(--font-mono);">Blocker-for: PRD-approval</code>. See <code style="font-family: var(--font-mono);">§11 Open Questions</code> in the intake chat.</div>
-            <a href="#intake-chat?section=outstanding&filter=Blocker-for%3A%20PRD-approval">Open in intake chat →</a>
+            <div class="body"><b>3 open questions</b> need your input before SA review — all <code style="font-family: var(--font-mono);">Blocker-for: PRD-approval</code>. Shown on the <b>Overview</b> screen under Outstanding questions.</div>
+            <a href="mockups.html#s4">View questions →</a>
           </div>
 
           <!-- Two-column workspace -->
@@ -1782,7 +1785,7 @@
               </div>
             </div>
 
-            <!-- Document viewer -->
+            <!-- Document editor (no View/Edit toggle — the doc is always editable; Save is a separate action) -->
             <div class="ba-doc">
               <div class="ba-doc-head">
                 <div>
@@ -1791,52 +1794,46 @@
                 </div>
                 <div class="meta">
                   <span>Last edited 2h ago by BA Agent</span>
-                  <div class="ba-tabs">
-                    <button class="active">View</button>
-                    <button>Edit</button>
-                  </div>
                 </div>
               </div>
 
-              <div class="ba-doc-body view">
-                <h1>Neighborhood Library — PRD</h1>
-                <p><i>Drafted by the BA Agent from the intake interview. Sections regenerate as open questions resolve.</i></p>
+              <div class="ba-doc-body edit">
+                <textarea class="ba-edit" spellcheck="false"># Neighborhood Library — PRD
 
-                <h2>1 · Problem statement</h2>
-                <p>Two-thirds of the surveyed neighborhood owns tools, books, or board games used less than once a month. There is no lightweight way to lend these items between neighbors — existing platforms (Buy Nothing Project groups, library apps) require either Facebook accounts or a full library-membership flow.</p>
+_Drafted by the BA Agent from the intake interview. Sections regenerate as open questions resolve._
 
-                <h2>2 · Users &amp; scale</h2>
-                <ul>
-                  <li><b>Primary:</b> a household who owns 3+ lendable items and wants to share them within ~1 mile.</li>
-                  <li><b>Secondary:</b> a borrower looking for a specific item within walking distance.</li>
-                  <li>Launch target: <b>~120 households</b> in a single neighborhood; <b>5K MAU</b> by month 6.</li>
-                </ul>
+## 1 · Problem statement
 
-                <h2>3 · MVP scope</h2>
-                <ol>
-                  <li>List an item with title, photo, condition, pickup window.</li>
-                  <li>Browse items within a radius (default 1 mile).</li>
-                  <li>Request a loan; lender approves / declines.</li>
-                  <li>Mutual ratings after return.</li>
-                </ol>
+Two-thirds of the surveyed neighborhood owns tools, books, or board games used less than once a month. There is no lightweight way to lend these items between neighbors — existing platforms (Buy Nothing Project groups, library apps) require either Facebook accounts or a full library-membership flow.
 
-                <h2>§11 · Open questions</h2>
-                <blockquote>
-                  <b>OQ-014:</b> Confirm pricing tier — free for one neighborhood, paid for cross-neighborhood expansion? <i>(Blocker-for: PRD-approval)</i><br/>
-                  <b>OQ-021:</b> Where do uploaded photos get stored? S3 / Cloudinary / local? <i>(Blocker-for: tech)</i><br/>
-                  <b>OQ-027:</b> Does the app need to work offline for borrowers with patchy signal? <i>(Blocker-for: PRD-approval)</i>
-                </blockquote>
+## 2 · Users &amp; scale
 
-                <h2>Appendix · review status</h2>
-                <table>
-                  <thead><tr><th>File</th><th>SA status</th></tr></thead>
-                  <tbody>
-                    <tr><td>prd.md</td><td><span class="pill draft"><span class="dot"></span> Draft</span></td></tr>
-                    <tr><td>user-journeys.md</td><td><span class="pill review"><span class="dot"></span> In Review</span></td></tr>
-                    <tr><td>open-questions.md</td><td><span class="pill blocked"><span class="dot"></span> Returned to BA</span></td></tr>
-                    <tr><td>business-rules.md</td><td><span class="pill done"><span class="dot"></span> Approved</span></td></tr>
-                  </tbody>
-                </table>
+- **Primary:** a household who owns 3+ lendable items and wants to share them within ~1 mile.
+- **Secondary:** a borrower looking for a specific item within walking distance.
+- Launch target: **~120 households** in a single neighborhood; **5K MAU** by month 6.
+
+## 3 · MVP scope
+
+1. List an item with title, photo, condition, pickup window.
+2. Browse items within a radius (default 1 mile).
+3. Request a loan; lender approves / declines.
+4. Mutual ratings after return.
+
+## §11 · Open questions
+
+> **OQ-014:** Confirm pricing tier — free for one neighborhood, paid for cross-neighborhood expansion? _(Blocker-for: PRD-approval)_
+> **OQ-021:** Where do uploaded photos get stored? S3 / Cloudinary / local? _(Blocker-for: tech)_
+> **OQ-027:** Does the app need to work offline for borrowers with patchy signal? _(Blocker-for: PRD-approval)_
+
+## Appendix · review status
+
+| File | SA status |
+|---|---|
+| prd.md | Draft |
+| user-journeys.md | In Review |
+| open-questions.md | Returned to BA |
+| business-rules.md | Approved |
+</textarea>
               </div>
 
               <div class="ba-doc-foot">
@@ -1845,7 +1842,7 @@
                   &nbsp;Not yet sent for SA review — sending only this file.
                 </div>
                 <div class="right">
-                  <button class="btn btn-ghost btn-pill">Edit</button>
+                  <button class="btn btn-soft btn-pill">Save changes</button>
                   <button class="btn btn-primary">Send for review →</button>
                 </div>
               </div>
@@ -1861,8 +1858,8 @@
   <section class="screen" id="s13">
     <div class="screen-label">
       <span class="num">13</span>
-      <span class="name">BA Workspace — edit (one file dirty)</span>
-      <span class="route">/projects/:id · Project Background · Edit · data-model.md</span>
+      <span class="name">BA Workspace — unsaved edits (one file dirty)</span>
+      <span class="route">/projects/:id · Project Background · data-model.md · unsaved</span>
     </div>
     <div class="screen-body">
       <div class="app">
@@ -1985,7 +1982,7 @@
               </div>
             </div>
 
-            <!-- Editor pane -->
+            <!-- Editor pane (no View/Edit toggle — always editable; Save is separate) -->
             <div class="ba-doc">
               <div class="ba-doc-head">
                 <div>
@@ -1994,10 +1991,6 @@
                 </div>
                 <div class="meta">
                   <span style="color: var(--coral); font-weight: 600;">● Unsaved changes</span>
-                  <div class="ba-tabs">
-                    <button>View</button>
-                    <button class="active">Edit</button>
-                  </div>
                 </div>
               </div>
 
@@ -2202,7 +2195,7 @@ available  ──request──▶ pending   ──approve──▶ on_loan
               </div>
             </div>
 
-            <!-- Doc with inline comment thread -->
+            <!-- Doc with inline comment thread (SA-review state — read-only; no View/Edit toggle) -->
             <div class="ba-doc">
               <div class="ba-doc-head">
                 <div>
@@ -2211,10 +2204,6 @@ available  ──request──▶ pending   ──approve──▶ on_loan
                 </div>
                 <div class="meta">
                   <span>2 comments</span>
-                  <div class="ba-tabs">
-                    <button class="active">View</button>
-                    <button>Edit</button>
-                  </div>
                 </div>
               </div>
 
@@ -2312,119 +2301,100 @@ available  ──request──▶ pending   ──approve──▶ on_loan
       <span class="route">/projects/:id/background · State D</span>
     </div>
     <div class="screen-body">
-      <div class="app full">
-        <div class="project-shell">
-
-          <!-- Per-project topbar (canonical: ← Projects + Search only) -->
-          <header class="topbar">
-            <a class="crumb" href="#">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg>
-              Projects
-            </a>
-            <div class="search">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-              <input placeholder="Search this project…" />
-            </div>
-          </header>
-
-          <div class="shell">
-
-            <!-- Per-project sidebar — Project Background is the focus tab (pre-confirmation) -->
-            <aside class="sidebar" aria-label="Project tabs">
-              <div class="sb-project">
-                <div class="sb-ico"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12l9-9 9 9 M5 10v10h14V10"/></svg></div>
-                <div class="sb-meta">
-                  <div class="sb-title">Tenant Maintenance</div>
-                  <div class="sb-sub">17 of 17 approved · awaiting confirm</div>
-                </div>
-              </div>
-              <nav class="sb-nav">
-                <a class="side-link" href="#"><span class="dot" style="background: var(--green);"></span><span class="lbl">Overview</span></a>
-                <a class="side-link active" href="#"><span class="dot" style="background: var(--purple);"></span><span class="lbl">Project Background</span></a>
-                <a class="side-link" href="#"><span class="dot"></span><span class="lbl">Requirements</span></a>
-                <a class="side-link locked" href="#" aria-disabled="true" tabindex="0"><span class="dot"></span><span class="lbl">Sprint</span></a>
-                <a class="side-link locked" href="#" aria-disabled="true" tabindex="0"><span class="dot"></span><span class="lbl">Design</span></a>
-                <a class="side-link locked" href="#" aria-disabled="true" tabindex="0"><span class="dot"></span><span class="lbl">Build</span></a>
-                <a class="side-link" href="#"><span class="dot"></span><span class="lbl">Agents</span></a>
-                <a class="side-link locked" href="#" aria-disabled="true" tabindex="0"><span class="dot"></span><span class="lbl">QA</span></a>
-                <a class="side-link" href="#"><span class="dot"></span><span class="lbl">Activity</span></a>
-                <a class="side-link" href="#"><span class="dot"></span><span class="lbl">Artifacts</span></a>
-              </nav>
-            </aside>
-
-            <main class="main">
-              <div class="main-head">
-                <div>
-                  <div class="crumbs">Project Background</div>
-                  <h2 class="title">Project context ready</h2>
-                  <div class="sub">Confirm to finalize Requirements and unlock Sprint, Design, Build, and QA.</div>
-                </div>
-              </div>
-
-              <!-- State D card -->
-              <div class="state-d" role="region" aria-labelledby="sD-h">
-
-                <!-- Mint checkmark header -->
-                <div class="state-d-head">
-                  <div class="state-d-check">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg>
-                  </div>
-                  <div>
-                    <h3 id="sD-h">Project context ready</h3>
-                    <p>All 17 background documents are approved. This is the one-shot that locks context into Requirements and opens the four downstream tabs.</p>
-                  </div>
-                </div>
-
-                <!-- 5-band Approved summary (17/17) -->
-                <div class="state-d-summary" aria-label="Approved count per band">
-                  <div class="state-d-band"><div class="n">3 / 3</div><div class="lbl">Core PRD</div></div>
-                  <div class="state-d-band"><div class="n">5 / 5</div><div class="lbl">Scope &amp; rules</div></div>
-                  <div class="state-d-band"><div class="n">4 / 4</div><div class="lbl">Data &amp; access</div></div>
-                  <div class="state-d-band"><div class="n">4 / 4</div><div class="lbl">Planning &amp; risk</div></div>
-                  <div class="state-d-band"><div class="n">1 / 1</div><div class="lbl">SA handoff</div></div>
-                </div>
-
-                <!-- Lavender explainer -->
-                <div class="state-d-explainer">
-                  Confirming writes the locked context into Requirements and unlocks Sprint, Design, Build, and QA in one shot.
-                  The Design, Build, and QA agents read these docs as the brief for every story. Once confirmed you can still
-                  revoke individual files, but the tabs stay open (warn-only) — we don't re-lock.
-                </div>
-
-                <!-- Compact 17-artifact Approved list -->
-                <div class="state-d-list" aria-label="17 approved artifacts">
-                  <div class="state-d-list-row"><div><div>Main PRD</div><div class="path">PRD/prd.md</div></div><div class="ok">Approved ✓</div></div>
-                  <div class="state-d-list-row"><div><div>Personas</div><div class="path">PRD/personas.md</div></div><div class="ok">Approved ✓</div></div>
-                  <div class="state-d-list-row"><div><div>User journeys</div><div class="path">PRD/user-journeys.md</div></div><div class="ok">Approved ✓</div></div>
-                  <div class="state-d-list-row"><div><div>Glossary</div><div class="path">PRD/glossary.md</div></div><div class="ok">Approved ✓</div></div>
-                  <div class="state-d-list-row"><div><div>Stakeholder map</div><div class="path">PRD/stakeholder-map.md</div></div><div class="ok">Approved ✓</div></div>
-                  <div class="state-d-list-row"><div><div>Business rules</div><div class="path">PRD/business-rules.md</div></div><div class="ok">Approved ✓</div></div>
-                  <div class="state-d-list-row"><div><div>Assumptions</div><div class="path">PRD/assumptions.md</div></div><div class="ok">Approved ✓</div></div>
-                  <div class="state-d-list-row"><div><div>Open questions log</div><div class="path">PRD/open-questions.md</div></div><div class="ok">Approved ✓</div></div>
-                  <div class="state-d-list-row"><div><div>Data model</div><div class="path">PRD/data-model.md</div></div><div class="ok">Approved ✓</div></div>
-                  <div class="state-d-list-row"><div><div>Data flow</div><div class="path">PRD/data-flow.md</div></div><div class="ok">Approved ✓</div></div>
-                  <div class="state-d-list-row"><div><div>RBAC matrix</div><div class="path">PRD/rbac-matrix.md</div></div><div class="ok">Approved ✓</div></div>
-                  <div class="state-d-list-row"><div><div>NFR catalog</div><div class="path">PRD/nfr-catalog.md</div></div><div class="ok">Approved ✓</div></div>
-                  <div class="state-d-list-row"><div><div>Phasing plan</div><div class="path">PRD/phasing-plan.md</div></div><div class="ok">Approved ✓</div></div>
-                  <div class="state-d-list-row"><div><div>Traffic profile</div><div class="path">PRD/traffic-profile.md</div></div><div class="ok">Approved ✓</div></div>
-                  <div class="state-d-list-row"><div><div>Cost model</div><div class="path">PRD/cost-model.md</div></div><div class="ok">Approved ✓</div></div>
-                  <div class="state-d-list-row"><div><div>Risks</div><div class="path">PRD/risks.md</div></div><div class="ok">Approved ✓</div></div>
-                  <div class="state-d-list-row"><div><div>Tech decision brief</div><div class="path">PRD/tech-decision-brief.md</div></div><div class="ok">Approved ✓</div></div>
-                </div>
-
-                <!-- Actions + footnote -->
-                <div class="state-d-actions">
-                  <button class="btn btn-primary">Confirm project context →</button>
-                  <button class="btn btn-ghost">← Back to artifacts</button>
-                  <span class="state-d-foot">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8v5 M12 16h.01"/></svg>
-                    One-shot — only runs when 17/17 are Approved.
-                  </span>
-                </div>
-              </div>
-            </main>
+      <div class="app">
+        <aside class="side">
+          <div class="brand"><div class="brand-mark">IH</div><div class="brand-name">Idea Hub</div></div>
+          <div>
+            <div class="menu-label">Menu</div>
+            <nav class="nav">
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12l9-9 9 9 M5 10v10h14V10"/></svg> Overview</a>
+              <a href="#" class="active"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h11l3 3v13H5z M16 4v3h3 M8 11h8 M8 14h8 M8 17h5"/></svg> Project Background <span class="count">17</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3h7v7 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> Requirements <span class="count">15</span></a>
+              <a href="#" aria-disabled="true" title="Confirm project context first"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Sprint <span class="count">12</span></a>
+              <a href="#" aria-disabled="true" title="Confirm project context first"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z M4 9h16 M9 4v16"/></svg> Design</a>
+              <a href="#" aria-disabled="true" title="Confirm project context first"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Build <span class="count">12</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="9" r="3"/><path d="M3 19c0-3 2.7-5 6-5s6 2 6 5 M14 19c0-3 2.7-5 6-5"/></svg> Agents</a>
+              <a href="#" aria-disabled="true" title="Confirm project context first"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 12l2 2 4-4 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg> QA</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> Activity</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 8H3 M21 16H3 M5 4h14v16H5z"/></svg> Artifacts</a>
+            </nav>
           </div>
-        </div>
+          <div class="side-foot">
+            <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 3h6v6 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> ← All projects</a>
+          </div>
+        </aside>
+        <main class="main">
+          <div class="topbar">
+            <a href="#" style="font-size:13px; color: var(--ink-2);">← Projects</a>
+            <h1>Tenant Maintenance</h1>
+            <div style="margin-left: auto; display:flex; align-items:center; gap: 10px;">
+              <span class="pill inprog"><span class="dot"></span> Requirements</span>
+            </div>
+          </div>
+
+          <!-- State D card -->
+          <div class="state-d" role="region" aria-labelledby="sD-h">
+
+            <!-- Mint checkmark header -->
+            <div class="state-d-head">
+              <div class="state-d-check">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg>
+              </div>
+              <div>
+                <h3 id="sD-h">Project context ready</h3>
+                <p>All 17 background documents are approved. This is the one-shot that locks context into Requirements and opens the four downstream tabs.</p>
+              </div>
+            </div>
+
+            <!-- 5-band Approved summary (17/17) -->
+            <div class="state-d-summary" aria-label="Approved count per band">
+              <div class="state-d-band"><div class="n">3 / 3</div><div class="lbl">Core PRD</div></div>
+              <div class="state-d-band"><div class="n">5 / 5</div><div class="lbl">Scope &amp; rules</div></div>
+              <div class="state-d-band"><div class="n">4 / 4</div><div class="lbl">Data &amp; access</div></div>
+              <div class="state-d-band"><div class="n">4 / 4</div><div class="lbl">Planning &amp; risk</div></div>
+              <div class="state-d-band"><div class="n">1 / 1</div><div class="lbl">SA handoff</div></div>
+            </div>
+
+            <!-- Lavender explainer -->
+            <div class="state-d-explainer">
+              Confirming writes the locked context into Requirements and unlocks Sprint, Design, Build, and QA in one shot.
+              The Design, Build, and QA agents read these docs as the brief for every story. Once confirmed you can still
+              revoke individual files, but the tabs stay open (warn-only) — we don't re-lock.
+            </div>
+
+            <!-- Compact 17-artifact Approved list -->
+            <div class="state-d-list" aria-label="17 approved artifacts">
+              <div class="state-d-list-row"><div><div>Main PRD</div><div class="path">PRD/prd.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>Personas</div><div class="path">PRD/personas.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>User journeys</div><div class="path">PRD/user-journeys.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>Glossary</div><div class="path">PRD/glossary.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>Stakeholder map</div><div class="path">PRD/stakeholder-map.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>Business rules</div><div class="path">PRD/business-rules.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>Assumptions</div><div class="path">PRD/assumptions.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>Open questions log</div><div class="path">PRD/open-questions.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>Data model</div><div class="path">PRD/data-model.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>Data flow</div><div class="path">PRD/data-flow.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>RBAC matrix</div><div class="path">PRD/rbac-matrix.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>NFR catalog</div><div class="path">PRD/nfr-catalog.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>Phasing plan</div><div class="path">PRD/phasing-plan.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>Traffic profile</div><div class="path">PRD/traffic-profile.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>Cost model</div><div class="path">PRD/cost-model.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>Risks</div><div class="path">PRD/risks.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>Tech decision brief</div><div class="path">PRD/tech-decision-brief.md</div></div><div class="ok">Approved ✓</div></div>
+            </div>
+
+            <!-- Actions + footnote -->
+            <div class="state-d-actions">
+              <button class="btn btn-primary">Confirm project context →</button>
+              <button class="btn btn-ghost">← Back to artifacts</button>
+              <span class="state-d-foot">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8v5 M12 16h.01"/></svg>
+                One-shot — only runs when 17/17 are Approved.
+              </span>
+            </div>
+          </div>
+
+        </main>
       </div>
     </div>
   </section>

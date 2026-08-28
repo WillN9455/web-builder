@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Idea Hub — Build tab (v5.2)</title>
+<title>Idea Hub — Build tab (v5.3)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-  /* ─── Design tokens (mirror mockups.html / design-tab.html) ─────────── */
+  /* ─── Design tokens (mirror design-tab.html / sprint.html) ─────────── */
   :root {
     --ground-a: #d9d5ec;
     --ground-b: #c3cde8;
@@ -120,6 +120,7 @@
   .btn-soft { background: rgba(255,255,255,0.6); color: var(--ink); border: 1px solid rgba(50,42,92,0.08); }
   .btn-soft:hover { background: rgba(255,255,255,0.85); }
   .btn-pill { padding: 6px 12px; font-size: 12px; }
+  .btn[disabled] { opacity: 0.5; cursor: not-allowed; }
 
   .pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 500; background: var(--peach); color: var(--ink); }
   .pill .dot { width: 6px; height: 6px; border-radius: 50%; }
@@ -157,10 +158,11 @@
   .step.active .num { background: var(--navy); color: #fff; box-shadow: 0 0 0 4px rgba(50,42,92,0.12); }
   .step.active .lbl { color: var(--ink); font-weight: 600; }
 
-  /* ─── Tab bar (Status / Rules switch — same kit) ──────────────────────── */
+  /* ─── Status / Rules kit-tabs (the two-halves pattern) ──────────────── */
   .kit-tabs { display: inline-flex; background: var(--peach); border-radius: 999px; padding: 4px; gap: 2px; }
   .kit-tabs button { padding: 6px 18px; font-size: 12px; font-weight: 600; color: var(--ink-2); border-radius: 999px; background: transparent; }
   .kit-tabs button.on { background: #fff; color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+  .kit-tabs button:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
 
   .tab-bar { display: flex; align-items: center; gap: 14px; padding: 16px 22px 0; }
   .tab-bar .writeback { margin-left: auto; font-size: 11.5px; color: var(--ink-2); font-family: var(--font-mono); }
@@ -175,76 +177,38 @@
   .bd-stat .sub.warn { color: var(--rose); }
   .bd-stat .sub.ok { color: var(--green); }
 
-  /* Per-story build list */
+  /* Per-story build list (Status list — flat row, no timeline) */
   .stories-head { display: flex; align-items: center; gap: 10px; padding: 6px 22px 12px; }
   .stories-head h3 { margin: 0; font-size: 14px; font-weight: 700; }
   .stories-head .filter { margin-left: auto; display: flex; gap: 4px; }
   .stories-head .filter button { padding: 4px 10px; font-size: 11.5px; border-radius: 999px; background: transparent; color: var(--ink-2); }
   .stories-head .filter button.on { background: rgba(50,42,92,0.08); color: var(--ink); }
 
-  .story-row { display: grid; grid-template-columns: 110px 1fr 320px 130px; gap: 14px; align-items: center; padding: 12px 22px; border-top: 1px solid rgba(50,42,92,0.06); }
+  .story-row {
+    display: grid; grid-template-columns: 150px 1fr 130px;
+    gap: 14px; align-items: center;
+    padding: 12px 22px;
+    border-top: 1px solid rgba(50,42,92,0.06);
+  }
   .story-row.selected { background: rgba(155,127,222,0.06); }
-  .story-row .id { font-family: var(--font-mono); font-size: 12px; color: var(--ink-2); }
+  .story-row .id { font-family: var(--font-mono); font-size: 12px; color: var(--ink-2); margin-bottom: 4px; }
   .story-row .title { font-size: 13.5px; font-weight: 500; }
   .story-row .title .sub { display: block; color: var(--ink-2); font-size: 11.5px; font-weight: 400; margin-top: 2px; }
 
-  /* 5-state build stepper (Picked up → Building → Self-review → Ready for review → Ready for QA) */
-  .bd-stepper { display: flex; align-items: center; gap: 0; }
-  .bd-stepper .node { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--ink-2); white-space: nowrap; }
-  .bd-stepper .node .dot { width: 14px; height: 14px; border-radius: 50%; background: rgba(50,42,92,0.08); display: grid; place-items: center; font-size: 9px; font-weight: 700; color: var(--ink-2); }
-  .bd-stepper .node.done .dot { background: var(--green); color: #fff; }
-  .bd-stepper .node.active .dot { background: var(--navy); color: #fff; box-shadow: 0 0 0 3px rgba(50,42,92,0.12); }
-  .bd-stepper .node.done { color: var(--ink); }
-  .bd-stepper .node.active { color: var(--ink); font-weight: 600; }
-  .bd-stepper .bar { flex: 1; height: 2px; background: rgba(50,42,92,0.08); margin: 0 4px; min-width: 12px; }
-  .bd-stepper .bar.done { background: var(--green); }
-  .bd-stepper .bar.active { background: linear-gradient(90deg, var(--green) 50%, rgba(50,42,92,0.08) 50%); }
+  /* Row open arrow (drill-down to Story detail) */
+  .row-open {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 5px 10px; border-radius: 999px;
+    font-size: 11.5px; font-weight: 600;
+    color: var(--ink); background: rgba(50,42,92,0.04);
+    border: 1px solid rgba(50,42,92,0.08);
+    justify-self: end;
+    transition: background 0.12s ease;
+  }
+  .row-open:hover { background: rgba(50,42,92,0.08); }
+  .row-open svg { width: 12px; height: 12px; }
 
-  .story-row .assign { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-2); }
-  .story-row .assign .av-sm { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 10px; font-weight: 700; }
-  .av-sm.a-c1 { background: var(--sky);    color: var(--ink); }
-  .av-sm.a-c2 { background: var(--sea);    color: var(--ink); }
-  .av-sm.a-c3 { background: var(--butter); color: var(--ink); }
-  .av-sm.a-rev { background: var(--lavender); color: var(--ink); }
-
-  /* ─── Selected story detail: architecture (read-only) + code-review thread ─ */
-  .story-detail { background: rgba(50,42,92,0.02); border-top: 1px solid rgba(50,42,92,0.06); padding: 18px 22px 22px; display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
-
-  /* Architecture panel (read-only — sitemap decision) */
-  .arch { display: flex; flex-direction: column; gap: 12px; }
-  .arch-h { display: flex; align-items: center; gap: 10px; }
-  .arch-h h4 { margin: 0; font-size: 12.5px; font-weight: 700; }
-  .arch-h .ro { margin-left: auto; font-size: 10.5px; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.06em; display: inline-flex; align-items: center; gap: 4px; }
-  .arch-card { background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: 12px; padding: 12px 14px; }
-  .arch-row { display: grid; grid-template-columns: 60px 1fr; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid rgba(50,42,92,0.05); }
-  .arch-row:first-child { border-top: 0; }
-  .arch-row .k { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-2); }
-  .arch-row .v { font-size: 12.5px; color: var(--ink); }
-  .arch-row .v code { font-family: var(--font-mono); font-size: 11.5px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px; margin-right: 4px; }
-  .arch-row .v .lock { color: var(--ink-2); font-size: 10.5px; margin-left: 6px; display: inline-flex; align-items: center; gap: 3px; }
-
-  /* Per-story code-review thread (Code Agent + Reviewer) */
-  .thread { display: flex; flex-direction: column; gap: 10px; }
-  .thread .thread-head { display: flex; align-items: center; gap: 8px; font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-2); }
-  .thread .thread-head .who { margin-left: auto; font-size: 11px; color: var(--ink-2); font-weight: 500; text-transform: none; letter-spacing: 0; }
-  .comment { background: #fff; border: 1px solid rgba(50,42,92,0.06); border-left: 3px solid var(--sky); border-radius: 10px; padding: 10px 12px; }
-  .comment.c1 { border-left-color: var(--sky); }
-  .comment.c2 { border-left-color: var(--sea); }
-  .comment.c3 { border-left-color: var(--butter); }
-  .comment.rev { border-left-color: var(--lavender); }
-  .comment .body { font-size: 12.5px; line-height: 1.5; }
-  .comment .body .who { font-size: 11.5px; font-weight: 600; color: var(--ink); }
-  .comment .body .who span { color: var(--ink-2); font-weight: 400; margin-left: 6px; }
-  .comment .body p { margin: 4px 0 0; color: var(--ink); }
-  .comment .meta { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 11px; color: var(--ink-2); }
-  .comment .meta code { font-family: var(--font-mono); font-size: 10.5px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px; }
-  .comment .meta .pass { color: var(--green); font-weight: 600; }
-  .comment .meta .fail { color: var(--rose); font-weight: 600; }
-  .compose { display: flex; gap: 10px; align-items: end; background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: 10px; padding: 8px 10px; }
-  .compose textarea { flex: 1; border: 0; outline: 0; resize: none; font: inherit; font-size: 12.5px; color: var(--ink); background: transparent; min-height: 36px; }
-  .compose .who { font-size: 11px; color: var(--ink-2); }
-
-  /* ─── Rework queue mini-card (failed QA / review) ────────────────────── */
+  /* Rework queue mini-card (failed QA / review) */
   .rework { padding: 0 22px 22px; }
   .rework-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
   .rework-head h3 { margin: 0; font-size: 14px; font-weight: 700; }
@@ -276,6 +240,258 @@
   .rules-preview { margin: 0 22px 22px; background: rgba(50,42,92,0.02); border: 1px dashed rgba(50,42,92,0.15); border-radius: 12px; padding: 16px 18px; display: flex; align-items: center; gap: 14px; font-size: 12.5px; color: var(--ink-2); }
   .rules-preview b { color: var(--ink); font-weight: 600; }
   .rules-preview .right { margin-left: auto; display: flex; gap: 6px; }
+
+  /* ─── BUR · Build Rules screen ──────────────────────────────────────── */
+  .rules-section { padding: 18px 22px; display: flex; flex-direction: column; gap: 16px; }
+
+  /* Architecture card (editable — drives Configurations below) */
+  .arch-card { background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: 12px; padding: 14px 16px; }
+  .arch-h { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .arch-h h4 { margin: 0; font-size: 13px; font-weight: 700; }
+  .arch-h .edit-tag { margin-left: auto; font-size: 10.5px; color: var(--green); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; }
+  .arch-row { display: grid; grid-template-columns: 60px 1fr auto; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid rgba(50,42,92,0.05); }
+  .arch-row:first-of-type { border-top: 0; }
+  .arch-row .k { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-2); }
+  .arch-row .v { font-size: 12.5px; color: var(--ink); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .arch-row .v code { font-family: var(--font-mono); font-size: 11.5px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px; margin-right: 4px; }
+  .arch-row .v .lock { color: var(--ink-2); font-size: 10.5px; margin-left: 6px; display: inline-flex; align-items: center; gap: 3px; }
+  .arch-row select { font: inherit; font-size: 12.5px; font-family: var(--font-mono); padding: 4px 26px 4px 10px; border-radius: 6px; border: 1px solid rgba(50,42,92,0.18); background: #fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238b87a5' stroke-width='2'><path d='M6 9l6 6 6-6'/></svg>") no-repeat right 8px center; color: var(--ink); outline: 0; appearance: none; -webkit-appearance: none; cursor: pointer; min-width: 140px; }
+  .arch-row select:focus { border-color: var(--navy); box-shadow: 0 0 0 3px rgba(50,42,92,0.10); }
+  .arch-row .arch-edit { color: var(--ink-2); display: inline-flex; align-items: center; gap: 3px; font-size: 11px; padding: 4px; border-radius: 4px; }
+  .arch-row .arch-edit:hover { background: rgba(50,42,92,0.06); color: var(--ink); }
+  .arch-cap { font-size: 11.5px; color: var(--ink-2); margin-top: 10px; }
+  .arch-cap b { color: var(--ink); font-weight: 600; }
+
+  /* Architecture-derived config groupings — each stack gets its own sub-card
+     so the Configurations card stays stack-aware (.NET BE hides Vitest/ESLint). */
+  .config-sub { border: 1px solid rgba(50,42,92,0.08); border-radius: 10px; padding: 10px 12px; margin-top: 10px; background: rgba(50,42,92,0.02); }
+  .config-sub .h { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .config-sub .h .tag { font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; padding: 2px 6px; border-radius: 4px; background: rgba(50,42,92,0.08); color: var(--ink); text-transform: uppercase; letter-spacing: 0.06em; }
+  .config-sub .h .stack { font-size: 12.5px; font-weight: 600; color: var(--ink); }
+  .config-sub .h .meta { font-size: 11px; color: var(--ink-2); margin-left: auto; font-family: var(--font-mono); }
+
+  /* Configurations grid (2-col) */
+  .config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; }
+  .config-row { display: flex; flex-direction: column; gap: 4px; }
+  .config-row .k { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-2); }
+  .config-row .v { display: flex; align-items: center; gap: 8px; }
+  .config-row .v .val { font-size: 12.5px; font-family: var(--font-mono); color: var(--ink); background: rgba(50,42,92,0.04); padding: 4px 10px; border-radius: 6px; }
+  .config-row .v .pencil { margin-left: auto; color: var(--ink-2); display: inline-flex; align-items: center; gap: 3px; font-size: 11px; padding: 2px 6px; border-radius: 4px; }
+  .config-row .v .pencil:hover { background: rgba(50,42,92,0.06); color: var(--ink); }
+  .config-row input { font: inherit; font-size: 12.5px; font-family: var(--font-mono); padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(50,42,92,0.18); background: #fff; color: var(--ink); outline: 0; flex: 1; }
+  .config-row input:focus { border-color: var(--navy); box-shadow: 0 0 0 3px rgba(50,42,92,0.10); }
+  .config-row .edit-actions { display: flex; gap: 4px; }
+  .config-row .mini { font-size: 11px; padding: 3px 8px; border-radius: 999px; }
+
+  /* Markdown editor card (build rules + per-agent guidelines) */
+  .md-card { background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: 12px; padding: 14px 16px; }
+  .md-h { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .md-h h4 { margin: 0; font-size: 13px; font-weight: 700; }
+  .md-h .who { font-size: 11.5px; color: var(--ink-2); }
+  .md-h .who code { font-family: var(--font-mono); font-size: 11px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px; }
+  .md-h .actions { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+  .md-body { font-size: 12.5px; line-height: 1.6; color: var(--ink); }
+  .md-body p { margin: 0 0 8px; }
+  .md-body ul { margin: 0 0 8px 18px; }
+  .md-body li { margin-bottom: 4px; }
+  .md-body code { font-family: var(--font-mono); font-size: 11.5px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px; }
+  .md-body strong { font-weight: 600; }
+  .md-edit textarea { width: 100%; min-height: 200px; font: inherit; font-family: var(--font-mono); font-size: 12px; line-height: 1.55; padding: 10px 12px; border-radius: 8px; border: 1px solid rgba(50,42,92,0.18); background: #fafafe; color: var(--ink); outline: 0; resize: vertical; }
+  .md-edit textarea:focus { border-color: var(--navy); box-shadow: 0 0 0 3px rgba(50,42,92,0.10); }
+  .md-edit .toolbar { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+  .md-edit .toolbar .hint { font-size: 11px; color: var(--ink-2); }
+  .md-edit .toolbar .hint code { font-family: var(--font-mono); font-size: 10.5px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px; }
+  .md-edit .toolbar .right { margin-left: auto; display: flex; gap: 6px; }
+
+  /* Per-agent coding guidelines — collapsible cards */
+  .agent-list { display: flex; flex-direction: column; gap: 10px; }
+  .agent-md-card { background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: 12px; padding: 12px 16px; }
+  .agent-md-card .h { display: flex; align-items: center; gap: 10px; }
+  .agent-md-card .h .av { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 700; color: var(--ink); flex: none; }
+  .agent-md-card.c1 .av { background: var(--sky); }
+  .agent-md-card.c2 .av { background: var(--sea); }
+  .agent-md-card.c3 .av { background: var(--butter); }
+  .agent-md-card.rv .av { background: var(--lavender); }
+  .agent-md-card .h b { font-size: 13px; font-weight: 600; }
+  .agent-md-card .h .sub { display: block; font-size: 11.5px; color: var(--ink-2); }
+  .agent-md-card .h .right { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+  .agent-md-card .body { display: none; margin-top: 10px; }
+  .agent-md-card.open .body { display: block; }
+  .agent-md-card.open { box-shadow: 0 8px 24px -16px rgba(50,42,92,0.18); }
+
+  /* ─── BUSD · Build Story detail ─────────────────────────────────────── */
+  .crumb { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-2); }
+  .crumb a { color: var(--ink); font-weight: 600; }
+  .crumb .sep { color: var(--ink-3); }
+  .crumb .cur { color: var(--ink); }
+
+  .story-head { display: flex; align-items: center; gap: 16px; padding: 22px; }
+  .story-head .ico-lg { width: 56px; height: 56px; border-radius: 14px; display: grid; place-items: center; background: var(--peach); color: var(--ink); flex: none; }
+  .story-head .title-stack { flex: 1; min-width: 0; }
+  .story-head h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.25; }
+  .story-head .one { color: var(--ink-2); font-size: 13px; margin-top: 4px; }
+  .story-head .actions { margin-left: auto; display: flex; gap: 8px; align-items: center; flex: none; }
+
+  /* Rework banner */
+  .rework-banner {
+    margin: 0 22px 14px;
+    background: var(--blush);
+    border: 1px solid rgba(217,122,142,0.30);
+    border-radius: 12px;
+    padding: 10px 14px;
+    display: flex; align-items: center; gap: 10px;
+    font-size: 12.5px; color: var(--ink);
+  }
+  .rework-banner .ic { color: var(--rose); flex: none; }
+  .rework-banner b { font-weight: 600; }
+  .rework-banner .open { margin-left: auto; font-size: 11.5px; color: var(--navy); font-weight: 600; }
+
+  /* Linked requirement + surface row */
+  .req-surface-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 14px 22px; }
+
+  .req-card {
+    background: #fff;
+    border: 1px solid rgba(50,42,92,0.08);
+    border-radius: 14px;
+    padding: 14px 16px;
+  }
+  .req-card .h { display: flex; align-items: center; gap: 8px; }
+  .req-card .h h4 { font-size: 12.5px; font-weight: 700; margin: 0; }
+  .req-card .h .id { font-family: var(--font-mono); font-size: 11px; color: var(--ink-2); }
+  .req-card .h .open { margin-left: auto; font-size: 11.5px; color: var(--navy); font-weight: 600; }
+  .req-card .desc { font-size: 12.5px; line-height: 1.55; color: var(--ink); margin-top: 8px; }
+  .req-card .users-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .req-card .users-row .lbl { font-size: 11px; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+  .req-card .user-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 9px; border-radius: 999px;
+    font-size: 11.5px; font-weight: 500;
+    background: var(--lavender); color: var(--ink);
+  }
+  .req-card .user-chip.u-tenant { background: var(--sky); }
+  .req-card .user-chip.u-admin { background: var(--peach); }
+  .req-card .user-chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--purple); }
+  .req-card .user-chip.u-tenant .dot { background: var(--blue); }
+  .req-card .user-chip.u-admin .dot { background: var(--coral); }
+
+  /* Per-story surface cards: FE files / BFF APIs / BE APIs */
+  .surface-stack { padding: 0 22px 14px; display: flex; flex-direction: column; gap: 14px; }
+  .surface-card { background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: 14px; overflow: hidden; }
+  .surface-card .h { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid rgba(50,42,92,0.06); }
+  .surface-card .h .ico { width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; flex: none; }
+  .surface-card.fe  .h .ico { background: var(--sky);    color: var(--ink); }
+  .surface-card.bff .h .ico { background: var(--sea);    color: var(--ink); }
+  .surface-card.be  .h .ico { background: var(--peach);  color: var(--ink); }
+  .surface-card .h h4 { font-size: 12.5px; font-weight: 700; margin: 0; }
+  .surface-card .h .sub { display: block; font-size: 11px; color: var(--ink-2); margin-top: 1px; }
+  .surface-card .h .add { margin-left: auto; }
+
+  /* File rows */
+  .file-list { display: flex; flex-direction: column; }
+  .file-row {
+    display: grid; grid-template-columns: 18px 1fr auto auto;
+    gap: 10px; align-items: center;
+    padding: 9px 16px;
+    border-top: 1px solid rgba(50,42,92,0.04);
+  }
+  .file-row:first-child { border-top: 0; }
+  .file-row .ic { color: var(--ink-2); }
+  .file-row .path { font-family: var(--font-mono); font-size: 12px; color: var(--ink); }
+  .file-row .path .tag { display: inline-block; margin-left: 8px; font-family: var(--font-sans); font-size: 10.5px; padding: 1px 6px; border-radius: 3px; background: var(--mint); color: var(--ink); font-weight: 600; }
+  .file-row .path .tag.mod { background: var(--butter); }
+  .file-row .open { font-size: 11.5px; color: var(--navy); font-weight: 600; }
+  .file-row .trash { color: var(--ink-2); padding: 4px; border-radius: 4px; }
+  .file-row .trash:hover { color: var(--rose); background: rgba(217,122,142,0.10); }
+
+  /* API rows */
+  .api-list { display: flex; flex-direction: column; }
+  .api-row {
+    display: grid; grid-template-columns: 60px 1fr 1.4fr auto;
+    gap: 10px; align-items: center;
+    padding: 9px 16px;
+    border-top: 1px solid rgba(50,42,92,0.04);
+  }
+  .api-row:first-child { border-top: 0; }
+  .method-chip {
+    display: inline-flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono); font-size: 10.5px; font-weight: 700;
+    padding: 2px 8px; border-radius: 4px;
+    background: var(--mint); color: var(--ink);
+    width: 50px;
+  }
+  .method-chip.get    { background: var(--mint);   color: var(--ink); }
+  .method-chip.post   { background: var(--sky);    color: var(--ink); }
+  .method-chip.put    { background: var(--butter); color: var(--ink); }
+  .method-chip.patch  { background: var(--lavender); color: var(--ink); }
+  .method-chip.delete { background: var(--blush);  color: var(--ink); }
+  .api-row .path { font-family: var(--font-mono); font-size: 12px; color: var(--ink); }
+  .api-row .desc { font-size: 11.5px; color: var(--ink-2); font-style: italic; }
+  .api-row .trash { color: var(--ink-2); padding: 4px; border-radius: 4px; }
+  .api-row .trash:hover { color: var(--rose); background: rgba(217,122,142,0.10); }
+
+  /* Inline add form (file path / API route) */
+  .add-form {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 16px;
+    background: rgba(50,42,92,0.02);
+    border-top: 1px solid rgba(50,42,92,0.06);
+  }
+  .add-form input, .add-form select {
+    font: inherit; font-family: var(--font-mono); font-size: 12px;
+    padding: 5px 10px; border-radius: 6px;
+    border: 1px solid rgba(50,42,92,0.18); background: #fff; color: var(--ink);
+    outline: 0;
+  }
+  .add-form input:focus, .add-form select:focus { border-color: var(--navy); box-shadow: 0 0 0 3px rgba(50,42,92,0.10); }
+  .add-form .path-input { flex: 1.2; }
+  .add-form .desc-input { flex: 1.4; font-family: var(--font-sans); font-style: normal; }
+  .add-form .method-input { width: 80px; }
+  .add-form .err { font-size: 11px; color: var(--rose); margin-left: 6px; }
+
+  /* Empty state for surface cards */
+  .surface-empty {
+    padding: 22px 18px;
+    text-align: center;
+    color: var(--ink-2);
+  }
+  .surface-empty .ic {
+    width: 36px; height: 36px; border-radius: 9px;
+    background: rgba(50,42,92,0.04); color: var(--ink-2);
+    display: grid; place-items: center; margin: 0 auto 8px;
+  }
+  .surface-empty b { color: var(--ink); font-weight: 600; font-size: 12.5px; }
+  .surface-empty .hint { font-size: 12px; margin-top: 4px; line-height: 1.55; }
+
+  /* Per-story code-review thread (reused from v5.2) */
+  .thread { display: flex; flex-direction: column; gap: 10px; }
+  .thread .thread-head {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11.5px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--ink-2);
+  }
+  .thread .thread-head .who { margin-left: auto; font-size: 11px; color: var(--ink-2); font-weight: 500; text-transform: none; letter-spacing: 0; }
+  .comment {
+    background: #fff; border: 1px solid rgba(50,42,92,0.06);
+    border-left: 3px solid var(--sky); border-radius: 10px; padding: 10px 12px;
+  }
+  .comment.c1 { border-left-color: var(--sky); }
+  .comment.c2 { border-left-color: var(--sea); }
+  .comment.c3 { border-left-color: var(--butter); }
+  .comment.rev { border-left-color: var(--lavender); }
+  .comment .body { font-size: 12.5px; line-height: 1.5; }
+  .comment .body .who { font-size: 11.5px; font-weight: 600; color: var(--ink); }
+  .comment .body .who span { color: var(--ink-2); font-weight: 400; margin-left: 6px; }
+  .comment .body p { margin: 4px 0 0; color: var(--ink); }
+  .comment .meta { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 11px; color: var(--ink-2); }
+  .comment .meta code { font-family: var(--font-mono); font-size: 10.5px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px; }
+  .comment .meta .pass { color: var(--green); font-weight: 600; }
+  .comment .meta .fail { color: var(--rose); font-weight: 600; }
+  .compose { display: flex; gap: 10px; align-items: end; background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: 10px; padding: 8px 10px; }
+  .compose textarea { flex: 1; border: 0; outline: 0; resize: none; font: inherit; font-size: 12.5px; color: var(--ink); background: transparent; min-height: 36px; }
+  .compose .who { font-size: 11px; color: var(--ink-2); }
+
+  .story-thread-wrap { padding: 0 22px 18px; }
 </style>
 </head>
 <body>
@@ -283,23 +499,25 @@
 
   <header class="doc-header">
     <div>
-      <div class="doc-title">Idea Hub — Build tab (v5.2)</div>
-      <div class="doc-sub">Build stage workspace. <b>Two-halves</b> — Status (stories-in-build stats, per-story build step, architecture panel, code-review thread, rework queue, 3-Code-Agent strip) and Rules (editable build rules writing back to <code style="font-family: var(--font-mono); font-size: 12px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">code-builder/</code> + <code style="font-family: var(--font-mono); font-size: 12px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">../skills/coding-guidelines.md</code>). <b>Architecture panel is read-only</b> — agents infer it; users steer build behavior via the Rules tab only. <b>Rework queue</b> surfaces failed QA / review with evidence links. Source of truth: <a href="sitemap.md">sitemap.md § Build</a>.</div>
+      <div class="doc-title">Idea Hub — Build tab (v5.3)</div>
+      <div class="doc-sub">Build stage workspace. <b>3 screens</b> — <b>Status list</b> (per-story status pill, drill-down to Story detail), <b>Story detail</b> (linked requirement, <b>FE files</b> / <b>BFF APIs</b> / <b>BE APIs</b> this story owns, code-review thread), and <b>Rules</b> (read-only <b>build architecture</b> + editable configurations, build/deploy rules, and per-agent coding guidelines writing back to <code style="font-family: var(--font-mono); font-size: 12px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">code-builder/</code> + <code style="font-family: var(--font-mono); font-size: 12px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">../skills/coding-guidelines.md</code>). <b>No timeline on the list</b> — the lifecycle lives on the Sprint board; the Build list shows only the current status. <b>Architecture lives on Rules</b> (not inline on each row) so a new dev or reviewer can understand the chosen stack in one place. Source of truth: <a href="sitemap.md">sitemap.md § Build tab</a>.</div>
     </div>
-    <div class="doc-meta">v5.2 · launcher/design/build-tab.html<br/>1 screen (Build · Status half)</div>
+    <div class="doc-meta">v5.3 · launcher/design/build-tab.html<br/>3 screens (Build · Status list + Rules + Story detail)</div>
   </header>
 
   <nav class="toc">
     <a href="mockups.html"><b>←</b> All screens → mockups.html</a>
     <a href="design-tab.html"><b>D</b> Design tab mockup →</a>
-    <a href="#sbu"><b>BU</b> Build tab — Status half (per-story code review + rework)</a>
+    <a href="#bu"><b>BU</b> Build tab — Status list (per-story status, drill-down)</a>
+    <a href="#bur"><b>BUR</b> Build tab — Rules (architecture + config + guidelines)</a>
+    <a href="#busd"><b>BUSD</b> Build — Story detail (FE files · BFF APIs · BE APIs)</a>
   </nav>
 
-  <!-- ═════════════ BU · Build tab — Status half ═════════════ -->
-  <section class="screen" id="sbu">
+  <!-- ═════════════ BU · Build tab — Status list ═════════════ -->
+  <section class="screen" id="bu">
     <div class="screen-label">
       <span class="num">BU</span>
-      <span class="name">Build tab — Status half</span>
+      <span class="name">Build tab — Status list</span>
       <span class="route">/projects/tenant-maintenance · Build</span>
     </div>
     <div class="screen-body">
@@ -346,7 +564,7 @@
           <!-- Project header -->
           <div class="card">
             <div class="proj-head">
-              <div class="ico-lg tile-peach"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2b2547" stroke-width="1.8"><path d="M3 12l9-9 9 9 M5 10v10h14V10"/></svg></div>
+              <div class="ico-lg"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2b2547" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg></div>
               <div>
                 <h1>Tenant Maintenance Portal</h1>
                 <div class="one">Maintenance request app for property managers</div>
@@ -373,8 +591,8 @@
           <!-- Status / Rules tab switch (the two-halves pattern) -->
           <div class="tab-bar">
             <div class="kit-tabs" role="tablist" aria-label="Build tab — status or rules">
-              <button class="on" role="tab" aria-selected="true">Status</button>
-              <button role="tab" aria-selected="false">Rules</button>
+              <button class="on" role="tab" aria-selected="true" data-mode="status">Status</button>
+              <button role="tab" aria-selected="false" data-mode="rules">Rules</button>
             </div>
             <span style="font-size: 12px; color: var(--ink-2);">Two halves · the Rules half writes back to the build rules + coding guidelines.</span>
             <span class="writeback">writes to → <code>code-builder/</code> + <code>skills/coding-guidelines.md</code></span>
@@ -408,7 +626,7 @@
             </div>
           </div>
 
-          <!-- Per-story build list -->
+          <!-- Per-story build list — status only, no timeline -->
           <div class="card" style="margin-top: 14px;">
             <div class="stories-head">
               <h3>Story build status</h3>
@@ -430,21 +648,10 @@
               <div>
                 <div class="title">Manager dashboard — filters and saved views<span class="sub">From DSGN-11 · 3 pts · High priority</span></div>
               </div>
-              <div class="bd-stepper">
-                <div class="node active"><div class="dot">1</div> Picked up</div>
-                <div class="bar"></div>
-                <div class="node"><div class="dot">2</div> Building</div>
-                <div class="bar"></div>
-                <div class="node"><div class="dot">3</div> Self-review</div>
-                <div class="bar"></div>
-                <div class="node"><div class="dot">4</div> For review</div>
-                <div class="bar"></div>
-                <div class="node"><div class="dot">5</div> Ready for QA</div>
-              </div>
-              <div class="assign">
-                <div class="av-sm a-c1">C1</div>
-                <span>Code 1 · ~10m</span>
-              </div>
+              <a class="row-open" href="#busd" data-story="TM-25" aria-label="Open story TM-25 in Build">
+                Open story
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+              </a>
             </div>
 
             <!-- Story 2: Building -->
@@ -456,21 +663,10 @@
               <div>
                 <div class="title">Photo upload for maintenance requests<span class="sub">From DSGN-12 · 5 pts · High priority</span></div>
               </div>
-              <div class="bd-stepper">
-                <div class="node done"><div class="dot">✓</div> Picked up</div>
-                <div class="bar done"></div>
-                <div class="node active"><div class="dot">2</div> Building</div>
-                <div class="bar active"></div>
-                <div class="node"><div class="dot">3</div> Self-review</div>
-                <div class="bar"></div>
-                <div class="node"><div class="dot">4</div> For review</div>
-                <div class="bar"></div>
-                <div class="node"><div class="dot">5</div> Ready for QA</div>
-              </div>
-              <div class="assign">
-                <div class="av-sm a-c2">C2</div>
-                <span>Code 2 · ~2h</span>
-              </div>
+              <a class="row-open" href="#busd" data-story="TM-23" aria-label="Open story TM-23 in Build">
+                Open story
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+              </a>
             </div>
 
             <!-- Story 3: Ready for review (selected) -->
@@ -482,101 +678,10 @@
               <div>
                 <div class="title">Request detail screen + status updates<span class="sub">From DSGN-08 · 5 pts · Med priority · PR #214 open</span></div>
               </div>
-              <div class="bd-stepper">
-                <div class="node done"><div class="dot">✓</div> Picked up</div>
-                <div class="bar done"></div>
-                <div class="node done"><div class="dot">✓</div> Building</div>
-                <div class="bar done"></div>
-                <div class="node done"><div class="dot">✓</div> Self-review</div>
-                <div class="bar done"></div>
-                <div class="node active"><div class="dot">4</div> For review</div>
-                <div class="bar active"></div>
-                <div class="node"><div class="dot">5</div> Ready for QA</div>
-              </div>
-              <div class="assign">
-                <div class="av-sm a-c1">C1</div>
-                <div class="av-sm a-rev" style="margin-left: -8px;">RV</div>
-                <span>Code 1 → Reviewer</span>
-              </div>
-            </div>
-
-            <!-- Story 3 detail: architecture (read-only) + code-review thread -->
-            <div class="story-detail">
-              <!-- Architecture panel (read-only — sitemap decision) -->
-              <div class="arch">
-                <div class="arch-h">
-                  <h4>Story architecture</h4>
-                  <span style="font-size: 10.5px; color: var(--ink-2); font-family: var(--font-mono);">inferred by agents</span>
-                  <span class="ro">
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
-                    Read-only
-                  </span>
-                </div>
-
-                <div class="arch-card">
-                  <div class="arch-row">
-                    <div class="k">FE</div>
-                    <div class="v"><code>React 18</code> <code>TypeScript</code> <code>Vite</code> <code>react-router v6</code></div>
-                  </div>
-                  <div class="arch-row">
-                    <div class="k">BFF</div>
-                    <div class="v"><code>Express</code> · /api/* · same origin</div>
-                  </div>
-                  <div class="arch-row">
-                    <div class="k">BE</div>
-                    <div class="v"><code>Node 22</code> · <code>tsx watch</code> · route-handler style</div>
-                  </div>
-                  <div class="arch-row">
-                    <div class="k">DB</div>
-                    <div class="v"><code>SQLite</code> (better-sqlite3) · <code>./data/dev.db</code></div>
-                  </div>
-                  <div class="arch-row">
-                    <div class="k">Host</div>
-                    <div class="v">Vercel (FE) · Fly.io (BFF + BE) <span class="lock"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>edit Rules</span></div>
-                  </div>
-                </div>
-
-                <div style="font-size: 11.5px; color: var(--ink-2); padding: 0 4px;">
-                  Architecture is <b style="color: var(--ink);">inferred by agents</b> from the project folder. To change stack or hosting, edit the <b style="color: var(--ink);">Rules</b> tab — your steering surface is one place, not two.
-                </div>
-              </div>
-
-              <!-- Per-story code-review thread (Code Agent + Reviewer) -->
-              <div class="thread">
-                <div class="thread-head">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                  Code review · PR #214
-                  <span class="who">2 comments · CI ✓ · 1 unresolved</span>
-                </div>
-
-                <div class="comment c1">
-                  <div class="body">
-                    <div class="who">Code Agent 1 <span>· 1h ago</span></div>
-                    <p>PR ready for review. Built the request detail screen with status timeline, photo gallery, and the comment thread. Self-review pass found one unused import — cleaned up. Story now waiting on Reviewer sign-off.</p>
-                  </div>
-                  <div class="meta">
-                    <code>PR #214</code> · 5 files · +312 / −24
-                    <span class="pass">✓ Self-review pass</span>
-                  </div>
-                </div>
-
-                <div class="comment rev">
-                  <div class="body">
-                    <div class="who">Reviewer Agent <span>· 22m ago</span></div>
-                    <p>Two nits in <code style="font-family: var(--font-mono); font-size: 11px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">RequestDetail.tsx</code> — the status timeline is not keyboard reachable (focus order skips `Completed` on a screen-reader walk), and the photo gallery has no alt-text fallback when an image 404s. Both are quick fixes. Will approve once those are in.</p>
-                  </div>
-                  <div class="meta">
-                    <code>src/pages/RequestDetail.tsx</code> · 2 nits
-                    <span class="fail">✗ 1 unresolved (a11y)</span>
-                  </div>
-                </div>
-
-                <div class="compose">
-                  <textarea placeholder="Reply as the user, or @-mention Code 1 / Reviewer…"></textarea>
-                  <span class="who">Posting as <b>Will</b></span>
-                  <button class="btn btn-primary btn-pill">Post</button>
-                </div>
-              </div>
+              <a class="row-open" href="#busd" data-story="TM-19" aria-label="Open story TM-19 in Build">
+                Open story
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+              </a>
             </div>
 
             <!-- Story 4: Ready for QA -->
@@ -588,21 +693,10 @@
               <div>
                 <div class="title">Auth flow — tenant sign in / sign out<span class="sub">From DSGN-04 · 8 pts · High priority · PR #208 merged</span></div>
               </div>
-              <div class="bd-stepper">
-                <div class="node done"><div class="dot">✓</div> Picked up</div>
-                <div class="bar done"></div>
-                <div class="node done"><div class="dot">✓</div> Building</div>
-                <div class="bar done"></div>
-                <div class="node done"><div class="dot">✓</div> Self-review</div>
-                <div class="bar done"></div>
-                <div class="node done"><div class="dot">✓</div> For review</div>
-                <div class="bar done"></div>
-                <div class="node active"><div class="dot">5</div> Ready for QA</div>
-              </div>
-              <div class="assign">
-                <div class="av-sm a-c3">C3</div>
-                <span>→ QA Agent</span>
-              </div>
+              <a class="row-open" href="#busd" data-story="TM-18" aria-label="Open story TM-18 in Build">
+                Open story
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+              </a>
             </div>
 
             <!-- Story 5: Deployed to QA env -->
@@ -614,24 +708,14 @@
               <div>
                 <div class="title">Vite + React + TS scaffold (CI green)<span class="sub">From DSGN-02 · 2 pts · High priority · deployed 2h ago</span></div>
               </div>
-              <div class="bd-stepper">
-                <div class="node done"><div class="dot">✓</div> Picked up</div>
-                <div class="bar done"></div>
-                <div class="node done"><div class="dot">✓</div> Building</div>
-                <div class="bar done"></div>
-                <div class="node done"><div class="dot">✓</div> Self-review</div>
-                <div class="bar done"></div>
-                <div class="node done"><div class="dot">✓</div> For review</div>
-                <div class="bar done"></div>
-                <div class="node done"><div class="dot">✓</div> Ready for QA</div>
-              </div>
-              <div class="assign">
-                <span style="font-size: 11.5px; color: var(--ink-2);">qa-env-3d1a · preview URL</span>
-              </div>
+              <a class="row-open" href="#busd" data-story="TM-12" aria-label="Open story TM-12 in Build">
+                Open story
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+              </a>
             </div>
           </div>
 
-          <!-- Rework queue (failed QA / review — sitemap § Build) -->
+          <!-- Rework queue (failed QA / review) -->
           <div class="card" style="margin-top: 14px;">
             <div class="rework" style="padding-top: 18px;">
               <div class="rework-head">
@@ -658,7 +742,7 @@
             </div>
           </div>
 
-          <!-- Code agent strip (3 agents — moved here from Sprint) -->
+          <!-- Code agent strip (3 agents) -->
           <div class="card" style="margin-top: 14px;">
             <div class="stories-head" style="padding-bottom: 8px;">
               <h3>Code agents</h3>
@@ -702,15 +786,15 @@
             </div>
           </div>
 
-          <!-- Rules preview (secondary; full Rules tab is its own screen) -->
+          <!-- Rules preview (secondary; full Rules is its own screen) -->
           <div class="rules-preview">
             <div>
-              <b>Rules half</b> — editable build rules, deployment rules, environments, coding guidelines, and the build lifecycle.
+              <b>Rules half</b> — overall build architecture (FE / BFF / BE / DB / host), editable configurations, build &amp; deploy rules, and per-agent coding guidelines.
               Switch to the <b>Rules</b> tab to edit; changes write back to <code style="font-family: var(--font-mono); font-size: 11.5px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">code-builder/</code> and <code style="font-family: var(--font-mono); font-size: 11.5px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">../skills/coding-guidelines.md</code>, and Code Agents pick them up on the next run.
             </div>
             <div class="right">
               <button class="btn btn-soft btn-pill">View code-builder/</button>
-              <button class="btn btn-primary btn-pill">Open Rules tab →</button>
+              <button class="btn btn-primary btn-pill">Open Rules →</button>
             </div>
           </div>
 
@@ -719,6 +803,934 @@
     </div>
   </section>
 
+  <!-- ═════════════ BUR · Build tab — Rules ═════════════ -->
+  <section class="screen" id="bur">
+    <div class="screen-label">
+      <span class="num">BUR</span>
+      <span class="name">Build tab — Rules</span>
+      <span class="route">/projects/tenant-maintenance · Build · Rules</span>
+    </div>
+    <div class="screen-body">
+      <div class="app">
+        <aside class="side">
+          <div class="brand"><div class="brand-mark">IH</div><div class="brand-name">Idea Hub</div></div>
+          <div>
+            <div class="menu-label">Menu</div>
+            <nav class="nav">
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12l9-9 9 9 M5 10v10h14V10"/></svg> Overview</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h11l3 3v13H5z M16 4v3h3 M8 11h8 M8 14h8 M8 17h5"/></svg> Project Background <span class="count">17</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3h7v7 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> Requirements <span class="count">14</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Sprint <span class="count">14</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z M4 9h16 M9 4v16"/></svg> Design</a>
+              <a href="#" class="active"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Build <span class="count">14</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="9" r="3"/><path d="M3 19c0-3 2.7-5 6-5s6 2 6 5 M14 19c0-3 2.7-5 6-5"/></svg> Agents</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 12l2 2 4-4 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg> QA <span class="count">2</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> Activity</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 8H3 M21 16H3 M5 4h14v16H5z"/></svg> Artifacts</a>
+            </nav>
+          </div>
+          <div class="side-promo">
+            <h4>Build rules</h4>
+            <p>Edits to build/deploy rules, environments, and coding guidelines write back to <code style="font-family: var(--font-mono); font-size: 11px;">code-builder/</code>. Code Agents pick them up on the next run.</p>
+            <button>View code-builder/ →</button>
+          </div>
+          <div class="side-foot">
+            <a href="#bu"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 3h6v6 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> ← Back to build list</a>
+          </div>
+        </aside>
+
+        <main class="main">
+          <div class="topbar">
+            <a href="#bu" style="font-size:13px; color: var(--ink-2);">← Build list</a>
+            <div class="search">
+              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+              <input placeholder="Search this project…" />
+            </div>
+            <button class="btn btn-soft btn-pill">Filter</button>
+            <button class="btn btn-soft btn-pill">Export</button>
+            <button class="btn btn-primary btn-pill">+ New build rule</button>
+          </div>
+
+          <!-- Page header card (no 7-stage stepper on Rules) -->
+          <div class="card">
+            <div class="proj-head">
+              <div class="ico-lg" style="background: var(--lavender);"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2b2547" stroke-width="1.8"><path d="M12 3l9 4-9 4-9-4 9-4z M3 12l9 4 9-4 M3 17l9 4 9-4"/></svg></div>
+              <div>
+                <h1>Build rules</h1>
+                <div class="one">Architecture, configurations, build &amp; deploy rules, and per-agent coding guidelines.</div>
+                <div class="path">~/Code/tenant-maintenance · Build · Rules · writes to <code style="font-family: var(--font-mono); font-size: 11px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">code-builder/</code> + <code style="font-family: var(--font-mono); font-size: 11px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">skills/coding-guidelines.md</code></div>
+              </div>
+              <div class="actions">
+                <span class="pill todo"><span class="dot"></span> Rules</span>
+                <span class="stage-pt">12 rules · 4 agents</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Status / Rules tab switch (Status default; Rules active) -->
+          <div class="tab-bar">
+            <div class="kit-tabs" role="tablist" aria-label="Build tab — status or rules">
+              <button role="tab" aria-selected="false" data-mode="status">Status</button>
+              <button class="on" role="tab" aria-selected="true" data-mode="rules">Rules</button>
+            </div>
+            <span style="font-size: 12px; color: var(--ink-2);">Two halves · the Rules half writes back to the build rules + coding guidelines.</span>
+            <span class="writeback">writes to → <code>code-builder/</code> + <code>skills/coding-guidelines.md</code></span>
+          </div>
+
+          <div class="rules-section">
+            <!-- 1. Build architecture (editable — drives Configurations below) -->
+            <div class="arch-card">
+              <div class="arch-h">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="color: var(--purple);"><path d="M3 21h18 M5 21V7l7-4 7 4v14 M9 9h2 M9 12h2 M9 15h2 M13 9h2 M13 12h2 M13 15h2"/></svg>
+                <h4>Build architecture</h4>
+                <span style="font-size: 10.5px; color: var(--ink-2); font-family: var(--font-mono);">agents read this on every run</span>
+                <span class="edit-tag">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+                  Editable
+                </span>
+              </div>
+
+              <div class="arch-row">
+                <div class="k">FE</div>
+                <div class="v" data-arch="fe">
+                  <select aria-label="Frontend stack">
+                    <option value="react-vite">React 18 + Vite + TS</option>
+                    <option value="next">Next.js (App Router)</option>
+                    <option value="sveltekit">SvelteKit</option>
+                    <option value="vue-vite">Vue 3 + Vite</option>
+                  </select>
+                </div>
+                <button class="arch-edit" aria-label="Edit FE stack details"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></button>
+              </div>
+              <div class="arch-row">
+                <div class="k">BFF</div>
+                <div class="v" data-arch="bff">
+                  <select aria-label="BFF stack">
+                    <option value="express">Express (Node)</option>
+                    <option value="fastify">Fastify (Node)</option>
+                    <option value="hono">Hono (edge)</option>
+                    <option value="none">None — FE → BE direct</option>
+                  </select>
+                </div>
+                <button class="arch-edit" aria-label="Edit BFF stack details"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></button>
+              </div>
+              <div class="arch-row">
+                <div class="k">BE</div>
+                <div class="v" data-arch="be">
+                  <select aria-label="Backend stack">
+                    <option value="node-express">Node 22 + Express (route handlers)</option>
+                    <option value="node-fastify">Node 22 + Fastify</option>
+                    <option value="dotnet">.NET 8 (ASP.NET Core)</option>
+                    <option value="go">Go (net/http or chi)</option>
+                    <option value="python-fastapi">Python 3.12 + FastAPI</option>
+                    <option value="rails">Ruby on Rails 8</option>
+                  </select>
+                </div>
+                <button class="arch-edit" aria-label="Edit BE stack details"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></button>
+              </div>
+              <div class="arch-row">
+                <div class="k">DB</div>
+                <div class="v" data-arch="db">
+                  <select aria-label="Database engine">
+                    <option value="sqlite">SQLite (better-sqlite3)</option>
+                    <option value="postgres">Postgres (Neon / Supabase)</option>
+                    <option value="mysql">MySQL (PlanetScale / RDS)</option>
+                    <option value="mssql">SQL Server (EF Core)</option>
+                    <option value="mongo">MongoDB Atlas</option>
+                    <option value="none">None — stateless service</option>
+                  </select>
+                </div>
+                <button class="arch-edit" aria-label="Edit DB details"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></button>
+              </div>
+              <div class="arch-row">
+                <div class="k">Host</div>
+                <div class="v" data-arch="host">
+                  <select aria-label="Hosting target">
+                    <option value="vercel-fly">Vercel (FE) · Fly.io (BFF + BE)</option>
+                    <option value="netlify-fly">Netlify (FE) · Fly.io (BFF + BE)</option>
+                    <option value="azure-appservice">Azure App Service (FE + BE)</option>
+                    <option value="aws">AWS (S3 + CloudFront + ECS)</option>
+                    <option value="self-hosted">Self-hosted (Docker Compose)</option>
+                  </select>
+                </div>
+                <button class="arch-edit" aria-label="Edit hosting details"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></button>
+              </div>
+
+              <div class="arch-cap">
+                Changes here <b>drive the Configurations card below</b> — pick a different BE (e.g. <b>.NET 8</b>) and the BE-specific fields swap in (EF Core migrations, <code>dotnet test</code>, MSBuild). Changes write to <code>code-builder/config-rules.md</code>; Code Agents pick them up on the next run.
+              </div>
+            </div>
+
+            <!-- 2. Configurations (editable · stack-aware: groups react to the architecture picks above) -->
+            <div class="arch-card" id="configs">
+              <div class="arch-h">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="color: var(--blue);"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h.1a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v.1a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+                <h4>Configurations</h4>
+                <span style="font-size: 10.5px; color: var(--ink-2); font-family: var(--font-mono);">editable · writes to code-builder/config-rules.md</span>
+                <span class="edit-tag" style="color: var(--blue);">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+                  Stack-aware
+                </span>
+              </div>
+
+              <!-- Common (always shown) -->
+              <div class="config-sub">
+                <div class="h">
+                  <span class="tag">Common</span>
+                  <span class="stack">E2E · env files · secrets · CI</span>
+                  <span class="meta">applies to every stack</span>
+                </div>
+                <div class="config-grid">
+                  <div class="config-row">
+                    <span class="k">E2E</span>
+                    <div class="v"><span class="val">Playwright (Chromium)</span><button class="pencil" aria-label="Edit E2E"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                  <div class="config-row">
+                    <span class="k">Env files</span>
+                    <div class="v"><span class="val">.env.local · .env.{dev,stg,prod}</span><button class="pencil" aria-label="Edit Env files"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                  <div class="config-row">
+                    <span class="k">Secrets handling</span>
+                    <div class="v"><span class="val">Host secrets store · never in repo</span><button class="pencil" aria-label="Edit Secrets handling"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                  <div class="config-row">
+                    <span class="k">CI gates</span>
+                    <div class="v"><span class="val">lint + test + typecheck on every PR</span><button class="pencil" aria-label="Edit CI gates"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- FE group -->
+              <div class="config-sub" data-stack-config="fe" data-active-on="react-vite,next,sveltekit,vue-vite">
+                <div class="h">
+                  <span class="tag">FE</span>
+                  <span class="stack" data-stack-label="fe">React 18 + Vite + TS</span>
+                  <span class="meta">only shown when FE stack is selected</span>
+                </div>
+                <div class="config-grid">
+                  <div class="config-row" data-show-on="react-vite,vue-vite">
+                    <span class="k">Package manager</span>
+                    <div class="v"><span class="val">pnpm 9</span><button class="pencil" aria-label="Edit Package manager"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                  <div class="config-row" data-show-on="react-vite,vue-vite,sveltekit">
+                    <span class="k">Linter</span>
+                    <div class="v"><span class="val">ESLint 9 + typescript-eslint</span><button class="pencil" aria-label="Edit Linter"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                  <div class="config-row" data-show-on="react-vite,vue-vite,sveltekit,next">
+                    <span class="k">Formatter</span>
+                    <div class="v"><span class="val">Prettier 3</span><button class="pencil" aria-label="Edit Formatter"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                  <div class="config-row" data-show-on="react-vite,vue-vite,sveltekit,next">
+                    <span class="k">Unit test runner</span>
+                    <div class="v"><span class="val">Vitest</span><button class="pencil" aria-label="Edit FE test runner"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- BFF group -->
+              <div class="config-sub" data-stack-config="bff" data-active-on="express,fastify,hono">
+                <div class="h">
+                  <span class="tag">BFF</span>
+                  <span class="stack" data-stack-label="bff">Express (Node)</span>
+                  <span class="meta">hidden when BFF = "None"</span>
+                </div>
+                <div class="config-grid">
+                  <div class="config-row" data-show-on="express,fastify">
+                    <span class="k">Runtime</span>
+                    <div class="v"><span class="val">Node 22 · tsx watch</span><button class="pencil" aria-label="Edit BFF runtime"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                  <div class="config-row" data-show-on="hono">
+                    <span class="k">Runtime</span>
+                    <div class="v"><span class="val">Edge · Vercel/Cloudflare Workers</span><button class="pencil" aria-label="Edit BFF runtime"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                  <div class="config-row">
+                    <span class="k">Mount path</span>
+                    <div class="v"><span class="val">/api/*</span><button class="pencil" aria-label="Edit BFF mount path"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                  <div class="config-row">
+                    <span class="k">Auth middleware</span>
+                    <div class="v"><span class="val">requireAuth (except /auth/*, /health)</span><button class="pencil" aria-label="Edit auth middleware"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- BE group — switches its rows based on Node vs .NET vs Go vs Python vs Rails -->
+              <div class="config-sub" data-stack-config="be">
+                <div class="h">
+                  <span class="tag">BE</span>
+                  <span class="stack" data-stack-label="be">Node 22 + Express</span>
+                  <span class="meta">fields swap when BE changes (.NET, Go, Python, Rails)</span>
+                </div>
+
+                <!-- Node rows -->
+                <div class="config-grid" data-show-on="node-express,node-fastify">
+                  <div class="config-row">
+                    <span class="k">Runtime</span>
+                    <div class="v"><span class="val">Node 22 (engines)</span><button class="pencil" aria-label="Edit Node version"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                  <div class="config-row">
+                    <span class="k">Dev mode</span>
+                    <div class="v"><span class="val">tsx watch server/be/index.ts</span><button class="pencil" aria-label="Edit dev mode"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                  <div class="config-row">
+                    <span class="k">Handler style</span>
+                    <div class="v"><span class="val">Pure fns · (db, req) ⇒ Result</span><button class="pencil" aria-label="Edit handler style"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                  <div class="config-row">
+                    <span class="k">BE test runner</span>
+                    <div class="v"><span class="val">Node test runner (node --test)</span><button class="pencil" aria-label="Edit BE test runner"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                  <div class="config-row">
+                    <span class="k">Migrations</span>
+                    <div class="v"><span class="val">server/be/migrations/NNN-name.sql</span><button class="pencil" aria-label="Edit migration path"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                </div>
+
+                <!-- .NET rows -->
+                <div class="config-grid" data-show-on="dotnet" style="display:none;">
+                  <div class="config-row">
+                    <span class="k">TFM</span>
+                    <div class="v"><span class="val">net8.0</span><button class="pencil" aria-label="Edit TFM"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                  <div class="config-row">
+                    <span class="k">SDK</span>
+                    <div class="v"><span class="val">.NET 8 SDK (8.0.100+)</span><button class="pencil" aria-label="Edit .NET SDK"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                  <div class="config-row">
+                    <span class="k">Handler style</span>
+                    <div class="v"><span class="val">Minimal API · endpoint groups</span><button class="pencil" aria-label="Edit handler style"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                  <div class="config-row">
+                    <span class="k">ORM</span>
+                    <div class="v"><span class="val">EF Core 8 (Pomelo or Npgsql provider)</span><button class="pencil" aria-label="Edit ORM"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                  <div class="config-row">
+                    <span class="k">BE test runner</span>
+                    <div class="v"><span class="val">xUnit + FluentAssertions</span><button class="pencil" aria-label="Edit BE test runner"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                  <div class="config-row">
+                    <span class="k">Migrations</span>
+                    <div class="v"><span class="val">dotnet ef migrations add {Name}</span><button class="pencil" aria-label="Edit EF migrations"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                  <div class="config-row">
+                    <span class="k">Build / publish</span>
+                    <div class="v"><span class="val">dotnet build · dotnet publish -c Release</span><button class="pencil" aria-label="Edit build command"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                </div>
+
+                <!-- Go rows -->
+                <div class="config-grid" data-show-on="go" style="display:none;">
+                  <div class="config-row">
+                    <span class="k">Go version</span>
+                    <div class="v"><span class="val">1.22 (toolchain go1.22.0)</span><button class="pencil" aria-label="Edit Go version"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                  <div class="config-row">
+                    <span class="k">Router</span>
+                    <div class="v"><span class="val">chi v5</span><button class="pencil" aria-label="Edit router"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                  <div class="config-row">
+                    <span class="k">ORM</span>
+                    <div class="v"><span class="val">sqlc (type-safe from SQL)</span><button class="pencil" aria-label="Edit ORM"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                  <div class="config-row">
+                    <span class="k">BE test runner</span>
+                    <div class="v"><span class="val">go test ./... + testify</span><button class="pencil" aria-label="Edit test runner"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                  <div class="config-row">
+                    <span class="k">Migrations</span>
+                    <div class="v"><span class="val">goose · db/migrations/*.sql</span><button class="pencil" aria-label="Edit migrations"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                </div>
+
+                <!-- Python rows -->
+                <div class="config-grid" data-show-on="python-fastapi" style="display:none;">
+                  <div class="config-row">
+                    <span class="k">Python version</span>
+                    <div class="v"><span class="val">3.12 (pyproject.toml)</span><button class="pencil" aria-label="Edit Python version"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                  <div class="config-row">
+                    <span class="k">Package manager</span>
+                    <div class="v"><span class="val">uv (or poetry)</span><button class="pencil" aria-label="Edit package manager"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                  <div class="config-row">
+                    <span class="k">ORM</span>
+                    <div class="v"><span class="val">SQLAlchemy 2 + Alembic</span><button class="pencil" aria-label="Edit ORM"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                  <div class="config-row">
+                    <span class="k">BE test runner</span>
+                    <div class="v"><span class="val">pytest + httpx</span><button class="pencil" aria-label="Edit test runner"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                </div>
+
+                <!-- Rails rows -->
+                <div class="config-grid" data-show-on="rails" style="display:none;">
+                  <div class="config-row">
+                    <span class="k">Ruby version</span>
+                    <div class="v"><span class="val">3.3 (.ruby-version)</span><button class="pencil" aria-label="Edit Ruby version"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                  <div class="config-row">
+                    <span class="k">Rails version</span>
+                    <div class="v"><span class="val">8.0 (--minimal)</span><button class="pencil" aria-label="Edit Rails version"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                  <div class="config-row">
+                    <span class="k">ORM</span>
+                    <div class="v"><span class="val">ActiveRecord</span><button class="pencil" aria-label="Edit ORM"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                  <div class="config-row">
+                    <span class="k">BE test runner</span>
+                    <div class="v"><span class="val">Minitest (or RSpec)</span><button class="pencil" aria-label="Edit test runner"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- DB group -->
+              <div class="config-sub" data-stack-config="db" data-active-on="sqlite,postgres,mysql,mssql,mongo">
+                <div class="h">
+                  <span class="tag">DB</span>
+                  <span class="stack" data-stack-label="db">SQLite (better-sqlite3)</span>
+                  <span class="meta">hidden when DB = "None"</span>
+                </div>
+                <div class="config-grid">
+                  <div class="config-row" data-show-on="sqlite">
+                    <span class="k">DB path</span>
+                    <div class="v"><span class="val">./data/dev.db</span><button class="pencil" aria-label="Edit DB path"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                  <div class="config-row" data-show-on="postgres,mysql,mssql">
+                    <span class="k">Connection</span>
+                    <div class="v"><span class="val">DATABASE_URL (env)</span><button class="pencil" aria-label="Edit connection"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                  <div class="config-row" data-show-on="postgres">
+                    <span class="k">Connection pool</span>
+                    <div class="v"><span class="val">pg.Pool · max 10</span><button class="pencil" aria-label="Edit pool"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                  <div class="config-row" data-show-on="mssql">
+                    <span class="k">Provider</span>
+                    <div class="v"><span class="val">Microsoft.EntityFrameworkCore.SqlServer</span><button class="pencil" aria-label="Edit EF provider"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                  <div class="config-row" data-show-on="mongo">
+                    <span class="k">Driver</span>
+                    <div class="v"><span class="val">Mongoose 8</span><button class="pencil" aria-label="Edit Mongo driver"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                  <div class="config-row">
+                    <span class="k">Seed data</span>
+                    <div class="v"><span class="val">db/seed.ts (idempotent · git-tracked)</span><button class="pencil" aria-label="Edit seed"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Host group -->
+              <div class="config-sub" data-stack-config="host">
+                <div class="h">
+                  <span class="tag">Host</span>
+                  <span class="stack" data-stack-label="host">Vercel (FE) · Fly.io (BFF + BE)</span>
+                  <span class="meta">env targets: dev · stg · prod</span>
+                </div>
+                <div class="config-grid">
+                  <div class="config-row" data-show-on="vercel-fly,netlify-fly">
+                    <span class="k">FE host</span>
+                    <div class="v"><span class="val" data-host-fe>Vercel (preview per PR)</span><button class="pencil" aria-label="Edit FE host"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                  <div class="config-row" data-show-on="vercel-fly,netlify-fly,azure-appservice,aws,self-hosted">
+                    <span class="k">BFF + BE host</span>
+                    <div class="v"><span class="val" data-host-be>Fly.io (qa-env, prod)</span><button class="pencil" aria-label="Edit BFF/BE host"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                  <div class="config-row" data-show-on="azure-appservice">
+                    <span class="k">Plan</span>
+                    <div class="v"><span class="val">App Service B1 (stg) · P1v3 (prod)</span><button class="pencil" aria-label="Edit plan"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                  <div class="config-row" data-show-on="aws">
+                    <span class="k">Compute</span>
+                    <div class="v"><span class="val">ECS Fargate · ALB</span><button class="pencil" aria-label="Edit compute"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                  <div class="config-row" data-show-on="self-hosted">
+                    <span class="k">Infra</span>
+                    <div class="v"><span class="val">Docker Compose · Caddy reverse proxy</span><button class="pencil" aria-label="Edit infra"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                  <div class="config-row">
+                    <span class="k">Auto-deploy</span>
+                    <div class="v"><span class="val">main → stg · tag v* → prod</span><button class="pencil" aria-label="Edit auto-deploy"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9 M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> edit</button></div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- 3. Build & deploy rules (editable markdown) -->
+            <div class="md-card">
+              <div class="md-h">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="color: var(--amber);"><path d="M5 4h14v16H5z M9 8h6 M9 12h6 M9 16h4"/></svg>
+                <h4>Build &amp; deploy rules</h4>
+                <span class="who">writes to <code>code-builder/build-rules.md</code></span>
+                <div class="actions">
+                  <button class="btn btn-soft btn-pill" data-edit="build-rules">Edit</button>
+                </div>
+              </div>
+              <div class="md-body" data-md-view="build-rules">
+                <p><strong>Build lifecycle (5 steps).</strong> Every story moves through these states on the Sprint board:</p>
+                <ul>
+                  <li><code>Picked up</code> → Code Agent pulls the story into their worktree.</li>
+                  <li><code>Building</code> → Code Agent writes FE files, BFF routes, BE handlers, and a unit test per changed module.</li>
+                  <li><code>Self-review</code> → Code Agent runs the linter, formatter, and the test suite locally; fixes the failures it can.</li>
+                  <li><code>For review</code> → PR is open; Reviewer Agent reads the diff against the linked requirement and the design.</li>
+                  <li><code>Ready for QA</code> → merged to <code>main</code>; QA Agent picks it up and runs the Playwright suite.</li>
+                </ul>
+                <p><strong>CI gates.</strong> A PR cannot be marked <code>Ready for review</code> unless <code>pnpm lint</code>, <code>pnpm test</code>, and <code>pnpm typecheck</code> all pass on the PR branch.</p>
+                <p><strong>Deploy targets.</strong> Merges to <code>main</code> auto-deploy the FE to Vercel (preview URL per PR) and the BFF + BE to Fly.io (<code>qa-env</code> for QA passes, <code>prod</code> for explicit releases only).</p>
+                <p><strong>Branch policy.</strong> Story branches are <code>build/{TM-XX}-{slug}</code>; hotfix branches are <code>hotfix/{slug}</code>. No direct pushes to <code>main</code>.</p>
+              </div>
+            </div>
+
+            <!-- 4. Per-agent coding guidelines (collapsible cards) -->
+            <div class="md-card">
+              <div class="md-h">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="color: var(--green);"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="9" r="3"/><path d="M3 19c0-3 2.7-5 6-5s6 2 6 5 M14 19c0-3 2.7-5 6-5"/></svg>
+                <h4>Per-agent coding guidelines</h4>
+                <span class="who">one per Code Agent + Reviewer · writes to <code>code-builder/agents/{name}.md</code></span>
+                <div class="actions">
+                  <button class="btn btn-soft btn-pill" disabled style="opacity:0.5; cursor:not-allowed;" title="Open in code-builder/ to add a new agent">+ Add agent</button>
+                </div>
+              </div>
+              <div class="agent-list">
+
+                <div class="agent-md-card c1">
+                  <div class="h">
+                    <div class="av">C1</div>
+                    <div>
+                      <b>Code Agent 1 — FE focus</b>
+                      <span class="sub">Active now · Building TM-23 (Photo upload) · ~2h elapsed</span>
+                    </div>
+                    <div class="right">
+                      <button class="btn btn-soft btn-pill" data-toggle-card>Read guidelines</button>
+                      <button class="btn btn-soft btn-pill" disabled style="opacity:0.5; cursor:not-allowed;" title="Only the active Code Agent can edit its own guidelines">Edit</button>
+                    </div>
+                  </div>
+                  <div class="body md-body">
+                    <p><strong>Scope.</strong> Owns React pages, components, hooks, and styles under <code>src/</code>.</p>
+                    <ul>
+                      <li>One component per file. File name matches the default export.</li>
+                      <li>Props are typed with <code>interface</code>, not <code>type</code>.</li>
+                      <li>Every page exports a route-level loader; no data fetching in <code>useEffect</code>.</li>
+                      <li>All interactive elements have a visible focus ring (4px navy).</li>
+                      <li>a11y: every <code>&lt;img&gt;</code> has <code>alt</code>, every form input has a <code>&lt;label&gt;</code>.</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div class="agent-md-card c2">
+                  <div class="h">
+                    <div class="av">C2</div>
+                    <div>
+                      <b>Code Agent 2 — BFF focus</b>
+                      <span class="sub">Idle · last shipped TM-18 1h ago</span>
+                    </div>
+                    <div class="right">
+                      <button class="btn btn-soft btn-pill" data-toggle-card>Read guidelines</button>
+                      <button class="btn btn-soft btn-pill" disabled style="opacity:0.5; cursor:not-allowed;" title="Only the active Code Agent can edit its own guidelines">Edit</button>
+                    </div>
+                  </div>
+                  <div class="body md-body">
+                    <p><strong>Scope.</strong> Owns the Express BFF under <code>server/bff/</code> and the route mapping.</p>
+                    <ul>
+                      <li>Routes are registered via <code>app.use('/api/...', router)</code>; one router per resource.</li>
+                      <li>Each route is a thin shim that calls into the BE handler — no business logic in the BFF.</li>
+                      <li>All errors are wrapped in <code>{ ok: false, error: { code, message } }</code>.</li>
+                      <li>Auth: <code>requireAuth</code> middleware on every route except <code>/auth/*</code> and <code>/health</code>.</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div class="agent-md-card c3">
+                  <div class="h">
+                    <div class="av">C3</div>
+                    <div>
+                      <b>Code Agent 3 — BE focus</b>
+                      <span class="sub">Idle · last shipped TM-19 38m ago</span>
+                    </div>
+                    <div class="right">
+                      <button class="btn btn-soft btn-pill" data-toggle-card>Read guidelines</button>
+                      <button class="btn btn-soft btn-pill" disabled style="opacity:0.5; cursor:not-allowed;" title="Only the active Code Agent can edit its own guidelines">Edit</button>
+                    </div>
+                  </div>
+                  <div class="body md-body">
+                    <p><strong>Scope.</strong> Owns Node 22 route handlers under <code>server/be/</code> and the SQLite schema.</p>
+                    <ul>
+                      <li>Handlers are pure functions: <code>(db, req) =&gt; Result</code>. No I/O outside the <code>db</code> argument.</li>
+                      <li>All writes are atomic (single <code>db.transaction(...)</code> call).</li>
+                      <li>Migrations live in <code>server/be/migrations/</code> as <code>NNN-{name}.sql</code>; never edit a shipped migration.</li>
+                      <li>Use <code>RETURNING *</code> on every insert/update so the caller doesn't have to re-fetch.</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div class="agent-md-card rv">
+                  <div class="h">
+                    <div class="av">RV</div>
+                    <div>
+                      <b>Reviewer Agent</b>
+                      <span class="sub">Active now · Reviewing PR #214 (TM-19) · ~22m elapsed</span>
+                    </div>
+                    <div class="right">
+                      <button class="btn btn-soft btn-pill" data-toggle-card>Read guidelines</button>
+                      <button class="btn btn-soft btn-pill" disabled style="opacity:0.5; cursor:not-allowed;" title="Only the active Reviewer can edit its own guidelines">Edit</button>
+                    </div>
+                  </div>
+                  <div class="body md-body">
+                    <p><strong>Scope.</strong> Reviews PRs against the linked requirement and the design.</p>
+                    <ul>
+                      <li>Read the linked requirement first; the PR exists to satisfy it.</li>
+                      <li>Check a11y on every new page or modal (focus order, ARIA labels, contrast).</li>
+                      <li>Check for IDOR: every <code>:id</code> route must authorize against the current user.</li>
+                      <li>Approve only if all checks pass; otherwise leave specific, actionable nits.</li>
+                    </ul>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+
+        </main>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════════ BUSD · Build — Story detail (TM-19) ═════════════ -->
+  <section class="screen" id="busd">
+    <div class="screen-label">
+      <span class="num">BUSD</span>
+      <span class="name">Build — Story detail (TM-19)</span>
+      <span class="route">/projects/:id/build/TM-19</span>
+    </div>
+    <div class="screen-body">
+      <div class="app">
+        <aside class="side">
+          <div class="brand"><div class="brand-mark">IH</div><div class="brand-name">Idea Hub</div></div>
+          <div>
+            <div class="menu-label">Menu</div>
+            <nav class="nav">
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12l9-9 9 9 M5 10v10h14V10"/></svg> Overview</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h11l3 3v13H5z M16 4v3h3 M8 11h8 M8 14h8 M8 17h5"/></svg> Project Background <span class="count">17</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3h7v7 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> Requirements <span class="count">14</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Sprint <span class="count">14</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z M4 9h16 M9 4v16"/></svg> Design</a>
+              <a href="#" class="active"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Build <span class="count">14</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="9" r="3"/><path d="M3 19c0-3 2.7-5 6-5s6 2 6 5 M14 19c0-3 2.7-5 6-5"/></svg> Agents</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 12l2 2 4-4 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg> QA <span class="count">2</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> Activity</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 8H3 M21 16H3 M5 4h14v16H5z"/></svg> Artifacts</a>
+            </nav>
+          </div>
+          <div class="side-promo">
+            <h4>TM-19 · Ready for review</h4>
+            <p>Code Agent 1 finished the build. The Reviewer is reading the diff. Resolve the open a11y nits to flip it to <b>Ready for QA</b>.</p>
+            <button>Open in Sprint board →</button>
+          </div>
+          <div class="side-foot">
+            <a href="#bu"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 3h6v6 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> ← Back to build list</a>
+          </div>
+        </aside>
+
+        <main class="main">
+          <div class="topbar">
+            <div class="crumb">
+              <a href="#bu">Build</a>
+              <span class="sep">/</span>
+              <span class="cur">TM-19</span>
+            </div>
+            <div class="search">
+              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+              <input placeholder="Search this project…" />
+            </div>
+            <button class="btn btn-soft btn-pill">Filter</button>
+            <button class="btn btn-soft btn-pill">Export</button>
+            <button class="btn btn-primary btn-pill">+ New build rule</button>
+          </div>
+
+          <!-- Story header card -->
+          <div class="card">
+            <div class="story-head">
+              <div class="ico-lg">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2b2547" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg>
+              </div>
+              <div class="title-stack">
+                <h1>Request detail screen + status updates</h1>
+                <div class="one">TM-19 · From DSGN-08 · 5 pts · Med priority · PR #214 open</div>
+              </div>
+              <div class="actions">
+                <span class="pill review"><span class="dot"></span> Ready for review</span>
+                <button class="btn btn-soft btn-pill">Re-PR</button>
+                <button class="btn btn-primary btn-pill">Mark Ready for QA →</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Linked requirement (left) + story meta (right) -->
+          <div class="req-surface-row">
+            <div class="req-card">
+              <div class="h">
+                <svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="color: var(--purple);"><path d="M5 4h11l3 3v13H5z M16 4v3h3 M8 11h8 M8 14h8 M8 17h5"/></svg>
+                <h4>Linked requirement</h4>
+                <span class="id">DSGN-08</span>
+                <a class="open" href="requirements.html#tm-19">Open in Requirements →</a>
+              </div>
+              <p class="desc">Tenants open a maintenance request, see its current status, and watch it move through triage → scheduled → in-progress → resolved. Property managers update the status from the same screen with an audit trail. Photos, notes, and visit history are inline. <b>Out of scope:</b> payment, contractor assignment, in-app chat.</p>
+              <div class="users-row">
+                <span class="lbl">Intended users</span>
+                <span class="user-chip"><span class="dot"></span> Property manager</span>
+                <span class="user-chip u-tenant"><span class="dot"></span> Tenant</span>
+                <span class="user-chip u-admin"><span class="dot"></span> Admin</span>
+              </div>
+            </div>
+
+            <div class="req-card">
+              <div class="h">
+                <svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="color: var(--blue);"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="9" r="3"/><path d="M3 19c0-3 2.7-5 6-5s6 2 6 5 M14 19c0-3 2.7-5 6-5"/></svg>
+                <h4>Story at a glance</h4>
+                <span class="id" style="font-family: var(--font-sans); font-size: 11px; color: var(--ink-2);">Code Agent 1 · Reviewer</span>
+              </div>
+              <p class="desc" style="font-size: 12.5px; line-height: 1.7; color: var(--ink);">
+                <b>Branch:</b> <code style="font-family: var(--font-mono); font-size: 11.5px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">build/tm-19-request-detail</code><br/>
+                <b>PR:</b> <a href="#" style="color: var(--navy); font-weight: 600;">#214</a> · 5 files · +312 / −24 · CI ✓<br/>
+                <b>Last update:</b> Code Agent 1 · 22m ago
+              </p>
+            </div>
+          </div>
+
+          <!-- Surface stack: FE files / BFF APIs / BE APIs -->
+          <div class="surface-stack">
+
+            <!-- FE files -->
+            <div class="surface-card fe">
+              <div class="h">
+                <div class="ico"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3h7v7 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg></div>
+                <div>
+                  <h4>FE files this story edits</h4>
+                  <span class="sub">3 files · reviewable in PR #214</span>
+                </div>
+                <button class="btn btn-soft btn-pill add" aria-label="Add an FE file">+ Add file</button>
+              </div>
+              <div class="file-list">
+                <div class="file-row">
+                  <svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3h7v7 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>
+                  <div class="path">src/pages/RequestDetail.tsx <span class="tag">new</span></div>
+                  <a class="open" href="#">View diff →</a>
+                  <button class="trash" aria-label="Remove src/pages/RequestDetail.tsx"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18 M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2 M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6 M10 11v6 M14 11v6"/></svg></button>
+                </div>
+                <div class="file-row">
+                  <svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3h7v7 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>
+                  <div class="path">src/components/StatusTimeline.tsx <span class="tag">new</span></div>
+                  <a class="open" href="#">View diff →</a>
+                  <button class="trash" aria-label="Remove src/components/StatusTimeline.tsx"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18 M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2 M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6 M10 11v6 M14 11v6"/></svg></button>
+                </div>
+                <div class="file-row">
+                  <svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3h7v7 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>
+                  <div class="path">src/styles/request-detail.css <span class="tag mod">modified</span></div>
+                  <a class="open" href="#">View diff →</a>
+                  <button class="trash" aria-label="Remove src/styles/request-detail.css"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18 M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2 M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6 M10 11v6 M14 11v6"/></svg></button>
+                </div>
+              </div>
+            </div>
+
+            <!-- BFF APIs -->
+            <div class="surface-card bff">
+              <div class="h">
+                <div class="ico"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12h18 M3 6h18 M3 18h18"/></svg></div>
+                <div>
+                  <h4>BFF APIs this story calls</h4>
+                  <span class="sub">2 routes · Express /api/*</span>
+                </div>
+                <button class="btn btn-soft btn-pill add" aria-label="Add a BFF route">+ Add route</button>
+              </div>
+              <div class="api-list">
+                <div class="api-row">
+                  <span class="method-chip get" aria-label="HTTP method: GET">GET</span>
+                  <span class="path">/api/requests/:id</span>
+                  <span class="desc">Fetch one maintenance request with timeline + visit history</span>
+                  <button class="trash" aria-label="Remove GET /api/requests/:id"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18 M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2 M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6 M10 11v6 M14 11v6"/></svg></button>
+                </div>
+                <div class="api-row">
+                  <span class="method-chip patch" aria-label="HTTP method: PATCH">PATCH</span>
+                  <span class="path">/api/requests/:id/status</span>
+                  <span class="desc">Update the request status with an audit-trail entry (manager-only)</span>
+                  <button class="trash" aria-label="Remove PATCH /api/requests/:id/status"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18 M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2 M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6 M10 11v6 M14 11v6"/></svg></button>
+                </div>
+              </div>
+            </div>
+
+            <!-- BE APIs -->
+            <div class="surface-card be">
+              <div class="h">
+                <div class="ico"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v16H5z M9 8h6 M9 12h6 M9 16h4"/></svg></div>
+                <div>
+                  <h4>BE APIs this story calls</h4>
+                  <span class="sub">2 handlers · Node 22 route-handler style</span>
+                </div>
+                <button class="btn btn-soft btn-pill add" aria-label="Add a BE endpoint">+ Add route</button>
+              </div>
+              <div class="api-list">
+                <div class="api-row">
+                  <span class="method-chip get" aria-label="HTTP method: GET">GET</span>
+                  <span class="path">/requests/:id</span>
+                  <span class="desc">Fetch request by id (joins status_history, visits)</span>
+                  <button class="trash" aria-label="Remove GET /requests/:id"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18 M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2 M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6 M10 11v6 M14 11v6"/></svg></button>
+                </div>
+                <div class="api-row">
+                  <span class="method-chip put" aria-label="HTTP method: PUT">PUT</span>
+                  <span class="path">/requests/:id/status</span>
+                  <span class="desc">Atomic status update with audit-trail row (single transaction)</span>
+                  <button class="trash" aria-label="Remove PUT /requests/:id/status"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18 M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2 M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6 M10 11v6 M14 11v6"/></svg></button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Code-review thread (per-story) -->
+          <div class="story-thread-wrap">
+            <div class="card">
+              <div class="thread" style="padding: 18px 22px 22px;">
+                <div class="thread-head">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                  Code review · PR #214
+                  <span class="who">2 comments · CI ✓ · 1 unresolved</span>
+                </div>
+
+                <div class="comment c1">
+                  <div class="body">
+                    <div class="who">Code Agent 1 <span>· 1h ago</span></div>
+                    <p>PR ready for review. Built the request detail screen with status timeline, photo gallery, and the comment thread. Self-review pass found one unused import — cleaned up. Story now waiting on Reviewer sign-off.</p>
+                  </div>
+                  <div class="meta">
+                    <code>PR #214</code> · 5 files · +312 / −24
+                    <span class="pass">✓ Self-review pass</span>
+                  </div>
+                </div>
+
+                <div class="comment rev">
+                  <div class="body">
+                    <div class="who">Reviewer Agent <span>· 22m ago</span></div>
+                    <p>Two nits in <code style="font-family: var(--font-mono); font-size: 11px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">RequestDetail.tsx</code> — the status timeline is not keyboard reachable (focus order skips `Completed` on a screen-reader walk), and the photo gallery has no alt-text fallback when an image 404s. Both are quick fixes. Will approve once those are in.</p>
+                  </div>
+                  <div class="meta">
+                    <code>src/pages/RequestDetail.tsx</code> · 2 nits
+                    <span class="fail">✗ 1 unresolved (a11y)</span>
+                  </div>
+                </div>
+
+                <div class="compose">
+                  <textarea placeholder="Reply as the user, or @-mention Code 1 / Reviewer…"></textarea>
+                  <span class="who">Posting as <b>Will</b></span>
+                  <button class="btn btn-primary btn-pill">Post</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="font-family: var(--font-mono); font-size: 11px; color: var(--ink-2); text-align: right; padding: 0 22px 8px;">
+            Last updated 22m ago by Reviewer Agent · 3 FE files · 2 BFF routes · 2 BE handlers
+          </div>
+
+        </main>
+      </div>
+    </div>
+  </section>
+
 </div>
+
+<script>
+  // ─── Status / Rules kit-tabs — in-page mode switch (no full reload).
+  // Each .kit-tabs toggles a data-mode="status" / data-mode="rules" button.
+  // On the Build document, the two halves live in two different <section>s
+  // (BU and BUR), so clicking a tab smooth-scrolls to the matching section.
+  document.querySelectorAll('.kit-tabs').forEach(function (tabs) {
+    var buttons = tabs.querySelectorAll('button');
+    buttons.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var mode = btn.getAttribute('data-mode');
+        var target = mode === 'rules' ? document.getElementById('bur') : document.getElementById('bu');
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Sync the other kit-tabs instance to the same state.
+        document.querySelectorAll('.kit-tabs').forEach(function (other) {
+          other.querySelectorAll('button').forEach(function (b) {
+            var on = b.getAttribute('data-mode') === mode;
+            b.classList.toggle('on', on);
+            b.setAttribute('aria-selected', on ? 'true' : 'false');
+          });
+        });
+      });
+    });
+  });
+
+  // ─── Per-agent coding guidelines — toggle expand/collapse on the
+  // .agent-md-card. Click anywhere on the card header, or on the
+  // "Read guidelines" button, to open; click again to close.
+  document.querySelectorAll('.agent-md-card').forEach(function (card) {
+    var h = card.querySelector('.h');
+    if (!h) return;
+    h.addEventListener('click', function (e) {
+      // Don't toggle when the user is clicking the Edit / Read buttons
+      // (they have their own disabled handlers — the click bubbles
+      // to here, but we let it pass; the expand is a side effect).
+      card.classList.toggle('open');
+      var btn = card.querySelector('[data-toggle-card]');
+      if (btn) {
+        btn.textContent = card.classList.contains('open') ? 'Hide guidelines' : 'Read guidelines';
+      }
+    });
+  });
+
+  // ─── Code-review thread — Cmd/Ctrl+Enter submits the compose textarea.
+  document.querySelectorAll('.compose textarea').forEach(function (ta) {
+    ta.addEventListener('keydown', function (e) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        var btn = ta.parentElement.querySelector('.btn-primary');
+        if (btn && !btn.disabled) btn.click();
+      }
+    });
+  });
+
+  // ─── Architecture ↔ Configurations: changing a stack dropdown filters the
+  // matching sub-card. BFF sub-card hides when BFF = "None"; DB sub-card
+  // hides when DB = "None". Inside each sub-card, [data-show-on] rows
+  // toggle when their comma-separated stack list matches the active pick.
+  var archKeyMap = { fe: 'fe', bff: 'bff', be: 'be', db: 'db', host: 'host' };
+  function syncConfigs() {
+    document.querySelectorAll('.arch-row [data-arch]').forEach(function (cell) {
+      var key = Object.keys(archKeyMap).find(function (k) { return cell.getAttribute('data-arch') === k; });
+      if (!key) return;
+      var sel = cell.querySelector('select');
+      if (!sel) return;
+      var val = sel.value;
+      // Sub-card visibility (whole group).
+      var sub = document.querySelector('[data-stack-config="' + key + '"]');
+      if (sub) {
+        var active = (sub.getAttribute('data-active-on') || '').split(',').filter(Boolean);
+        var hide = active.length > 0 && active.indexOf(val) === -1;
+        sub.style.display = hide ? 'none' : '';
+      }
+      // Row-level visibility (data-show-on lists).
+      var rows = document.querySelectorAll('[data-show-on]');
+      rows.forEach(function (row) {
+        var shows = row.getAttribute('data-show-on').split(',').filter(Boolean);
+        // Only toggle rows that belong to this stack family (FE/BFF/BE/DB/Host).
+        var inFamily = row.closest('[data-stack-config="' + key + '"]') || row.closest('[data-show-on]') && row.parentElement && row.parentElement.parentElement && row.parentElement.parentElement.getAttribute('data-stack-config') === key;
+        if (!inFamily && row.closest('[data-stack-config="' + key + '"]') === null) return;
+        row.style.display = shows.indexOf(val) !== -1 ? '' : 'none';
+      });
+      // Update the sub-card stack label to match the selected option.
+      var label = document.querySelector('[data-stack-label="' + key + '"]');
+      if (label) {
+        var opt = sel.options[sel.selectedIndex];
+        if (opt) label.textContent = opt.textContent;
+      }
+    });
+  }
+  document.querySelectorAll('.arch-row select').forEach(function (sel) {
+    sel.addEventListener('change', syncConfigs);
+  });
+  syncConfigs();
+</script>
 </body>
 </html>

@@ -245,7 +245,7 @@ Pick (or create) the on-disk project folder that will hold the framework artifac
 | **Mockup** | `mockups.html` `#s8` |
 
 ### Entry
-- From Screen 7 after the folder is picked. Also the target of the **"Open chat →"** link in Overview-blocked and Project Background open-questions banner — both resume the intake BA chat (this screen).
+- From Screen 7 after the folder is picked. Also the target of the **"Open chat →"** link in the Overview-blocked Outstanding-questions panel — that action resumes the intake BA chat (this screen). (The Project Background open-questions banner no longer links here; it now links to Overview via `View questions →`.)
 
 ### Purpose
 The BA Agent interviews the user about their idea and writes `idea.md`. Two-column: the conversation on the left, what's been captured on the right.
@@ -269,7 +269,7 @@ The BA Agent interviews the user about their idea and writes `idea.md`. Two-colu
 1. Reuses the existing BA-Agent chat (system prompt unchanged) — just hosted in the app shell.
 2. Interview progress sidebar surfaces what's been captured.
 3. **Outstanding questions section lives here** (chat side panel), NOT as a tab on the per-project sidebar. The 10-tab per-project sidebar is unchanged.
-4. **"Open chat →" target = this screen** (intake BA chat), not a project-level thread. Applies from Overview-blocked and the Project Background open-questions banner.
+4. **"Open chat →" target = this screen** (intake BA chat), not a project-level thread. Applies from the Overview-blocked Outstanding-questions panel. The Project Background open-questions banner now links to Overview (`View questions →`), not here.
 
 ### Open / deferred
 - *(none beyond what is locked)*
@@ -397,13 +397,13 @@ One dynamic tab, **three states**: `active` · `blocked` · `done` (Deployed). S
 
 ---
 
-## Project Background tab — screens 12 (view) · 13 (edit) · 14 (SA review) + State D (gate)
+## Project Background tab — screens 12 (draft) · 13 (unsaved edits) · 14 (SA review) + State D (gate)
 
 | | |
 |---|---|
 | **Route** | `/projects/:id/background` |
 | **Sidebar** | per-project shell, **Project Background active** (badge = artifact count, 17 max) |
-| **Mockup** | `background.html` (12 view, 13 edit, 14 SA review) |
+| **Mockup** | `background.html` (12 draft, 13 unsaved edits, 14 SA review, + State D confirm) |
 | **Visible when** | always |
 | **Role** | BA authors; SA reviews/edits during `In Review (SA)`; Design/Code/QA read-only. |
 
@@ -414,29 +414,31 @@ One dynamic tab, **three states**: `active` · `blocked` · `done` (Deployed). S
 
 ### Zones
 1. **Stage banner** — live counts (`9 Draft / 2 In Review / 1 Returned / 3 Approved`), not a bulk action.
-2. **Open-questions banner** (butter-yellow) — when `open-questions.md` has `Blocker-for: PRD-approval` items; **deep-links into the intake BA chat (Screen 8) Outstanding questions section, filtered to `Blocker-for: PRD-approval`** (not `prd.md` §11).
+2. **Open-questions banner** (butter-yellow) — when `open-questions.md` has `Blocker-for: PRD-approval` items; **links to the Overview screen** (`/projects/:id`, Overview tab) where the Outstanding-questions panel surfaces them. The banner's sole action is `View questions →`. It no longer deep-links into the intake BA chat.
 3. **Left rail — 5-band file tree** — Core PRD · Scope & rules · Data & access · Planning & risk · SA handoff. 17 artifacts total. Each row: colored status dot (Draft purple / In Review amber / Returned rose / Approved green), dirty inset (coral) when editing.
-4. **Right pane — document viewer** — `View` / `Edit` tabs. View renders markdown; Edit = BA-only monospace textarea.
+4. **Right pane — document editor** — **always editable (no View/Edit mode toggle)**. The selected file renders as a BA monospace textarea in every state where editing is permitted. There is no separate read-only "View" mode; the user edits inline and saves separately. The only exception is `In Review (SA)`, where the body is read-only (SA markup preserved) until the file is returned.
 5. **Inline review thread** (State C) — below the document when a file is `In Review (SA)`; interleaves SA + BA comments; Compose box.
 
-### State — A: view (Screen 12)
-- File tree + selected file's markdown body (read-only).
+### State — A: draft (Screen 12)
+- File tree + selected file's body in the editor textarea (always editable; no View/Edit toggle).
 - `GET /api/projects/:id/ba-workspace/files` → tree + per-file status + dirty flag.
-- `GET /api/projects/:id/ba-workspace/files/:name` → markdown body.
+- `GET /api/projects/:id/ba-workspace/files/:name` → markdown body loaded into the editor.
+- Footer: `Save changes` / `Send for review →`.
 
-### State — B: edit (Screen 13, BA-only)
-- Monospace textarea; dirty state in tree (coral inset) + header (`● Unsaved changes`).
+### State — B: unsaved edits (Screen 13, BA-only)
+- Monospace textarea; dirty state in tree (coral inset) + header (`● Unsaved changes`). No View/Edit toggle.
 - Footer (status-aware): `Discard` / `Save changes` / `Send for SA review →` (only enabled while the file is `Draft` or `Returned`). Edit locked while `In Review (SA)`.
 - `PUT /api/projects/:id/ba-workspace/files/:name` → save body (409 if `In Review (SA)`).
 
 ### State — C: SA review (Screen 14)
-- Active file is `In Review (SA)`. Body read-only with SA's inline `blockquote` markup preserved.
+- Active file is `In Review (SA)`. Body read-only with SA's inline `blockquote` markup preserved. No View/Edit toggle (read-only is implied by the review state, not a tab).
 - Footer: `Return to BA` / `Approve ✓` (was "Mark Completed ✓" — renamed; status becomes `Approved`).
 - `POST /api/projects/:id/ba-workspace/files/:name/comments` → append reply.
 - `GET .../comments` → thread.
 
 ### State — D: context-ready / confirm (the gate)
 - Reached when all 17 docs are `Approved`. A **dedicated confirmation view** (not a banner/modal) lets the user confirm the whole context.
+- **Uses the same per-project shell as the other Project Background screens** — full 10-tab sidebar (Project Background active, downstream tabs still locked pre-confirmation) + topbar (`← Projects`, project name, stage pill) + the State D confirmation card. It does **not** use a stripped-down or alternate chrome.
 - `POST /api/projects/:id/background/confirm-context` → fires the **one-shot unlock** of Sprint + Design + Build + QA and finalizes Requirements.
 
 ### Per-file state machine
@@ -456,19 +458,21 @@ Core PRD (`prd.md`, `user-journeys.md`, `personas.md`) · Scope & rules (`glossa
 Edits persist to the project's on-disk `PRD/`. 7 API endpoints in `PROJECT-BACKGROUND-BUILD-PLAN.md`.
 
 ### Actions
-- Browse tree; open a file (View); edit (BA, Draft/Returned only); send for SA review; return; approve; comment; confirm context (State D).
+- Browse tree; open a file (editor, always editable); save changes (separate action); send for SA review; return; approve; comment; confirm context (State D).
 
 ### Exit → Requirements (derived) · Sprint/Design/Build/QA (on confirm)
 
 ### Decisions locked
 1. **Project Background is the gate** — two-step, one-shot unlock (see Global conventions).
 2. **17 artifacts across 5 bands**; per-file state machine Draft → In Review → Returned → **Approved**.
-3. **4 tab states** (A view · B edit · C SA review · D context-ready/confirm).
+3. **3 doc states + 1 gate view** (A draft · B unsaved edits · C SA review · D context-ready/confirm).
 4. **Stage banner = live counts**, not a bulk action.
 5. **Write-back to on-disk `PRD/`**; no destructive deletes.
 6. Terminal state renamed "Completed" → "Approved"; button "Mark Completed ✓" → "Approve ✓".
 7. **Re-lock on revoke = keep unlocked, warn only** — once confirmed, downstream tabs stay accessible; if a file is later un-Approved, a banner warns "context changed since confirmation". The unlock does not re-arm.
-8. **Open-questions banner** deep-links into the intake chat's Outstanding questions section (filtered to `Blocker-for: PRD-approval`), not `prd.md` §11.
+8. **Open-questions banner links to Overview** — the banner's sole action is `View questions →`, navigating to the Overview tab where the Outstanding-questions panel shows the `Blocker-for: PRD-approval` items. It no longer deep-links into the intake BA chat (Screen 8). *(Revises the earlier decision that linked the banner to the intake chat.)*
+9. **No View/Edit mode toggle** — the right pane is always an editable textarea (BA monospace) for `Draft` / `Returned` / clean files; the user edits inline and clicks `Save changes` separately. `In Review (SA)` is read-only by virtue of state, not via a View tab. *(Revises the earlier View/Edit tab decision.)*
+10. **State D uses the standard per-project shell** — the same 10-tab sidebar + topbar as screens 12–14, with the State D confirmation card in the main column. No alternate/stripped chrome.
 
 ### Open / deferred
 - Markdown renderer choice (`react-markdown` + `remark-gfm`) — implementation detail.
@@ -563,42 +567,102 @@ Edits persist to the project's on-disk `PRD/`. 7 API endpoints in `PROJECT-BACKG
 | **Route** | `/projects/:id` · Design tab |
 | **Sidebar** | per-project shell, **Design active** (no badge) |
 | **Visible when** | unlocked after project-context confirmation |
+| **Mockup** | `launcher/design/design-tab.html` (v5.3) — § D (list) + § E (Story detail, populated) + § F (Story detail, empty state) |
 | **Role** | The Design stage workspace. Design Agent A + B run the design journey per story. The tab is both the design-output viewer **and** the editable design-rules surface. |
 
 ### Purpose
-"What's being designed, and how should the design agents run?" Shows per-story design status + produced design artifacts (tokens, wireframes, hi-fi, interaction states, a11y audit), plus editable design rules that write back to the project's `design-system/` folder. Two halves: **status** + **editable rules**.
+"What's being designed, and how should the design agents run?" Shows per-story design status + produced design artifacts (tokens, wireframes, hi-fi, interaction states, a11y audit), plus editable design rules that write back to the project's `design-system/` folder. Two halves: **status** + **editable rules**. Each row drills down to a **Story detail** page (§ below) where the per-story review surface lives.
 
 ### Zones
 1. **Design summary / stats** — stories in design (Being designed · Design complete · Ready for development), counts.
-2. **Per-story design list** — each story: design status (`Picked up → In design → Peer review (A↔B) → Design complete → "Ready for development"`), assigned Design Agent (A/B), produced artifacts (wireframes, hi-fi mockups, state docs).
+2. **Per-story design list** — each story: id · status pill · title · assignee · **`Open story →`** drill-down button. The 5-state design journey is shown via the status pill (not an inline stepper); the full journey is on the Story detail page.
 3. **Design agent strip** — Design Agent A + B status (working on which story, peer-review state).
-4. **Design artifacts viewer** — selected artifact: tokens, wireframes, hi-fi mockups, interaction-state docs, accessibility audit. (The Overview "Design checklist" lives here in full and editable.)
-5. **Editable design rules** (steering half) — design guidelines, accessibility rules (WCAG 2.1 AA), component-spec rules, token rules, constraints ("CSS-implementable only", "SVGs over raster"). Edits write back to `design-system/` (map to `../skills/accessibility-guidelines.md`, `../skills/ui-best-practices.md`).
+4. **Editable design rules** (steering half) — design guidelines, accessibility rules (WCAG 2.1 AA), component-spec rules, token rules, constraints ("CSS-implementable only", "SVGs over raster"). Edits write back to `design-system/` (map to `../skills/accessibility-guidelines.md`, `../skills/ui-best-practices.md`).
 
 ### State
 - `GET /api/projects/:id/design/stories` → per-story design status.
-- `GET /api/projects/:id/design/artifacts` → tokens, wireframes, hi-fi, states, a11y audit.
 - `GET /api/projects/:id/design/rules` + `PUT` → editable design rules; read from / write back to `design-system/`.
 - Design agent completes a story → `POST /api/projects/:id/stories/:id/transition` `{to: "Ready for development"}` → reflects on Sprint board.
+- Per-story drill-down → `GET /api/projects/:id/design/:storyId` → Story detail page (§ below).
 
 ### Actions
-- Open a design artifact (viewer).
+- Click `Open story →` on a row → Story detail page for that story.
 - Edit design rules → writes to `design-system/` → design agents pick up on next run.
 - Design agents autonomously update story status; the user monitors + steers via rules (no manual story moves needed).
 
-### Exit → sibling tabs (Sprint for story status; Build once "Ready for development")
+### Exit → Story detail (§ below) · Sprint (story status) · Build (once "Ready for development")
 
 ### Decisions locked
 1. Design tab = design-journey output + editable design rules (two halves — Status / Rules switch).
 2. Design agent updates the story to **"Ready for development"** on design complete (ties to the Sprint board).
 3. Design rules **write back to the `design-system/` folder** (control-console pattern).
-4. Peer review is Design Agent A ↔ B (per the framework), surfaced in the agent strip.
-5. **Artifacts viewer = hybrid** — tokens + interaction states rendered in-app; wireframes + hi-fi link to Figma.
-6. **Peer-review surface = per-story review thread** — A↔B comments + disagreements shown inline per story.
+4. Peer review is Design Agent A ↔ B (per the framework), surfaced in the agent strip on the list page and the per-story thread on the Story detail page.
+5. **Row UI is flat in v5.3** — no inline stepper, no inline `.story-detail` expansion. The 5-state journey is signalled by the status pill; everything else (artifacts, review thread, interaction states) lives on the dedicated Story detail page.
+6. **Per-story review surface = Story detail page** — not inline. A↔B comments + disagreements + a state-toggle preview live on a focused per-story page reachable from each row.
 7. **Everything is editable** — the user can edit both the design rules (Rules tab) AND the per-story design checklist/status (not agent-managed-only).
 
 ### Open / deferred
-- **Mockup not yet created** — design the visual first.
+- Figma embeds on the Story detail page use a same-origin iframe with inline `srcdoc` for the v5.3 mockup. A true Figma embed URL is a v5.4 deliverable.
+
+---
+
+## Design — Story detail (per-story drill-down)
+
+| | |
+|---|---|
+| **Route** | `/projects/:id/design/:storyId` |
+| **Sidebar** | per-project shell, **Design active** (no badge); side-promo card swaps to the current story's id + status |
+| **Visible when** | unlocked after project-context confirmation |
+| **Mockup** | `launcher/design/design-tab.html` § E (populated) + § F (empty state) |
+| **Requirements** | `launcher/design/design-story-requirements.md` |
+
+### Purpose
+"Where do I actually work on this story?" The focused, per-story home for design review. The human and the two design agents (DA + DB) work on one story at a time here — read the linked requirement, see and swap interaction-state previews of the design, attach a source, and post in the A↔B review thread. Replaces the v5.2 inline `.story-detail` expansion that used to sit below the selected row on the Design list.
+
+### Entry
+- Per-project sidebar → Design tab → row → `Open story →` button (primary).
+- Direct URL: `/projects/:id/design/:storyId` (deep links from Sprint, Activity, agent notifications).
+- `Open in Design ↗` from the Sprint board card for a story in any design stage.
+
+### Zones
+1. **Story header card** — id · status pill · title · `Mark design complete →` (disabled when not in Peer review / Design complete) · secondary `Request changes` (in Peer review only).
+2. **Linked requirement card (left)** — requirement icon · id (TM-XX, monospace) · title · description · **Intended users** chip row (Property manager · Tenant · Admin, each colour-coded) · `Open in Requirements →` link.
+3. **Add design source card (right, always visible)** — two attach buttons: `Add Figma link` (reveals URL input + Save) and `Upload HTML` (file picker, v5.3 stub). Acts as the primary CTA on the empty state.
+4. **Design preview card** — header with source-type pill + a11y chip + 4-state toggle group (Default · Loading · Error · Success) · body with iframe preview OR empty state. Toggles swap the iframe content; `aria-live="polite"` announces changes.
+5. **Linked source card** — when a source is attached: icon (`H` for HTML / `F` for Figma) · file/URL + size + last-edited · `Replace` + `Remove` actions. Replaces with a `+ Add design source` CTA on the empty state.
+6. **A↔B peer review thread** — same `.thread` / `.comment` / `.compose` classes as the parent Design tab. Comments with disagreements get an amber callout.
+
+### State
+- `GET /api/projects/:id/design/:storyId` → story detail (requirement link, source, thread, status).
+- `POST /api/projects/:id/design/:storyId/source` `{type: "figma" | "html", value: "..."}` → attach a source.
+- `DELETE /api/projects/:id/design/:storyId/source` → remove the source.
+- `POST /api/projects/:id/design/:storyId/thread` → post a comment.
+- `POST /api/projects/:id/stories/:id/transition` `{to: "Design complete" | "Ready for development"}` → the `Mark design complete` action.
+
+### Actions
+- Toggle between Default / Loading / Error / Success — keyboard arrow keys + Home / End.
+- `Add Figma link` / `Upload HTML` — attach a source.
+- `Replace` / `Remove` source — confirmed inline before Remove.
+- Post a comment in the A↔B thread.
+- `Mark design complete →` — flip the story to the next stage.
+- `← Back to design list` (side-foot) or click the `Design` segment of the breadcrumb.
+
+### Exit → Design list (`/projects/:id` · Design tab) · Sprint (story status) · Requirements (TM linked from the card)
+
+### Decisions locked
+1. **One screen per story, not inline expansion** — keeps the list scannable and the detail focused.
+2. **Always-visible Add source controls** — also serve as the empty-state CTA. No hidden "Add source" button.
+3. **4-state toggle group above the iframe** — matches the kit-tabs single-active pattern. `aria-live="polite"` on the preview body.
+4. **Source card has both Replace and Remove** — Replace reuses the attach UI; Remove shows a confirmation and transitions to the empty state.
+5. **Empty state disables the toggle group and the compose box** — `aria-disabled="true"`, `tabindex="-1"`. The `Add Figma link` button becomes primary.
+6. **Disabled `Mark design complete`** on stories in `Picked up` / `In design` — visual fade, `aria-disabled="true"`, `cursor: not-allowed`.
+7. **A↔B thread reuses the parent Design tab's classes** — no new comment system, no new tokens.
+
+### Open / deferred
+- Real Figma embed rendering (v5.3 mockup uses same-origin iframe with inline `srcdoc`; v5.4 wires the true Figma URL).
+- Drag-and-drop for HTML upload (v5.3 is file-picker only).
+- Multi-source per story (v5.3 is single-source).
+- Version history of attached sources (v5.3 keeps only the most recent).
 
 ---
 
@@ -886,7 +950,7 @@ Per `skills/ui-best-practices.md` / `skills/accessibility-guidelines.md`:
 
 **Search / filter no-results.** Requirements: when type + status + search produce zero rows, groups collapse and a centered "No requirements match these filters" card with `Clear filters` appears; `aria-live="polite"`.
 
-**Keyboard / focus.** Project Background file tree: arrow keys move selection; `Enter` opens; the selected row gets a 2px coral focus ring distinct from the dark-navy pill. View ↔ Edit swap: focus moves to the first interactive element of the new pane; `aria-selected` on the tab strip. Requirements: `⌘F`/`Ctrl-F` focuses search; `Esc` clears; chips are radio/checkbox styled with `aria-pressed`. Inline review thread (14): `Tab` order is SA comment → BA reply → next; `role="log"` on the thread; `aria-live="polite"` on new comments.
+**Keyboard / focus.** Project Background file tree: arrow keys move selection; `Enter` opens; the selected row gets a 2px coral focus ring distinct from the dark-navy pill. The editor is always a textarea (no View/Edit tab swap); focus moves into the textarea when a file opens; `aria-current="true"` on the selected tree row. Requirements: `⌘F`/`Ctrl-F` focuses search; `Esc` clears; chips are radio/checkbox styled with `aria-pressed`. Inline review thread (14): `Tab` order is SA comment → BA reply → next; `role="log"` on the thread; `aria-live="polite"` on new comments.
 
 **Confirmation on destructive transitions.** `Approve ✓` (14) opens an inline confirm with `Cancel` / `Confirm` — focus starts on `Cancel`, `Enter` confirms. `Discard` (13) asks for confirm only if the body has more than 5 lines of changes; otherwise reverts without prompt.
 

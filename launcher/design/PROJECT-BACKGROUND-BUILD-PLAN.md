@@ -1,27 +1,28 @@
-# Build Plan — Project Background Page (BA Workspace, screens 12–14)
+# Build Plan — Project Background Page (BA Workspace, screens 12–14 + State D)
 
-Source of truth: `launcher/design/background.html` (v5.2). Plan brief: `launcher/design/plan.md`. Workspace root = current repo (no `project-dir.txt`). Branch: `feature/product-requirements-ui`.
+Source of truth: `launcher/design/background.html` (v5.3). Plan brief: `launcher/design/plan.md`. Page contract: `launcher/design/sitemap.md` § Project Background tab. Workspace root = current repo (no `project-dir.txt`). Branch: `feature/product-requirements-ui`.
 
 ## Goal
 
-Implement the **Project Background** tab inside a project — replaces the v5 placeholder. Landing for `/projects/:id` when the new sidebar menu item "Project Background" is active. Builds screens 12 (view), 13 (edit), and 14 (file in SA review with inline thread) of the v5.2 plan.
+Implement the **Project Background** tab inside a project — replaces the v5 placeholder. Landing for `/projects/:id` when the new sidebar menu item "Project Background" is active. Builds screens 12 (draft), 13 (unsaved edits), and 14 (file in SA review with inline thread) of the v5.3 plan, plus the State D context-ready confirmation view.
 
 Out of scope this round: the new top-level **Requirements** tab (screen 15), the **Design / Build / Agents / QA / Activity / Artifacts** tabs, and any SQLite schema migration beyond a small per-file state table.
 
 ## Scope (what "done" looks like)
 
 1. A new sidebar item **Project Background** sits between Overview and Requirements on the per-project menu, with badge = total artifact count for the project.
-2. Clicking it routes to `/projects/:id/background` and renders the screen from `background.html` — five-band file tree on the left (Core PRD / Scope & rules / Data & access / Planning & risk / SA handoff), document viewer on the right with View / Edit tabs.
+2. Clicking it routes to `/projects/:id/background` and renders the screen from `background.html` — five-band file tree on the left (Core PRD / Scope & rules / Data & access / Planning & risk / SA handoff), **document editor on the right (always a textarea — no View/Edit mode toggle)**.
 3. Per-file review state machine works end-to-end:
-   - `Draft` → `In Review (SA)` → `Returned` → `Completed`
+   - `Draft` → `In Review (SA)` → `Returned` → `Approved`
    - Every transition is a single API call; no bulk handoff.
-4. Edit pane (screen 13) shows the BA-only monospace textarea, dirty state with coral inset bar in tree, footer with `Discard / Save changes / Send for SA review`.
-5. SA-in-review pane (screen 14) shows the read-only body, `Return to BA` / `Mark Completed ✓` footer, and an inline comment thread with Compose box.
-6. Stage banner shows live counts (`8 Draft / 3 In Review / 1 Returned / 3 Completed`).
-7. Open-questions banner (butter-yellow) appears when the project's PRD has `Blocker-for: PRD-approval` items in `prd.md` §11.
-8. All states from `skills/ui-best-practices.md` covered: loading, empty, error (network + per-file 404), success (transition toast), validation (textarea dirty guards), focus (visible focus ring on tree rows, `aria-current="true"` on selected).
-9. WCAG 2.1 AA per `skills/accessibility-guidelines.md`: contrast on the coral inset bar and rose error states, keyboard nav across the tree (`Up`/`Down`/`Enter`/`Home`/`End`), screen-reader labels on every status dot.
-10. A Playwright smoke test that loads a sample project, opens Project Background, switches a Draft file to In Review, posts a comment, and marks it Completed.
+4. **No View/Edit tabs.** The right pane is always an editable BA monospace textarea for `Draft` / `Returned` / clean files; the user edits inline and clicks `Save changes` as a separate action. The footer is status-aware: clean Draft → `Save changes` / `Send for review →`; dirty → `Discard` / `Save changes` / `Send for SA review →` (Send only enabled while `Draft` or `Returned`). The editor is **read-only only when the file is `In Review (SA)`** — that read-only state is implied by review state, not by a View tab.
+5. SA-in-review pane (screen 14) shows the read-only body, `Return to BA` / `Approve ✓` footer, and an inline comment thread with Compose box.
+6. Stage banner shows live counts (`8 Draft / 3 In Review / 1 Returned / 3 Approved`).
+7. **Open-questions banner (butter-yellow) links to Overview.** It appears when `open-questions.md` has `Blocker-for: PRD-approval` items; its sole action is `View questions →`, which navigates to the Overview tab (`/projects/:id`) where the Outstanding-questions panel surfaces the items. It does **not** deep-link into the intake BA chat.
+8. **State D (context-ready confirmation view)** renders when all 17 docs are `Approved`. It uses the **same per-project shell** as screens 12–14 (full 10-tab sidebar with Project Background active + downstream tabs locked, topbar with `← Projects` + project name + stage pill) with the State D confirmation card in the main column. `Confirm project context →` calls `POST /api/projects/:id/background/confirm-context` (one-shot unlock). No alternate/stripped chrome.
+9. All states from `skills/ui-best-practices.md` covered: loading, empty, error (network + per-file 404), success (transition toast), validation (textarea dirty guards), focus (visible focus ring on tree rows, `aria-current="true"` on selected; focus moves into the textarea when a file opens).
+10. WCAG 2.1 AA per `skills/accessibility-guidelines.md`: contrast on the coral inset bar and rose error states, keyboard nav across the tree (`Up`/`Down`/`Enter`/`Home`/`End`), screen-reader labels on every status dot.
+11. A Playwright smoke test that loads a sample project, opens Project Background, edits and saves a Draft file, switches it to In Review, posts a comment, marks it Approved, and — once all 17 are Approved — confirms context on State D.
 
 ## File map (added / modified)
 
@@ -31,29 +32,31 @@ launcher/
 │   ├── App.tsx                              # add /projects/:id/background route
 │   ├── components/
 │   │   ├── ProjectDetailScreen.tsx          # wire new "Project Background" menu item + badge
-│   │   ├── ProjectBackgroundScreen.tsx      # NEW — screen 12 shell
+│   │   ├── ProjectBackgroundScreen.tsx      # NEW — screen 12/13/14 shell (handles draft, dirty, SA-review states)
 │   │   ├── ba-workspace/
 │   │   │   ├── FileTree.tsx                 # NEW — 5 bands, status dot, dirty inset
-│   │   │   ├── ArtifactViewer.tsx           # NEW — markdown render + View tab
-│   │   │   ├── ArtifactEditor.tsx           # NEW — monospace textarea (BA-only)
+│   │   │   ├── ArtifactEditor.tsx           # NEW — always-editable monospace textarea (read-only flag only when In Review)
 │   │   │   ├── ReviewThread.tsx             # NEW — inline comments + Compose
 │   │   │   ├── StageBanner.tsx              # NEW — live counts banner
-│   │   │   ├── OpenQuestionsBanner.tsx      # NEW — butter-yellow strip
+│   │   │   ├── OpenQuestionsBanner.tsx      # NEW — butter-yellow strip, "View questions →" links to /projects/:id (Overview)
+│   │   │   ├── ContextReadyView.tsx         # NEW — State D confirmation card (reuses the standard sidebar/topbar shell)
 │   │   │   └── StatusDot.tsx                # NEW — small colored dot with sr label
 │   │   ├── SidebarMenu.tsx                  # NEW (or extract from ProjectDetailScreen) — per-project menu with badges
 │   │   └── Skeletons.tsx                    # add <FileTreeSkeleton/> + <DocumentSkeleton/>
 │   ├── lib/
-│   │   └── api.ts                           # add ba-workspace fetchers (TanStack Query)
+│   │   └── api.ts                           # add ba-workspace fetchers (TanStack Query) + confirm-context call
 │   └── styles/
-│       └── app.css                          # add .ba-workspace* classes (no new tokens)
+│       └── app.css                          # add .ba-workspace* + .state-d* classes (no new tokens)
 ├── server/
-│   ├── index.ts                             # add 7 ba-workspace routes
-│   ├── ba-workspace.ts                      # NEW — file tree assembly, status state, transition logic
-│   └── db.ts                                # add ba_artifact_status table + helpers
+│   ├── index.ts                             # add 7 ba-workspace routes + POST /background/confirm-context
+│   ├── ba-workspace.ts                      # NEW — file tree assembly, status state, transition logic, confirm-context unlock
+│   └── db.ts                                # add ba_artifacts_status table + helpers
 └── testing/
     └── playwright/
-        └── project-background.spec.ts       # NEW — round-trip smoke test
+        └── project-background.spec.ts       # NEW — round-trip smoke test incl. State D confirm
 ```
+
+**Removed vs. earlier plan:** there is no separate `ArtifactViewer.tsx` (markdown-render "View" tab). One `ArtifactEditor.tsx` serves every editable state; read-only is a prop driven by the file's `In Review (SA)` state.
 
 No new top-level tokens. All visual values are in `src/styles/tokens.css` already (per `design-system/tokens/color.md`): `--navy`, `--coral`, `--mint`, `--peach`, `--sky`, `--lavender`, `--purple`, `--butter`. Component states reuse `design-system/components/button.md`, `card.md`, `navigation.md`.
 
@@ -90,8 +93,8 @@ Source of truth = the project's on-disk `PRD/` directory (already created by int
 
 This is the meat. Split across **two parallel Code Agents** on **separate branches** to honor the "3 Code Agents on own branches" rule from the framework, but with only 2 here because the surface is smaller:
 
-- **Branch A — `feat/ba-shell-tree-banner`** → `ProjectBackgroundScreen.tsx`, `FileTree.tsx`, `StageBanner.tsx`, `OpenQuestionsBanner.tsx`, `StatusDot.tsx`, `SidebarMenu.tsx`. These touch the same files (screen shell), so they need to land together. Assign to **one** agent.
-- **Branch B — `feat/ba-document-panel`** → `ArtifactViewer.tsx`, `ArtifactEditor.tsx`, `ReviewThread.tsx`. Independent file set.
+- **Branch A — `feat/ba-shell-tree-banner`** → `ProjectBackgroundScreen.tsx`, `FileTree.tsx`, `StageBanner.tsx`, `OpenQuestionsBanner.tsx`, `ContextReadyView.tsx`, `StatusDot.tsx`, `SidebarMenu.tsx`. These touch the same files (screen shell + State D), so they need to land together. Assign to **one** agent.
+- **Branch B — `feat/ba-document-panel`** → `ArtifactEditor.tsx` (always-editable textarea; read-only when `In Review (SA)`), `ReviewThread.tsx`. Independent file set.
 - **Branch C — `feat/ba-api-hooks`** → `src/lib/api.ts` TanStack Query hooks + types. Foundation branch.
 
 Merge order (sequential, not parallel): **C → A → B**. C provides the API surface A and B depend on. A and B can then land together.
@@ -100,9 +103,9 @@ Each branch ships a unit test colocated (`*.test.tsx`) using the existing Vitest
 
 ### Phase 4 — QA + accessibility + Playwright (≈30 min)
 
-- `skills/accessibility-guidelines.md` audit pass on the new screen: tab order, focus ring contrast, `role="tree"` + `role="treeitem"` + `aria-current="true"` on selected row, `aria-label` on each status dot (`Draft`, `In Review`, `Returned`, `Completed`).
-- `skills/ui-best-practices.md` state coverage: loading skeleton, empty tree (no PRD folder), error banner with retry button (network failure on `GET /files`), success toast after `Send for SA review`, validation (textarea dirty guard before tab switch), back/cancel navigation preserved.
-- `testing/playwright/project-background.spec.ts`: load a fixture project, open background tab, click first Draft file, switch to Edit, change one word, click `Send for SA review`, assert banner count shifts, post a comment, assert it appears in thread, click `Mark Completed ✓`, assert status dot becomes Completed.
+- `skills/accessibility-guidelines.md` audit pass on the new screen: tab order, focus ring contrast, `role="tree"` + `role="treeitem"` + `aria-current="true"` on selected row, `aria-label` on each status dot (`Draft`, `In Review`, `Returned`, `Approved`).
+- `skills/ui-best-practices.md` state coverage: loading skeleton, empty tree (no PRD folder), error banner with retry button (network failure on `GET /files`), success toast after `Send for SA review`, validation (textarea dirty guard before navigating away / sending for review), back/cancel navigation preserved.
+- `testing/playwright/project-background.spec.ts`: load a fixture project, open background tab, click first Draft file (editor opens, no View/Edit toggle), change one word, click `Save changes`, click `Send for SA review`, assert banner count shifts, post a comment, assert it appears in thread, click `Approve ✓`, assert status dot becomes Approved. Once all 17 are Approved, assert State D renders in the standard shell and `Confirm project context →` unlocks the downstream tabs.
 
 **Agent:** QA Agent (single).
 

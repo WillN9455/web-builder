@@ -666,7 +666,7 @@
   }
   .step .lbl { font-size: 12.5px; color: var(--ink-2); font-weight: 500; white-space: nowrap; }
   .step.done .num { background: var(--mint); color: var(--ink); }
-  .step.done .num::after { content: "✓"; }
+  .stepper .step.done .num::after { content: "✓"; }
   .step.done .num b { display: none; }
   .step.active .num { background: var(--navy); color: #fff; }
   .step.active .lbl { color: var(--ink); font-weight: 600; }
@@ -1568,7 +1568,7 @@
     text-decoration: underline;
   }
 
-  /* ===== N11 · UI kit additions — Status/Rules tabs, locked-tab WCAG, OQ section, Connect Jira, State D ===== */
+  /* ===== N11 · UI kit additions — Status/Rules tabs, locked-tab WCAG, OQ section, Connect Jira ===== */
 
   /* Status/Rules tab switch (two-halves pattern) */
   .kit-tabs {
@@ -1656,6 +1656,23 @@
     margin: 12px 0 6px;
   }
   .oq-group:first-child { margin-top: 0; }
+
+  /* Clickable outstanding-question button (drops question into the chat) */
+  button.oq-btn {
+    display: block;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    font: inherit;
+    color: inherit;
+    transition: background 0.12s, border-color 0.12s, transform 0.12s;
+  }
+  button.oq-btn:hover { background: var(--lavender); border-color: rgba(50,42,92,0.18); }
+  button.oq-btn:active { transform: translateY(1px); }
+  button.oq-btn:focus-visible {
+    outline: 2px solid var(--navy);
+    outline-offset: 2px;
+  }
   .oq-empty {
     display: flex;
     align-items: center;
@@ -1827,9 +1844,6 @@
             <div class="tile-grid">
               <div class="tile tile-peach">
                 <div>
-                  <div class="tile-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12l9-9 9 9 M5 10v10h14V10"/></svg></div>
-                </div>
-                <div>
                   <h3>Tenant Maintenance Portal</h3>
                   <div class="one-liner">Maintenance request app for property managers</div>
                   <div class="row" style="margin-top: 10px;">
@@ -1839,9 +1853,6 @@
                 </div>
               </div>
               <div class="tile tile-sky">
-                <div>
-                  <div class="tile-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg></div>
-                </div>
                 <div>
                   <h3>Yoga Studio Booking</h3>
                   <div class="one-liner">Class scheduling + membership for a single studio</div>
@@ -1853,9 +1864,6 @@
               </div>
               <div class="tile tile-mint">
                 <div>
-                  <div class="tile-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4 M8 2v4 M3 10h18"/></svg></div>
-                </div>
-                <div>
                   <h3>Internal Timesheet</h3>
                   <div class="one-liner">Track billable hours across the small studio team</div>
                   <div class="row" style="margin-top: 10px;">
@@ -1865,9 +1873,6 @@
                 </div>
               </div>
               <div class="tile tile-lavender">
-                <div>
-                  <div class="tile-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7h18l-2 13H5L3 7z M9 7V4h6v3"/></svg></div>
-                </div>
                 <div>
                   <h3>Field Service Tracker</h3>
                   <div class="one-liner">Mobile-friendly job tracking for one engineer</div>
@@ -1879,9 +1884,6 @@
               </div>
               <div class="tile tile-butter">
                 <div>
-                  <div class="tile-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v16H5z M5 8h14 M9 4v16"/></svg></div>
-                </div>
-                <div>
                   <h3>Personal Bookmarks</h3>
                   <div class="one-liner">A clean, fast personal link library</div>
                   <div class="row" style="margin-top: 10px;">
@@ -1891,9 +1893,6 @@
                 </div>
               </div>
               <div class="tile tile-blush">
-                <div>
-                  <div class="tile-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18 M12 3a14 14 0 0 1 0 18 M12 3a14 14 0 0 0 0 18"/></svg></div>
-                </div>
                 <div>
                   <h3>Neighborhood Library</h3>
                   <div class="one-liner">A lending platform for tools, books and board games</div>
@@ -2066,8 +2065,7 @@
           </div>
           <div class="side-promo">
             <h4>Linked project</h4>
-            <p>Open <code>idea.md</code> in the framework folder to update requirements.</p>
-            <button>Open idea.md →</button>
+            <p><code>idea.md</code> was saved and auto-approved when this project was created. Edit it in the framework folder to refine the source-of-truth — changes will appear here.</p>
           </div>
           <div class="side-foot">
             <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 3h6v6 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> ← All projects</a>
@@ -2322,7 +2320,7 @@
                 </div>
                 <div style="font-size: 12px; color: var(--ink-2); opacity:.75; margin-bottom: 14px;">The BA Agent is waiting on these before finalising requirements. Open the chat to answer.</div>
 
-                <div class="oq-list">
+                <div class="oq-list q-scroll" style="max-height: 260px;">
                   <div class="oq-group">Blocker for: Requirements</div>
                   <div class="oq-item">
                     <div class="oq-q">Does the app need to work offline for field engineers?</div>
@@ -2639,10 +2637,12 @@
               <div class="step done"><div class="num">✓</div><div class="body"><b>Project folder set</b><span>~/Code/tenant-maintenance</span></div></div>
               <div class="step done"><div class="num">✓</div><div class="body"><b>Problem</b><span>Manual maintenance triage</span></div></div>
               <div class="step done"><div class="num">✓</div><div class="body"><b>Users &amp; scale</b><span>40 tenants, 1 manager</span></div></div>
-              <div class="step current"><div class="num">3</div><div class="body"><b>MVP scope</b><span>What's the smallest version?</span></div></div>
-              <div class="step pending"><div class="num">4</div><div class="body"><b>Business rules</b><span>Permissions, automations</span></div></div>
-              <div class="step pending"><div class="num">5</div><div class="body"><b>Brand &amp; design</b><span>Style, references</span></div></div>
-              <div class="step pending"><div class="num">6</div><div class="body"><b>Tech stack</b><span>Optional — we can recommend</span></div></div>
+              <div class="step current"><div class="num">4</div><div class="body"><b>MVP scope</b><span>What's the smallest version?</span></div></div>
+              <div class="step pending"><div class="num">5</div><div class="body"><b>Business rules</b><span>Permissions, automations</span></div></div>
+              <div class="step pending"><div class="num">6</div><div class="body"><b>Compliance</b><span>Privacy, accessibility, regulatory</span></div></div>
+              <div class="step pending"><div class="num">7</div><div class="body"><b>Brand &amp; design</b><span>Style, references</span></div></div>
+              <div class="step pending"><div class="num">8</div><div class="body"><b>Tech stack</b><span>Optional — we can recommend</span></div></div>
+              <div class="step pending"><div class="num">9</div><div class="body"><b>Timeline &amp; constraints</b><span>Deadlines, budget, integrations</span></div></div>
 
               <div style="background: var(--lavender); border-radius: 12px; padding: 12px; font-size: 12px; color: var(--ink); line-height: 1.5;">
                 <b>Tip:</b> Say <i>"just fill it in"</i> at any time and the BA Agent will finalise the idea doc itself, flagging any assumptions it made.
@@ -2711,31 +2711,33 @@
               <div class="step done"><div class="num">✓</div><div class="body"><b>Users &amp; scale</b><span>40 tenants, 1 manager</span></div></div>
               <div class="step done"><div class="num">✓</div><div class="body"><b>MVP scope</b><span>Tenant submits, manager assigns, tech resolves</span></div></div>
               <div class="step current"><div class="num">5</div><div class="body"><b>Business rules</b><span>Permissions, automations</span></div></div>
-              <div class="step pending"><div class="num">6</div><div class="body"><b>Brand &amp; design</b><span>Style, references</span></div></div>
-              <div class="step pending"><div class="num">7</div><div class="body"><b>Tech stack</b><span>Optional — we can recommend</span></div></div>
+              <div class="step pending"><div class="num">6</div><div class="body"><b>Compliance</b><span>Privacy, accessibility, regulatory</span></div></div>
+              <div class="step pending"><div class="num">7</div><div class="body"><b>Brand &amp; design</b><span>Style, references</span></div></div>
+              <div class="step pending"><div class="num">8</div><div class="body"><b>Tech stack</b><span>Optional — we can recommend</span></div></div>
+              <div class="step pending"><div class="num">9</div><div class="body"><b>Timeline &amp; constraints</b><span>Deadlines, budget, integrations</span></div></div>
 
               <div style="background: var(--lavender); border-radius: 12px; padding: 12px; font-size: 12px; color: var(--ink); line-height: 1.5;">
                 <b>Tip:</b> Say <i>"just fill it in"</i> at any time and the BA Agent will finalise the idea doc itself, flagging any assumptions it made.
               </div>
 
               <h4 style="margin-top: 22px;">Outstanding questions</h4>
+              <div style="font-size: 11px; color: var(--ink-2); margin: 0 0 10px; line-height: 1.4;">Click a question to drop it into the chat and answer.</div>
               <div class="oq-list">
                 <div class="oq-group">Blocker for: Requirements</div>
-                <div class="oq-item">
+                <button type="button" class="oq-item oq-btn" data-question="How do tenants authenticate — phone, email, magic link?" onclick="window.__oqPick && window.__oqPick(this)">
                   <div class="oq-q">How do tenants authenticate — phone, email, magic link?</div>
                   <div class="oq-meta">Asked 2h ago · Blocks story ONB-04</div>
-                </div>
-                <div class="oq-item">
+                </button>
+                <button type="button" class="oq-item oq-btn" data-question="What's the SLA for first-response on a new repair?" onclick="window.__oqPick && window.__oqPick(this)">
                   <div class="oq-q">What's the SLA for first-response on a new repair?</div>
                   <div class="oq-meta">Asked 1h ago · Blocks story REP-01</div>
-                </div>
+                </button>
                 <div class="oq-group" style="margin-top: 14px;">Blocker for: Design</div>
-                <div class="oq-item">
+                <button type="button" class="oq-item oq-btn" data-question="What's the brand voice — formal landlord or friendly community?" onclick="window.__oqPick && window.__oqPick(this)">
                   <div class="oq-q">What's the brand voice — formal landlord or friendly community?</div>
                   <div class="oq-meta">Asked 1h ago · Blocks DSGN-01</div>
-                </div>
+                </button>
               </div>
-              <div style="font-size: 11px; color: var(--ink-2); margin-top: 10px; line-height: 1.4;">Read-only here. Answer in the chat on the left.</div>
             </aside>
           </div>
         </main>
@@ -2772,7 +2774,6 @@
               </div>
 
               <div style="display:flex; gap: 10px; justify-content: center;">
-                <button class="btn btn-ghost">View idea.md</button>
                 <button class="btn btn-primary">Open project →</button>
               </div>
             </div>
@@ -2782,59 +2783,90 @@
     </div>
   </section>
 
-  <!-- ═════════════ 10 · App shell — reference (legacy v4) ═════════════ -->
+  <!-- ═════════════ 10 · State D — Project context ready (one-shot unlock) ═════════════ -->
   <section class="screen" id="s10">
     <div class="screen-label">
       <span class="num">10</span>
-      <span class="name">App shell — reference (legacy v4 chrome)</span>
-      <span class="route">persistent layout · all routes</span>
+      <span class="name">State D · Project context ready</span>
+      <span class="route">/projects/tenant-maintenance · Project Background (all 17 approved)</span>
     </div>
     <div class="screen-body">
       <div class="app">
-        <!-- Sidebar -->
         <aside class="side">
-          <div class="brand">
-            <div class="brand-mark">IH</div>
-            <div class="brand-name">Idea Hub</div>
-          </div>
+          <div class="brand"><div class="brand-mark">IH</div><div class="brand-name">Idea Hub</div></div>
           <div>
             <div class="menu-label">Menu</div>
             <nav class="nav">
-              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg> Dashboard</a>
-              <a href="#" class="active"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h10M4 18h16"/></svg> Projects <span class="count">8</span></a>
-              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2v20M2 12h20"/></svg> Intake <span class="count">2</span></a>
-              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z M4 9h16 M9 4v16"/></svg> Design Library</a>
-              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg> QA Runs</a>
-              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z M8 12h.01 M12 12h.01 M16 12h.01"/></svg> Settings</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12l9-9 9 9 M5 10v10h14V10"/></svg> Overview</a>
+              <a href="#" class="active"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h11l3 3v13H5z M16 4v3h3 M8 11h8 M8 14h8 M8 17h5"/></svg> Project Background <span class="count">17</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3h7v7 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> Requirements</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Sprint</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z M4 9h16 M9 4v16"/></svg> Design</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Build</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="9" r="3"/><path d="M3 19c0-3 2.7-5 6-5s6 2 6 5 M14 19c0-3 2.7-5 6-5"/></svg> Agents</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 12l2 2 4-4 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg> QA</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> Activity</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 8H3 M21 16H3 M5 4h14v16H5z"/></svg> Artifacts</a>
             </nav>
           </div>
-          <div class="side-promo">
-            <h4>Try a template</h4>
-            <p>Spin up a new idea from one of the starter categories in the dashboard.</p>
-            <button>Browse templates</button>
-          </div>
           <div class="side-foot">
-            <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9c.4.4 1 .7 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg> Settings</a>
-            <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3 M12 17h.01"/></svg> Help &amp; support</a>
+            <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 3h6v6 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> ← All projects</a>
           </div>
         </aside>
 
-        <!-- Main -->
         <main class="main">
           <div class="topbar">
-            <h1>Projects</h1>
-            <div class="search">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-              <input placeholder="Search projects, stages, agents…" />
-              <span class="kbd">⌘F</span>
-            </div>
-            <button class="icon-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 16v-5a6 6 0 1 0-12 0v5l-2 2v1h16v-1l-2-2 M10 21h4"/></svg><span class="dot"></span></button>
-            <div class="avatar">WN</div>
+            <a href="#" style="font-size:13px; color: var(--ink-2);">← Projects</a>
+            <div class="search" style="opacity:.6;"><input placeholder="Search this project…" /></div>
           </div>
-          <div class="empty" style="padding: 80px 32px;">
-            <div class="illu"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#2b2547" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18 M9 3v18"/></svg></div>
-            <h2>Pick a screen from the table of contents</h2>
-            <p>This is the persistent shell — every screen below renders inside it. The sidebar lists top-level sections, the topbar carries search and notifications.</p>
+
+          <div class="state-d" style="margin-top: 8px;">
+            <div class="state-d-head">
+              <div class="state-d-check"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg></div>
+              <div>
+                <h3>Project context ready</h3>
+                <p>All 17 background documents are approved. Confirm to finalize Requirements and unlock Sprint, Design, Build, and QA.</p>
+              </div>
+            </div>
+            <div class="state-d-summary" aria-label="Approved count per band">
+              <div class="state-d-band"><div class="n">3</div><div class="lbl">Idea</div></div>
+              <div class="state-d-band"><div class="n">4</div><div class="lbl">Users</div></div>
+              <div class="state-d-band"><div class="n">5</div><div class="lbl">Scope</div></div>
+              <div class="state-d-band"><div class="n">3</div><div class="lbl">Constraints</div></div>
+              <div class="state-d-band"><div class="n">2</div><div class="lbl">Tech</div></div>
+            </div>
+            <div class="state-d-explainer">
+              Confirming writes the locked context into Requirements and unlocks the four downstream tabs.
+              The Design, Build, and QA agents read these docs as the brief for every story — once confirmed you can
+              still revoke individual files, but the tabs stay open (warn-only).
+            </div>
+            <div class="state-d-list" aria-label="17 approved artifacts">
+              <div class="state-d-list-row"><div><div>Executive brief</div><div class="path">PRD/exec-brief.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>One-page pitch</div><div class="path">PRD/one-pager.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>Idea long-form</div><div class="path">PRD/idea.md</div></div><div class="ok">Auto-approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>Persona — Property manager</div><div class="path">PRD/personas/property-manager.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>Persona — Tenant</div><div class="path">PRD/personas/tenant.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>Persona — Maintenance tech</div><div class="path">PRD/personas/tech.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>Stakeholder map</div><div class="path">PRD/stakeholders.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>Job stories</div><div class="path">PRD/jobs.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>Feature list (in/out)</div><div class="path">PRD/features.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>User flows</div><div class="path">PRD/flows.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>Edge cases</div><div class="path">PRD/edge-cases.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>Success metrics</div><div class="path">PRD/metrics.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>Compliance checklist</div><div class="path">PRD/compliance.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>Security &amp; privacy</div><div class="path">PRD/security.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>Constraints &amp; assumptions</div><div class="path">PRD/constraints.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>Tech brief</div><div class="path">PRD/tech-brief.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>Open questions log</div><div class="path">PRD/open-questions.md</div></div><div class="ok">Approved ✓</div></div>
+            </div>
+            <div class="state-d-actions">
+              <button class="btn btn-primary">Confirm project context →</button>
+              <button class="btn btn-ghost">← Back to artifacts</button>
+              <span class="state-d-foot">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8v5 M12 16h.01"/></svg>
+                One-shot — only runs when 17/17 are Approved.
+              </span>
+            </div>
           </div>
         </main>
       </div>
@@ -3159,65 +3191,28 @@
             </div>
           </div>
 
-          <!-- N11e · State D — context-ready confirmation view -->
-          <div class="kit-section">
-            <h3>State D · Confirmation view</h3>
-            <div style="font-size: 12px; color: var(--ink-2); margin-bottom: 10px;">Reached when all 17 Project Background docs are Approved. Fires the one-shot unlock.</div>
-            <div class="state-d">
-              <div class="state-d-head">
-                <div class="state-d-check"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg></div>
-                <div>
-                  <h3>Project context ready</h3>
-                  <p>All 17 background documents are approved. Confirm to finalize Requirements and unlock Sprint, Design, Build, and QA.</p>
-                </div>
-              </div>
-              <div class="state-d-summary" aria-label="Approved count per band">
-                <div class="state-d-band"><div class="n">3</div><div class="lbl">Idea</div></div>
-                <div class="state-d-band"><div class="n">4</div><div class="lbl">Users</div></div>
-                <div class="state-d-band"><div class="n">5</div><div class="lbl">Scope</div></div>
-                <div class="state-d-band"><div class="n">3</div><div class="lbl">Constraints</div></div>
-                <div class="state-d-band"><div class="n">2</div><div class="lbl">Tech</div></div>
-              </div>
-              <div class="state-d-explainer">
-                Confirming writes the locked context into Requirements and unlocks the four downstream tabs.
-                The Design, Build, and QA agents read these docs as the brief for every story — once confirmed you can
-                still revoke individual files, but the tabs stay open (warn-only).
-              </div>
-              <div class="state-d-list" aria-label="17 approved artifacts">
-                <div class="state-d-list-row"><div><div>Executive brief</div><div class="path">PRD/exec-brief.md</div></div><div class="ok">Approved ✓</div></div>
-                <div class="state-d-list-row"><div><div>One-page pitch</div><div class="path">PRD/one-pager.md</div></div><div class="ok">Approved ✓</div></div>
-                <div class="state-d-list-row"><div><div>Idea long-form</div><div class="path">PRD/idea.md</div></div><div class="ok">Approved ✓</div></div>
-                <div class="state-d-list-row"><div><div>Persona — Property manager</div><div class="path">PRD/personas/property-manager.md</div></div><div class="ok">Approved ✓</div></div>
-                <div class="state-d-list-row"><div><div>Persona — Tenant</div><div class="path">PRD/personas/tenant.md</div></div><div class="ok">Approved ✓</div></div>
-                <div class="state-d-list-row"><div><div>Persona — Maintenance tech</div><div class="path">PRD/personas/tech.md</div></div><div class="ok">Approved ✓</div></div>
-                <div class="state-d-list-row"><div><div>Stakeholder map</div><div class="path">PRD/stakeholders.md</div></div><div class="ok">Approved ✓</div></div>
-                <div class="state-d-list-row"><div><div>Job stories</div><div class="path">PRD/jobs.md</div></div><div class="ok">Approved ✓</div></div>
-                <div class="state-d-list-row"><div><div>Feature list (in/out)</div><div class="path">PRD/features.md</div></div><div class="ok">Approved ✓</div></div>
-                <div class="state-d-list-row"><div><div>User flows</div><div class="path">PRD/flows.md</div></div><div class="ok">Approved ✓</div></div>
-                <div class="state-d-list-row"><div><div>Edge cases</div><div class="path">PRD/edge-cases.md</div></div><div class="ok">Approved ✓</div></div>
-                <div class="state-d-list-row"><div><div>Success metrics</div><div class="path">PRD/metrics.md</div></div><div class="ok">Approved ✓</div></div>
-                <div class="state-d-list-row"><div><div>Compliance checklist</div><div class="path">PRD/compliance.md</div></div><div class="ok">Approved ✓</div></div>
-                <div class="state-d-list-row"><div><div>Security &amp; privacy</div><div class="path">PRD/security.md</div></div><div class="ok">Approved ✓</div></div>
-                <div class="state-d-list-row"><div><div>Constraints &amp; assumptions</div><div class="path">PRD/constraints.md</div></div><div class="ok">Approved ✓</div></div>
-                <div class="state-d-list-row"><div><div>Tech brief</div><div class="path">PRD/tech-brief.md</div></div><div class="ok">Approved ✓</div></div>
-                <div class="state-d-list-row"><div><div>Open questions log</div><div class="path">PRD/open-questions.md</div></div><div class="ok">Approved ✓</div></div>
-              </div>
-              <div class="state-d-actions">
-                <button class="btn btn-primary">Confirm project context →</button>
-                <button class="btn btn-ghost">← Back to artifacts</button>
-                <span class="state-d-foot">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8v5 M12 16h.01"/></svg>
-                  One-shot — only runs when 17/17 are Approved.
-                </span>
-              </div>
-            </div>
-          </div>
-
         </div>
       </div>
     </div>
   </section>
 
 </div>
+
+<script>
+  // Click-to-answer: clicking an outstanding-question button drops the question
+  // into the nearest chat textarea on the same screen so the user can answer it.
+  window.__oqPick = function (btn) {
+    var screen = btn.closest('.screen-body') || document;
+    var ta = screen.querySelector('.chat-foot .ta');
+    var q = btn.getAttribute('data-question') || (btn.querySelector('.oq-q') || {}).textContent || '';
+    if (!ta) return;
+    ta.value = q;
+    ta.focus();
+    ta.setSelectionRange(ta.value.length, ta.value.length);
+    btn.style.background = 'var(--mint)';
+    btn.style.borderColor = 'rgba(95, 191, 149, 0.4)';
+    setTimeout(function () { btn.style.background = ''; btn.style.borderColor = ''; }, 350);
+  };
+</script>
 </body>
 </html>
