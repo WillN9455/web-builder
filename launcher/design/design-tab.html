@@ -175,6 +175,16 @@
   .search input { border: 0; outline: 0; flex: 1; background: transparent; color: var(--ink); font: inherit; }
   .search .ico { color: var(--ink-2); width: 14px; height: 14px; }
 
+  /* Back arrow on story detail pages (top-left) */
+  .back-arrow {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; font-weight: 500;
+    color: var(--ink-2);
+    padding: 4px 8px; border-radius: 6px;
+  }
+  .back-arrow:hover { background: rgba(255,255,255,0.6); color: var(--ink); }
+  .back-arrow svg { color: inherit; }
+
   .card {
     background: #fff;
     border: 1px solid rgba(50,42,92,0.08);
@@ -248,24 +258,8 @@
   .step.active .lbl { color: var(--ink); font-weight: 600; }
 
   /* ─── N5 · Design tab — Status / Rules switch ─────────────────────────── */
-  .kit-tabs {
-    display: inline-flex;
-    background: var(--peach);
-    border-radius: 999px;
-    padding: 4px;
-    gap: 2px;
-  }
-  .kit-tabs button {
-    padding: 6px 18px;
-    font-size: 12px; font-weight: 600;
-    color: var(--ink-2);
-    border-radius: 999px;
-    background: transparent;
-  }
-  .kit-tabs button.on {
-    background: #fff; color: var(--ink);
-    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-  }
+  /* kit-tabs (Status / Rules pill switch) removed in v5.6 — the Rules half
+     is now opened from a cog button in the project header. */
 
   .tab-bar {
     display: flex; align-items: center; gap: 14px;
@@ -279,6 +273,21 @@
     background: rgba(50,42,92,0.06); padding: 1px 6px; border-radius: 4px;
     color: var(--ink);
   }
+
+  /* Cog button in the project header — opens the Rules half (consistent with
+     the back-arrow pattern used to leave Story detail). v5.6. */
+  .hdr-cog {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 11px; border-radius: 999px;
+    background: rgba(255,255,255,0.7);
+    border: 1px solid rgba(50,42,92,0.12);
+    color: var(--ink); font-size: 12px; font-weight: 600;
+    transition: background 0.12s ease;
+  }
+  .hdr-cog:hover { background: #fff; border-color: rgba(50,42,92,0.22); }
+  .hdr-cog:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
+  .hdr-cog svg { color: var(--ink-2); }
+  .hdr-cog:hover svg { color: var(--ink); }
 
   /* Design summary stats */
   .ds-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 18px 22px; }
@@ -320,6 +329,25 @@
   }
   .av-sm.a-da { background: var(--lavender); color: var(--ink); }
   .av-sm.a-db { background: var(--peach); color: var(--ink); }
+
+  /* Story list — scrollable so the count badge stays meaningful */
+  .story-list {
+    max-height: 460px;
+    overflow-y: auto;
+    padding: 0 4px 4px;
+    /* thin styled scrollbar (WebKit + Firefox) */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(50,42,92,0.18) transparent;
+  }
+  .story-list::-webkit-scrollbar { width: 8px; }
+  .story-list::-webkit-scrollbar-track { background: transparent; }
+  .story-list::-webkit-scrollbar-thumb {
+    background: rgba(50,42,92,0.18);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  .story-list::-webkit-scrollbar-thumb:hover { background: rgba(50,42,92,0.28); background-clip: padding-box; }
 
   /* Row open arrow (drill-down to Story detail) */
   .row-open {
@@ -445,7 +473,7 @@
   .compose .who { font-size: 11px; color: var(--ink-2); }
 
   /* Design agent strip */
-  .agent-strip { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 16px 22px 22px; }
+  .agent-strip { display: flex; flex-direction: column; gap: 12px; padding: 16px 22px 22px; }
   .agent-card {
     background: #fff;
     border: 1px solid rgba(50,42,92,0.08);
@@ -478,17 +506,9 @@
   .a11y-chip.fail { background: var(--blush); }
   .a11y-chip.fail .dot { background: var(--rose); }
 
-  /* Rules half preview (inline secondary) */
-  .rules-preview {
-    margin: 0 22px 22px;
-    background: rgba(50,42,92,0.02);
-    border: 1px dashed rgba(50,42,92,0.15);
-    border-radius: 12px;
-    padding: 16px 18px;
-    display: flex; align-items: center; gap: 14px;
-    font-size: 12.5px; color: var(--ink-2);
-  }
-  
+  /* Rules half preview (inline secondary) — removed in v5.6 (cog is the
+     single entry point). */
+
   .agent-md-card { background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: 12px; padding: 12px 16px; }
   .agent-md-card .h { display: flex; align-items: center; gap: 10px; }
   .agent-md-card .h .av { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 700; color: var(--ink); flex: none; }
@@ -504,8 +524,6 @@
   .agent-md-card.open { box-shadow: 0 8px 24px -16px rgba(50,42,92,0.18); }
 
 
-  .rules-preview b { color: var(--ink); font-weight: 600; }
-  .rules-preview .right { margin-left: auto; display: flex; gap: 6px; }
 /* Rules half — Design (configurations, device widths, per-agent guidelines) */
   .rules-section { padding: 18px 22px; display: flex; flex-direction: column; gap: 16px; }
 
@@ -789,10 +807,10 @@
 
   <header class="doc-header">
     <div>
-      <div class="doc-title">Idea Hub — Design tab (v5.4)</div>
-      <div class="doc-sub">Design stage workspace. <b>Two-halves</b> — Status (per-story design journey, list view) and Rules (editable design rules writing back to <code style="font-family: var(--font-mono); font-size: 12px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">design-system/</code>). <b>Drill-down</b> — each story row has an `Open story →` arrow that opens a focused Story detail screen (linked requirement, embedded design preview with 4-state toggles, <b>Jira artifacts panel</b>, A↔B review thread). <b>Per-story A↔B review thread</b> lives on the Story detail page. <b>v5.4 change</b> — design sources (Figma / HTML / images / video) are now pulled in from Jira artifacts tagged to the story's ticket; the local `Add Figma link` / `Upload HTML` controls and the `Linked source` card are removed. Source of truth: <a href="sitemap.md">sitemap.md § Design</a>. See <a href="mockups.html">mockups.html</a> for the rest of the design system.</div>
+      <div class="doc-title">Idea Hub — Design tab (v5.6)</div>
+      <div class="doc-sub">Design stage workspace. <b>Two halves</b> — Status (per-story design journey, list view) and Rules (editable design rules writing back to <code style="font-family: var(--font-mono); font-size: 12px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">design-system/</code>). <b>Drill-down</b> — each story row has an `Open story →` arrow that opens a focused Story detail screen (back arrow top-left returns to the Design list; linked requirement, embedded design preview with 4-state toggles, <b>Jira artifacts panel</b>, <b>Notes thread</b>). <b>v5.6 change</b> — the inline Status / Rules pill switcher is removed; the Rules half is opened from a <b>cog button</b> in the project header (consistent with the back-arrow pattern used to leave Story detail). Topbar search / filter / export / `+ New design rule` buttons remain removed; the Rules half callout is removed (cog is the single entry point). Source of truth: <a href="sitemap.md">sitemap.md § Design</a>. See <a href="mockups.html">mockups.html</a> for the rest of the design system.</div>
     </div>
-    <div class="doc-meta">v5.4 · launcher/design/design-tab.html<br/>2 screens (Design · list + Story detail)</div>
+    <div class="doc-meta">v5.6 · launcher/design/design-tab.html<br/>3 screens (Design · list + Story detail + Rules)</div>
   </header>
 
   <nav class="toc">
@@ -842,13 +860,6 @@
         <main class="main">
           <div class="topbar">
             <a href="#" style="font-size:13px; color: var(--ink-2);">← Projects</a>
-            <div class="search">
-              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-              <input placeholder="Search this project…" />
-            </div>
-            <button class="btn btn-soft btn-pill">Filter</button>
-            <button class="btn btn-soft btn-pill">Export</button>
-            <button class="btn btn-primary btn-pill">+ New design rule</button>
           </div>
 
           <!-- Project header -->
@@ -863,6 +874,10 @@
               <div class="actions">
                 <span class="pill inprog"><span class="dot"></span> Design</span>
                 <span class="stage-pt">DSGN-01 … DSGN-14</span>
+                <a href="#sd-rules" class="hdr-cog" aria-label="Open Design rules">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h.1a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v.1a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+                  <span>Rules</span>
+                </a>
               </div>
             </div>
 
@@ -878,15 +893,7 @@
             </div>
           </div>
 
-          <!-- Status / Rules tab switch (the two-halves pattern) -->
-          <div class="tab-bar">
-            <div class="kit-tabs" role="tablist" aria-label="Design tab — status or rules">
-              <button class="on" role="tab" aria-selected="true">Status</button>
-              <button role="tab" aria-selected="false">Rules</button>
-            </div>
-            <span style="font-size: 12px; color: var(--ink-2);">Two halves · the Rules half writes back to the design-system folder.</span>
-            <span class="writeback">writes to → <code>design-system/</code></span>
-          </div>
+          <!-- Status / Rules — opened via the cog button in the project header. -->
 
           <!-- ══════ STATUS HALF ══════ -->
 
@@ -929,6 +936,7 @@
               </div>
             </div>
 
+            <div class="story-list">
             <!-- Story 1: Picked up -->
             <div class="story-row">
               <div>
@@ -1003,6 +1011,112 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
               </a>
             </div>
+
+            <!-- Story 6: In design -->
+            <div class="story-row">
+              <div>
+                <div class="id">DSGN-13</div>
+                <span class="pill inprog"><span class="dot"></span> In design</span>
+              </div>
+              <div>
+                <div class="title">Lease renewal flow — tenant signature step<span class="sub">From TM-26 · 5 pts · High priority</span></div>
+              </div>
+              <a class="row-open" href="#dsgn-13" data-story="DSGN-13">
+                Open story
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+              </a>
+            </div>
+
+            <!-- Story 7: In design -->
+            <div class="story-row">
+              <div>
+                <div class="id">DSGN-14</div>
+                <span class="pill inprog"><span class="dot"></span> In design</span>
+              </div>
+              <div>
+                <div class="title">Rent payment confirmation + receipts<span class="sub">From TM-27 · 3 pts · Med priority</span></div>
+              </div>
+              <a class="row-open" href="#dsgn-14" data-story="DSGN-14">
+                Open story
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+              </a>
+            </div>
+
+            <!-- Story 8: Picked up -->
+            <div class="story-row">
+              <div>
+                <div class="id">DSGN-15</div>
+                <span class="pill todo"><span class="dot"></span> Picked up</span>
+              </div>
+              <div>
+                <div class="title">Maintenance schedule — recurring visits<span class="sub">From TM-28 · 8 pts · Med priority</span></div>
+              </div>
+              <a class="row-open" href="#dsgn-15" data-story="DSGN-15">
+                Open story
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+              </a>
+            </div>
+
+            <!-- Story 9: Picked up -->
+            <div class="story-row">
+              <div>
+                <div class="id">DSGN-16</div>
+                <span class="pill todo"><span class="dot"></span> Picked up</span>
+              </div>
+              <div>
+                <div class="title">Tenant inbox — message threading<span class="sub">From TM-29 · 5 pts · Low priority</span></div>
+              </div>
+              <a class="row-open" href="#dsgn-16" data-story="DSGN-16">
+                Open story
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+              </a>
+            </div>
+
+            <!-- Story 10: Peer review -->
+            <div class="story-row">
+              <div>
+                <div class="id">DSGN-17</div>
+                <span class="pill review"><span class="dot"></span> Peer review</span>
+              </div>
+              <div>
+                <div class="title">Property listing — gallery + filters<span class="sub">From TM-30 · 5 pts · High priority</span></div>
+              </div>
+              <a class="row-open" href="#dsgn-17" data-story="DSGN-17">
+                Open story
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+              </a>
+            </div>
+
+            <!-- Story 11: Peer review -->
+            <div class="story-row">
+              <div>
+                <div class="id">DSGN-18</div>
+                <span class="pill review"><span class="dot"></span> Peer review</span>
+              </div>
+              <div>
+                <div class="title">Document vault — upload + expiry alerts<span class="sub">From TM-31 · 8 pts · Med priority</span></div>
+              </div>
+              <a class="row-open" href="#dsgn-18" data-story="DSGN-18">
+                Open story
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+              </a>
+            </div>
+
+            <!-- Story 12: Design complete -->
+            <div class="story-row">
+              <div>
+                <div class="id">DSGN-19</div>
+                <span class="pill done"><span class="dot"></span> Design complete</span>
+              </div>
+              <div>
+                <div class="title">Notification preferences — per-channel toggles<span class="sub">From TM-32 · 3 pts · Low priority · a11y pass</span></div>
+              </div>
+              <a class="row-open" href="#dsgn-19" data-story="DSGN-19">
+                Open story
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+              </a>
+            </div>
+            </div>
           </div>
 
           <!-- Design agent strip (A + B) -->
@@ -1037,17 +1151,8 @@
             </div>
           </div>
 
-          <!-- Rules preview (secondary; full Rules tab is its own screen) -->
-          <div class="rules-preview">
-            <div>
-              <b>Rules half</b> — editable design guidelines, accessibility rules (WCAG 2.1 AA), component-spec rules, token rules, and constraints.
-              Switch to the <b>Rules</b> tab to edit; changes write back to <code style="font-family: var(--font-mono); font-size: 11.5px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">design-system/</code> and the design agents pick them up on the next story.
-            </div>
-            <div class="right">
-              <button class="btn btn-soft btn-pill">View design-system/</button>
-              <button class="btn btn-primary btn-pill">Open Rules tab →</button>
-            </div>
-          </div>
+          <!-- Rules callout removed in v5.6 — the cog button in the project header
+               is the single entry point to the Rules half. -->
 
         </main>
       </div>
@@ -1092,18 +1197,10 @@
 
         <main class="main">
           <div class="topbar">
-            <div class="crumb">
-              <a href="#sd">Design</a>
-              <span class="sep">/</span>
-              <span class="cur">DSGN-08</span>
-            </div>
-            <div class="search">
-              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-              <input placeholder="Search this project…" />
-            </div>
-            <button class="btn btn-soft btn-pill">Filter</button>
-            <button class="btn btn-soft btn-pill">Export</button>
-            <button class="btn btn-primary btn-pill">+ New design rule</button>
+            <a href="#sd" aria-label="Back to design list" class="back-arrow">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+              <span>Back to Design list</span>
+            </a>
           </div>
 
           <!-- Story header card -->
@@ -1252,37 +1349,33 @@
               <div class="thread" style="padding: 18px 22px 22px;">
                 <div class="thread-head">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                  Peer review · A↔B
-                  <span class="who">3 comments · 1 disagreement · last reply 38m ago</span>
+                  Notes
+                  <span class="who">3 notes · last update 38m ago</span>
                 </div>
 
                 <div class="comment a">
                   <div class="body">
-                    <div class="who">Design Agent A <span>· 1h ago</span></div>
+                    <div class="who">Will <span>· 1h ago</span></div>
                     <p>Status pill is too quiet in <i>success</i> state. On a 13” laptop the green-on-mint contrast reads as “decorative” — let me boost the dot size and darken the text one step.</p>
                   </div>
                 </div>
 
                 <div class="comment b">
                   <div class="body">
-                    <div class="who">Design Agent B <span>· 45m ago</span></div>
+                    <div class="who">Will <span>· 45m ago</span></div>
                     <p>Agree on the dot, disagree on the text darken — the WCAG check already passes at AA. Darkening shifts the whole palette. Let’s leave the text and double the dot weight instead.</p>
-                    <div class="disagree">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 9v4 M12 17h.01 M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/></svg>
-                      Disagreement · 1 reply needed from the user
-                    </div>
                   </div>
                 </div>
 
                 <div class="comment a">
                   <div class="body">
-                    <div class="who">Design Agent A <span>· 38m ago</span></div>
+                    <div class="who">Will <span>· 38m ago</span></div>
                     <p>Works for me. Bumping the dot weight + adding a 1px outline to lift it on the mint background. Will ship a revised state sheet after lunch.</p>
                   </div>
                 </div>
 
                 <div class="compose">
-                  <textarea placeholder="Reply as the user, or @-mention DA / DB…"></textarea>
+                  <textarea placeholder="Add a note about this design…"></textarea>
                   <span class="who">Posting as <b>Will</b></span>
                   <button class="btn btn-primary btn-pill">Post</button>
                 </div>
@@ -1291,7 +1384,7 @@
           </div>
 
           <div style="font-family: var(--font-mono); font-size: 11px; color: var(--ink-2); text-align: right; padding: 14px 0 8px;">
-            Last updated 38m ago by Design Agent A · 4 artifacts synced from TM-19
+            Last updated 38m ago · 4 artifacts synced from TM-19
           </div>
 
         </main>
@@ -1337,18 +1430,10 @@
 
         <main class="main">
           <div class="topbar">
-            <div class="crumb">
-              <a href="#sd">Design</a>
-              <span class="sep">/</span>
-              <span class="cur">DSGN-11</span>
-            </div>
-            <div class="search">
-              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-              <input placeholder="Search this project…" />
-            </div>
-            <button class="btn btn-soft btn-pill">Filter</button>
-            <button class="btn btn-soft btn-pill">Export</button>
-            <button class="btn btn-primary btn-pill">+ New design rule</button>
+            <a href="#sd" aria-label="Back to design list" class="back-arrow">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+              <span>Back to Design list</span>
+            </a>
           </div>
 
           <!-- Story header -->
@@ -1440,12 +1525,12 @@
               <div class="thread" style="padding: 18px 22px 22px;">
                 <div class="thread-head">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                  Peer review · A↔B
-                  <span class="who">No comments yet</span>
+                  Notes
+                  <span class="who">No notes yet</span>
                 </div>
 
                 <div class="compose">
-                  <textarea placeholder="Open the thread when a design is attached — comments unlock here." disabled style="opacity: 0.5; cursor: not-allowed;"></textarea>
+                  <textarea placeholder="Open the thread when a design is attached — notes unlock here." disabled style="opacity: 0.5; cursor: not-allowed;"></textarea>
                   <span class="who">Posting as <b>Will</b></span>
                   <button class="btn btn-primary btn-pill" disabled style="opacity: 0.5; cursor: not-allowed;">Post</button>
                 </div>
@@ -1454,7 +1539,7 @@
           </div>
 
           <div style="font-family: var(--font-mono); font-size: 11px; color: var(--ink-2); text-align: right; padding: 14px 0 8px;">
-            Last updated 12m ago by Design Agent A · no Jira artifacts on TM-23
+            Last updated 12m ago · no Jira artifacts on TM-23
           </div>
 
         </main>
@@ -1501,13 +1586,6 @@
         <main class="main">
           <div class="topbar">
             <a href="#sd" style="font-size:13px; color: var(--ink-2);">← Design list</a>
-            <div class="search">
-              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-              <input placeholder="Search this project…" />
-            </div>
-            <button class="btn btn-soft btn-pill">Filter</button>
-            <button class="btn btn-soft btn-pill">Export</button>
-            <button class="btn btn-primary btn-pill">+ New design rule</button>
           </div>
 
           <!-- Page header card (no 7-stage stepper on Rules) -->
@@ -1522,19 +1600,16 @@
               <div class="actions">
                 <span class="pill todo"><span class="dot"></span> Rules</span>
                 <span class="stage-pt">10 rules · 3 agents</span>
+                <a href="#sd" class="hdr-cog" aria-label="Back to Design list">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 18l-6-6 6-6"/></svg>
+                  <span>Back to list</span>
+                </a>
               </div>
             </div>
           </div>
 
-          <!-- Status / Rules tab switch (Status default; Rules active) -->
-          <div class="tab-bar">
-            <div class="kit-tabs" role="tablist" aria-label="Design tab — status or rules">
-              <button role="tab" aria-selected="false" data-mode="status">Status</button>
-              <button class="on" role="tab" aria-selected="true" data-mode="rules">Rules</button>
-            </div>
-            <span style="font-size: 12px; color: var(--ink-2);">Two halves · the Rules half writes back to the design system + accessibility guidelines.</span>
-            <span class="writeback">writes to → <code>design-system/</code> + <code>skills/accessibility-guidelines.md</code></span>
-          </div>
+          <!-- Status / Rules pill removed in v5.6 — use the back-to-list button
+               in the header to return to the Design status half. -->
 
           <div class="rules-section">
 

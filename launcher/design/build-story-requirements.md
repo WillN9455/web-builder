@@ -3,11 +3,18 @@
 > **Scope:** Build tab screen set — `#bu` (Build — Status list), `#bur` (Build —
 > Rules, now a full screen), and `#busd` (Build — Story detail, drill-down from
 > a Status-list row). Mirrors the Design tab's three-screen shape (list / detail /
-> rules). v5.3 of the Build tab.
+> rules). v5.4 of the Build tab.
 > **Source mockups:** `launcher/design/build-tab.html`
 > **Sitemap contract:** `launcher/design/sitemap.md` § Build tab — redefined
 > **Related memory:** `project-launcher-restructure.md`,
 > `project-launcher-design-standards.md`
+> **v5.4 changes:** topbar search / filter / export / `+ New build rule` buttons
+> are removed from every screen on the Build tab; the Story detail page shows a
+> **back arrow** at the top left (replacing the `Build / TM-XX` crumb) that returns
+> to the Build Status list; the code-review thread on the Story detail is replaced
+> by a simple **Notes** thread (post-only by humans — reviews happen in GitHub /
+> PRs, not on this page); the Rules-half callout gets extra top padding and the
+> extra `View code-builder/` button is removed.
 
 ---
 
@@ -65,10 +72,13 @@ BFF routes, and BE endpoints a story is responsible for.
 ### Exit points
 - **Status / Rules** kit-tabs at the top of the Build tab switch between
   the Status list and the Rules screen.
+- **`← Back to Build list`** in the top-left of the Story detail page
+  (a `.back-arrow` link at the top of the main column) — returns to
+  the Status list (`#bu`) with the source row scrolled into view.
+  This is the primary exit from Story detail and replaces the
+  previous `Build / TM-XX` crumb (v5.4).
 - **`← Back to build list`** in the side-foot of the Story detail screen
-  returns to the Status list, with the source row scrolled into view.
-- **Breadcrumb `Build / TM-XX`** — the `Build` segment links back to the
-  Status list.
+  — secondary exit, same target as the top-left back arrow.
 - Sibling tabs (above) via the per-project sidebar.
 
 ---
@@ -85,10 +95,10 @@ BFF routes, and BE endpoints a story is responsible for.
 | BUST-06| New developer   | Open the Build Rules screen and see the overall architecture in one card         | I can onboard in 5 minutes without reading source                 |
 | BUST-07| New developer   | See the per-agent coding guidelines on the Rules screen                          | I write code that matches the existing style                      |
 | BUST-08| PM              | Edit build/deploy rules and the build lifecycle on the Rules screen              | The rules reflect how the project actually ships                  |
-| BUST-09| Reviewer        | See the linked requirement and code-review thread on the Story detail             | I can review in context, not in a separate tab                    |
+| BUST-09| Code agent      | Post a **note** about this story on the Story detail (decisions, reminders)      | Lightweight context lives with the story; formal review happens in GitHub |
 | BUST-10| PM              | See the rework queue (failed QA / review) with evidence links                   | Failed work is visible and triagable                              |
 | BUST-11| PM              | See a live 3-Code-Agent status strip (3 active / 5 reviews)                     | I can spot idle agents and load imbalance                         |
-| BUST-12| Code agent      | Reply in the per-story code-review thread from the Story detail                  | Review back-and-forth lives with the story                        |
+| BUST-12| PM              | Click the **back arrow** at the top-left of the Story detail page                | I can return to the Build Status list with one click              |
 | BUST-13| PM              | Switch Status ↔ Rules via the kit-tabs pill switch                               | The Rules surface is one click away, not a separate route         |
 
 ---
@@ -151,12 +161,17 @@ BFF routes, and BE endpoints a story is responsible for.
 - Same per-project shell (248px sidebar / 1-col main) as the Status
   list.
 - Sidebar side-promo: `Build rules` card explaining that edits to
-  build/deploy rules, environments, and coding guidelines write back to
-  `code-builder/` and `../skills/coding-guidelines.md`. CTA:
-  `View code-builder/ →`.
-- Topbar: `← Projects` breadcrumb + search + `Filter` + `Export` +
-  `+ New build rule` button. No `Mark build complete` style primary
-  action — the Rules screen is editing, not stage-gating.
+  build/deploy rules, environments, and coding guidelines write back
+  to `code-builder/` and `../skills/coding-guidelines.md`. The
+  callout itself has extra top padding (v5.4 — `.rules-preview`
+  `padding-top` ≥ 16px so the heading clears the card edge). The
+  callout does **not** carry a `View code-builder/` button (removed
+  in v5.4); the body text alone tells the user where the writes
+  land.
+- Topbar: only the `← Projects` breadcrumb. No search, filter,
+  export, or `+ New build rule` button (all removed in v5.4 across
+  the Build tab). No `Mark build complete` style primary action —
+  the Rules screen is editing, not stage-gating.
 - **No 7-stage stepper on the Rules screen.** The stepper belongs to
   the Status list only; the Rules screen is config + arch, not
   stage position.
@@ -235,11 +250,14 @@ BFF routes, and BE endpoints a story is responsible for.
   marked active.
 - Side-promo: `TM-XX · {status}` card with one-line status + an
   `Open in Sprint board →` link.
-- Topbar: **crumb** `Build / TM-XX` (instead of the `← Projects`
-  breadcrumb on the parent list) + search + Filter + Export + a
-  `Mark Ready for QA →` primary action (visible when the story is
-  past self-review; disabled otherwise).
-- The story header card sits directly below the topbar:
+- Topbar: a single **back arrow** link (`← Back to Build list`,
+  styled `.back-arrow`) flush-left — replaces the previous
+  `Build / TM-XX` crumb. No search, no filter, no export, no
+  `+ New build rule` button (all removed in v5.4 across the Build
+  tab). The back arrow carries `aria-label="Back to Build list"`
+  and returns to `/projects/:id/build#tm-{id}` with the source row
+  scrolled into view.
+- The story header card sits directly below the back arrow:
   - id (TM-XX), status pill, and a 56px icon block (peach).
   - Title + subtitle (`From DSGN-XX · N pts · priority`).
   - Right-side action group: `Re-PR` (ghost), `Mark Ready for QA →`
@@ -306,19 +324,30 @@ BFF routes, and BE endpoints a story is responsible for.
   *What is this story calling, and where?* — Reviewers and new devs
   read the Story detail and know the contract in 30 seconds.
 
-### FR-16 Story detail — code-review thread (full width, below)
+### FR-16 Story detail — Notes thread (replaces code-review thread)
 
-- Reuses the `.thread` / `.comment` / `.compose` classes from the
-  v5.2 Build tab. The Code-Agent comments and the Reviewer's review
-  both live here.
-- Header: `Code review · PR #NNN` + `N comments · CI ✓ · M unresolved`.
-- Each comment shows: agent avatar (C1 / C2 / C3 / RV) · agent name ·
-  timestamp · body (markdown-safe) · meta (PR id, file paths,
-  `Self-review pass` / `N nits` chip, `1 unresolved (a11y)` chip).
+- Below the BE APIs panel, a **Notes thread** lets the user post
+  lightweight notes attached to the story (decisions, reminders,
+  context for the next dev). Formal review (code review, PR
+  discussion, agent ↔ reviewer back-and-forth) happens in GitHub
+  / the PR — this thread is **not** a review surface and carries
+  no PR id, no CI status, no unresolved-count, and no agent
+  avatars.
+- The thread reuses the `.thread` / `.comment` / `.compose` classes
+  from the parent Build tab. No new design tokens.
+- Each note shows: author avatar (`W` for the current user) ·
+  author name (`Will`) · timestamp · body (markdown-safe, supports
+  `**bold**` and `*italic*`).
 - Compose box: `<textarea>` + `Posting as Will` label + `Post`
   primary button (disabled when empty). `Cmd/Ctrl+Enter` submits.
+- The thread header reads: `Notes` + `N notes · last reply Nm ago`.
+  (Was `Code review · PR #NNN` + `N comments · CI ✓ · M unresolved`
+  in v5.3.)
 - The thread is **per-story** — opening a different story shows a
   different thread. The thread scrolls to the bottom on open.
+- In v5.4 the seed notes in the mockup are author = `Will`
+  (previously `Code Agent 1` / `Reviewer`). The thread is
+  post-only by humans; agents do not auto-post here.
 
 ### FR-17 Story detail — empty / early-state copy
 
@@ -356,7 +385,9 @@ BFF routes, and BE endpoints a story is responsible for.
 | **Rules · edit cell**       | Rules screen                | Input replaces value chip; `Save` / `Cancel` mini-buttons; `Esc` cancels                                                     |
 | **Rules · edit markdown**   | Rules screen                | `<textarea>` with monospace font, `Save` / `Cancel` toolbar, `Cmd/Ctrl+Enter` submits                                        |
 | **Rules · expanded agent**  | Rules screen                | One card per agent; `Read guidelines` expands; `Edit` swaps body to textarea                                                 |
-| **Thread empty**            | Story detail                | `No comments yet` in the thread head; compose box enabled (can post first comment)                                           |
+| **Notes empty**             | Story detail                | `No notes yet` in the thread head; compose box enabled (can post first note)                                                 |
+| **Notes (no PR / CI)**      | Story detail                | Thread header reads `Notes` + count — no PR id, no CI status, no unresolved-count                                            |
+| **Back arrow hover**        | top-left (Story detail)     | Background fills with `rgba(255,255,255,0.6)`, label colour bumps to `var(--ink)`; 4px focus ring on keyboard focus           |
 | **Focus**                   | every interactive element   | Visible 4px navy focus ring on the active element (matches the rest of the system)                                           |
 
 ---
@@ -376,8 +407,15 @@ BFF routes, and BE endpoints a story is responsible for.
   `"Add a BE endpoint"`.
 - The method chip on each route uses `aria-label` to read the method
   in full (`"HTTP method: GET"`), not just the colour or the letter.
-- The code-review thread uses semantic `<article>` per comment with
-  the agent's name as the heading.
+- The Notes thread uses semantic `<article>` per note with the
+  author's name as the heading. (Was the code-review thread in v5.3
+  — now a simple notes surface; same DOM, no PR / CI / unresolved
+  meta on each note.)
+- The **back arrow** at the top-left of the Story detail is a real
+  `<a>` (or `<Link>` in production) with
+  `aria-label="Back to Build list"`. Keyboard reachable, visible
+  4px navy focus ring, hover state bumps colour to `var(--ink)`
+  on a soft white background.
 - The remove confirmation uses `role="alertdialog"` with focus trapped
   on `Cancel` (safe default) and `Remove` as a `destructive` action.
   `Esc` closes the dialog and returns focus to the trash icon.
@@ -423,7 +461,7 @@ BFF routes, and BE endpoints a story is responsible for.
 
 ---
 
-## 8. Out of scope (v5.3)
+## 8. Out of scope (v5.4)
 
 - Visual diffs of FE files inside the Story detail (the link goes to
   the host git provider).
@@ -431,14 +469,20 @@ BFF routes, and BE endpoints a story is responsible for.
   surfaces the contract only; the actual code is edited by the Code
   Agent or human dev.
 - Multi-BFF / multi-BE architecture (project currently uses one BFF +
-  one BE; multi-runtime is a v5.4 consideration).
+  one BE; multi-runtime is a v5.5 consideration).
 - Real-time co-editing of the file/route lists (currently last-write-
   wins per row).
 - Versioning the rules markdown (only the most recent is shown; full
   history is in git).
 - Per-environment overrides (dev / staging / prod). The Rules screen
-  shows the project-wide config; per-environment overrides are a v5.4
+  shows the project-wide config; per-environment overrides are a v5.5
   follow-up.
+- **Code review / PR discussion on this page** — review lives in
+  GitHub; this page carries no PR id, no CI status, no unresolved
+  thread, and no agent ↔ reviewer separation.
+- **Agent-posted notes** — the Notes thread is human-post-only in
+  v5.4. Agent commentary, if any, belongs on the parent Build tab
+  thread.
 
 ---
 
@@ -446,7 +490,7 @@ BFF routes, and BE endpoints a story is responsible for.
 
 1. **Should the FE files / BFF / BE lists be a single combined
    "Surface" card** rather than three separate panels? Decision: three
-   separate panels in v5.3 — they answer three different questions
+   separate panels in v5.4 — they answer three different questions
    (what files? what BFF? what BE?) and reviewers read them in
    different orders. Re-evaluate if the screen scrolls too long.
 2. **Should the Build architecture card on the Rules screen be the
@@ -455,14 +499,15 @@ BFF routes, and BE endpoints a story is responsible for.
    per-row inline panel is gone; the project-wide one lives on the
    Rules screen so a new dev can find it in one predictable place.
 3. **Should the `+ Add file` button also support pasting a glob**
-   (e.g. `src/pages/RequestDetail/**`)? Decision: no in v5.3 — single
-   paths only. Globs are a v5.4 consideration.
-4. **Should the code-review thread on the Story detail also show the
-   QA thread once the story reaches QA?** Decision: no in v5.3 — the
-   QA thread lives on the QA tab's Story detail. The Build Story
-   detail only shows the Code ↔ Reviewer thread.
+   (e.g. `src/pages/RequestDetail/**`)? Decision: no in v5.4 — single
+   paths only. Globs are a v5.5 consideration.
+4. **Should the Notes thread surface the GitHub PR link**
+   (e.g. "PR #214 — 3 unresolved")? Decision: no in v5.4 — the
+   thread is plain text only; PR links belong in the parent Build
+   tab thread or in the Notes body. Reviewers follow the PR through
+   GitHub. Revisit if note → PR traceability becomes a pattern.
 5. **Should the per-agent coding guidelines be a flat list or
-   collapsible cards?** Decision: collapsible cards in v5.3 — keeps
+   collapsible cards?** Decision: collapsible cards in v5.4 — keeps
    the page compact when the user lands on it; expands to full
    markdown on click.
 
@@ -470,7 +515,7 @@ BFF routes, and BE endpoints a story is responsible for.
 
 ## 10. Acceptance criteria
 
-A v5.3 Build tab with Story detail and Rules is considered done when:
+A v5.4 Build tab with Story detail and Rules is considered done when:
 
 1. The Build tab document has **3 screen sections**: `#bu` (Status
    list), `#bur` (Rules), `#busd` (Story detail). The TOC lists all
@@ -480,7 +525,7 @@ A v5.3 Build tab with Story detail and Rules is considered done when:
    arrow.
 3. The inline `.story-detail` (architecture + thread expansion) is
    gone from the Status list. The architecture panel lives on the
-   Rules screen; the code-review thread lives on the Story detail.
+   Rules screen; the Notes thread lives on the Story detail.
 4. Clicking `Open story →` on the TM-19 row scrolls to (or routes to)
    the Story detail screen with id `TM-19`, status `Ready for review`,
    and the linked requirement DSGN-08.
@@ -499,16 +544,32 @@ A v5.3 Build tab with Story detail and Rules is considered done when:
 8. The kit-tabs Status / Rules pill switch swaps the main area
    between the Status list and the Rules screen. The default is
    `Status`.
-9. The doc-title is `Idea Hub — Build tab (v5.3)` and the doc-meta
-   reads `3 screens (Build · Status list + Rules + Story detail)`.
-10. All interactive elements are keyboard-reachable with a visible
+9. **Topbar on every Build screen (status list, rules, story
+   detail) shows no search, filter, export, or `+ New build rule`
+   buttons.** On Status and Rules, the only top-of-page control is
+   the `← Projects` breadcrumb; on Story detail, the back arrow is
+   the sole top-of-page control.
+10. **Story detail back arrow** is a `.back-arrow` link at the
+    top-left with `aria-label="Back to Build list"`. Clicking it
+    returns to the Status list with the source row scrolled into
+    view.
+11. **Notes thread** (replaces the v5.3 code-review thread)
+    renders the seed notes with author `Will` and a working compose
+    box. No PR id, no CI status, no unresolved-count, no agent
+    avatars.
+12. **Rules-half callout** (side-promo card on the Rules screen)
+    has top padding (`padding-top` ≥ 16px in the `rules-preview`
+    style) and renders **without** a `View code-builder/` button.
+13. The doc-title is `Idea Hub — Build tab (v5.4)` and the doc-meta
+    reads `3 screens (Build · Status list + Rules + Story detail)`.
+14. All interactive elements are keyboard-reachable with a visible
     focus ring. No interactive element is hidden behind a
     `pointer-events: none` rule without an `aria-disabled="true"` or
     `disabled` attribute.
-11. The architecture card on the Rules screen has the same content as
+15. The architecture card on the Rules screen has the same content as
     the v5.2 inline architecture panel (FE React 18 / TS / Vite; BFF
     Express /api/*; BE Node 22 / tsx watch; DB SQLite better-sqlite3;
     Host Vercel + Fly.io) and includes the `lock` icon on `Host` and
     the `inferred by agents` caption.
-12. The 3-Code-Agent strip and the rework queue remain on the Status
+16. The 3-Code-Agent strip and the rework queue remain on the Status
     list (no functional change from v5.2).

@@ -5,6 +5,7 @@
 > **Sitemap contract:** `launcher/design/sitemap.md` § Design — Story detail
 > **Related memory:** `project-launcher-restructure.md`,
 > `project-launcher-design-standards.md`
+> **v5.5 changes:** topbar search / filter / export / `+ New design rule` buttons are removed from every screen on the Design tab; the Story detail pages show a **back arrow** at the top left (replacing the `Design / DSGN-XX` crumb) that returns to the Design list; the A↔B peer-review thread is replaced by a simple **Notes** thread (post-only — reviews happen in Figma / GitHub / the relevant platform); the Rules-half callout gets extra top padding and the extra "View design-system/" button is removed.
 
 ---
 
@@ -12,10 +13,10 @@
 
 The **Story detail screen** is the focused, per-story home for design
 review. Where the Design list page shows every story as a scannable row,
-the Story detail page is where the human and the two design agents
-(DA + DB) actually **work on one story at a time** — read the linked
-requirement, see and swap interaction-state previews of the design,
-attach a source, and post in the A↔B review thread.
+the Story detail page is where the human actually **work on one story at
+a time** — read the linked requirement, see and swap interaction-state
+previews of the design, attach a source, and post notes about it. Peer
+review happens in Figma (or the relevant platform), not on this page.
 
 The page is **always reached from a story row on the Design list**, via
 the `Open story →` button on each row (replacing the v5.2 inline
@@ -44,11 +45,12 @@ editable surface for design-system rules.
 
 ### Exit points
 
+- **`← Back to Design list`** in the top-left of the page
+  (a `.back-arrow` link at the top of the main column) — returns
+  to the Design list (`#sd`) with the story's row scrolled into
+  view. This replaces the previous `Design / DSGN-XX` crumb.
 - **`← Back to design list`** in the side-foot (bottom of the
-  sidebar) — returns to the Design list with the story's row
-  scrolled into view.
-- **Breadcrumb `Design / DSGN-XX`** — the `Design` segment of the
-  crumb also links back to the Design list.
+  sidebar) — secondary exit, same target as the top-left back arrow.
 - **Sibling tabs** (Overview, Project Background, Requirements,
   Sprint, Build, Agents, QA, Activity, Artifacts) via the per-project
   sidebar — same behaviour as the parent Design tab.
@@ -64,12 +66,13 @@ editable surface for design-system rules.
 | DST-03 | Designer   | Preview the design in-app without opening Figma in another tab          | I can iterate without context-switching                        |
 | DST-04 | Designer   | Toggle the preview between **Default / Loading / Error / Success**      | I can validate every interaction state in one place            |
 | DST-05 | Designer   | Attach a **Figma URL** or **upload an HTML file** as the design source   | The preview always reflects the latest source                  |
-| DST-06 | Designer   | See and post in the A↔B review thread on the same page                   | Design decisions stay attached to the design, not in Slack      |
+| DST-06 | Designer   | Post a **note** about this design on the same page                       | Lightweight design decisions / reminders stay attached to the design (formal peer review happens in Figma) |
 | DST-07 | Designer   | **Replace** the linked source when a newer version is available         | The preview updates without re-doing the attach flow           |
 | DST-08 | Designer   | **Remove** the linked source                                             | A story can be re-scoped without a stale preview lying around  |
-| DST-09 | Designer   | See an empty-state CTA when no design is attached yet                   | I know exactly what to do to unblock peer review               |
+| DST-09 | Designer   | See an empty-state CTA when no design is attached yet                   | I know exactly what to do to unblock review                    |
 | DST-10 | Reviewer   | Open a story from a deep link (Sprint, Activity, notification)           | I can land directly in the right place                          |
-| DST-11 | PM         | See the **Mark design complete** action once peer review resolves       | I can flip a story to the next stage without leaving the page  |
+| DST-11 | PM         | See the **Mark design complete** action once review resolves             | I can flip a story to the next stage without leaving the page  |
+| DST-12 | PM         | Click the **back arrow** at the top-left of the Story detail page        | I can return to the Design list with one click                |
 
 ---
 
@@ -97,10 +100,15 @@ editable surface for design-system rules.
   as the rest of the Design tab. The sidebar's `Design` item is
   marked active. The side-promo card shows the current story's id +
   status and an **Open in Sprint board →** link.
-- The topbar shows a **crumb** (`Design / DSGN-08`) instead of the
-  `← Projects` breadcrumb on the parent tab. Search / Filter / Export
-  / `+ New design rule` buttons match the parent tab.
-- The story header card sits directly below the topbar:
+- The topbar is a single **back arrow** link (`← Back to Design list`,
+  styled `.back-arrow`) flush-left — replaces the previous
+  `Design / DSGN-XX` crumb. No search, filter, export, or
+  `+ New design rule` buttons anywhere on the page (these were
+  removed in v5.5 across the entire Design tab). The back arrow
+  carries `aria-label="Back to Design list"` and returns the user to
+  `/projects/:id/design#dsgn-{id}` with the source row scrolled into
+  view (`.story-row.selected` style still applies).
+- The story header card sits directly below the back arrow:
   - id (DSGN-08), status pill (e.g. `Peer review`), and a
     `Mark design complete →` primary action.
   - When the story is in an earlier stage (e.g. `Picked up`), the
@@ -212,24 +220,29 @@ editable surface for design-system rules.
 - The card uses a subtle gradient background
   (`#fff` → `mint`) so the "linked" state is visible at a glance.
 
-### FR-8 A↔B peer review thread
+### FR-8 Notes thread (replaces A↔B peer review)
 
-- Below the source card, the thread reuses the
-  `.thread` / `.comment` / `.compose` classes from the parent Design
-  tab. No new design tokens.
-- Each comment shows: agent avatar (DA / DB) · agent name ·
-  timestamp · body (markdown-safe, supports `**bold**` and
-  `*italic*`).
-- A disagreement callout (`.disagree`, amber-bordered) is shown on
-  any comment marked as a `Disagreement` by the posting agent.
-  The callout text is configurable per project.
+- Below the source card, a **Notes thread** lets the user post
+  lightweight notes attached to the design (decisions, reminders,
+  context for the next session). Formal peer review happens in
+  Figma — this thread is **not** a review surface and carries no
+  approval state, no A↔B agent separation, and no disagreement
+  callout.
+- The thread reuses the `.thread` / `.comment` / `.compose` classes
+  from the parent Design tab. No new design tokens.
+- Each note shows: author avatar (`W` for the current user) ·
+  author name (`Will`) · timestamp · body (markdown-safe, supports
+  `**bold**` and `*italic*`).
 - The compose box at the bottom:
-  - `<textarea>` for the reply, growing to max 6 lines.
+  - `<textarea>` for the note, growing to max 6 lines.
   - `Posting as Will` label.
   - `Post` primary button (disabled when textarea is empty).
   - `Cmd/Ctrl+Enter` submits.
-- The thread header shows the live count: `3 comments · 1
-  disagreement · last reply 38m ago`.
+- The thread header shows the live count: `3 notes · last reply
+  38m ago` (no disagreement count).
+- In v5.5 the seed comments in the mockup are author = `Will`
+  (previously `Design Agent A` / `Design Agent B`). The thread is
+  post-only by humans; agents do not auto-post here.
 
 ### FR-9 Empty state (§ F — DSGN-11)
 
@@ -244,14 +257,15 @@ editable surface for design-system rules.
     `aria-disabled="true"`, `pointer-events: none`, `tabindex="-1"`
     on every button).
   - The compose textarea is disabled with placeholder text
-    `Open the thread when a design is attached — comments unlock
+    `Open the thread when a design is attached — notes unlock
     here.`.
   - The `Add Figma link` button in the add-source card is
     **primary** (not soft) — it's the page's main CTA.
   - The footer caption ends with `· no source linked`.
-- The side-promo card copy changes to *"Design Agent A just picked
-  this up. Attach a Figma frame or HTML preview so reviewers can
-  validate the design."*
+- The side-promo card copy changes to *"Pick up this story from the
+  Sprint board, then attach a Figma frame or HTML preview so the
+  team can validate the design."* (The v5.3 wording referenced
+  `Design Agent A` / `reviewers`; both no longer apply in v5.5.)
 
 ---
 
@@ -270,9 +284,10 @@ editable surface for design-system rules.
 | **Remove confirm**          | source card                 | Inline confirmation strip: `Remove source?` + `Cancel` / `Remove`                                                    |
 | **Toggling state**          | preview card                | Iframe swaps; previous iframe hidden, new iframe shown; `aria-live="polite"` announces change                          |
 | **Mark complete disabled**  | story header                | Button faded, `aria-disabled="true"`, `cursor: not-allowed`                                                          |
-| **Thread empty**            | thread                      | `No comments yet` in the thread head; compose box enabled (can post a first comment)                                  |
-| **Thread + disagreement**   | thread                      | Disagreement callout on the disagreeing comment                                                                      |
+| **Thread empty**            | notes thread                | `No notes yet` in the thread head; compose box enabled (can post a first note)                                       |
+| **Notes (no disagreement)** | notes thread                | No disagreement callout — the Notes thread does not carry approval state                                             |
 | **Reviewer keyboard nav**   | toggle group                | Arrow keys move active toggle, Home/End jump, focus ring visible                                                      |
+| **Back arrow hover**        | top-left                    | Background fills with `rgba(255,255,255,0.6)`, label colour bumps to `var(--ink)`; 6px focus ring on keyboard focus    |
 | **Focus**                   | every interactive element   | Visible 4px navy focus ring on the active element (matches the rest of the system)                                   |
 
 ---
@@ -302,13 +317,19 @@ editable surface for design-system rules.
   trapped on `Cancel` (safe default) and `Remove` as a
   `destructive` action. `Esc` closes the dialog and returns focus
   to the `Remove` link.
-- The peer review thread uses semantic
-  `<article>` per comment with the agent's name as the heading.
-- Colour contrast: every pill (status, user, source-type), the
-  disagreement callout, and the source card gradient all pass 4.5:1
-  on the white card background. The disabled toggle group falls
-  back to 3:1 on its text (acceptable for disabled UI per WCAG 1.4.3
-  exception) but the action itself is unreachable.
+- The Notes thread uses semantic `<article>` per note with the
+  author's name as the heading. (Was the peer review thread in v5.3 —
+  now a simple notes surface; same DOM, no disagreement callout.)
+- The **back arrow** at the top-left is a real `<a>` (or `<Link>` in
+  production) with `aria-label="Back to Design list"`. Keyboard
+  reachable, visible 4px navy focus ring, hover state bumps colour
+  to `var(--ink)` on a soft white background.
+- Colour contrast: every pill (status, user, source-type) and the
+  source card gradient all pass 4.5:1 on the white card background.
+  The disabled toggle group falls back to 3:1 on its text
+  (acceptable for disabled UI per WCAG 1.4.3 exception) but the
+  action itself is unreachable. (The v5.3 disagreement callout was
+  removed in v5.5 alongside the A↔B thread.)
 - Keyboard escape: `Esc` from anywhere on the Story detail page
   returns focus to the row's `Open story →` button on the parent
   list (so the user can re-orient).
@@ -334,24 +355,34 @@ editable surface for design-system rules.
 - **Network offline** — Save buttons disabled; footer shows
   `Offline — your changes are saved locally and will sync when
   you're back.`
-- **Concurrent edit on the thread** — last-write-wins per
-  comment. A `Someone else just posted — reload to see their
+- **Concurrent edit on the notes thread** — last-write-wins per
+  note. A `Someone else just posted — reload to see their
   message` banner appears with a `Reload` button.
 - **Mark complete clicked on a story still in `Picked up`** —
   button is `aria-disabled="true"`; clicking does nothing. The
   hover tooltip is `Move the story to Peer review first.`
+- **Back arrow clicked with unsaved Figma URL typed** — confirm
+  dialog: `Discard the Figma URL you typed?` · `Discard` /
+  `Keep editing`. Default focus is on `Keep editing`.
+- **Notes thread empty + Mark complete clicked** — allowed
+  (notes are optional in v5.5; review status lives in Figma, not
+  in this thread).
 
 ---
 
-## 8. Out of scope (v5.3)
+## 8. Out of scope (v5.5)
 
 - Real Figma embed rendering (the preview is a same-origin iframe
-  with inline `srcdoc` for the v5.3 mockup; a true Figma embed URL
-  is a v5.4 deliverable).
+  with inline `srcdoc` for the v5.5 mockup; a true Figma embed URL
+  is a v5.6 deliverable).
 - Drag-and-drop for HTML upload (only file picker for now).
 - Multi-source (linking multiple files / frames to one story).
-- Story-level comments that are not on the A↔B thread (e.g.
-  internal-only notes, @-mentions of non-DA/DB agents).
+- **Peer review / approval state on this page** — review happens in
+  Figma; this page carries no approval, no A↔B agent separation,
+  and no disagreement callout.
+- **Agent-posted notes** — the Notes thread is human-post-only in
+  v5.5. Agent commentary, if any, belongs on the parent Design tab
+  thread.
 - Embedding non-HTML, non-Figma sources (e.g. Sketch, XD, image
   PDFs).
 - Version history of attached sources (only the most recent is
@@ -364,34 +395,37 @@ editable surface for design-system rules.
 1. **Where does the Mark design complete action live** if the user
    reaches the Story detail page from a deep link (Sprint board
    / notification)? The action is always visible at the top of
-   the page, so it should be fine, but a confirmation modal
-   ("Flip to design complete — this notifies DA and DB") might be
-   needed. Decision: ship without confirm in v5.3; revisit if
-   accidental flips become a pattern.
+   the page, so it should be fine. Decision: ship without
+   confirmation modal in v5.5 (no agent notify on flip — review
+   lives in Figma); revisit if accidental flips become a pattern.
 2. **Should the 4-state toggle group also let the user add custom
-   states** (e.g. "Disabled", "Focus")? Decision: no, in v5.3 the
+   states** (e.g. "Disabled", "Focus")? Decision: no, in v5.5 the
    group is fixed at the 4 canonical states per
-   `skills/ui-best-practices.md`. Custom states are a v5.4
+   `skills/ui-best-practices.md`. Custom states are a v5.6
    consideration.
 3. **Should the source card show a thumbnail** of the design
    (e.g. first 240px tall screenshot of the iframe)? Decision: no
-   in v5.3 — the preview card already shows the live design. A
-   thumbnail would be a v5.4 "design index" feature.
+   in v5.5 — the preview card already shows the live design. A
+   thumbnail would be a v5.6 "design index" feature.
 4. **Should removing a source require typing the story id** as a
    destructive-action guard? Decision: standard yes/no confirm
-   for v5.3; revisit if accidental removes become a pattern.
+   for v5.5; revisit if accidental removes become a pattern.
+5. **Should the Notes thread support `@mentions`** (e.g. `@design-team`
+   to ping reviewers)? Decision: no in v5.5 — plain markdown only.
+   @mentions on this surface are a v5.6 consideration; reviewers
+   are notified through Figma in the meantime.
 
 ---
 
 ## 10. Acceptance criteria
 
-A v5.3 Design tab with Story detail is considered done when:
+A v5.5 Design tab with Story detail is considered done when:
 
 1. Every story row on the Design list shows an `Open story →`
    arrow on the right. No `.ds-stepper` is rendered on any row.
 2. The inline `.story-detail` block is gone from the Design list
-   page. The artifacts viewer + A↔B review thread that used to
-   live there now live on the Story detail page.
+   page. The artifacts viewer + Notes thread that used to live
+   there now live on the Story detail page.
 3. Clicking `Open story →` on the DSGN-08 row scrolls to (or
    routes to) the Story detail screen with id `DSGN-08`, status
    `Peer review`, and the linked requirement TM-19.
@@ -406,8 +440,8 @@ A v5.3 Design tab with Story detail is considered done when:
 7. The linked source card shows the source path / URL + file
    size + last-edited metadata. Replace re-opens the attach UI;
    Remove opens a confirmation and transitions to empty state.
-8. The A↔B review thread renders the 3 design agent comments
-   with disagreement callout and a working compose box.
+8. The Notes thread renders the seed notes with author `Will` and
+   a working compose box. No A↔B avatars, no disagreement callout.
 9. The empty-state screen (DSGN-11) renders with the centered
    empty state, disabled toggle group, disabled compose box, and
    the Figma link button as the primary CTA.
@@ -415,8 +449,21 @@ A v5.3 Design tab with Story detail is considered done when:
     visible focus ring. No interactive element is hidden behind
     a `pointer-events: none` rule without an
     `aria-disabled="true"` or `disabled` attribute.
-11. The doc-title is `Idea Hub — Design tab (v5.3)` and the
+11. **Topbar on every Design screen (list, populated story,
+    empty story) shows only the back arrow** — no search, no
+    filter, no export, no `+ New design rule`. On the Design
+    list screen, the topbar is replaced by the existing page
+    heading; on Story detail screens, the back arrow is the sole
+    top-of-page control.
+12. **Story detail back arrow** is a `.back-arrow` link at the
+    top-left with `aria-label="Back to Design list"`. Clicking it
+    returns to the Design list with the source row scrolled into
+    view (`.story-row.selected`).
+13. **Rules half callout** on the parent Design tab has top
+    padding (`padding-top` ≥ 16px in the `rules-preview` style)
+    and renders **without** a `View design-system/` button.
+14. The doc-title is `Idea Hub — Design tab (v5.5)` and the
     doc-meta reads `2 screens (Design · list + Story detail)`.
-12. The TOC at the top of the document lists both screens
+15. The TOC at the top of the document lists both screens
     (`D` for the Design list, `E` for the populated Story
     detail, `F` for the empty-state Story detail).
