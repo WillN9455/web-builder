@@ -706,38 +706,53 @@ Edits persist to the project's on-disk `PRD/`. 7 API endpoints in `PROJECT-BACKG
 
 ---
 
-## QA tab — drafted contract (no mockup yet)
+## QA tab — mockup at v5.3 (3 screens)
 
 | | |
 |---|---|
-| **Route** | `/projects/:id` · QA tab |
-| **Sidebar** | per-project shell, **QA active** (badge = failing/pending test count) |
+| **Route** | `/projects/:id` · QA tab · **3 screens**: `#qa` (Status list), `#qasd` (Story QA detail), `#qar` (Rules) |
+| **Sidebar** | per-project shell, **QA active** (badge = failing/pending test count). **Cog in the project header opens `#qar`**; **back-arrow on `#qasd` and `#qar`** returns to `#qa` (cog replaces the inline Status/Rules pill switcher). |
 | **Visible when** | unlocked after project-context confirmation |
 | **Role** | The QA stage workspace. The QA Agent tests feature fidelity against requirements (Playwright). The tab shows test results + screenshot evidence and the editable QA-rules surface. |
+| **Mockup** | `launcher/design/qa-tab.html` (v5.3, 3 screens, 1493 lines). |
 
 ### Purpose
-"What passed/failed QA, and how should the QA agent test?" Shows per-story test status with **screenshot evidence**, plus editable QA rules (testing framework, rules, guidelines) that write back to the project's `testing/` folder. Two halves: **status** + **editable rules**.
+"What passed/failed QA, and how should the QA agent test?" Three screens — **Status list**, **Story QA detail**, **Rules** — opened from the cog in the project header. Shows per-story test status with **screenshot evidence**, plus editable QA rules (testing framework, rules, guidelines) that write back to the project's `testing/` folder. Two halves (Status / Rules) reached via the cog, not via inline pill switch — parity with the build-tab v5.5 chrome.
 
 ### Zones
-1. **QA summary / stats** — stories in QA (`Ready for QA · In QA · Passed · Failed`), test counts, pass rate.
-2. **Per-story test list** — each story: QA status, tests run, pass/fail per test, with **screenshot confirmations** (pass) or **issue screenshots** (fail) + failure details.
-3. **QA tools panel** — tools being used (Playwright), testing framework, rules, guidelines currently in place.
-4. **Screenshot viewer** — visible screenshots per test step (confirmation or issue), with annotations on failures.
-5. **Editable QA rules** (steering half) — testing framework config, test rules, QA guidelines, accessibility test rules, feature-fidelity rules. Edits write back to `testing/` (map to `../skills/`, `../testing/playwright/`).
+1. **QA verdict banner** — top of Status list. `9/12 stories Passed · 2 Failed (in rework) · 1 In QA — not ready for deploy`. When all pass: mint variant with `Sign off & deploy to QA env →` (action endpoint: `POST /api/projects/:id/qa/signoff`).
+2. **Environment panel** — read-only, deployed from Build. QA env URL, build/commit SHA, deployed-at timestamp, seeded-data reset policy.
+3. **QA summary / stats** — 6 tiles (Ready for QA · In QA · Passed · Failed · **Flaky** · **Blocked/Skipped**). Pass rate excludes Flaky (denominator: Passed + Failed + Blocked); footnote documents the rule.
+4. **Coverage strip** — `12/15 acceptance criteria covered · 3 untested`. Pivots the tab from dashboard to testing tool.
+5. **Per-story test list** — story ID + status pill + test-result strip + screenshot thumbs + open button. Filter chips: All / Ready for QA / In QA / Passed / Failed / Flaky / Blocked (7 buttons). Inline round-trip line when a story has cycled through Build rework (`Failed round 1 → in Build rework → fixed → Ready for QA (round 2)`; escalation hint at ≥3 failed rounds).
+6. **Run history per story** — collapsible sub-row on Status list; full table on Story detail (run #, trigger, duration, timestamp, result). Enables flaky detection.
+7. **QA agent panel** — mirrors build-tab `.agent-card` (QA Agent + Reviewer). Shows live activity + queue.
+8. **QA tools panel** — Playwright config (browser, headed, trace, retries, base URL) + test rules in force (a11y WCAG 2.1 AA, fidelity, coverage, screenshot retention).
+9. **Results by dimension** — functional / a11y (axe, WCAG 2.1 AA) / feature-fidelity lanes. Compact on Status list, full per-story on Story detail. A story can pass functionally and fail a11y — split signals.
+10. **Story QA detail (`#qasd`)** — drill-down: linked requirement + dimension card, rework round-trip banner (`.rework-banner`), run history table, per-test rows (dimension badge + expected vs actual + Playwright trace + console/network), annotated screenshot viewer (relocated from v5.2 inline), visual diff (gated on failed visual tests; deferred-with-note if out of scope), notes thread (QA Agent + Reviewer + user).
+11. **Editable QA rules (`#qar`)** — Playwright config card, test rules in force card, markdown editor (`testing/qa-rules.md`), per-agent guidelines (`QA-AGENT.md`, `REVIEWER-AGENT.md`). Edits write back to `testing/` (map to `../skills/`, `../testing/playwright/`).
+12. **UI states** (ui-best-practices C.17–20) — empty ("Build will promote stories here"), running (`Running 7/14 · Test 3 in progress · 1 failure so far`), error (QA env unreachable · retry), no-screenshots ("Screenshots appear after the first run.").
 
 ### State
 - `GET /api/projects/:id/qa/stories` → per-story QA status + test results.
 - `GET /api/projects/:id/qa/tests/:storyId` → tests, steps, screenshots (pass/issue).
 - `GET /api/projects/:id/qa/rules` + `PUT` → editable QA rules; read from / write back to `testing/`.
-- QA agent transitions story: `Ready for QA` → `In QA` → tests → pass (→ deployed to QA environment, Build tab shows deploy status) / fail (→ back to Build rework queue).
+- `GET /api/projects/:id/qa/env` → env URL, commit SHA under test, deployed-at timestamp (read from Build's deploy record).
+- `GET /api/projects/:id/qa/coverage` → covered/uncovered acceptance-criterion IDs.
+- `GET /api/projects/:id/qa/runs/:storyId` → run history (run #, trigger, duration, timestamp, result).
+- `POST /api/projects/:id/qa/runs` → trigger a run (scope selector: full suite / smoke subset / story TM-NN).
+- `POST /api/projects/:id/qa/signoff` → when all pass, advance to QA env deploy (Build tab updates deploy status).
+- QA agent transitions story: `Ready for QA` → `In QA` → tests → pass (→ deployed to QA environment, Build tab shows deploy status) / fail (→ back to Build rework queue) / **Flaky** (excluded from pass rate, review for quarantine) / **Blocked/Skipped-with-reason** (not blocking deploy).
 
 ### Actions
-- Open a story's test results + screenshots.
-- View a failure screenshot with annotation.
+- Open a story's full QA detail (`#qasd`).
+- View a failure screenshot with annotation · View expected-vs-actual per step · Open Playwright trace.
 - Edit QA rules → writes to `testing/` → QA agent picks up on next run.
-- Re-run tests manually from the tab (if exposed) — open.
+- Re-run tests manually (`Re-run all tests` on Status list · `Re-run` on Story detail) — exposed alongside the QA agent's autonomous runs.
+- View untested acceptance criteria (coverage strip drill-down).
+- Sign off + deploy to QA env (only when all-pass).
 
-### Exit → sibling tabs (Sprint for story status; Build rework queue on fail)
+### Exit → sibling tabs (Sprint for story status; Build rework queue on fail; Build tab deploy status on pass)
 
 ### Decisions locked
 1. QA tab = test results + screenshots + editable QA rules (two halves — Status / Rules switch).
@@ -746,39 +761,59 @@ Edits persist to the project's on-disk `PRD/`. 7 API endpoints in `PROJECT-BACKG
 4. QA pass → **deployed to QA environment** (Build tab shows deploy status); QA fail → **back to Build rework queue**.
 5. **Manual re-run available** — a `Re-run tests` action on the QA tab (per story/test) runs alongside the QA agent's autonomous runs.
 6. **Tools panel = Playwright only** for now (scope tight); extend later.
+7. **Three screens with hash routing** (`#qa`, `#qasd`, `#qar`) — pure anchors, no JS required.
+8. **Cog replaces the inline Status/Rules pill switcher** — Rules half opens via cog in the project header (parity with build-tab v5.5 chrome).
+9. **New statuses** — **Flaky** (amber on butter, excluded from pass-rate numerator) and **Blocked/Skipped-with-reason** (slate/neutral, distinct from `Failed`'s rose on blush).
+10. **Story QA detail shows expected vs actual per step** — plus Playwright trace link, console errors, network failures, dimension badge (functional / a11y / feature-fidelity), and the failing step's AC reference.
+11. **Visual diff is gated behind failed visual tests** — expected / actual / diff side-by-side 3-pane. If out of scope, render as deferred-with-note (no broken affordance).
 
 ### Open / deferred
-- **Mockup not yet created** — design the visual first.
-- Screenshot storage/retention — where Playwright screenshots live, how many kept — implementation detail.
+- Mockup landed at `launcher/design/qa-tab.html` (v5.3, 3 screens, 1493 lines).
+- Screenshot storage/retention — where Playwright screenshots live, how many kept — implementation detail (deferred-to-impl per locked decisions).
+- **Flaky quarantine policy** — when does Flaky escalate to Quarantined? Locked policy in `testing/qa-rules.md`: 5 runs with any fail → Quarantine; 3 consecutive pass → remove Flaky flag. Visual diff implementation deferred if out of scope.
 
 ---
 
-## Agents tab — not yet mocked
+## Agents tab — v5.3 mockup
 
 | | |
 |---|---|
 | **Route** | `/projects/:id/agents` |
 | **Sidebar** | per-project shell, **Agents active** (no badge) |
 | **Visible when** | always |
-| **Mockup** | not yet created. |
+| **Mockup** | `launcher/design/agents-tab.html` (v5.3, 1 screen `#sag`, 1028 lines) |
 
 ### Purpose
-"Which framework agents are working on this project right now?" The agent roster + status. The Code Agent strip (currently under the Sprint board) may live here instead.
+"Who is each agent, what is it doing right now, and how is the overall process going?" The single-half monitor of the framework's agents. Always visible. Does **not** split into Status/Rules — steering happens on the stage tabs (Design / Build / QA Rules), and this tab is read-only with pointer links to those surfaces.
 
-### Zones (proposed)
-1. **Agent roster** — BA, Design A/B, Code 1/2/3, QA, Reviewer — avatar, role, current task, status (active/idle/blocked), elapsed/ETA.
-2. **Code Agent strip** — the 3 Code Agents' current work + ETA. **Moved here from the Sprint tab** so Sprint stays board-only.
-3. **Agent detail** — selected agent's current work + recent activity.
+### Zones
+1. **Process-completion overview strip** (top, above roster) — 6-stage pipeline bar (Requirements → Design → Build → Review → QA → Deployed) with per-stage counts and the active stage highlighted; sprint-level stat row (done / in-flight / blocked / rework loops); top-level blocked banner for any agent waiting on another. Surfaces the project-level state of work, not just per-agent status.
+2. **Agent roster** — 8 cards: BA · DA · DB · C1 · C2 · C3 · QA · Reviewer. Each: colored avatar (sitemap color code), name, role line, current task, status pill (active/idle/blocked — dot+text, WCAG), elapsed/ETA footer.
+3. **3-Code-Agent strip** — C1/C2/C3 cards with current story, progress bar, pass-rate chip. C3 shows the blocked state. **Moved here from Sprint** (sitemap § Sprint decision 6).
+4. **Selected agent detail** (left column) — detail head + **Assignment** card (current story · PR · rules in force with pointer link · memory bank stats) + **About this agent (character sheet)** — role blurb, mini 6-stage pipeline with this agent's stage highlighted, inputs/outputs cards, **adversarial review relationships** (who critiques this agent, who it critiques — from AGENTS.md) + **Configuration · loadout** — model + effort, harness/runtime, trigger/autonomy row (reactive by default; shows the event that summoned this agent + turns taken), context-in-force pointer, steer-here pointer.
+5. **Selected agent detail** (right column) — **Context · save file** card (context-budget bar — always-in-context vs on-demand skills per CLAUDE.md § Skill Invocation Rules table) + **Job-board queue · up next** (next 2–3 assignments with blocked items and escalation rows) + **Steer here** (pointer links to stage-tab Rules surfaces, manual override actions) + **Turn trace** (Buzz "Traces" — 4 turns shown, files touched, tools run, PR updates, turn boundaries; subset of the Activity tab).
+6. **Notes block** — read-only footer reaffirming single-half monitor semantics.
 
 ### State
-- `GET /api/projects/:id/agents` → currently active agents + status.
+- `GET /api/projects/:id/agents` → roster + per-agent status.
+- `GET /api/projects/:id/agents/:agentId` → selected agent detail (assignment, loadout, context, job-board queue, turn trace).
+- Sprint-level stats derive from the Sprint board; pipeline counts derive from the project's story tracker.
 
 ### Decisions locked
 1. Agent roster lives here.
-2. **3-Code-Agent strip moved here from Sprint.**
+2. **3-Code-Agent strip moved here from Sprint** so Sprint stays board-only.
+3. **Single-half monitor — never splits into Status/Rules.** Steering happens on the stage tabs (Design / Build / QA Rules), which write back to disk. The Agents tab is read-only with pointer links.
+4. **Process-completion strip is the answer to "where are we?"** — pipeline bar + sprint stats + blocked banner at the top of the tab, not just per-agent pills.
+5. **Character sheet makes each agent legible** — role blurb + mini pipeline (this agent's stage highlighted) + inputs/outputs + adversarial-review relationships. Closes the "what is this agent?" gap.
+6. **Loadout card surfaces Buzz-style agent config** (model · effort · harness · trigger/autonomy). Read-only; pointer to the relevant stage-tab Rules surface for any actual edit.
+7. **Context / save-file viz** — distinguishes always-in-context (CLAUDE.md, AGENTS.md, framework guidelines) from on-demand skills (per CLAUDE.md § Skill Invocation Rules table). Includes a context-budget bar.
+8. **Job-board queue per agent** — next 2–3 assignments + blocked items + escalations. Closes the "what's next?" gap.
+9. **Turn trace = a subset of the Activity tab**, scoped to the selected agent. Files touched, tools run, PR updates, turn boundaries. The Activity tab owns the full timeline.
+10. **No editor controls anywhere on this tab** — only pointer links to the stage-tab Rules surfaces (Build Rules, Design Rules, QA Rules). The single steering surface stays on the stage tabs.
+11. **Status conveyed by text+dot, not color alone** (WCAG). Mono font for timestamps / IDs / commit hashes.
 
 ### Open / deferred
-- **Mockup not yet created** — design the visual first.
+- *None beyond the locked decisions.*
 
 ---
 

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Idea Hub — Agents tab (v5.2)</title>
+<title>Idea Hub — Agents tab (v5.4)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -81,8 +81,8 @@
   .screen-body { padding: 0; }
 
   /* ─── App shell ───────────────────────────────────────────────────────── */
-  .app { display: grid; grid-template-columns: 248px 1fr; min-height: 1100px; }
-  .side { border-right: 1px solid rgba(50,42,92,0.08); background: rgba(255,255,255,0.4); padding: 18px 14px; display: flex; flex-direction: column; gap: 18px; }
+  .app { display: grid; grid-template-columns: 248px minmax(0, 1fr); min-height: 900px; }
+  .side { border-right: 1px solid rgba(50,42,92,0.08); background: rgba(255,255,255,0.4); padding: 18px 14px; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
   .brand { display: flex; align-items: center; gap: 10px; padding: 4px 6px 10px; }
   .brand-mark { width: 28px; height: 28px; border-radius: 8px; background: var(--navy); color: #fff; display: grid; place-items: center; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; }
   .brand-name { font-size: 14px; font-weight: 700; color: var(--ink); }
@@ -104,11 +104,11 @@
   .side-foot a:hover { color: var(--ink); }
 
   /* ─── Main + topbar + cards ──────────────────────────────────────────── */
-  .main { padding: 18px 26px 60px; }
-  .topbar { display: flex; align-items: center; gap: 10px; padding: 0 4px 14px; }
-  .search { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.7); border: 1px solid rgba(50,42,92,0.08); border-radius: 10px; padding: 7px 12px; width: 360px; }
-  .search input { border: 0; outline: 0; flex: 1; background: transparent; color: var(--ink); font: inherit; }
-  .search .ico { color: var(--ink-2); width: 14px; height: 14px; }
+  .main { padding: 18px 26px 60px; min-width: 0; overflow: hidden; }
+  .topbar { display: flex; align-items: center; gap: 10px; padding: 0 4px 14px; flex-wrap: wrap; }
+  .search { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.7); border: 1px solid rgba(50,42,92,0.08); border-radius: 10px; padding: 7px 12px; width: 360px; max-width: 100%; min-width: 0; }
+  .search input { border: 0; outline: 0; flex: 1; background: transparent; color: var(--ink); font: inherit; min-width: 0; }
+  .search .ico { color: var(--ink-2); width: 14px; height: 14px; flex: none; }
 
   .card { background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: var(--r-lg); box-shadow: var(--shadow); }
 
@@ -135,20 +135,21 @@
   .pill.done    .dot { background: var(--green); }
 
   /* Project header */
-  .proj-head { display: flex; align-items: center; gap: 16px; padding: 22px; }
-  .proj-head .ico-lg { width: 56px; height: 56px; border-radius: 14px; display: grid; place-items: center; background: var(--peach); color: var(--ink); }
-  .proj-head h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
-  .proj-head .one { color: var(--ink-2); font-size: 13.5px; margin-top: 2px; }
-  .proj-head .path { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-2); margin-top: 6px; }
-  .proj-head .actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+  .proj-head { display: flex; align-items: center; gap: 16px; padding: 22px; min-width: 0; }
+  .proj-head .ico-lg { width: 56px; height: 56px; border-radius: 14px; display: grid; place-items: center; background: var(--peach); color: var(--ink); flex: none; }
+  .proj-head .head-body { min-width: 0; flex: 1; }
+  .proj-head h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .proj-head .one { color: var(--ink-2); font-size: 13.5px; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; }
+  .proj-head .path { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-2); margin-top: 6px; overflow: hidden; text-overflow: ellipsis; }
+  .proj-head .actions { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; flex: none; }
   .stage-pt { font-size: 11.5px; color: var(--ink-2); font-family: var(--font-mono); }
 
   /* 7-stage stepper */
-  .stepper { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0; align-items: center; }
-  .step { display: flex; align-items: center; gap: 8px; }
-  .step .num { width: 22px; height: 22px; border-radius: 50%; background: rgba(50,42,92,0.08); color: var(--ink-2); display: grid; place-items: center; font-size: 11px; font-weight: 700; }
-  .step .lbl { font-size: 12px; color: var(--ink-2); }
-  .step .bar { flex: 1; height: 2px; background: rgba(50,42,92,0.08); margin: 0 6px; }
+  .stepper { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0; align-items: center; padding: 0 22px 22px; }
+  .step { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .step .num { width: 22px; height: 22px; border-radius: 50%; background: rgba(50,42,92,0.08); color: var(--ink-2); display: grid; place-items: center; font-size: 11px; font-weight: 700; flex: none; }
+  .step .lbl { font-size: 12px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .step .bar { flex: 1; height: 2px; background: rgba(50,42,92,0.08); margin: 0 6px; min-width: 8px; }
   .step.done .num { background: var(--green); color: #fff; }
   .step.done .lbl { color: var(--ink); }
   .step.done .bar { background: var(--green); }
@@ -156,18 +157,21 @@
   .step.active .lbl { color: var(--ink); font-weight: 600; }
 
   /* ─── Section heads ──────────────────────────────────────────────────── */
-  .sec-head { display: flex; align-items: center; gap: 10px; padding: 6px 22px 12px; }
+  .sec-head { display: flex; align-items: center; gap: 10px; padding: 6px 22px 12px; flex-wrap: wrap; }
   .sec-head h3 { margin: 0; font-size: 14px; font-weight: 700; }
+  .sec-head .meta { font-size: 11.5px; color: var(--ink-2); }
   .sec-head .filter { margin-left: auto; display: flex; gap: 4px; }
   .sec-head .filter button { padding: 4px 10px; font-size: 11.5px; border-radius: 999px; background: transparent; color: var(--ink-2); }
   .sec-head .filter button.on { background: rgba(50,42,92,0.08); color: var(--ink); }
 
-  /* ─── Agent roster (8 agents: BA, DA, DB, C1, C2, C3, QA, Reviewer) ───── */
-  .roster { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 18px 22px; }
-  .agent-card { background: rgba(50,42,92,0.04); border: 1px solid transparent; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 8px; cursor: pointer; position: relative; }
-  .agent-card:hover { background: rgba(50,42,92,0.07); }
-  .agent-card.selected { background: rgba(155,127,222,0.08); border-color: var(--purple); }
-  .agent-card .row1 { display: flex; align-items: center; gap: 10px; }
+  /* ─── Agent roster (8 agents) — cards are links to detail screen ─────── */
+  .roster { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; padding: 18px 22px; }
+  @media (max-width: 1180px) { .roster { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 720px)  { .roster { grid-template-columns: 1fr; } }
+
+  .agent-card { background: rgba(50,42,92,0.04); border: 1px solid transparent; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 8px; cursor: pointer; position: relative; min-width: 0; overflow: hidden; transition: background 0.12s ease, border-color 0.12s ease; }
+  .agent-card:hover { background: rgba(50,42,92,0.07); border-color: rgba(50,42,92,0.12); }
+  .agent-card .row1 { display: flex; align-items: center; gap: 10px; min-width: 0; }
   .agent-card .av { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; color: var(--ink); flex: none; }
   /* agent avatars by role — color-coded per sitemap Activity spec */
   .av-ba { background: var(--peach);    color: var(--ink); }   /* BA peach */
@@ -179,90 +183,177 @@
   .av-qa { background: var(--lavender); color: var(--ink); }   /* QA lavender */
   .av-rev{ background: var(--sea);      color: var(--ink); }   /* Reviewer sea */
   .av-orc{ background: var(--navy);     color: #fff; }          /* Orchestrator navy */
-  .agent-card .name b { display: block; font-size: 13px; font-weight: 600; }
-  .agent-card .name .role { display: block; font-size: 11.5px; color: var(--ink-2); }
-  .agent-card .task { font-size: 12px; color: var(--ink); }
-  .agent-card .task .sub { display: block; color: var(--ink-2); font-size: 11px; margin-top: 1px; }
-  .agent-card .footer { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--ink-2); font-family: var(--font-mono); }
-  .agent-card .footer .right { margin-left: auto; }
+  .agent-card .name { min-width: 0; flex: 1; }
+  .agent-card .name b { display: block; font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+  .agent-card .name .role { display: block; font-size: 11.5px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; }
+  .agent-card .pill { flex: none; }
+  .agent-card .task { font-size: 12px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .agent-card .task .sub { display: block; color: var(--ink-2); font-size: 11px; margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .agent-card .footer { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--ink-2); font-family: var(--font-mono); min-width: 0; }
+  .agent-card .footer .right { margin-left: auto; text-align: right; }
   .agent-card .footer .pill { font-family: var(--font-sans); font-size: 10.5px; padding: 2px 7px; }
+  .agent-card .open { position: absolute; top: 10px; right: 10px; width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; color: var(--ink-2); background: rgba(255,255,255,0.7); opacity: 0; transition: opacity 0.12s ease; }
+  .agent-card:hover .open { opacity: 1; }
+  .agent-card .open svg { width: 12px; height: 12px; }
 
-  /* ─── Code Agent strip callout (moved from Sprint) ───────────────────── */
-  .code-strip { background: linear-gradient(135deg, rgba(207,224,244,0.25) 0%, rgba(247,237,198,0.25) 100%); border-top: 1px solid rgba(50,42,92,0.06); padding: 16px 22px 18px; }
-  .code-strip .strip-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-  .code-strip .strip-head h3 { margin: 0; font-size: 13.5px; font-weight: 700; }
-  .code-strip .strip-head .badge { font-size: 10.5px; color: var(--ink-2); background: rgba(50,42,92,0.06); padding: 2px 7px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
-  .code-strip .strip-head .right { margin-left: auto; display: flex; gap: 6px; align-items: center; }
-  .code-strip .strip-head .right .hint { font-size: 11.5px; color: var(--ink-2); }
-  .code-strip .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-  .code-card { background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
-  .code-card .row { display: flex; align-items: center; gap: 10px; }
-  .code-card .av { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 700; flex: none; }
-  .code-card.c1 .av { background: var(--mint); }
-  .code-card.c2 .av { background: var(--butter); }
-  .code-card.c3 .av { background: var(--blush); }
-  .code-card .name b { display: block; font-size: 14px; font-weight: 600; }
-  .code-card .name .role { display: block; font-size: 11.5px; color: var(--ink-2); }
-  .code-card .right { margin-left: auto; display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
-  .code-card .now { font-size: 12.5px; }
-  .code-card .now b { color: var(--ink); font-weight: 600; }
-  .code-card .now .sub { color: var(--ink-2); font-weight: 400; margin-left: 4px; font-size: 11.5px; }
-  .code-card .progress { height: 6px; background: rgba(50,42,92,0.06); border-radius: 999px; overflow: hidden; }
-  .code-card .progress > span { display: block; height: 100%; border-radius: 999px; }
-  .code-card.c1 .progress > span { background: var(--green); }
-  .code-card.c2 .progress > span { background: var(--green); }
-  .code-card.c3 .progress > span { background: var(--amber); }
-  .code-card .meta { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--ink-2); font-family: var(--font-mono); }
-  .code-card .meta .right { margin-left: auto; display: flex; gap: 6px; }
-  .pass-chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 7px; border-radius: 999px; font-size: 10.5px; font-weight: 500; background: var(--mint); color: var(--ink); font-family: var(--font-sans); }
-  .pass-chip .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--green); }
-  .pass-chip.warn { background: var(--butter); }
-  .pass-chip.warn .dot { background: var(--amber); }
-  .pass-chip.bad  { background: var(--blush); }
-  .pass-chip.bad .dot  { background: var(--rose); }
+  /* ─── Process-completion overview strip ──────────────────────────────── */
+  .proc-strip { background: linear-gradient(135deg, rgba(230,225,247,0.45) 0%, rgba(207,224,244,0.45) 100%); border-top: 1px solid rgba(50,42,92,0.06); border-bottom: 1px solid rgba(50,42,92,0.06); padding: 16px 22px 18px; display: flex; flex-direction: column; gap: 14px; }
+  .proc-strip .strip-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .proc-strip .strip-head h3 { margin: 0; font-size: 13.5px; font-weight: 700; }
+  .proc-strip .strip-head .badge { font-size: 10.5px; color: var(--ink-2); background: rgba(50,42,92,0.06); padding: 2px 7px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .proc-strip .strip-head .right { margin-left: auto; display: flex; gap: 6px; align-items: center; font-size: 11.5px; color: var(--ink-2); flex-wrap: wrap; }
+  .pipeline-bar { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+  .pipeline-seg { background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .pipeline-seg .stage-name { font-size: 11px; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pipeline-seg .count { font-family: var(--font-mono); font-size: 14px; font-weight: 700; color: var(--ink); }
+  .pipeline-seg .count .of { color: var(--ink-3); font-weight: 400; margin-left: 2px; font-size: 12px; }
+  .pipeline-seg.done   { background: var(--mint); border-color: rgba(95,191,149,0.4); }
+  .pipeline-seg.done .stage-name { color: var(--ink); }
+  .pipeline-seg.active { background: var(--navy); border-color: var(--navy); box-shadow: 0 0 0 4px rgba(50,42,92,0.08); }
+  .pipeline-seg.active .stage-name { color: rgba(255,255,255,0.7); }
+  .pipeline-seg.active .count { color: #fff; }
+  .pipeline-seg.active .count .of { color: rgba(255,255,255,0.55); }
+  .pipeline-seg.blocked { background: var(--blush); border-color: rgba(217,122,142,0.4); }
 
-  /* ─── Selected agent detail ──────────────────────────────────────────── */
-  .agent-detail { border-top: 1px solid rgba(50,42,92,0.06); padding: 18px 22px 22px; display: grid; grid-template-columns: 1.1fr 1fr; gap: 18px; background: rgba(50,42,92,0.02); }
-  .agent-detail .left { display: flex; flex-direction: column; gap: 12px; }
-  .agent-detail .right { display: flex; flex-direction: column; gap: 12px; }
-  .detail-head { display: flex; align-items: center; gap: 12px; }
-  .detail-head .av-lg { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; font-size: 15px; font-weight: 700; flex: none; }
-  .detail-head h4 { margin: 0; font-size: 16px; font-weight: 700; }
-  .detail-head .sub { font-size: 12px; color: var(--ink-2); margin-top: 2px; }
-  .detail-head .right { margin-left: auto; display: flex; gap: 6px; }
+  /* Sprint-level stat row (4 tiles) */
+  .sprint-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+  @media (max-width: 720px) { .sprint-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .sprint-stat { background: rgba(255,255,255,0.65); border: 1px solid rgba(50,42,92,0.06); border-radius: 10px; padding: 10px 12px; min-width: 0; }
+  .sprint-stat .n { font-size: 18px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+  .sprint-stat .lbl { font-size: 10.5px; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 1px; }
+  .sprint-stat .sub { font-size: 11px; color: var(--ink-2); margin-top: 4px; font-family: var(--font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sprint-stat.warn .n { color: var(--rose); }
 
-  .meta-card { background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: 12px; padding: 14px 16px; }
-  .meta-card h5 { margin: 0 0 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-2); }
-  .meta-row { display: grid; grid-template-columns: 110px 1fr; gap: 10px; padding: 6px 0; border-top: 1px solid rgba(50,42,92,0.05); font-size: 12.5px; }
-  .meta-row:first-of-type { border-top: 0; }
-  .meta-row .k { color: var(--ink-2); font-weight: 600; }
-  .meta-row .v { color: var(--ink); }
-  .meta-row .v code { font-family: var(--font-mono); font-size: 11.5px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px; }
-  .meta-row .v .eta { color: var(--ink-2); margin-left: 6px; font-size: 11.5px; }
+  /* Blocked banner inside process strip */
+  .blocked-banner { background: var(--blush); border: 1px solid rgba(217,122,142,0.35); border-radius: 10px; padding: 10px 14px; display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: var(--ink); flex-wrap: wrap; min-width: 0; }
+  .blocked-banner .pill.blocked { font-size: 11px; }
+  .blocked-banner b { font-weight: 600; }
+  .blocked-banner .right { margin-left: auto; display: flex; gap: 6px; align-items: center; }
 
-  .work-card { background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: 12px; padding: 14px 16px; }
-  .work-card h5 { margin: 0 0 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-2); }
-  .work-row { display: grid; grid-template-columns: 90px 1fr 90px 90px; gap: 8px; align-items: center; padding: 8px 0; border-top: 1px solid rgba(50,42,92,0.05); font-size: 12px; }
-  .work-row:first-of-type { border-top: 0; }
-  .work-row .id { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-2); }
-  .work-row .title { font-weight: 500; }
-  .work-row .title .sub { display: block; font-size: 11px; color: var(--ink-2); font-weight: 400; margin-top: 1px; }
-
-  /* Recent activity (subset of Activity tab) */
-  .activity-card { background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: 12px; padding: 14px 16px; }
-  .activity-card h5 { margin: 0 0 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-2); }
-  .act-row { display: grid; grid-template-columns: 28px 1fr 80px; gap: 8px; align-items: start; padding: 8px 0; border-top: 1px solid rgba(50,42,92,0.05); font-size: 12px; }
-  .act-row:first-of-type { border-top: 0; }
-  .act-row .av-sm { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 10px; font-weight: 700; }
-  .act-row .body { color: var(--ink); line-height: 1.5; }
-  .act-row .body b { font-weight: 600; }
-  .act-row .body .code { font-family: var(--font-mono); font-size: 11px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px; }
-  .act-row .ts { font-size: 11px; color: var(--ink-2); font-family: var(--font-mono); text-align: right; }
+  /* Pointer link */
+  .pointer-link { color: var(--navy); font-weight: 600; font-size: 11.5px; text-decoration: underline; text-underline-offset: 2px; }
+  .pointer-link:hover { color: var(--navy-2); }
 
   /* Notes block */
-  .notes { margin: 0 22px 22px; background: rgba(50,42,92,0.02); border: 1px dashed rgba(50,42,92,0.15); border-radius: 12px; padding: 16px 18px; display: flex; align-items: center; gap: 14px; font-size: 12.5px; color: var(--ink-2); }
+  .notes { margin: 0 22px 22px; background: rgba(50,42,92,0.02); border: 1px dashed rgba(50,42,92,0.15); border-radius: 12px; padding: 16px 18px; display: flex; align-items: center; gap: 14px; font-size: 12.5px; color: var(--ink-2); flex-wrap: wrap; }
   .notes b { color: var(--ink); font-weight: 600; }
   .notes .right { margin-left: auto; }
+
+  /* ─── v5.4 additions — agent detail screen (second section) ─────────── */
+
+  /* Breadcrumb */
+  .crumbs { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-2); padding: 0 4px 14px; flex-wrap: wrap; }
+  .crumbs a { color: var(--ink-2); }
+  .crumbs a:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 2px; }
+  .crumbs .sep { color: var(--ink-3); }
+  .crumbs .here { color: var(--ink); font-weight: 600; }
+
+  /* Two-column detail body */
+  .agent-detail { padding: 18px 22px 22px; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 18px; background: rgba(50,42,92,0.02); }
+  @media (max-width: 980px) { .agent-detail { grid-template-columns: 1fr; } }
+  .agent-detail .col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+
+  .detail-head { display: flex; align-items: center; gap: 12px; background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: 12px; padding: 14px 16px; min-width: 0; }
+  .detail-head .av-lg { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; font-size: 15px; font-weight: 700; flex: none; }
+  .detail-head .body { min-width: 0; flex: 1; }
+  .detail-head h4 { margin: 0; font-size: 16px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; }
+  .detail-head .sub { font-size: 12px; color: var(--ink-2); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; }
+  .detail-head .right { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; flex: none; }
+
+  /* Re-used meta/work/job cards (now defined here for the detail section) */
+  .meta-card { background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: 12px; padding: 14px 16px; min-width: 0; }
+  .meta-card h5 { margin: 0 0 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-2); }
+  .meta-row { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 10px; padding: 6px 0; border-top: 1px solid rgba(50,42,92,0.05); font-size: 12.5px; min-width: 0; }
+  .meta-row:first-of-type { border-top: 0; }
+  .meta-row .k { color: var(--ink-2); font-weight: 600; }
+  .meta-row .v { color: var(--ink); overflow-wrap: anywhere; }
+  .meta-row .v code { font-family: var(--font-mono); font-size: 11.5px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+  .meta-row .v .eta { color: var(--ink-2); margin-left: 6px; font-size: 11.5px; }
+
+  .work-card { background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: 12px; padding: 14px 16px; min-width: 0; }
+  .work-card h5 { margin: 0 0 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-2); }
+  .work-row { display: grid; grid-template-columns: 90px minmax(0, 1fr) 90px 90px; gap: 8px; align-items: center; padding: 8px 0; border-top: 1px solid rgba(50,42,92,0.05); font-size: 12px; min-width: 0; }
+  @media (max-width: 720px) { .work-row { grid-template-columns: 80px minmax(0, 1fr) 80px; } .work-row .diff { display: none; } }
+  .work-row:first-of-type { border-top: 0; }
+  .work-row .id { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-2); }
+  .work-row .title { font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .work-row .title .sub { display: block; font-size: 11px; color: var(--ink-2); font-weight: 400; margin-top: 1px; }
+  .work-row .pill { font-size: 10.5px; padding: 2px 7px; }
+  .work-row .diff { text-align: right; font-size: 11.5px; color: var(--ink-2); font-family: var(--font-mono); }
+
+  /* Character sheet */
+  .char-sheet { background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  .char-sheet h5 { margin: 0; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-2); }
+  .char-sheet .role-blurb { font-size: 12.5px; line-height: 1.55; color: var(--ink); }
+  .char-sheet .role-blurb b { font-weight: 600; }
+  .char-sheet .role-blurb code { font-family: var(--font-mono); font-size: 11.5px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px; }
+
+  .mini-pipeline { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; }
+  .mini-seg { background: rgba(50,42,92,0.04); border: 1px solid transparent; border-radius: 6px; padding: 6px 4px; text-align: center; font-size: 10.5px; color: var(--ink-2); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mini-seg.done   { background: var(--mint); color: var(--ink); }
+  .mini-seg.active { background: var(--navy); color: #fff; font-weight: 600; box-shadow: 0 0 0 3px rgba(50,42,92,0.08); }
+
+  .char-io { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; font-size: 12px; }
+  @media (max-width: 720px) { .char-io { grid-template-columns: 1fr; } }
+  .char-io .io { background: rgba(50,42,92,0.03); border-radius: 8px; padding: 8px 10px; min-width: 0; }
+  .char-io .io .k { font-size: 10.5px; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; margin-bottom: 4px; }
+  .char-io .io .v { color: var(--ink); line-height: 1.5; overflow-wrap: anywhere; }
+  .char-io .io .v code { font-family: var(--font-mono); font-size: 11px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+
+  .review-rel { font-size: 12px; line-height: 1.55; color: var(--ink); }
+  .review-rel b { font-weight: 600; }
+  .review-rel .av-inline { width: 18px; height: 18px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 9px; font-weight: 700; vertical-align: -3px; margin: 0 3px; }
+  .review-rel code { font-family: var(--font-mono); font-size: 11px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+  .review-rel .arrow { color: var(--ink-2); margin: 0 4px; }
+
+  .trigger-tag { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 999px; background: var(--sky); color: var(--ink); font-size: 11px; font-weight: 500; }
+  .trigger-tag .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--blue); }
+
+  /* Context budget */
+  .ctx-budget { display: flex; flex-direction: column; gap: 4px; }
+  .ctx-budget .row { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--ink-2); font-family: var(--font-mono); }
+  .ctx-budget .row .right { margin-left: auto; color: var(--ink); font-weight: 600; }
+  .ctx-budget .bar { height: 8px; background: rgba(50,42,92,0.06); border-radius: 999px; overflow: hidden; }
+  .ctx-budget .bar > span { display: block; height: 100%; background: linear-gradient(90deg, var(--green) 0%, var(--amber) 70%, var(--rose) 100%); border-radius: 999px; }
+
+  .ctx-list { display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
+  .ctx-list .ctx-item { display: flex; align-items: center; gap: 8px; padding: 4px 0; border-top: 1px solid rgba(50,42,92,0.05); min-width: 0; }
+  .ctx-list .ctx-item:first-child { border-top: 0; }
+  .ctx-list .ctx-tag { font-family: var(--font-mono); font-size: 10px; padding: 1px 6px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; flex: none; }
+  .ctx-tag.always { background: var(--mint); color: var(--ink); }
+  .ctx-tag.on-demand { background: var(--lavender); color: var(--ink); }
+  .ctx-list code { font-family: var(--font-mono); font-size: 11.5px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+  .ctx-list .ctx-text { min-width: 0; flex: 1; overflow-wrap: anywhere; }
+
+  /* Job-board queue */
+  .job-queue { background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: 12px; padding: 14px 16px; min-width: 0; }
+  .job-queue h5 { margin: 0 0 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-2); }
+  .job-row { display: grid; grid-template-columns: minmax(0, 1fr) 90px 90px; gap: 8px; align-items: center; padding: 8px 0; border-top: 1px solid rgba(50,42,92,0.05); font-size: 12px; min-width: 0; }
+  .job-row:first-of-type { border-top: 0; }
+  .job-row .title { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .job-row .title b { font-weight: 600; }
+  .job-row .title .sub { display: block; font-size: 11px; color: var(--ink-2); font-weight: 400; margin-top: 1px; }
+  .job-row .id { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-2); text-align: right; }
+  .job-row .eta { font-size: 11.5px; color: var(--ink-2); font-family: var(--font-mono); text-align: right; }
+  .job-row.escalation { background: rgba(217,122,142,0.06); margin: 4px -8px; padding: 8px; border-radius: 8px; border-top: 0; }
+  .job-row.escalation .title .sub { color: var(--rose); font-weight: 500; }
+
+  /* Turn trace */
+  .trace-card { background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: 12px; padding: 14px 16px; min-width: 0; }
+  .trace-card h5 { margin: 0 0 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-2); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .trace-card h5 .turn-count { margin-left: auto; font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--ink); background: rgba(50,42,92,0.06); padding: 2px 7px; border-radius: 4px; }
+  .turn { display: flex; flex-direction: column; gap: 6px; padding: 10px 0; border-top: 1px solid rgba(50,42,92,0.05); font-size: 12px; min-width: 0; }
+  .turn:first-of-type { border-top: 0; padding-top: 4px; }
+  .turn .turn-head { display: flex; align-items: center; gap: 8px; color: var(--ink-2); font-size: 11px; font-family: var(--font-mono); flex-wrap: wrap; }
+  .turn .turn-head .turn-num { font-weight: 700; color: var(--navy); }
+  .turn .turn-head .right { margin-left: auto; }
+  .turn .trace-row { display: grid; grid-template-columns: 22px minmax(0, 1fr) 70px; gap: 8px; align-items: start; padding: 4px 0; font-size: 12px; min-width: 0; }
+  .turn .trace-row .ico { width: 18px; height: 18px; border-radius: 5px; display: grid; place-items: center; background: rgba(50,42,92,0.06); color: var(--ink-2); flex: none; }
+  .turn .trace-row .ico svg { width: 11px; height: 11px; }
+  .turn .trace-row .body { min-width: 0; overflow-wrap: anywhere; }
+  .turn .trace-row .body code { font-family: var(--font-mono); font-size: 11px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+  .turn .trace-row .ts { font-size: 11px; color: var(--ink-2); font-family: var(--font-mono); text-align: right; }
+  .turn .trace-row .av-sm { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 10px; font-weight: 700; }
 </style>
 </head>
 <body>
@@ -270,10 +361,10 @@
 
   <header class="doc-header">
     <div>
-      <div class="doc-title">Idea Hub — Agents tab (v5.2)</div>
-      <div class="doc-sub">The agent roster + 3-Code-Agent strip (moved here from Sprint per sitemap § Sprint decision 6). Single-half monitor — Agents is <b>always visible</b> and does not split into Status/Rules; you watch what the framework's agents are doing and steer by editing rules on the stage tabs themselves. <b>Source of truth:</b> <a href="sitemap.md">sitemap.md § Agents</a>.</div>
+      <div class="doc-title">Idea Hub — Agents tab (v5.4)</div>
+      <div class="doc-sub">Single-half monitor — Agents is <b>always visible</b> and does not split into Status/Rules; you watch what the framework's agents are doing and steer by editing rules on the stage tabs themselves. <b>v5.4 changes</b> — the inline agent-detail panel and the 3-Code-Agent strip have been removed from the roster; the roster now anchors to a second <b>agent detail screen</b> stacked below the roster in this same file. Both screens share one token block. <b>Process overview</b> strip retains the 6-stage pipeline bar, sprint stats, and blocked banner. <b>No editor controls</b> anywhere on either screen — only pointer links. <b>Source of truth:</b> <a href="sitemap.md">sitemap.md § Agents</a>.</div>
     </div>
-    <div class="doc-meta">v5.2 · launcher/design/agents-tab.html<br/>1 screen (Agents · 8-agent roster + Code strip + selected detail)</div>
+    <div class="doc-meta">v5.4 · launcher/design/agents-tab.html<br/>2 screens in one file (Agents roster + Agent detail · Code 1)</div>
   </header>
 
   <nav class="toc">
@@ -281,14 +372,15 @@
     <a href="build-tab.html"><b>BU</b> Build tab mockup →</a>
     <a href="qa-tab.html"><b>Q</b> QA tab mockup →</a>
     <a href="activity-tab.html"><b>AC</b> Activity tab mockup →</a>
-    <a href="#sag"><b>AG</b> Agents tab (roster + 3-Code-Agent strip + detail)</a>
+    <a href="#sag"><b>AG</b> Agents tab — roster (Screen 1 of 2)</a>
+    <a href="#sagd"><b>AG·D</b> Agents tab — agent detail (Screen 2 of 2)</a>
   </nav>
 
   <!-- ═════════════ AG · Agents tab ═════════════ -->
   <section class="screen" id="sag">
     <div class="screen-label">
       <span class="num">AG</span>
-      <span class="name">Agents tab — roster + Code strip + selected detail</span>
+      <span class="name">Agents tab — process strip + roster (detail moved to its own screen)</span>
       <span class="route">/projects/tenant-maintenance · Agents</span>
     </div>
     <div class="screen-body">
@@ -335,8 +427,8 @@
           <!-- Project header -->
           <div class="card">
             <div class="proj-head">
-              <div class="ico-lg tile-peach"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2b2547" stroke-width="1.8"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="9" r="3"/><path d="M3 19c0-3 2.7-5 6-5s6 2 6 5 M14 19c0-3 2.7-5 6-5"/></svg></div>
-              <div>
+              <div class="ico-lg"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2b2547" stroke-width="1.8"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="9" r="3"/><path d="M3 19c0-3 2.7-5 6-5s6 2 6 5 M14 19c0-3 2.7-5 6-5"/></svg></div>
+              <div class="head-body">
                 <h1>Tenant Maintenance Portal</h1>
                 <div class="one">Maintenance request app for property managers</div>
                 <div class="path">~/Code/tenant-maintenance · Build stage · 8 agents active</div>
@@ -348,8 +440,8 @@
               </div>
             </div>
 
-            <!-- 7-stage stepper (Build active — orchestrator's current focus) -->
-            <div class="stepper" style="padding: 0 22px 22px;">
+            <!-- 7-stage stepper (Build active) -->
+            <div class="stepper">
               <div class="step done"><div class="num"><b>1</b></div><div class="lbl">Intake</div><div class="bar"></div></div>
               <div class="step done"><div class="num"><b>2</b></div><div class="lbl">Requirements</div><div class="bar"></div></div>
               <div class="step done"><div class="num"><b>3</b></div><div class="lbl">Design</div><div class="bar"></div></div>
@@ -360,11 +452,87 @@
             </div>
           </div>
 
-          <!-- ══════ AGENT ROSTER (8 agents) ══════ -->
+          <!-- ══════ PROCESS-COMPLETION OVERVIEW STRIP ══════ -->
+          <div class="card" style="margin-top: 14px;">
+            <div class="proc-strip" style="border: 0; padding: 18px 22px;">
+                <div class="strip-head">
+                  <h3>Process overview</h3>
+                  <span class="badge">v5.3</span>
+                  <div class="right">
+                    <span>Sprint 14 · 12 stories · 3 active code agents</span>
+                    <a href="sprint.html" class="pointer-link">View Sprint board →</a>
+                  </div>
+                </div>
+
+                <!-- 6-stage pipeline bar (Build active) -->
+                <div class="pipeline-bar">
+                  <div class="pipeline-seg done">
+                    <span class="stage-name">Requirements</span>
+                    <span class="count">17<span class="of">/17</span></span>
+                  </div>
+                  <div class="pipeline-seg done">
+                    <span class="stage-name">Design</span>
+                    <span class="count">14<span class="of">/14</span></span>
+                  </div>
+                  <div class="pipeline-seg active">
+                    <span class="stage-name">Build</span>
+                    <span class="count">3<span class="of">/5</span></span>
+                  </div>
+                  <div class="pipeline-seg">
+                    <span class="stage-name">Review</span>
+                    <span class="count">1<span class="of">/5</span></span>
+                  </div>
+                  <div class="pipeline-seg">
+                    <span class="stage-name">QA</span>
+                    <span class="count">0<span class="of">/5</span></span>
+                  </div>
+                  <div class="pipeline-seg">
+                    <span class="stage-name">Deployed</span>
+                    <span class="count">0<span class="of">/14</span></span>
+                  </div>
+                </div>
+
+                <!-- Sprint-level stat row -->
+                <div class="sprint-stats">
+                  <div class="sprint-stat">
+                    <div class="n">7</div>
+                    <div class="lbl">Done</div>
+                    <div class="sub">TM-04 … TM-15</div>
+                  </div>
+                  <div class="sprint-stat">
+                    <div class="n">4</div>
+                    <div class="lbl">In flight</div>
+                    <div class="sub">TM-17 · TM-19 · TM-21 · TM-22</div>
+                  </div>
+                  <div class="sprint-stat warn">
+                    <div class="n">1</div>
+                    <div class="lbl">Blocked</div>
+                    <div class="sub">TM-21 · waiting on DA</div>
+                  </div>
+                  <div class="sprint-stat">
+                    <div class="n">2</div>
+                    <div class="lbl">Rework loops</div>
+                    <div class="sub">TM-12 round 2 · TM-09 round 3</div>
+                  </div>
+                </div>
+
+                <!-- Blocked banner -->
+                <div class="blocked-banner" role="status">
+                  <span class="pill blocked"><span class="dot"></span> blocked</span>
+                  <span><b>1 agent blocked</b> — <b>C3</b> waiting on <b>DA</b> for <code style="font-family: var(--font-mono); font-size: 11.5px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">TM-21</code> · Status-pill dot colour in low-contrast mode</span>
+                  <div class="right">
+                    <a href="#sagd" class="pointer-link">Open C3 detail →</a>
+                    <a href="design-tab.html" class="pointer-link">Open Design tab →</a>
+                  </div>
+                </div>
+              </div>
+          </div>
+
+          <!-- ══════ AGENT ROSTER (8 agents) — click opens detail ══════ -->
           <div class="card" style="margin-top: 14px;">
             <div class="sec-head">
               <h3>Agent roster</h3>
-              <span style="font-size: 11.5px; color: var(--ink-2);">8 agents · 6 active · 2 idle · 0 blocked</span>
+              <span class="meta">8 agents · 6 active · 2 idle · 0 blocked</span>
               <div class="filter">
                 <button>All</button>
                 <button class="on">Active</button>
@@ -375,180 +543,186 @@
 
             <div class="roster">
               <!-- 1. BA Agent -->
-              <div class="agent-card">
+              <a class="agent-card" href="#sagd">
                 <div class="row1">
                   <div class="av av-ba">BA</div>
                   <div class="name"><b>BA Agent</b><span class="role">Business analyst · intake → requirements</span></div>
-                  <span class="pill idle" style="margin-left: auto;"><span class="dot"></span> idle</span>
+                  <span class="pill idle"><span class="dot"></span> idle</span>
                 </div>
                 <div class="task">Awaiting next project <span class="sub">Idle since intake handed off 3h ago</span></div>
                 <div class="footer"><span>elapsed —</span><span class="right">stage · Requirements</span></div>
-              </div>
+                <span class="open" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14 M13 6l6 6-6 6"/></svg></span>
+              </a>
 
               <!-- 2. Design A (sky) -->
-              <div class="agent-card">
+              <a class="agent-card" href="#sagd">
                 <div class="row1">
                   <div class="av av-da">DA</div>
                   <div class="name"><b>Design A</b><span class="role">Tokens + wireframes</span></div>
-                  <span class="pill idle" style="margin-left: auto;"><span class="dot"></span> idle</span>
+                  <span class="pill idle"><span class="dot"></span> idle</span>
                 </div>
                 <div class="task">All designs complete <span class="sub">DSGN-01 … DSGN-14 · ready for dev</span></div>
                 <div class="footer"><span>elapsed —</span><span class="right">stage · Design</span></div>
-              </div>
+                <span class="open" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14 M13 6l6 6-6 6"/></svg></span>
+              </a>
 
               <!-- 3. Design B (sea) -->
-              <div class="agent-card">
+              <a class="agent-card" href="#sagd">
                 <div class="row1">
                   <div class="av av-db">DB</div>
                   <div class="name"><b>Design B</b><span class="role">Peer reviewer</span></div>
-                  <span class="pill idle" style="margin-left: auto;"><span class="dot"></span> idle</span>
+                  <span class="pill idle"><span class="dot"></span> idle</span>
                 </div>
                 <div class="task">All peer reviews signed off <span class="sub">14/14 designs · 3 disagreements → resolved</span></div>
                 <div class="footer"><span>elapsed —</span><span class="right">stage · Design</span></div>
-              </div>
+                <span class="open" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14 M13 6l6 6-6 6"/></svg></span>
+              </a>
 
-              <!-- 4. Code 1 (mint) — selected -->
-              <div class="agent-card selected">
+              <!-- 4. Code 1 (mint) -->
+              <a class="agent-card" href="#sagd">
                 <div class="row1">
                   <div class="av av-c1">C1</div>
                   <div class="name"><b>Code 1</b><span class="role">Tenant request detail + status updates</span></div>
-                  <span class="pill active" style="margin-left: auto;"><span class="dot"></span> active</span>
+                  <span class="pill active"><span class="dot"></span> active</span>
                 </div>
                 <div class="task">Building TM-19 <span class="sub">PR #214 · 6/8 files pushed</span></div>
                 <div class="footer"><span>elapsed 1h 12m</span><span class="right">ETA 24m · stage · Build</span></div>
-              </div>
+                <span class="open" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14 M13 6l6 6-6 6"/></svg></span>
+              </a>
 
               <!-- 5. Code 2 (butter) -->
-              <div class="agent-card">
+              <a class="agent-card" href="#sagd">
                 <div class="row1">
                   <div class="av av-c2">C2</div>
                   <div class="name"><b>Code 2</b><span class="role">Property list + filters</span></div>
-                  <span class="pill active" style="margin-left: auto;"><span class="dot"></span> active</span>
+                  <span class="pill active"><span class="dot"></span> active</span>
                 </div>
                 <div class="task">Building TM-17 <span class="sub">PR #211 · 4/6 files · awaiting FE re-review</span></div>
                 <div class="footer"><span>elapsed 2h 04m</span><span class="right">ETA 1h 08m · stage · Build</span></div>
-              </div>
+                <span class="open" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14 M13 6l6 6-6 6"/></svg></span>
+              </a>
 
               <!-- 6. Code 3 (blush) -->
-              <div class="agent-card">
+              <a class="agent-card" href="#sagd">
                 <div class="row1">
                   <div class="av av-c3">C3</div>
                   <div class="name"><b>Code 3</b><span class="role">Auth + tenant invite flow</span></div>
-                  <span class="pill blocked" style="margin-left: auto;"><span class="dot"></span> blocked</span>
+                  <span class="pill blocked"><span class="dot"></span> blocked</span>
                 </div>
                 <div class="task">Waiting on Design A to clarify TM-21 <span class="sub">Status-pill dot colour in low-contrast mode</span></div>
                 <div class="footer"><span>elapsed 38m</span><span class="right">stage · Build</span></div>
-              </div>
+                <span class="open" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14 M13 6l6 6-6 6"/></svg></span>
+              </a>
 
               <!-- 7. QA Agent (lavender) -->
-              <div class="agent-card">
+              <a class="agent-card" href="#sagd">
                 <div class="row1">
                   <div class="av av-qa">QA</div>
                   <div class="name"><b>QA Agent</b><span class="role">Playwright · a11y · fidelity</span></div>
-                  <span class="pill active" style="margin-left: auto;"><span class="dot"></span> active</span>
+                  <span class="pill active"><span class="dot"></span> active</span>
                 </div>
                 <div class="task">Running TM-17 test suite <span class="sub">3/6 tests passed · 1 failed (a11y)</span></div>
                 <div class="footer"><span>elapsed 6m</span><span class="right">ETA 4m · stage · QA</span></div>
-              </div>
+                <span class="open" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14 M13 6l6 6-6 6"/></svg></span>
+              </a>
 
               <!-- 8. Reviewer (sea) -->
-              <div class="agent-card">
+              <a class="agent-card" href="#sagd">
                 <div class="row1">
                   <div class="av av-rev">RV</div>
                   <div class="name"><b>Reviewer Agent</b><span class="role">Code review + nit pick</span></div>
-                  <span class="pill active" style="margin-left: auto;"><span class="dot"></span> active</span>
+                  <span class="pill active"><span class="dot"></span> active</span>
                 </div>
                 <div class="task">Reviewing PR #214 <span class="sub">2 nits pending · 1 unresolved (a11y)</span></div>
                 <div class="footer"><span>elapsed 12m</span><span class="right">ETA 8m · stage · Review</span></div>
+                <span class="open" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14 M13 6l6 6-6 6"/></svg></span>
+              </a>
+            </div>
+
+            <!-- Notes block -->
+            <div class="notes">
+              <div>
+                <b>Single-half monitor.</b> Agents is read-mostly. To change what an agent does, edit the rules on the stage tab (Design / Build / QA). Click any agent card to open its full detail on a separate screen.
+              </div>
+              <div class="right">
+                <a href="#sagd" class="btn btn-soft btn-pill">Open Code 1 detail →</a>
               </div>
             </div>
 
-            <!-- ══════ 3-CODE-AGENT STRIP (moved from Sprint) ══════ -->
-            <div class="code-strip">
-              <div class="strip-head">
-                <h3>3-Code-Agent strip</h3>
-                <span class="badge">moved from Sprint</span>
-                <span class="right">
-                  <span class="hint">Sprint is board-only — code progress lives here.</span>
-                  <button class="btn btn-soft btn-pill">View Sprint board →</button>
-                </span>
-              </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </section>
 
-              <div class="grid">
-                <!-- C1 -->
-                <div class="code-card c1">
-                  <div class="row">
-                    <div class="av">C1</div>
-                    <div class="name"><b>Code 1</b><span class="role">mint · tenant request detail + status updates</span></div>
-                    <div class="right">
-                      <span class="pill active"><span class="dot"></span> active</span>
-                    </div>
-                  </div>
-                  <div class="now">On <b>TM-19</b> <span class="sub">Request detail screen + status updates</span></div>
-                  <div class="progress"><span style="width: 75%;"></span></div>
-                  <div class="meta">
-                    <span>elapsed 1h 12m</span>
-                    <span class="right">
-                      <span>ETA 24m</span>
-                      <span class="pass-chip"><span class="dot"></span> pass-rate 4/5</span>
-                    </span>
-                  </div>
-                </div>
+  <!-- ═════════════ AG·D · Agent detail (Screen 2 of 2) ═════════════ -->
+  <section class="screen" id="sagd">
+    <div class="screen-label">
+      <span class="num">AG·D</span>
+      <span class="name">Agent detail — Code 1 (C1 · Code Agent) · character sheet · loadout · work · turn trace · context · job board</span>
+      <span class="route">/projects/tenant-maintenance · Agents · Code 1</span>
+    </div>
+    <div class="screen-body">
+      <div class="app">
+        <aside class="side">
+          <div class="brand"><div class="brand-mark">IH</div><div class="brand-name">Idea Hub</div></div>
+          <div>
+            <div class="menu-label">Menu</div>
+            <nav class="nav">
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12l9-9 9 9 M5 10v10h14V10"/></svg> Overview</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h11l3 3v13H5z M16 4v3h3 M8 11h8 M8 14h8 M8 17h5"/></svg> Project Background <span class="count">17</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3h7v7 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> Requirements <span class="count">14</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Sprint <span class="count">14</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z M4 9h16 M9 4v16"/></svg> Design</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Build <span class="count">14</span></a>
+              <a href="#sag" class="active"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="9" r="3"/><path d="M3 19c0-3 2.7-5 6-5s6 2 6 5 M14 19c0-3 2.7-5 6-5"/></svg> Agents</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 12l2 2 4-4 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg> QA <span class="count">2</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> Activity</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 8H3 M21 16H3 M5 4h14v16H5z"/></svg> Artifacts</a>
+            </nav>
+          </div>
+          <div class="side-promo">
+            <h4>Read-mostly</h4>
+            <p>This is the agent detail screen. To steer what C1 does, edit the rules on the Build · Rules tab — those write back to <code style="font-family: var(--font-mono); font-size: 11px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">code-builder/</code>.</p>
+          </div>
+          <div class="side-foot">
+            <a href="#sag"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 3h6v6 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> ← All agents</a>
+          </div>
+        </aside>
 
-                <!-- C2 -->
-                <div class="code-card c2">
-                  <div class="row">
-                    <div class="av">C2</div>
-                    <div class="name"><b>Code 2</b><span class="role">butter · property list + filters</span></div>
-                    <div class="right">
-                      <span class="pill active"><span class="dot"></span> active</span>
-                    </div>
-                  </div>
-                  <div class="now">On <b>TM-17</b> <span class="sub">Property list view + active filter</span></div>
-                  <div class="progress"><span style="width: 60%;"></span></div>
-                  <div class="meta">
-                    <span>elapsed 2h 04m</span>
-                    <span class="right">
-                      <span>ETA 1h 08m</span>
-                      <span class="pass-chip"><span class="dot"></span> pass-rate 5/5</span>
-                    </span>
-                  </div>
-                </div>
+        <main class="main">
+          <!-- Breadcrumb: Agents › Code 1 -->
+          <nav class="crumbs" aria-label="Breadcrumb">
+            <a href="#sag">Agents</a>
+            <span class="sep">›</span>
+            <span class="here">Code 1</span>
+          </nav>
 
-                <!-- C3 -->
-                <div class="code-card c3">
-                  <div class="row">
-                    <div class="av">C3</div>
-                    <div class="name"><b>Code 3</b><span class="role">blush · auth + tenant invite flow</span></div>
-                    <div class="right">
-                      <span class="pill blocked"><span class="dot"></span> blocked</span>
-                    </div>
-                  </div>
-                  <div class="now">Waiting on <b>DA · TM-21</b> <span class="sub">Status-pill dot colour in low-contrast mode</span></div>
-                  <div class="progress"><span style="width: 28%;"></span></div>
-                  <div class="meta">
-                    <span>elapsed 38m</span>
-                    <span class="right">
-                      <span>ETA —</span>
-                      <span class="pass-chip warn"><span class="dot"></span> pass-rate 3/5</span>
-                    </span>
-                  </div>
-                </div>
-              </div>
+          <div class="topbar">
+            <a href="#sag" style="font-size:13px; color: var(--ink-2);">← Agents</a>
+            <div class="search">
+              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+              <input placeholder="Search this agent's activity…" />
             </div>
+            <button class="btn btn-soft btn-pill">Switch agent</button>
+            <button class="btn btn-soft btn-pill">View PR #214 ↗</button>
+          </div>
 
-            <!-- ══════ SELECTED AGENT DETAIL (C1) ══════ -->
+          <!-- ══════ TWO-COLUMN DETAIL BODY ══════ -->
+          <div class="card">
             <div class="agent-detail">
-              <div class="left">
+
+              <!-- LEFT COLUMN -->
+              <div class="col">
+
                 <div class="detail-head">
                   <div class="av-lg av-c1">C1</div>
-                  <div>
+                  <div class="body">
                     <h4>Code 1 — Code Agent</h4>
-                    <div class="sub">Tenant request detail + status updates · running on worktree <code style="font-family: var(--font-mono); font-size: 11.5px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">feat/tm-19-request-detail</code></div>
+                    <div class="sub">Tenant request detail + status updates · worktree <code style="font-family: var(--font-mono); font-size: 11.5px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">feat/tm-19-request-detail</code></div>
                   </div>
                   <div class="right">
                     <span class="pill active"><span class="dot"></span> active</span>
-                    <button class="btn btn-soft btn-pill">View PR #214 ↗</button>
                   </div>
                 </div>
 
@@ -564,11 +738,67 @@
                   </div>
                   <div class="meta-row">
                     <div class="k">Rules in force</div>
-                    <div class="v"><code>code-builder/</code> + <code>skills/coding-guidelines.md</code> · edit on the Build Rules tab</div>
+                    <div class="v"><code>code-builder/</code> + <code>skills/coding-guidelines.md</code> · <a href="build-tab.html" class="pointer-link">edit on the Build Rules tab</a></div>
                   </div>
                   <div class="meta-row">
                     <div class="k">Memory bank</div>
                     <div class="v">14 prior stories · 12 first-pass pass · 2 rework loops</div>
+                  </div>
+                </div>
+
+                <div class="char-sheet">
+                  <h5>About this agent</h5>
+                  <div class="role-blurb">
+                    <b>Code Agent (C1)</b> is one of three parallel build agents. It owns <b>end-to-end delivery</b> of an assigned story: scaffolding, implementation, tests, PR, and self-review pass. Hands off to the Reviewer Agent when PR is ready, and back to Build rework queue when QA fails.
+                  </div>
+                  <div class="mini-pipeline" aria-label="Where this agent operates in the project pipeline">
+                    <div class="mini-seg done">Requirements</div>
+                    <div class="mini-seg done">Design</div>
+                    <div class="mini-seg active">Build</div>
+                    <div class="mini-seg">Review</div>
+                    <div class="mini-seg">QA</div>
+                    <div class="mini-seg">Deployed</div>
+                  </div>
+                  <div class="char-io">
+                    <div class="io">
+                      <div class="k">Inputs</div>
+                      <div class="v"><code>PRD/</code> story spec · <code>design-system/</code> tokens & components · assigned <code>TM-NN</code> · Build rules in force</div>
+                    </div>
+                    <div class="io">
+                      <div class="k">Outputs</div>
+                      <div class="v">Feature branch <code>feat/tm-NN-*</code> · <code>PR #</code> with tests passing · self-review notes · memory bank write</div>
+                    </div>
+                  </div>
+                  <div class="review-rel">
+                    <b>Adversarial review</b> —
+                    <span class="av-inline av-c1">C1</span>is critiqued by <span class="av-inline av-rev">RV</span> (Reviewer Agent) when its PR is opened
+                    <span class="arrow">↔</span>
+                    <span class="av-inline av-rev">RV</span>feedback lands on <code>src/components/StatusPill.tsx</code> (a11y focus-ring nit).
+                    Hands off to <span class="av-inline av-qa">QA</span> after Reviewer signs off.
+                  </div>
+                </div>
+
+                <div class="meta-card">
+                  <h5>Configuration · loadout</h5>
+                  <div class="meta-row">
+                    <div class="k">Model + effort</div>
+                    <div class="v"><code>opus · high</code> · fallback <code>sonnet · medium</code></div>
+                  </div>
+                  <div class="meta-row">
+                    <div class="k">Harness / runtime</div>
+                    <div class="v"><code>worktree</code> isolation · <code>claude</code> harness · on disk at <code>code-builder/</code></div>
+                  </div>
+                  <div class="meta-row">
+                    <div class="k">Trigger</div>
+                    <div class="v"><span class="trigger-tag"><span class="dot"></span> reactive</span> activated by Orchestrator when design approved for <code>TM-19</code> · <b>7 turns</b> taken so far</div>
+                  </div>
+                  <div class="meta-row">
+                    <div class="k">Context in force</div>
+                    <div class="v">4 skills active this turn · <a href="#ctx-card" class="pointer-link">view context →</a></div>
+                  </div>
+                  <div class="meta-row">
+                    <div class="k">Steer here</div>
+                    <div class="v">Edit on the <a href="build-tab.html" class="pointer-link">Build · Rules</a> tab · writes back to <code>code-builder/</code> + <code>../skills/coding-guidelines.md</code></div>
                   </div>
                 </div>
 
@@ -577,63 +807,164 @@
                   <div class="work-row">
                     <div class="id"><code>8f2a91</code></div>
                     <div class="title">Add status update API + idempotent POST <span class="sub">1 commit ago · 4m</span></div>
-                    <div class="pill inprog" style="font-size: 10.5px; padding: 2px 7px; background: var(--sky); color: var(--ink);"><span class="dot" style="background: var(--blue);"></span> pushed</div>
-                    <div style="text-align: right; font-size: 11.5px; color: var(--ink-2); font-family: var(--font-mono);">+147 −12</div>
+                    <div class="pill inprog"><span class="dot"></span> pushed</div>
+                    <div class="diff">+147 −12</div>
                   </div>
                   <div class="work-row">
                     <div class="id"><code>5c1d04</code></div>
                     <div class="title">Status pill states (active / done / blocked) <span class="sub">3 commits ago · 14m</span></div>
-                    <div class="pill inprog" style="font-size: 10.5px; padding: 2px 7px; background: var(--sky); color: var(--ink);"><span class="dot" style="background: var(--blue);"></span> pushed</div>
-                    <div style="text-align: right; font-size: 11.5px; color: var(--ink-2); font-family: var(--font-mono);">+98 −0</div>
+                    <div class="pill inprog"><span class="dot"></span> pushed</div>
+                    <div class="diff">+98 −0</div>
                   </div>
                   <div class="work-row">
                     <div class="id"><code>3b7e2f</code></div>
                     <div class="title">Request detail screen + tabs <span class="sub">5 commits ago · 31m</span></div>
-                    <div class="pill inprog" style="font-size: 10.5px; padding: 2px 7px; background: var(--sky); color: var(--ink);"><span class="dot" style="background: var(--blue);"></span> pushed</div>
-                    <div style="text-align: right; font-size: 11.5px; color: var(--ink-2); font-family: var(--font-mono);">+312 −0</div>
+                    <div class="pill inprog"><span class="dot"></span> pushed</div>
+                    <div class="diff">+312 −0</div>
                   </div>
                   <div class="work-row">
                     <div class="id"><code>1a45d9</code></div>
                     <div class="title">Self-review pass — fixed 1 nit, 1 deferred <span class="sub">6 commits ago · 38m</span></div>
-                    <div class="pill done" style="font-size: 10.5px; padding: 2px 7px;"><span class="dot"></span> merged</div>
-                    <div style="text-align: right; font-size: 11.5px; color: var(--ink-2); font-family: var(--font-mono);">+44 −18</div>
+                    <div class="pill done"><span class="dot"></span> merged</div>
+                    <div class="diff">+44 −18</div>
                   </div>
                   <div class="work-row">
                     <div class="id"><code>0d8b22</code></div>
                     <div class="title">Branch feat/tm-19-request-detail created from main <span class="sub">7 commits ago · 1h 12m</span></div>
-                    <div class="pill idle" style="font-size: 10.5px; padding: 2px 7px;"><span class="dot"></span> branch</div>
-                    <div style="text-align: right; font-size: 11.5px; color: var(--ink-2); font-family: var(--font-mono);">+0 −0</div>
+                    <div class="pill idle"><span class="dot"></span> branch</div>
+                    <div class="diff">+0 −0</div>
                   </div>
                 </div>
+
               </div>
 
-              <div class="right">
-                <div class="activity-card">
-                  <h5>Recent activity (last 30m)</h5>
-                  <div class="act-row">
-                    <div class="av-sm av-c1">C1</div>
-                    <div class="body"><b>Code 1</b> pushed <span class="code">8f2a91</span> — status update API + idempotent POST</div>
-                    <div class="ts">4m</div>
+              <!-- RIGHT COLUMN -->
+              <div class="col">
+
+                <div class="trace-card">
+                  <h5>Turn trace (this story)<span class="turn-count">7 turns · 4 skills fired</span></h5>
+
+                  <div class="turn">
+                    <div class="turn-head">
+                      <span class="turn-num">Turn 7</span>
+                      <span>in progress · addressing 1 nit</span>
+                      <span class="right">started 6m ago</span>
+                    </div>
+                    <div class="trace-row">
+                      <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z M8 8h8 M8 12h8 M8 16h5"/></svg></div>
+                      <div class="body">Read <code>src/components/StatusPill.tsx</code> · loaded a11y guideline <code>ui-best-practices.md</code> on demand</div>
+                      <div class="ts">6m</div>
+                    </div>
+                    <div class="trace-row">
+                      <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20 M2 12h20"/></svg></div>
+                      <div class="body">Tool: <code>Edit</code> · focus-ring class added to <code>StatusPill.tsx</code></div>
+                      <div class="ts">5m</div>
+                    </div>
+                    <div class="trace-row">
+                      <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+                      <div class="body">Tool: <code>Bash</code> · ran unit tests · 12/12 passing</div>
+                      <div class="ts">4m</div>
+                    </div>
+                    <div class="trace-row">
+                      <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14 M13 6l6 6-6 6"/></svg></div>
+                      <div class="body">Pushed <code>8f2a91</code> — status update API + idempotent POST · <code>PR #214</code> updated · 2 review nits → 1</div>
+                      <div class="ts">4m</div>
+                    </div>
                   </div>
-                  <div class="act-row">
-                    <div class="av-sm av-rev">RV</div>
-                    <div class="body"><b>Reviewer</b> left 1 nit on <span class="code">src/components/StatusPill.tsx</span> — focus ring on low-contrast dot</div>
-                    <div class="ts">8m</div>
+
+                  <div class="turn">
+                    <div class="turn-head">
+                      <span class="turn-num">Turn 6</span>
+                      <span>self-review pass</span>
+                      <span class="right">14m</span>
+                    </div>
+                    <div class="trace-row">
+                      <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></div>
+                      <div class="body">Reviewed own diff · addressed 1 of 2 nits · deferred a11y nit to <code>TM-22</code></div>
+                      <div class="ts">14m</div>
+                    </div>
                   </div>
-                  <div class="act-row">
-                    <div class="av-sm av-c1">C1</div>
-                    <div class="body"><b>Code 1</b> self-review pass — addressed 1 of 2 nits, deferred the a11y one to TM-22</div>
-                    <div class="ts">14m</div>
+
+                  <div class="turn">
+                    <div class="turn-head">
+                      <span class="turn-num">Turn 5</span>
+                      <span class="pill inprog" style="font-size: 10px; padding: 1px 6px;"><span class="dot"></span> cross-agent</span>
+                      <span>Reviewer nit received</span>
+                      <span class="right">8m</span>
+                    </div>
+                    <div class="trace-row">
+                      <div class="av-sm av-rev">RV</div>
+                      <div class="body"><b>Reviewer</b> left 1 nit on <code>src/components/StatusPill.tsx</code> — focus ring on low-contrast dot</div>
+                      <div class="ts">8m</div>
+                    </div>
                   </div>
-                  <div class="act-row">
-                    <div class="av-sm av-c1">C1</div>
-                    <div class="body"><b>Code 1</b> pushed <span class="code">5c1d04</span> — Status pill states (active / done / blocked)</div>
-                    <div class="ts">17m</div>
+
+                  <div class="turn">
+                    <div class="turn-head">
+                      <span class="turn-num">Turn 4</span>
+                      <span>pushed commit</span>
+                      <span class="right">17m</span>
+                    </div>
+                    <div class="trace-row">
+                      <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14 M13 6l6 6-6 6"/></svg></div>
+                      <div class="body">Pushed <code>5c1d04</code> — Status pill states (active / done / blocked)</div>
+                      <div class="ts">17m</div>
+                    </div>
                   </div>
-                  <div class="act-row">
-                    <div class="av-sm av-orc">OR</div>
-                    <div class="body"><b>Orchestrator</b> assigned TM-19 to Code 1 (C1) and TM-17 to Code 2 (C2) based on prior pass-rate</div>
-                    <div class="ts">1h 12m</div>
+
+                  <div style="font-size: 11.5px; color: var(--ink-2); padding-top: 8px; border-top: 1px solid rgba(50,42,92,0.05); margin-top: 4px;">Subset of <a href="activity-tab.html" class="pointer-link">Activity tab →</a> — full timeline there.</div>
+                </div>
+
+                <div class="meta-card" id="ctx-card">
+                  <h5>Context · save file</h5>
+                  <div class="ctx-budget" style="margin-bottom: 10px;">
+                    <div class="row">
+                      <span>Context budget</span>
+                      <span class="right">42% / 200k tokens</span>
+                    </div>
+                    <div class="bar"><span style="width: 42%;"></span></div>
+                  </div>
+                  <div class="ctx-list">
+                    <div class="ctx-item">
+                      <span class="ctx-tag always">Always</span>
+                      <span class="ctx-text"><code>CLAUDE.md</code> base prompt</span>
+                    </div>
+                    <div class="ctx-item">
+                      <span class="ctx-tag always">Always</span>
+                      <span class="ctx-text"><code>AGENTS.md</code> role spec</span>
+                    </div>
+                    <div class="ctx-item">
+                      <span class="ctx-tag always">Always</span>
+                      <span class="ctx-text">Framework guidelines (security · a11y · coding)</span>
+                    </div>
+                    <div class="ctx-item">
+                      <span class="ctx-tag on-demand">On-demand</span>
+                      <span class="ctx-text"><code>code-quality.md</code> · <code>feature-fidelity.md</code> · <code>security.md</code> · <code>ui-best-practices.md</code></span>
+                    </div>
+                    <div class="ctx-item">
+                      <span class="ctx-tag on-demand">On-demand</span>
+                      <span class="ctx-text">Story spec <code>PRD/user-journeys.md#TM-19</code></span>
+                    </div>
+                  </div>
+                  <div style="font-size: 11.5px; color: var(--ink-2); margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(50,42,92,0.05);">Skill invocation per <code style="font-family: var(--font-mono); font-size: 11px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">CLAUDE.md § Skill Invocation Rules</code> · fired 4 of 8 for this story</div>
+                </div>
+
+                <div class="job-queue">
+                  <h5>Job-board queue · up next</h5>
+                  <div class="job-row">
+                    <div class="title"><b>TM-23</b> Tenant notifications + email templates<span class="sub">estimated 4h · 6 pts</span></div>
+                    <div class="id"><code>ready</code></div>
+                    <div class="eta">unlocks after PR #214</div>
+                  </div>
+                  <div class="job-row">
+                    <div class="title"><b>TM-25</b> Property manager dashboard tiles<span class="sub">estimated 3h · 5 pts</span></div>
+                    <div class="id"><code>queued</code></div>
+                    <div class="eta">2 ahead</div>
+                  </div>
+                  <div class="job-row escalation">
+                    <div class="title"><b>2 unresolved review nits</b> on <code>PR #214</code><span class="sub">Reviewer → C1 · awaiting reply</span></div>
+                    <div class="id"><code>nits</code></div>
+                    <div class="eta">8m</div>
                   </div>
                 </div>
 
@@ -641,7 +972,7 @@
                   <h5>Steer here</h5>
                   <div class="meta-row">
                     <div class="k">Build rules</div>
-                    <div class="v">Edit on the <b>Build · Rules</b> tab — changes write to <code>code-builder/</code> and <code>skills/coding-guidelines.md</code></div>
+                    <div class="v"><a href="build-tab.html" class="pointer-link">edit on the Build · Rules tab</a> — writes to <code>code-builder/</code> and <code>../skills/coding-guidelines.md</code></div>
                   </div>
                   <div class="meta-row">
                     <div class="k">Memory bank</div>
@@ -649,19 +980,20 @@
                   </div>
                   <div class="meta-row">
                     <div class="k">Manual override</div>
-                    <div class="v"><a href="#" style="color: var(--navy); font-weight: 600;">Reroute assignments</a> · <a href="#" style="color: var(--navy); font-weight: 600;">Pause agent</a></div>
+                    <div class="v"><a href="#sag" style="color: var(--navy); font-weight: 600;">Reroute assignments</a> · <a href="#sag" style="color: var(--navy); font-weight: 600;">Pause agent</a></div>
                   </div>
                 </div>
+
               </div>
             </div>
 
-            <!-- Notes block -->
             <div class="notes">
               <div>
-                <b>Single-half monitor.</b> Agents is read-mostly. To change what an agent does, edit the rules on the stage tab (Design / Build / QA). The active <span style="font-family: var(--font-mono); font-size: 11.5px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">Code 1</span> here runs the rules currently in force on the Build tab.
+                <b>Single-half monitor.</b> To change what Code 1 does, edit the rules on the <a href="build-tab.html">Build · Rules tab</a>. The active Code 1 here runs the rules currently in force on the Build tab.
               </div>
               <div class="right">
-                <button class="btn btn-soft btn-pill">Open Build · Rules →</button>
+                <a href="#sag" class="btn btn-soft btn-pill">← Back to roster</a>
+                <a href="build-tab.html" class="btn btn-soft btn-pill">Open Build · Rules →</a>
               </div>
             </div>
 
