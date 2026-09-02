@@ -4,6 +4,7 @@
   "status": "locked",
   "description": "Export contract for the Idea Hub web builder. Everything in framework/ is copied into a new project on idea creation. The launcher reads this file — not the filesystem — to learn what to export, which agents read which files, and where the UI writes back. Key-by-key schema: MANIFEST.md.",
   "export_root": "framework/",
+  "root_files": ["CLAUDE.md", "AGENTS.md", "README.md", "FRAMEWORK-FLOW.md", "gaps.md", "questions.md", ".gitignore"],
   "stages": {
     "design": {
       "label": "Design",

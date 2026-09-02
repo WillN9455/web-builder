@@ -46,23 +46,40 @@ const MAX_MESSAGE_CHARS = 8000;
 const sessions = new Map();
 
 // ── Project scaffolding (mirrors init-frame.js) ────────────────────────────
+//
+// Structure contract: this file does NOT hardcode framework layout. It reads
+// `framework/manifest.json` from the repo root and uses it to scaffold the
+// new project — same contract as init-frame.js, same loader shape, same
+// per-stage tri-fold guarantee. Skip-on-existing stays here because it is
+// launcher-specific (intake tolerates partial pre-existing projects), not part
+// of the structure contract.
 
-const FRAMEWORK_DIRS = [
-  "PRD/templates",
-  "design-system/tokens",
-  "design-system/components",
-  "design-system/states",
-  "code-builder/templates/nextjs-starter",
-  "code-builder/templates/vue-nuxt-starter",
-  "code-builder/templates/svelte-kit-starter",
-  "skills",
-  "testing/playwright",
-  "workflows",
-];
+const MANIFEST_PATH = path.join(REPO_ROOT, "framework", "manifest.json");
 
-/** Files copied only if absent — an existing project folder is never clobbered. */
-const ROOT_FILES = ["CLAUDE.md", "AGENTS.md", "README.md", "FRAMEWORK-FLOW.md", "gaps.md", "questions.md", ".gitignore"];
-const COPY_SUBDIRS = ["skills", "design-system", "PRD", "code-builder", "testing", "workflows"];
+/** Load and validate framework/manifest.json. Throws on missing/bad JSON — fail fast. */
+function loadManifest() {
+  if (!fs.existsSync(MANIFEST_PATH)) {
+    throw new Error("Framework manifest not found at " + MANIFEST_PATH + " — init-frame.js and the launchers all read framework/manifest.json; it is no longer hardcoded.");
+  }
+  let raw;
+  try {
+    raw = JSON.parse(fs.readFileSync(MANIFEST_PATH, "utf-8"));
+  } catch (err) {
+    throw new Error("framework/manifest.json is not valid JSON: " + err.message);
+  }
+  if (!raw.export_root || typeof raw.stages !== "object" || raw.stages === null) {
+    throw new Error('manifest.json must define "export_root" and a "stages" object (see framework/MANIFEST.md).');
+  }
+  if (!Array.isArray(raw.root_files) || raw.root_files.length === 0) {
+    throw new Error('manifest.json must define a non-empty "root_files" array (see framework/MANIFEST.md).');
+  }
+  for (const [id, stage] of Object.entries(raw.stages)) {
+    if (!stage || typeof stage.folder !== "string") {
+      throw new Error('manifest stage "' + id + '" is missing its "folder" path (see framework/MANIFEST.md).');
+    }
+  }
+  return raw;
+}
 
 /** Never scaffold dependency/build artifacts (the starter's node_modules alone is ~800 MB). */
 const SKIP_DIRS = new Set(["node_modules", ".git", ".next", "dist", "build", "coverage"]);
@@ -107,10 +124,11 @@ function initProjectDir(rawInput) {
   }
 
   const existed = fs.existsSync(abs);
-  for (const dir of FRAMEWORK_DIRS) fs.mkdirSync(path.join(abs, dir), { recursive: true });
+  const manifest = loadManifest();
 
+  // 0. Root files: framework-meta docs copied from the manifest list.
   const stats = { copied: 0, skipped: 0 };
-  for (const file of ROOT_FILES) {
+  for (const file of manifest.root_files) {
     const src = path.join(REPO_ROOT, file);
     const dest = path.join(abs, file);
     if (!fs.existsSync(src)) continue;
@@ -118,10 +136,32 @@ function initProjectDir(rawInput) {
     fs.copyFileSync(src, dest);
     stats.copied++;
   }
-  for (const subdir of COPY_SUBDIRS) {
-    const src = path.join(REPO_ROOT, subdir);
-    if (fs.existsSync(src)) copyRecursiveSkippingExisting(src, path.join(abs, subdir), stats);
+
+  // 1. Copy the export root wholesale — every stage folder + shared/ + templates/.
+  const exportSrc = path.join(REPO_ROOT, manifest.export_root);
+  if (fs.existsSync(exportSrc)) {
+    copyRecursiveSkippingExisting(exportSrc, path.join(abs, manifest.export_root), stats);
   }
+
+  // 2. Guarantee the per-stage tri-fold (skills/, config/, agents/) even where
+  //    git could not carry empty directories — the manifest promises it.
+  for (const stage of Object.values(manifest.stages)) {
+    for (const leaf of ["skills", "config", "agents"]) {
+      fs.mkdirSync(path.join(abs, manifest.export_root, stage.folder, leaf), { recursive: true });
+    }
+  }
+
+  // 3. Reference outside_export_root artifacts (PRD/templates, workflows) at
+  //    scaffold time — same as init-frame.js, so a chat-initiated project and
+  //    a CLI-initiated project end up with the same layout.
+  for (const entry of Object.values(manifest.outside_export_root || {})) {
+    if (typeof entry !== "string" || !entry) continue;
+    const src = path.join(REPO_ROOT, entry);
+    if (fs.existsSync(src)) {
+      copyRecursiveSkippingExisting(src, path.join(abs, entry), stats);
+    }
+  }
+
   return { abs, existed, ...stats };
 }
 

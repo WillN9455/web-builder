@@ -76,6 +76,10 @@ function loadManifest() {
     console.error('Error: manifest.json must define "export_root" and a "stages" object (see framework/MANIFEST.md).');
     process.exit(1);
   }
+  if (!Array.isArray(manifest.root_files) || manifest.root_files.length === 0) {
+    console.error('Error: manifest.json must define a non-empty "root_files" array (see framework/MANIFEST.md).');
+    process.exit(1);
+  }
   for (const [id, stage] of Object.entries(manifest.stages)) {
     if (!stage || typeof stage.folder !== "string") {
       console.error('Error: manifest stage "' + id + '" is missing its "folder" path (see framework/MANIFEST.md).');
@@ -329,16 +333,9 @@ function scaffoldFramework(absTarget, vars, manifest) {
 
   // Copy framework files from source repo into new directory
   if (fs.existsSync(SOURCE_DIR)) {
-    const filesToCopy = [
-      "CLAUDE.md",
-      "AGENTS.md",
-      "README.md",
-      "FRAMEWORK-FLOW.md",
-      "gaps.md",
-      ".gitignore",
-    ];
-
-    for (const file of filesToCopy) {
+    // 0. Root files: framework-meta docs copied alongside the export root.
+    //    The manifest lists them so the launcher never hardcodes filenames.
+    for (const file of manifest.root_files) {
       const src = path.join(SOURCE_DIR, file);
       if (fs.existsSync(src)) {
         fs.copyFileSync(src, path.join(absTarget, file));
