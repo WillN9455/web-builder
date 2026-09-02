@@ -1,28 +1,29 @@
-import type { Pipeline, ProjectStatus } from '../lib/api';
+import type { Pipeline } from '../lib/api';
 
 type Props = {
   pipeline: Pipeline;
-  nextMilestoneName: string | null;
-  nextMilestoneStage: string | null;
-  nextMilestoneDays: number | null;
 };
 
-// Status → swatch colour from the v5 token set.
-const LEGEND: Array<{ status: ProjectStatus; label: string; color: string }> = [
-  { status: 'shipped', label: 'Shipped',     color: 'var(--mint)' },
-  { status: 'done',    label: 'Done',        color: 'var(--green)' },
-  { status: 'review',  label: 'Review',      color: 'var(--amber)' },
-  { status: 'active',  label: 'In progress', color: 'var(--blue)' },
-  { status: 'queued',  label: 'Planning',    color: 'var(--purple)' },
-  // The mockup shows 7 items; "Drafting" + "Blocked" map to coral + rose. We
-  // synthesise them from the byStatus map when present; otherwise omit.
-  { status: 'blocked', label: 'Blocked',     color: 'var(--rose)' },
+// Legend = the 5 canonical statuses (design/sitemap.md Global conventions).
+// The API's ProjectStatus enum predates that model, so:
+//   - Done combines `done` + legacy `shipped`;
+//   - On hold / Cancelled have no source field yet — rendered as 0 until the
+//     status-model migration lands (see PLANS/requirements.md §8).
+const LEGEND: Array<{ label: string; color: string; count: (p: Pipeline) => number }> = [
+  { label: 'Active',    color: 'var(--blue)',  count: (p) => p.byStatus.active ?? 0 },
+  { label: 'Blocked',   color: 'var(--rose)',  count: (p) => p.byStatus.blocked ?? 0 },
+  { label: 'On hold',   color: 'var(--amber)', count: () => 0 },
+  { label: 'Cancelled', color: 'var(--ink-2)', count: () => 0 },
+  { label: 'Done',      color: 'var(--mint)',  count: (p) => (p.byStatus.done ?? 0) + (p.byStatus.shipped ?? 0) },
 ];
 
-// 65% from the mockup → 65% of the circumference.
+// Ring maths from the mockup: 65% → 65% of the circumference.
 const CIRC = 2 * Math.PI * 42;
 
-export function PipelineRing({ pipeline, nextMilestoneName, nextMilestoneStage, nextMilestoneDays }: Props) {
+// Screen 1 pipeline block — aggregate % ring + 5-row status legend only.
+// The next-milestone card was removed by design (sitemap Screen 1, locked
+// decision 3: no milestone card, no due dates).
+export function PipelineRing({ pipeline }: Props) {
   const offset = CIRC * (1 - pipeline.completion / 100);
   return (
     <div className="ring-block">
@@ -42,32 +43,13 @@ export function PipelineRing({ pipeline, nextMilestoneName, nextMilestoneStage, 
       </div>
 
       <div className="ring-legend">
-        {LEGEND.map(({ status, label, color }) => (
-          <div className="item" key={status}>
+        {LEGEND.map(({ label, color, count }) => (
+          <div className="item" key={label}>
             <span className="swatch" style={{ background: color }} />
             <span className="lbl">{label}</span>
-            <span className="val">{pipeline.byStatus[status] ?? 0}</span>
+            <span className="val">{count(pipeline)}</span>
           </div>
         ))}
-      </div>
-
-      <div className="next-milestone">
-        <div className="lbl">Next milestone</div>
-        <div className="name">
-          {nextMilestoneName
-            ? `${nextMilestoneName} — ${nextMilestoneStage}`
-            : 'No active projects'}
-        </div>
-        <div className="days">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
-            <circle cx="12" cy="12" r="9" />
-            <path d="M12 7v5l3 2" />
-          </svg>
-          {nextMilestoneDays != null ? `${nextMilestoneDays} days left` : '—'}
-        </div>
-        <button className="btn btn-primary btn-pill" style={{ marginTop: 8, alignSelf: 'flex-start' }}>
-          + New Project
-        </button>
       </div>
     </div>
   );

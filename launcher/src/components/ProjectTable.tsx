@@ -1,50 +1,41 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Project, ProjectStatus } from '../lib/api';
+import type { Project } from '../lib/api';
+import { isPreBuild, stageLabel, stagePill } from '../lib/stagePill';
 
 type Props = {
   projects: Project[];
   onOpen: (p: Project) => void;
+  onNewIdea: () => void;
   // Fired when the user picks "Delete project" from a row's ⋯ menu. The
   // parent owns the actual delete call and the confirm dialog.
   onRequestDelete: (project: Project, trigger: HTMLElement) => void;
 };
 
-const STATUS_PILL: Record<ProjectStatus, { cls: string; label: string }> = {
-  queued:  { cls: 'todo',    label: 'Planning' },
-  active:  { cls: 'inprog',  label: 'In Progress' },
-  review:  { cls: 'review',  label: 'In Review' },
-  blocked: { cls: 'blocked', label: 'Blocked' },
-  done:    { cls: 'done',    label: 'Done' },
-  shipped: { cls: 'shipped', label: 'Shipped' },
-};
+// Mockup Screen 1 (`#s1`): columns are Project · Tasks · Status · Stage ·
+// Progress (+ row menu). Chats and Priority were dropped by design v5
+// (sitemap Screen 1, locked decision 4). Row body shows the project name only.
 
-function StackIcon() {
-  return (
-    <svg className="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
-      <path d="M3 7l9-4 9 4-9 4-9-4z M3 12l9 4 9-4 M3 17l9 4 9-4" />
-    </svg>
-  );
-}
-
-export function ProjectTable({ projects, onOpen, onRequestDelete }: Props) {
+export function ProjectTable({ projects, onOpen, onNewIdea, onRequestDelete }: Props) {
   return (
     <div>
       <div className="sec-head">
         <h2>All projects</h2>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button className="btn btn-soft btn-pill">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+          {/* Filter/Sort render per the mockup but stay inert until wired
+              (sort contract: `updated_at desc` default, user-changeable). */}
+          <button className="btn btn-soft btn-pill" title="Coming soon" aria-label="Filter (coming soon)" disabled>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
               <path d="M3 5h18 M6 12h12 M10 19h4" />
             </svg>
             Filter
           </button>
-          <button className="btn btn-soft btn-pill">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+          <button className="btn btn-soft btn-pill" title="Coming soon" aria-label="Sort (coming soon)" disabled>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
               <path d="M7 4v16 M17 4v16 M3 8h4 M3 16h4 M17 8h4 M17 16h4" />
             </svg>
             Sort
           </button>
-          <button className="btn btn-primary btn-pill">+ New Project</button>
+          <button className="btn btn-primary btn-pill" onClick={onNewIdea}>+ New idea</button>
         </div>
       </div>
 
@@ -52,12 +43,10 @@ export function ProjectTable({ projects, onOpen, onRequestDelete }: Props) {
         <div className="row head" role="row">
           <span role="columnheader">Project</span>
           <span role="columnheader">Tasks</span>
-          <span role="columnheader">Chats</span>
           <span role="columnheader">Status</span>
-          <span role="columnheader">Priority</span>
           <span role="columnheader">Stage</span>
           <span role="columnheader">Progress</span>
-          <span />
+          <span role="columnheader" aria-label="Actions" />
         </div>
 
         {projects.map((p) => (
@@ -108,34 +97,32 @@ function ProjectTableRow({
     };
   }, [menuOpen]);
 
-  const pill = STATUS_PILL[p.status];
+  const pill = stagePill(p.status, p.current_stage);
   const pct = p.tasks_total > 0 ? Math.round((p.tasks_done / p.tasks_total) * 100) : 0;
+  // Jira cards don't exist before the Build stage (sitemap locked decision 4).
+  const tasks = isPreBuild(p.current_stage) && p.tasks_total === 0
+    ? '—'
+    : `${p.tasks_done} / ${p.tasks_total}`;
 
   return (
     <div
       className="row"
       role="row"
+      tabIndex={0}
       onClick={() => onOpen(p)}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onOpen(p); }}
       style={{ cursor: 'pointer' }}
     >
       <div className="ttl" role="cell">
         <b>{p.name}</b>
-        <span><StackIcon /> {p.category} · Updated {p.updated_relative}</span>
       </div>
-      <span className="stage-pt" role="cell">{p.tasks_done} / {p.tasks_total}</span>
-      <span className="stage-pt" role="cell">{p.chats_count}</span>
+      <span className="stage-pt" role="cell">{tasks}</span>
       <span role="cell">
         <span className={`pill ${pill.cls}`}>
           <span className="dot" /> {pill.label}
         </span>
       </span>
-      <span role="cell">
-        <span className={`prio ${p.priority}`}>
-          <span className="ring" />
-          {p.priority === 'high' ? 'High' : p.priority === 'medium' ? 'Med' : 'Low'}
-        </span>
-      </span>
-      <span className="stage-pt" role="cell">{p.current_stage}</span>
+      <span className="stage-pt" role="cell">{stageLabel(p.current_stage)}</span>
       <div className="progress" role="cell" style={{ ['--p' as string]: `${pct}%` }} aria-label={`${pct}% complete`} />
       <div style={{ position: 'relative' }}>
         <button
