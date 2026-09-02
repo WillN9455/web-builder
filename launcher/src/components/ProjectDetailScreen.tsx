@@ -1,59 +1,119 @@
-import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
+import { Navigate, Outlet, useNavigate, useOutletContext, useParams } from 'react-router-dom';
+import { fetchProject, type ProjectDetailResponse } from '../lib/api';
+import { CONTEXT_CONFIRMED } from '../lib/projectGate';
+import { PROJECT_TABS, ProjectSidebar } from './ProjectSidebar';
 
-// Placeholder route — full project detail (screens 3–6 in the v5 plan)
-// ships in Stage 2. For now this confirms the slug from the chat's "Open
-// project →" navigation lands somewhere sane.
+type ProjectInfo = ProjectDetailResponse['project'];
+
+// Shared with ProjectTabScreen (the Outlet child) so the tab panel can render
+// the shell's loading / error states in place of its own content.
+type ProjectOutletContext = { project: ProjectInfo | null; error: string | null };
+
+// Project shell — the open-project layout: per-project sidebar + main column
+// (topbar + the active tab's panel via <Outlet/>). Routes live in App.tsx:
+// /projects/:id redirects to /projects/:id/overview, and each tab is the
+// sub-route /projects/:id/:tab so the URL bar and refresh keep their place
+// (sitemap: "Default landing = Overview always"). The Outlet renders even
+// while loading / on error so the index redirect and tab routing always fire.
 export function ProjectDetailScreen() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [project, setProject] = useState<{ name: string; folder_path: string; current_stage: string } | null>(null);
+  const [project, setProject] = useState<ProjectInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+    setProject(null);
+    setError(null);
     (async () => {
       try {
-        const res = await fetch(`/api/projects/${id}`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = (await res.json()) as { project: { name: string; folder_path: string; current_stage: string } };
+        const data = await fetchProject(id ?? '');
         if (!cancelled) setProject(data.project);
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Could not load project');
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
   return (
-    <main className="main" aria-busy={project === null && error === null}>
-      <header className="topbar">
-        <button type="button" className="btn-link" onClick={() => navigate('/projects')}>
-          ← All projects
-        </button>
-        <h1 style={{ marginLeft: 12 }}>{project?.name ?? id}</h1>
-      </header>
+    <div className="app">
+      <ProjectSidebar projectId={id ?? ''} confirmed={CONTEXT_CONFIRMED} />
+      <main className="main" aria-busy={project === null && error === null}>
+        <header className="topbar">
+          <button type="button" className="btn-link" onClick={() => navigate('/projects')}>
+            ← All projects
+          </button>
+          <h1 style={{ marginLeft: 12 }}>{project?.name ?? id}</h1>
+        </header>
 
+        <Outlet context={{ project, error } satisfies ProjectOutletContext} />
+      </main>
+    </div>
+  );
+}
+
+// The active tab's panel. Tab contents (Overview dashboard, Project
+// Background workspace, Sprint board, …) each ship in their own Stage-2 task
+// — this PR renders the menu + navigation only, so every tab gets a
+// placeholder panel naming the tab. Unknown or still-locked tab routes snap
+// back to Overview rather than rendering a dead URL; while the project is
+// loading, or if it failed to load, the shell's loading / error state shows
+// here instead of a panel.
+export function ProjectTabScreen() {
+  const { id, tab } = useParams();
+  const navigate = useNavigate();
+  const { project, error } = useOutletContext<ProjectOutletContext>();
+  const current = PROJECT_TABS.find((t) => t.key === tab);
+  if (!id || !current) {
+    return <Navigate to={id ? `/projects/${id}/overview` : '/projects'} replace />;
+  }
+  if (current.gated && !CONTEXT_CONFIRMED) {
+    // Deep link to a gated tab while the gate is closed — Overview is the
+    // only reachable landing (sitemap: the gate blocks Sprint/Design/Build/QA).
+    return <Navigate to={`/projects/${id}/overview`} replace />;
+  }
+  if (error) {
+    return (
       <div className="center-stage" style={{ minHeight: 400 }}>
         <div className="center-card" style={{ textAlign: 'center' }}>
-          <div className="crumbs">Stage 2 preview</div>
-          <h1>Project detail ships in Stage 2</h1>
+          <div className="crumbs">Project</div>
+          <h1>Could not load &ldquo;{id}&rdquo;</h1>
           <p className="sub" style={{ textAlign: 'center' }}>
-            {error
-              ? `Could not load "${id}": ${error}`
-              : project
-                ? `${project.name} is in stage ${project.current_stage}. The full per-project menu (Overview, Requirements, Design, Build, Agents, QA, Activity, Artifacts) lands next.`
-                : 'Loading…'}
+            {error}
           </p>
-          {project && (
-            <div className="actions-row" style={{ justifyContent: 'center' }}>
-              <button type="button" className="btn btn-primary" onClick={() => navigate('/projects')}>
-                Back to projects
-              </button>
-            </div>
-          )}
+          <div className="actions-row" style={{ justifyContent: 'center' }}>
+            <button type="button" className="btn btn-primary" onClick={() => navigate('/projects')}>
+              Back to projects
+            </button>
+          </div>
         </div>
       </div>
-    </main>
+    );
+  }
+  if (project === null) {
+    return (
+      <div className="center-stage" style={{ minHeight: 400 }}>
+        <div className="center-card" style={{ textAlign: 'center' }}>
+          <div className="crumbs">Project</div>
+          <h1>Loading…</h1>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="center-stage" style={{ minHeight: 400 }}>
+      <div className="center-card" style={{ textAlign: 'center' }}>
+        <div className="crumbs">{current.label}</div>
+        <h1>{current.label}</h1>
+        <p className="sub" style={{ textAlign: 'center' }}>
+          This tab&rsquo;s workspace ships in Stage 2 — this change delivers the per-project menu
+          and navigation.
+        </p>
+      </div>
+    </div>
   );
 }
