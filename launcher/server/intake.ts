@@ -137,6 +137,33 @@ function copyRecursiveSkippingExisting(
   stats.copied++;
 }
 
+/**
+ * Check every path the manifest lists (stage skills/config/agents/templates,
+ * shared_inputs, shared.skills) against the scaffolded export. Paths are
+ * relative to export_root. Missing entries are warned about so the gap between
+ * contract and tree is visible at every bootstrap. Warnings, not failures —
+ * a missing template should be visible, not block a bootstrap.
+ */
+function validateManifestExport(abs: string, manifest: Manifest): void {
+  const listed: string[] = [];
+  for (const stage of Object.values(manifest.stages)) {
+    for (const key of ["skills", "config", "agents", "shared_inputs", "templates"] as const) {
+      for (const rel of stage[key] ?? []) listed.push(rel);
+    }
+  }
+  if (manifest.shared && Array.isArray(manifest.shared.skills)) {
+    for (const rel of manifest.shared.skills) listed.push(rel);
+  }
+
+  const missing = listed.filter(
+    (rel) => !fs.existsSync(path.join(abs, manifest.export_root, rel)),
+  );
+  if (missing.length > 0) {
+    console.warn("\nWarning: manifest lists entries missing from the export (contract ≠ tree):");
+    for (const rel of missing) console.warn("  - " + rel);
+  }
+}
+
 export function initProjectDir(rawInput: unknown): { abs: string; existed: boolean; copied: number; skipped: number } {
   if (typeof rawInput !== "string" || !rawInput.trim()) throw new Error("Enter a folder path first.");
   let p = rawInput.trim();
@@ -202,6 +229,11 @@ export function initProjectDir(rawInput: unknown): { abs: string; existed: boole
       copyRecursiveSkippingExisting(src, path.join(abs, entry), stats);
     }
   }
+
+  // 4. Validate the export against the manifest — every file the contract
+  //    promises must exist in the scaffolded project. Same check as
+  //    init-frame.js step 4, so all three launch paths warn symmetrically.
+  validateManifestExport(abs, manifest);
 
   return { abs, existed, ...stats };
 }
