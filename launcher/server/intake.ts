@@ -164,7 +164,12 @@ function validateManifestExport(abs: string, manifest: Manifest): void {
   }
 }
 
-export function initProjectDir(rawInput: unknown): { abs: string; existed: boolean; copied: number; skipped: number } {
+// Validate the user-supplied project folder path WITHOUT touching the disk.
+// Folder creation + framework scaffolding are deferred to intake completion
+// (owner decision: an abandoned interview must not leave a scaffolded folder
+// behind) — this function only answers "is this path usable?", so /api/init
+// can hand the chat a resolved path before anything exists.
+export function validateProjectDir(rawInput: unknown): { abs: string; existed: boolean } {
   if (typeof rawInput !== "string" || !rawInput.trim()) throw new Error("Enter a folder path first.");
   let p = rawInput.trim();
   if (p.includes("\0")) throw new Error("Invalid path.");
@@ -178,7 +183,17 @@ export function initProjectDir(rawInput: unknown): { abs: string; existed: boole
     throw new Error(abs + " already exists and is a file, not a folder.");
   }
 
-  const existed = fs.existsSync(abs);
+  return { abs, existed: fs.existsSync(abs) };
+}
+
+/**
+ * Create the project folder, scaffold the framework files into it (same
+ * skip-on-existing contract as before), and pin the workspace root via
+ * project-dir.txt. Called when the intake interview completes — the final
+ * idea fence handler — so nothing lands on disk until the idea is captured.
+ * Idempotent: safe to call on a folder that already existed at pick time.
+ */
+export function scaffoldProjectDir(abs: string): { copied: number; skipped: number } {
   const manifest = loadManifest();
 
   // 0. Materialise the project folder itself when the user typed a path that
@@ -235,7 +250,83 @@ export function initProjectDir(rawInput: unknown): { abs: string; existed: boole
   //    init-frame.js step 4, so all three launch paths warn symmetrically.
   validateManifestExport(abs, manifest);
 
-  return { abs, existed, ...stats };
+  // 5. Pin the workspace root for any framework session launched from this
+  //    repo: CLAUDE.md §Workspace Root tells every agent to read
+  //    project-dir.txt and direct all artifact writes there instead of into
+  //    the framework repo. Pinned at scaffold time (intake completion) — the
+  //    pin used to happen at /api/init, but the folder didn't exist yet then.
+  const pointerPath = path.join(REPO_ROOT, "project-dir.txt");
+  fs.writeFileSync(pointerPath, abs + "\n", "utf-8");
+
+  return stats;
+}
+
+// ── Deferred-interview memory staging ──────────────────────────────────────
+//
+// The interview transcript (.idea-memory/conversation.jsonl) is /resume's
+// source of truth, but it historically lived inside the project folder —
+// which now doesn't exist until intake completes. While the folder is
+// pending, memory files stage under .idea-sessions/proj-<earlyProjectId>/
+// at the framework repo root (git-ignored, machine-local, same tier as
+// project-dir.txt). moveStagedMemory folds them into the real folder at
+// scaffold time.
+export const STAGED_SESSIONS_DIR = path.join(REPO_ROOT, ".idea-sessions");
+
+export function stagedMemoryDir(projectId: number): string {
+  return path.join(STAGED_SESSIONS_DIR, "proj-" + projectId, ".idea-memory");
+}
+
+/**
+ * Move a session's staged .idea-memory into the now-scaffolded project
+ * folder. Under the sticky memory-home design a mid-interview session lives
+ * entirely in one home, so this normally takes the rename branch. The merge
+ * branch (the folder already holds a conversation.jsonl) is a transitional
+ * fallback for sessions started before the sticky home fix, which switched
+ * homes when the user created the folder mid-interview: it merges
+ * chronologically — staged entries are the EARLIER part of the conversation,
+ * so the correct order is staged ++ live — instead of appending staged after
+ * the live tail. transcript.md: the folder's mirror is kept (the staged one
+ * is discarded; the jsonl is the source of truth, the transcript is a
+ * best-effort convenience mirror). Best-effort: any failure logs and leaves
+ * the staging dir in place rather than breaking capture.
+ */
+export function moveStagedMemory(
+  projectId: number,
+  projectDir: string,
+  log = (msg: string) => console.error(msg),
+): void {
+  const staged = stagedMemoryDir(projectId);
+  const stagedJsonl = path.join(staged, "conversation.jsonl");
+  if (!fs.existsSync(stagedJsonl)) return;
+  try {
+    const targetDir = path.join(projectDir, ".idea-memory");
+    fs.mkdirSync(targetDir, { recursive: true });
+    const targetJsonl = path.join(targetDir, "conversation.jsonl");
+    if (fs.existsSync(targetJsonl)) {
+      // Chronological merge: read both files, keep only their message lines,
+      // rewrite the folder jsonl as header + staged ++ live via a same-dir
+      // temp file so the swap is atomic.
+      const isHeaderLine = (l: string) => l.includes('"kind":"header"');
+      const msgLines = (file: string) =>
+        fs
+          .readFileSync(file, "utf-8")
+          .split("\n")
+          .filter((l) => l.trim() && !isHeaderLine(l));
+      const merged = msgLines(stagedJsonl).concat(msgLines(targetJsonl));
+      const header =
+        '{"kind":"header","ts":"' + new Date().toISOString() + '","messageCount":' + merged.length + "}";
+      const tmp = targetJsonl + ".merge-tmp";
+      fs.writeFileSync(tmp, [header, ...merged].join("\n") + "\n", "utf-8");
+      fs.renameSync(tmp, targetJsonl);
+      // transcript.md: the folder's mirror is kept (partial either way in
+      // this transitional case) — the jsonl is the source of truth.
+    } else {
+      fs.renameSync(staged, targetDir);
+    }
+    fs.rmSync(path.join(STAGED_SESSIONS_DIR, "proj-" + projectId), { recursive: true, force: true });
+  } catch (err) {
+    log("[api] failed to fold staged memory into the project folder: " + (err instanceof Error ? err.message : String(err)));
+  }
 }
 
 // ── BA Agent system prompt ─────────────────────────────────────────────────

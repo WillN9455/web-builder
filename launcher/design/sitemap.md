@@ -217,10 +217,10 @@ Pick (or create) the on-disk project folder that will hold the framework artifac
 2. **Footer actions** — `Cancel` + `Create project folder →` (and a "Use last folder" shortcut).
 
 ### State
-- `POST /api/init` — validates path, scaffolds the framework folder, pins `project-dir.txt`.
+- `POST /api/init` — validates the path only. Folder creation, framework scaffold, and the `project-dir.txt` pin are **deferred to intake completion** (the final idea fence in the chat) — an abandoned interview leaves nothing on disk. *(Owner decision, Web-builder thread 2026-09-02; supersedes the original scaffold-at-pick contract.)*
 
 ### Actions
-- `Create project folder →` → validates and advances to step 2 (`/new` chat).
+- `Create project folder →` → validates and advances to step 2 (`/new` chat). Nothing is created on disk yet.
 - `Cancel` → back to `/projects`.
 - `Use last folder` → prefill the last-used path.
 
@@ -909,7 +909,7 @@ Two-step, all on `/new`:
 No sidebar on either step — the user isn't "in a project" yet.
 
 Carry-over from `server.js` (to keep working unchanged):
-- `POST /api/init` — folder pick + framework scaffold + `project-dir.txt` pin.
+- `POST /api/init` — folder pick; validates only. Scaffold + `project-dir.txt` pin happen at intake completion (see Screen 7 · State).
 - `POST /api/chat` — NDJSON stream, `idea` fence detection, `idea.md` write + backup. The React app consumes the stream with `ReadableStream` + `getReader()`.
 - `GET /api/health` — unchanged.
 

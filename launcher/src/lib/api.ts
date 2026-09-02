@@ -123,9 +123,6 @@ export type InitResponse = {
   sessionId: string;
   dir: string;
   existed: boolean;
-  filesCopied: number;
-  filesSkipped: number;
-  workspacePinnedAt: string;
   // Conversation caps — surfaced so the chat UI can warn as the user approaches
   // the limit without duplicating the server constants (intake.ts).
   maxMessages: number;

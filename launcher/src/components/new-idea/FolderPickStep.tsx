@@ -62,7 +62,7 @@ export function FolderPickStep({ onInit, onCancel }: Props) {
       setLastDir(res.dir);
       onInit(res.sessionId, res.dir, trimmedName || null, res.maxMessages, res.warnThreshold);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not create folder');
+      setError(err instanceof Error ? err.message : 'Could not start the interview');
     } finally {
       setSubmitting(false);
     }
@@ -74,8 +74,9 @@ export function FolderPickStep({ onInit, onCancel }: Props) {
         <div className="crumbs">Step 1 of 2 · New idea</div>
         <h1>Where should this project live?</h1>
         <p className="sub">
-          Pick a folder on your machine. Idea Hub will create it, scaffold the framework files (skills,
-          PRD, design system) into it, and pin the workspace for any future Claude Code session.
+          Pick a folder on your machine. Nothing is created yet — once your interview with the BA Agent
+          completes, Idea Hub creates the folder, scaffolds the framework files (skills, PRD, design
+          system) into it, and pins the workspace for any future Claude Code session.
         </p>
 
         <label htmlFor="project-path">Project folder</label>
@@ -91,9 +92,9 @@ export function FolderPickStep({ onInit, onCancel }: Props) {
         />
 
         <div className="help">
-          A new folder will be created at this path. If it already exists, the framework files are added
-          without overwriting what's there. <b>Pick a folder outside the framework repo</b> — writes to the
-          framework would overwrite the framework itself.
+          Nothing is created at this path until the interview completes. If it already exists, the
+          framework files are added without overwriting what's there. <b>Pick a folder outside the
+          framework repo</b> — writes to the framework would overwrite the framework itself.
         </div>
 
         <label htmlFor="project-name" style={{ marginTop: 18 }}>
