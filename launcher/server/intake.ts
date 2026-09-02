@@ -404,11 +404,13 @@ export const SENTINEL_RE = new RegExp(
 // Strip every sentinel from free text (human-readable transcript.md, resume
 // payloads). Built from the same precise forms as SENTINEL_RE — a greedy
 // `[^\n]*::` here would swallow all prose between two sentinels on one line.
+// Case-insensitive to match SENTINEL_RE (`/gi`): the streaming path accepts
+// `::TOPIC=3::` etc., so the strip must remove the same forms it accepts.
 // A malformed near-miss (`::topic=2` with no closing `::`) survives as plain
 // text, which beats eating the rest of the line.
 export const SENTINEL_STRIP_RE = new RegExp(
   TOPIC_SENTINEL_RE.source + '|' + OQ_ADD_SENTINEL_RE.source + '|' + OQ_RESOLVE_SENTINEL_RE.source,
-  'g',
+  'gi',
 );
 
 // Shape caps for the oq-add payload — the sentinel is untrusted model output,
@@ -492,12 +494,17 @@ export function deriveOutstandingQuestions(
   resolveTimestamps?: (index: number) => string | undefined,
 ): OutstandingQuestion[] {
   const list: OutstandingQuestion[] = [];
-  const seen = new Set<string>();
   messages.forEach((m, i) => {
     if (m.role !== 'assistant') return;
+    // Per-message guard set, mirroring the live path's per-request
+    // `resolvedIds`: ids resolved in THIS reply may not re-add in the same
+    // reply, while a re-add in a LATER reply is a fresh decision the live
+    // path allows (fresh per-request set) — so the replay allows it too.
+    const seen = new Set<string>();
     // Replay adds and resolves in positional order within the message —
-    // collecting all adds before all resolves would drop a same-id re-add
-    // that follows its resolve in the same reply.
+    // collecting all adds before all resolves would miss a resolve that must
+    // mark the guard set (or remove a question) before a later add in the
+    // same reply.
     const events: Array<{ at: number; kind: 'add' | 'resolve'; match: RegExpExecArray }> = [];
     OQ_ADD_SENTINEL_RE.lastIndex = 0;
     let add: RegExpExecArray | null;
@@ -513,7 +520,11 @@ export function deriveOutstandingQuestions(
     for (const evt of events) {
       if (evt.kind === 'add') {
         const parsed = parseOqAddPayload(evt.match[1]);
-        if (!parsed || seen.has(parsed.id) || list.length >= MAX_OQ_LIST) continue;
+        if (!parsed || list.length >= MAX_OQ_LIST) continue;
+        // Same guards as the live add path (server/index.ts): the question
+        // must not already be on the panel (duplicate suppression across
+        // replies) and must not be in this reply's resolved guard set.
+        if (seen.has(parsed.id) || list.some((q) => q.id === parsed.id)) continue;
         seen.add(parsed.id);
         list.push({
           ...parsed,
@@ -522,12 +533,11 @@ export function deriveOutstandingQuestions(
       } else {
         const id = evt.match[1];
         const at = list.findIndex((q) => q.id === id);
-        if (at >= 0) {
-          list.splice(at, 1);
-          // `seen` keeps the id forever: a resolved question never re-enters
-          // the panel (matches the live path's resolvedIds guard — a re-ask
-          // of a resolved id is treated as a model stutter, not intent).
-        }
+        if (at >= 0) list.splice(at, 1);
+        // Mirror the live resolve path: every resolve marks the id in this
+        // reply's guard set, even for ids that were never added — a re-add
+        // after such a resolve in the same reply is a model stutter.
+        seen.add(id);
       }
     }
   });
