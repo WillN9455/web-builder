@@ -95,13 +95,35 @@ export function loadManifest(): Manifest {
 
 const SKIP_DIRS = new Set(["node_modules", ".git", ".next", "dist", "build", "coverage"]);
 
-function copyRecursiveSkippingExisting(src: string, dest: string, stats: { copied: number; skipped: number }): void {
+/**
+ * Stage folders are contract content (framework/build is the Build stage), so a
+ * name in SKIP_DIRS only prunes when it is NOT a manifest-promised stage folder
+ * or a descendant of one. `protectedDirs` holds the absolute source paths of the
+ * manifest stage folders under the export root.
+ */
+function isProtectedDir(src: string, protectedDirs: ReadonlySet<string>): boolean {
+  for (const dir of protectedDirs) {
+    // Strip trailing separators: manifest folder values are written like
+    // "build/" and path.join preserves that slash, which would defeat the
+    // prefix comparison below ("dir" + sep would look for a double slash).
+    const clean = dir.replace(/[\\/]+$/, "");
+    if (src === clean || src.startsWith(clean + path.sep)) return true;
+  }
+  return false;
+}
+
+function copyRecursiveSkippingExisting(
+  src: string,
+  dest: string,
+  stats: { copied: number; skipped: number },
+  protectedDirs: ReadonlySet<string> = new Set(),
+): void {
   const stat = fs.statSync(src);
   if (stat.isDirectory()) {
-    if (SKIP_DIRS.has(path.basename(src))) return;
+    if (SKIP_DIRS.has(path.basename(src)) && !isProtectedDir(src, protectedDirs)) return;
     fs.mkdirSync(dest, { recursive: true });
     for (const entry of fs.readdirSync(src)) {
-      copyRecursiveSkippingExisting(path.join(src, entry), path.join(dest, entry), stats);
+      copyRecursiveSkippingExisting(path.join(src, entry), path.join(dest, entry), stats, protectedDirs);
     }
     return;
   }
@@ -132,6 +154,13 @@ export function initProjectDir(rawInput: unknown): { abs: string; existed: boole
   const existed = fs.existsSync(abs);
   const manifest = loadManifest();
 
+  // 0. Materialise the project folder itself when the user typed a path that
+  //    does not exist yet — the launcher is what "creates a folder when a path
+  //    is provided" (same contract as init-frame.js, which mkdirs its target
+  //    before scaffolding). Without this, the first copyFileSync below throws
+  //    ENOENT and the whole scaffold aborts for a brand-new directory.
+  fs.mkdirSync(abs, { recursive: true });
+
   // 0. Root files: framework-meta docs copied from the manifest list.
   const stats = { copied: 0, skipped: 0 };
   for (const file of manifest.root_files) {
@@ -144,9 +173,15 @@ export function initProjectDir(rawInput: unknown): { abs: string; existed: boole
   }
 
   // 1. Copy the export root wholesale — every stage folder + shared/ + templates/.
+  //    Stage folders are protected from the SKIP_DIRS prune: framework/build is
+  //    a stage named "build", not a build-output directory, and pruning it
+  //    silently dropped the entire Build stage (Code Agent files included).
   const exportSrc = path.join(REPO_ROOT, manifest.export_root);
   if (fs.existsSync(exportSrc)) {
-    copyRecursiveSkippingExisting(exportSrc, path.join(abs, manifest.export_root), stats);
+    const stageDirs = new Set(
+      Object.values(manifest.stages).map((stage) => path.resolve(exportSrc, stage.folder)),
+    );
+    copyRecursiveSkippingExisting(exportSrc, path.join(abs, manifest.export_root), stats, stageDirs);
   }
 
   // 2. Guarantee the per-stage tri-fold (skills/, config/, agents/) even where
