@@ -17,12 +17,19 @@ import {
   MAX_BODY_BYTES,
   MAX_MESSAGES,
   WARN_THRESHOLD,
+  MAX_OQ_LIST,
+  SENTINEL_RE,
+  SENTINEL_STRIP_RE,
+  TOPIC_SENTINEL_RE,
   buildIdeaTxt,
+  deriveOutstandingQuestions,
   extractIdea,
   newSessionId,
+  parseOqAddPayload,
   validateMessages,
   writeIdeaFile,
   type ChatMessage,
+  type OutstandingQuestion,
 } from './intake.js';
 
 migrate();
@@ -84,6 +91,10 @@ type IntakeSession = {
   // re-derives this from the persisted transcript so the cursor lines up
   // with what the BA actually said.
   currentTopic: number | null;
+  // Outstanding questions the BA has logged via ::oq-add:: sentinels and not
+  // yet resolved via ::oq-resolve::. Emitted live as oq_add/oq_resolve NDJSON
+  // events; on resume the list is re-derived from the persisted transcript.
+  outstandingQuestions: OutstandingQuestion[];
 };
 const sessions = new Map<string, IntakeSession>();
 
@@ -240,6 +251,7 @@ app.post('/api/init', async (req, res) => {
       history: [],
       persistedCount: 0,
       currentTopic: null,
+      outstandingQuestions: [],
     });
 
     // Pin the workspace root for any framework session launched from this repo:
@@ -310,10 +322,10 @@ function writeMemoryFiles(
 
     // transcript.md: always rewrite the full transcript (cheap, keeps it
     // human-readable without needing to read jsonl). Strip the internal
-    // ::topic=N:: markers from each assistant message — they live in the
-    // JSONL for /resume to recover, but they aren't part of the
-    // conversation a human reads.
-    const TOPIC_RE = /::topic=\d+::\s*/g;
+    // sentinels (::topic=N:: / ::topic=N::summary:: / ::oq-add:: / ::oq-resolve::)
+    // from each assistant message — they live in the JSONL for /resume to
+    // recover, but they aren't part of the conversation a human reads.
+    const TOPIC_RE = SENTINEL_STRIP_RE;
     const lines: string[] = [];
     lines.push('# BA Agent interview transcript');
     lines.push('');
@@ -478,6 +490,9 @@ app.post('/api/chat', async (req, res) => {
   // in-memory record used for memory-file writes below.
   const incoming = body.messages as ChatMessage[];
   session.history = incoming;
+  // Captured for the nested closures below — TS narrowing doesn't reach
+  // inside them.
+  const activeSession = session;
 
   res.writeHead(200, {
     'Content-Type': 'application/x-ndjson; charset=utf-8',
@@ -515,65 +530,154 @@ app.post('/api/chat', async (req, res) => {
   let full = '';
   const decoder = new TextDecoder();
   let buffer = '';
-  // Marker detection. The BA may emit `::topic=N::` (or any close
-  // variation) as a single token, or split across two tokens
-  // (e.g. `::` then `topic=2::`). We carry over the last few characters
-  // of each token until the next arrives so a split marker is still
-  // recognised. Anything that COULD be the start of a marker is held back
-  // from the streamed text — if the next token completes the marker, we
-  // emit a `topic` event and drop both halves; if it doesn't, we flush
-  // the carryover as ordinary text.
-  //
-  // The marker is the longest sentinel we recognise (10 chars), so the
-  // carryover never needs to be bigger than that. We keep a couple extra
-  // chars for safety against `::topic = N::` style variations.
-  const MARKER_MAX = 16;
+  // Sentinel detection. The BA may append `::topic=N::` (optionally with a
+  // one-line summary), `::oq-add::{json}::` or `::oq-resolve::ID::` — as a
+  // single token or split across several (e.g. `::` then `topic=2::`). The
+  // longest sentinel is an ::oq-add:: payload (~420 chars at the caps in
+  // intake.ts), so text is held back from the earliest position that could
+  // still begin a sentinel (`::topic…` / `::oq-…`), with a 16-char floor so
+  // a lone `:` split mid-token can't escape either. Anything held back that
+  // never completes is flushed — or dropped, if it still looks like a
+  // sentinel — at stream end. A complete sentinel is stripped from the
+  // stream, turned into its typed NDJSON event, and persisted in `full` for
+  // /resume to re-derive from.
+  const SENTINEL_FLOOR = 16;
   let carry = '';
   let lastTopicIndex: number | null = null;
-  // Permissive: allow optional whitespace inside the colons / around the
-  // `=`, accept uppercase ::TOPIC=n::, and tolerate one trailing colon.
-  // Capture group 1 is the digit(s).
-  const TOPIC_MARKER_RE = /::\s*topic\s*=\s*(\d+)\s*::/gi;
-  const stripTopicMarker = (text: string): string => text.replace(TOPIC_MARKER_RE, '');
+  // Ids this request has already emitted an oq_resolve event for, and ids
+  // that have ever been resolved. Doubles as the replay guard for the
+  // defensive re-scan below: a resolved question's ::oq-add:: marker stays in
+  // `full`, and without this check every later reply would momentarily
+  // resurrect it on the client (spurious oq_add + oq_resolve event pair).
+  const resolvedIds = new Set<string>();
+  // Sentinel-start lookalikes in prose (`::topic` / `::oq-` with no closing
+  // `::`) are held back for one chunk at most — once more text arrives, the
+  // fixed floor reopens the stream past them.
+  const SENTINEL_START_RE = /::\s*(?:topic|oq-)/i;
+  // Longest sentinel the BA is prompted to emit (an ::oq-add:: payload at the
+  // intake.ts caps ≈ 440 chars). An "opening" older than this without a
+  // closing `::` is prose, not a sentinel.
+  const SENTINEL_MAX = 480;
 
-  // Process a chunk of text that may contain a (possibly split) marker.
-  // Streams out everything that is definitely NOT part of a marker, emits
-  // `topic` events for any complete marker it finds, and stashes the rest
-  // in `carry` for the next call.
+  function flushText(text: string): void {
+    full += text;
+    sendNdjson(res, { type: 'token', content: text });
+  }
+
+  // Turn one complete sentinel match into its side effects: the typed NDJSON
+  // event plus the marker text to persist into `full` (so the JSONL keeps the
+  // side-channel state /resume needs). The marker itself never streams.
+  // Returns the text to persist (callers append it in stream order), or null
+  // when there is nothing to persist.
+  function handleSentinel(m: RegExpExecArray): string | null {
+    if (m[1] !== undefined) {
+      // ::topic=N:: [::summary::]
+      const idx = Number(m[1]);
+      const summary = typeof m[2] === 'string' ? m[2] : undefined;
+      if (Number.isInteger(idx) && idx > 0 && (lastTopicIndex === null || idx > lastTopicIndex)) {
+        lastTopicIndex = idx;
+        sendNdjson(res, summary ? { type: 'topic', index: idx, summary } : { type: 'topic', index: idx });
+      }
+      // Persist the marker verbatim whenever the index is valid — including a
+      // repeat of the current topic, which advances nothing but must survive.
+      // The defensive re-scan below re-fires handleSentinel over `full`; a
+      // null here would strip already-persisted markers out of the transcript
+      // /resume re-derives the cursor from. Only garbage indexes (≤0) are
+      // dropped entirely.
+      return Number.isInteger(idx) && idx > 0 ? m[0] : null;
+    }
+    if (m[3] !== undefined) {
+      // ::oq-add::{json}:: — untrusted payload: parse + cap before anything
+      // is emitted; invalid payloads are dropped entirely, never forwarded.
+      const parsed = parseOqAddPayload(m[3]);
+      if (parsed) {
+        const askedAt = new Date().toISOString();
+        if (
+          activeSession.outstandingQuestions.length < MAX_OQ_LIST &&
+          !activeSession.outstandingQuestions.some((q) => q.id === parsed.id) &&
+          !resolvedIds.has(parsed.id)
+        ) {
+          const question = { ...parsed, askedAt };
+          activeSession.outstandingQuestions.push(question);
+          sendNdjson(res, { type: 'oq_add', question });
+        }
+        // Persist the server-enriched marker (askedAt embedded) so /resume
+        // can rebuild the exact panel state, original ask times included.
+        return '::oq-add::' + JSON.stringify({ ...parsed, askedAt }) + '::';
+      }
+      return null;
+    }
+    // ::oq-resolve::ID:: — resolve on the session list (no-op for unknown
+    // ids). Emit once per id: the defensive re-scan replays every historical
+    // resolve marker on each later reply, and a duplicate event would be
+    // client-side noise.
+    const id = m[4] as string;
+    const at = activeSession.outstandingQuestions.findIndex((q) => q.id === id);
+    if (at >= 0) activeSession.outstandingQuestions.splice(at, 1);
+    if (!resolvedIds.has(id)) {
+      resolvedIds.add(id);
+      sendNdjson(res, { type: 'oq_resolve', id });
+    }
+    return m[0];
+  }
+
+  // A bare ::topic=N:: is itself a complete sentinel, but the extended
+  // `::topic=N::Summary::` form starts out looking identical — the summary
+  // arrives in later streamed tokens. While the text after a bare marker
+  // could still grow into a summary (same-line: leading spaces, then a
+  // colon-free run, then the closing `::`), the marker and everything after
+  // it are held back so the summary never streams as user-visible prose.
+  // A newline right after the marker proves there is no summary and reopens
+  // the stream immediately.
+  const SUMMARY_STILL_POSSIBLE_RE = /^[^\S\n]*[^:\n]{0,140}[^\S\n]*$/;
+
+  // Process a chunk of text that may contain a (possibly split) sentinel.
+  // Streams out everything that is definitely NOT part of a sentinel, emits
+  // events for any complete sentinel it finds, and stashes the rest in
+  // `carry` for the next call.
   function processText(text: string): void {
     const combined = carry + text;
     carry = '';
     let cursor = 0;
     let m: RegExpExecArray | null;
-    TOPIC_MARKER_RE.lastIndex = 0;
-    while ((m = TOPIC_MARKER_RE.exec(combined)) !== null) {
+    SENTINEL_RE.lastIndex = 0;
+    while ((m = SENTINEL_RE.exec(combined)) !== null) {
+      // Bare topic marker whose summary may still be in flight — hold from
+      // the marker onward. (If the summary were already complete, SENTINEL_RE
+      // would have matched the extended form instead of the bare one.)
+      if (
+        m[1] !== undefined &&
+        m[2] === undefined &&
+        SUMMARY_STILL_POSSIBLE_RE.test(combined.slice(m.index + m[0].length))
+      ) {
+        if (m.index > cursor) flushText(combined.slice(cursor, m.index));
+        carry = combined.slice(m.index);
+        return;
+      }
       // Flush everything before the match as ordinary text.
       if (m.index > cursor) {
-        const before = combined.slice(cursor, m.index);
-        if (before) {
-          full += before;
-          sendNdjson(res, { type: 'token', content: before });
-        }
+        flushText(combined.slice(cursor, m.index));
       }
-      // Emit the topic event.
-      const idx = Number(m[1]);
-      if (Number.isInteger(idx) && idx > 0 && (lastTopicIndex === null || idx > lastTopicIndex)) {
-        lastTopicIndex = idx;
-        sendNdjson(res, { type: 'topic', index: idx });
-      }
+      const persist = handleSentinel(m);
+      if (persist) full += persist;
       cursor = m.index + m[0].length;
     }
-    // Tail handling: hold back the last MARKER_MAX chars so a marker split
-    // across tokens is still caught on the next call. Everything between
-    // `cursor` and the safe-to-emit prefix is streamed.
-    const safeLen = Math.max(0, combined.length - cursor - MARKER_MAX);
-    if (safeLen > 0) {
-      const flush = combined.slice(cursor, cursor + safeLen);
-      full += flush;
-      sendNdjson(res, { type: 'token', content: flush });
-      carry = combined.slice(cursor + safeLen);
+    // Tail handling: hold back from the earliest possible sentinel opening
+    // while a sentinel could still be in flight (bounded by SENTINEL_MAX —
+    // past that the opening is definitively prose and the stream reopens),
+    // plus a fixed floor so a lone `:` split mid-token can't escape.
+    const tail = combined.slice(cursor);
+    const start = SENTINEL_START_RE.exec(tail);
+    const openPos = start ? cursor + start.index : -1;
+    const inFlight = openPos >= 0 && combined.length - openPos <= SENTINEL_MAX;
+    const flushPoint = inFlight
+      ? Math.min(openPos, combined.length - SENTINEL_FLOOR)
+      : Math.max(cursor, combined.length - SENTINEL_FLOOR);
+    if (flushPoint > cursor) {
+      flushText(combined.slice(cursor, flushPoint));
+      carry = combined.slice(flushPoint);
     } else {
-      carry = combined.slice(cursor);
+      carry = tail;
     }
   }
 
@@ -596,36 +700,44 @@ app.post('/api/chat', async (req, res) => {
         }
       }
     }
-    // Stream ended — drain the carryover. If it contains a complete
-    // marker, emit the topic event and drop the marker text. If it looks
-    // like a partial marker (e.g. `::topic=2` with no trailing `::`),
-    // drop it — we'd rather lose a few punctuation chars than leak a
-    // raw `::topic=2::` to the user. Otherwise flush as ordinary text.
+    // Stream ended — drain the carryover. A complete sentinel is handled
+    // exactly like one found mid-stream; text that merely looks like an
+    // unfinished sentinel (e.g. `::topic=2` with no trailing `::`) is
+    // dropped — we'd rather lose a few punctuation chars than leak a raw
+    // sentinel to the user. Everything else flushes as ordinary text.
     if (carry) {
-      TOPIC_MARKER_RE.lastIndex = 0;
-      const mEnd = TOPIC_MARKER_RE.exec(carry);
-      if (mEnd) {
-        const before = carry.slice(0, mEnd.index);
-        const after = carry.slice(mEnd.index + mEnd[0].length);
-        if (before) {
-          full += before;
-          sendNdjson(res, { type: 'token', content: before });
+      SENTINEL_RE.lastIndex = 0;
+      let mEnd: RegExpExecArray | null;
+      let drained = 0;
+      let droppedTail = false;
+      while ((mEnd = SENTINEL_RE.exec(carry)) !== null) {
+        const before = carry.slice(drained, mEnd.index);
+        if (before) flushText(before);
+        const persist = handleSentinel(mEnd);
+        if (persist) full += persist;
+        drained = mEnd.index + mEnd[0].length;
+        // The stream ended mid-summary: text after a bare topic marker that
+        // could still be the summary is BA side-channel text, not
+        // user-visible prose — drop it rather than leak it.
+        if (
+          mEnd[1] !== undefined &&
+          mEnd[2] === undefined &&
+          SUMMARY_STILL_POSSIBLE_RE.test(carry.slice(drained))
+        ) {
+          droppedTail = true;
+          break;
         }
-        const idx = Number(mEnd[1]);
-        if (Number.isInteger(idx) && idx > 0 && (lastTopicIndex === null || idx > lastTopicIndex)) {
-          lastTopicIndex = idx;
-          sendNdjson(res, { type: 'topic', index: idx });
+      }
+      if (!droppedTail) {
+        const rest = carry.slice(drained);
+        const partial = SENTINEL_START_RE.exec(rest);
+        if (partial) {
+          // Flush the prose before the unfinished sentinel; drop the rest
+          // rather than leak it.
+          if (partial.index > 0) flushText(rest.slice(0, partial.index));
+        } else if (rest) {
+          flushText(rest);
         }
-        if (after) {
-          full += after;
-          sendNdjson(res, { type: 'token', content: after });
-        }
-      } else if (/::\s*topic\s*=/i.test(carry)) {
-        // Looks like a partial marker — drop it rather than leak the
-        // sentinel to the user.
-      } else {
-        full += carry;
-        sendNdjson(res, { type: 'token', content: carry });
       }
       carry = '';
     }
@@ -635,28 +747,24 @@ app.post('/api/chat', async (req, res) => {
     return;
   }
 
-  // Defensive: re-scan the full reply for any marker we somehow missed
+  // Defensive: re-scan the full reply for any sentinel we somehow missed
   // (e.g. one that landed entirely inside the carryover buffer because the
   // model emitted the whole thing in a single token that got flushed
-  // verbatim at stream-end). Strip any remaining text and emit the topic
-  // event the streaming path skipped, so the sidebar still advances.
-  TOPIC_MARKER_RE.lastIndex = 0;
-  let m: RegExpExecArray | null;
-  const missed: number[] = [];
-  const cleaned = full.replace(TOPIC_MARKER_RE, (_match, digits: string) => {
-    const idx = Number(digits);
-    if (Number.isInteger(idx) && idx > 0) missed.push(idx);
-    return '';
-  });
-  if (missed.length) {
-    full = cleaned;
-    for (const idx of missed) {
-      if (lastTopicIndex === null || idx > lastTopicIndex) {
-        lastTopicIndex = idx;
-        sendNdjson(res, { type: 'topic', index: idx });
-      }
-    }
+  // verbatim at stream-end). Handle each one exactly like the streaming
+  // path would have, so the sidebar and the outstanding-questions panel
+  // still advance and the persisted transcript keeps the markers.
+  SENTINEL_RE.lastIndex = 0;
+  let cleaned = '';
+  let scanCursor = 0;
+  let sm: RegExpExecArray | null;
+  while ((sm = SENTINEL_RE.exec(full)) !== null) {
+    cleaned += full.slice(scanCursor, sm.index);
+    const persist = handleSentinel(sm);
+    if (persist) cleaned += persist;
+    scanCursor = sm.index + sm[0].length;
   }
+  cleaned += full.slice(scanCursor);
+  if (cleaned !== full) full = cleaned;
   // Sync the per-session cursor so /resume (or a follow-up request) can
   // report the deepest topic reached so far.
   if (lastTopicIndex !== null) session.currentTopic = lastTopicIndex;
@@ -919,17 +1027,21 @@ app.get('/api/projects/:id/resume', (req, res) => {
 
   // Parse the JSONL. Skip the header line, validate every entry, drop
   // anything that doesn't look like a message — never trust the file blindly.
+  // Per-message timestamps are kept so outstanding-question markers that
+  // predate askedAt stamping can still fall back to a sensible ask time.
   const raw = fs.readFileSync(jsonlPath, 'utf-8');
   const messages: ChatMessage[] = [];
+  const timestamps: Array<string | undefined> = [];
   for (const line of raw.split('\n')) {
     const trimmed = line.trim();
     if (!trimmed) continue;
     try {
-      const entry = JSON.parse(trimmed) as { kind?: string; role?: string; content?: unknown };
+      const entry = JSON.parse(trimmed) as { kind?: string; role?: string; content?: unknown; ts?: unknown };
       if (entry.kind !== 'message') continue;
       if (entry.role !== 'user' && entry.role !== 'assistant') continue;
       if (typeof entry.content !== 'string' || !entry.content.trim()) continue;
       messages.push({ role: entry.role, content: entry.content });
+      timestamps.push(typeof entry.ts === 'string' ? entry.ts : undefined);
     } catch {
       // skip malformed lines — the chat transcript is best-effort
     }
@@ -958,6 +1070,13 @@ app.get('/api/projects/:id/resume', (req, res) => {
   }
   const history = deduped;
 
+  // Re-derive the outstanding-questions list from the persisted ::oq-add:: /
+  // ::oq-resolve:: markers, replaying them in transcript order. Server-
+  // enriched markers carry the original askedAt; older ones fall back to the
+  // JSONL entry timestamp. The derived list also seeds the new session so
+  // subsequent live ::oq-add:: sentinels keep the list coherent.
+  const outstandingQuestions = deriveOutstandingQuestions(history, (i) => timestamps[i]);
+
   // Re-create an in-memory session so subsequent /api/chat calls work the
   // same way as for an in-progress interview. Point earlyProjectId at the
   // existing row so createEarlyProject() doesn't insert a duplicate.
@@ -972,17 +1091,23 @@ app.get('/api/projects/:id/resume', (req, res) => {
     // was bloated), so the next /api/chat append-delta starts from here.
     persistedCount: history.length,
     currentTopic: null, // populated below from the transcript
+    outstandingQuestions,
   });
 
   // Derive topic progress from the persisted transcript:
   //   • currentTopic = the deepest ::topic=N:: marker found in any assistant
   //     message (so the sidebar resumes at the right step even if the user
   //     closed the tab mid-topic).
+  //   • topicSummaries = the BA-provided one-line summaries carried by
+  //     ::topic=N::summary:: markers, keyed by the completed topic index
+  //     (marker index − 1), so a resumed sidebar shows the same details the
+  //     live session built up.
   //   • capturedTopics / skippedTopics mirror the legacy skip-vs-answer
   //     counting so the client can build its initial step list without
   //     scanning the messages twice.
-  const TOPIC_RE = /::topic=(\d+)::/g;
+  const TOPIC_RE = TOPIC_SENTINEL_RE;
   let currentTopic: number | null = null;
+  const topicSummaries: Record<number, string> = {};
   let captured = 0;
   let skipped = 0;
   for (let i = 0; i < history.length; i++) {
@@ -994,6 +1119,10 @@ app.get('/api/projects/:id/resume', (req, res) => {
         const n = Number(match[1]);
         if (Number.isInteger(n) && n > 0 && (currentTopic === null || n > currentTopic)) {
           currentTopic = n;
+        }
+        if (typeof match[2] === 'string' && n > 1 && match[2].trim()) {
+          // The summary describes the topic the BA just completed.
+          topicSummaries[n - 1] = match[2].trim();
         }
       }
     }
@@ -1020,11 +1149,20 @@ app.get('/api/projects/:id/resume', (req, res) => {
       folder_path: row.folder_path,
     },
     sessionId,
-    messages: history,
+    // Strip the internal sentinels before the transcript reaches the client —
+    // they are side-channel state, not conversation. The session's own
+    // `history` keeps them so /resume can re-derive the cursor after future
+    // replies; what the user sees (bubbles on resume, transcript.md) never
+    // does.
+    messages: history.map((m) =>
+      m.role === 'assistant' ? { ...m, content: m.content.replace(SENTINEL_STRIP_RE, '') } : m,
+    ),
     // Conversation caps — same values surfaced by /api/init so the chat UI
     // can warn near the limit on a resumed session too.
     maxMessages: MAX_MESSAGES,
     warnThreshold: WARN_THRESHOLD,
+    outstandingQuestions,
+    topicSummaries,
     topicProgress: {
       capturedTopics: captured,
       skippedTopics: skipped,

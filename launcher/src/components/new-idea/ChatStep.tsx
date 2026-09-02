@@ -1,7 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent, ReactNode } from 'react';
-import { streamChat, type ChatDoneEvent, type ChatEvent, type ChatMessage } from '../../lib/api';
+import {
+  streamChat,
+  type ChatDoneEvent,
+  type ChatEvent,
+  type ChatMessage,
+  type OutstandingQuestion,
+} from '../../lib/api';
 import { InterviewProgress, type InterviewStep } from './InterviewProgress';
+import { OutstandingQuestions } from './OutstandingQuestions';
 
 type Props = {
   sessionId: string;
@@ -18,6 +25,11 @@ type Props = {
   initialMessages?: ChatMessage[];
   initialSteps?: InterviewStep[];
   initialCurrentStepIndex?: number;
+  // Outstanding-questions panel state restored from the resume response, plus
+  // the BA-provided summaries for already-completed topics (keyed by topic
+  // index — see ChatTopicEvent.summary).
+  initialOutstandingQuestions?: OutstandingQuestion[];
+  initialTopicSummaries?: Record<number, string>;
   // Conversation caps from the server (intake.ts via /api/init or /resume).
   // `warnThreshold` is the message count at which we start nudging the user
   // to wrap up; `maxMessages` is the hard cap the server rejects beyond.
@@ -35,9 +47,10 @@ const BA_OPENER =
 // on by emitting `::topic=N::` (parsed server-side into a `topic` NDJSON
 // event), at which point we promote step N to current. The client never
 // advances the cursor on its own — only when the BA signals a transition.
-function buildSteps(): InterviewStep[] {
+function buildSteps(projectDir?: string): InterviewStep[] {
   return [
-    { label: 'Project folder set', detail: 'Workspace pinned.', state: 'done' },
+    // Screen 8 (#s8): the first step's detail shows the project folder path.
+    { label: 'Project folder set', detail: projectDir ?? 'Workspace pinned.', state: 'done' },
     { label: 'Problem', detail: 'Describe the pain point.', state: 'current' },
     { label: 'Users & scale', detail: 'Who feels this most?', state: 'pending' },
     { label: 'MVP scope', detail: 'Smallest shippable version.', state: 'pending' },
@@ -108,6 +121,8 @@ export function ChatStep({
   initialMessages,
   initialSteps,
   initialCurrentStepIndex,
+  initialOutstandingQuestions,
+  initialTopicSummaries,
   maxMessages,
   warnThreshold,
 }: Props) {
@@ -129,7 +144,23 @@ export function ChatStep({
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [doneEvent, setDoneEvent] = useState<ChatDoneEvent | null>(null);
-  const [steps, setSteps] = useState<InterviewStep[]>(initialSteps ?? buildSteps);
+  // Completed-topic details: resume mode seeds the BA-provided summaries so
+  // the sidebar shows the same details the live session built up.
+  const [steps, setSteps] = useState<InterviewStep[]>(() => {
+    const base = initialSteps ?? buildSteps(projectDir);
+    if (!initialTopicSummaries) return base;
+    return base.map((step, i) =>
+      initialTopicSummaries[i] && step.state === 'done'
+        ? { ...step, detail: initialTopicSummaries[i] }
+        : step,
+    );
+  });
+  // Outstanding questions logged by the BA (::oq-add:: / ::oq-resolve::).
+  // Live state comes from the server's oq_add / oq_resolve NDJSON events;
+  // resume mode seeds it from the transcript-derived list.
+  const [outstandingQuestions, setOutstandingQuestions] = useState<OutstandingQuestion[]>(
+    initialOutstandingQuestions ?? [],
+  );
   // The slug of the project row that the server created on the first BA
   // reply (Task 2.1). Once set, the header shows an "Open project →" link
   // so the user can leave the chat and come back to the (still-in-progress)
@@ -143,12 +174,20 @@ export function ChatStep({
   );
   const bodyRef = useRef<HTMLDivElement | null>(null);
 
-  // Defensive client-side filter for the topic sentinel. The server is
-  // supposed to strip ::topic=N:: from the token stream before forwarding
-  // it, but if a stale build or a corner case ever leaks one through, we
-  // hide it here rather than showing the user `::topic=3::` mid-sentence.
-  const TOPIC_RE_CLIENT = /::\s*topic\s*=\s*\d+\s*::/gi;
-  const sanitiseToken = (raw: string): string => raw.replace(TOPIC_RE_CLIENT, '');
+  // Defensive client-side filter for the BA sentinels. The server is
+  // supposed to strip ::topic=N:: / ::topic=N::summary:: / ::oq-add::{…}:: /
+  // ::oq-resolve::ID:: from the token stream before forwarding it, but if a
+  // stale build or a corner case ever leaks one through, we hide it here
+  // rather than showing the user raw sentinel text mid-sentence.
+  // Mirrors TOPIC_SENTINEL_RE in server/intake.ts: the bare form and the
+  // extended-summary form are separate branches; a real summary stays on the
+  // marker's line and must end it — otherwise `::topic=1::` followed by prose
+  // + `::oq-add…` would misparse as a summary and eat the oq sentinel's
+  // opener.
+  const TOPIC_RE_CLIENT = /::\s*topic\s*=\s*\d+\s*(?:::[^\S\n]*[^:\n]{1,140}[^\S\n]*::(?=\s|$)|::)/gi;
+  const OQ_RE_CLIENT = /::\s*oq-(?:add\s*::\s*\{[\s\S]*?|resolve\s*::\s*[A-Za-z0-9_-]{1,32})\s*::/gi;
+  const sanitiseToken = (raw: string): string =>
+    raw.replace(TOPIC_RE_CLIENT, '').replace(OQ_RE_CLIENT, '');
 
   // Helper: append a token to the last assistant message (or create one).
   const appendAssistantToken = useCallback((token: string) => {
@@ -178,7 +217,16 @@ export function ChatStep({
         // target step current. The BA may have multiple follow-up rounds on
         // a single topic before this event fires — that's exactly why we
         // wait for the marker instead of advancing on every user reply.
-        advanceToTopic(evt.index, 'done');
+        // `summary` (when present) becomes the just-completed step's detail.
+        advanceToTopic(evt.index, 'done', evt.summary);
+      } else if (evt.type === 'oq_add') {
+        // The BA logged a deferred blocking question — surface it in the
+        // side-rail panel. Dedupe by id (the server already did the same).
+        setOutstandingQuestions((prev) =>
+          prev.some((q) => q.id === evt.question.id) ? prev : [...prev, evt.question],
+        );
+      } else if (evt.type === 'oq_resolve') {
+        setOutstandingQuestions((prev) => prev.filter((q) => q.id !== evt.id));
       } else if (evt.type === 'done') {
         setDoneEvent(evt);
         setStreaming(false);
@@ -272,9 +320,10 @@ export function ChatStep({
   // Topics that have already been resolved (skipped) are left alone so the
   // UI doesn't re-paint a step that the BA confirmed as out-of-scope.
   //
-  // Called from the `topic` and `done` events emitted by the server. The
-  // BA controls when to advance — the client never guesses.
-  function advanceToTopic(index: number, next: 'done' | 'skipped') {
+  // `summary` is the BA-provided one-line detail for the topic the BA just
+  // completed (the marker index − 1) — it replaces the default "Captured."
+  // detail. The BA controls when to advance — the client never guesses.
+  function advanceToTopic(index: number, next: 'done' | 'skipped', summary?: string) {
     if (!Number.isInteger(index) || index < FIRST_TOPIC_INDEX) return;
     setSteps((s) => {
       const arr = [...s];
@@ -289,7 +338,12 @@ export function ChatStep({
             arr[i] = {
               ...step,
               state: next,
-              detail: next === 'skipped' ? 'Skipped.' : 'Captured.',
+              detail:
+                next === 'skipped'
+                  ? 'Skipped.'
+                  : summary && i === target - 1 && i >= FIRST_TOPIC_INDEX
+                    ? summary
+                    : 'Captured.',
             };
           }
         } else if (i === target) {
@@ -303,6 +357,23 @@ export function ChatStep({
       setCurrentStepIndex(target);
       return arr;
     });
+  }
+
+  const taRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // Outstanding-questions panel: drop the clicked question into the chat
+  // draft and focus the textarea — never auto-send (mockup #s8b hint, plan
+  // §4 D1). No-op while streaming, when the draft isn't editable.
+  function pickQuestion(q: OutstandingQuestion) {
+    if (streaming) return;
+    setDraft(q.question);
+    const ta = taRef.current;
+    if (ta) {
+      ta.focus();
+      // Move the caret to the end once the controlled textarea has
+      // re-rendered with the seeded draft.
+      requestAnimationFrame(() => ta.setSelectionRange(ta.value.length, ta.value.length));
+    }
   }
 
   function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
@@ -399,6 +470,7 @@ export function ChatStep({
         <div className="chat-foot">
           <textarea
             className="ta"
+            ref={taRef}
             placeholder={streaming ? 'BA Agent is typing…' : 'Reply to the BA Agent (type "skip" to skip this question)…'}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
@@ -430,6 +502,13 @@ export function ChatStep({
         steps={steps}
         doneCount={steps.filter((s) => s.state === 'done').length}
         currentStepIndex={currentStepIndex}
+        outstanding={
+          <OutstandingQuestions
+            questions={outstandingQuestions}
+            onPick={pickQuestion}
+            disabled={streaming}
+          />
+        }
       />
 
       <button type="button" className="btn-link chat-back-link" onClick={onCancel}>

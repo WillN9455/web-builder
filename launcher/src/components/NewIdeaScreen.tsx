@@ -5,6 +5,7 @@ import {
   ResumeUnavailableError,
   type ChatDoneEvent,
   type ChatMessage,
+  type OutstandingQuestion,
 } from '../lib/api';
 import type { InterviewStep } from './new-idea/InterviewProgress';
 import { FolderPickStep } from './new-idea/FolderPickStep';
@@ -16,10 +17,11 @@ type Step = 'folder' | 'chat' | 'done' | 'loading' | 'resume-error';
 // Build the 9-step checklist that ChatStep renders in its right rail. Mirrors
 // the literal in ChatStep.buildSteps() — kept duplicated so the parent can
 // pre-compute initial state for resume without coupling the two components
-// to a shared mutable module.
-function buildInitialSteps(): InterviewStep[] {
+// to a shared mutable module. The first step's detail is the project folder
+// path (mockup #s8).
+function buildInitialSteps(projectDir?: string): InterviewStep[] {
   return [
-    { label: 'Project folder set', detail: 'Workspace pinned.', state: 'done' },
+    { label: 'Project folder set', detail: projectDir ?? 'Workspace pinned.', state: 'done' },
     { label: 'Problem', detail: 'Describe the pain point.', state: 'current' },
     { label: 'Users & scale', detail: 'Who feels this most?', state: 'pending' },
     { label: 'MVP scope', detail: 'Smallest shippable version.', state: 'pending' },
@@ -61,6 +63,12 @@ export function NewIdeaScreen() {
   const [initialMessages, setInitialMessages] = useState<ChatMessage[] | null>(null);
   const [initialSteps, setInitialSteps] = useState<InterviewStep[] | null>(null);
   const [initialStepIndex, setInitialStepIndex] = useState<number | null>(null);
+  // Outstanding-questions panel + completed-topic summaries, restored from
+  // the resume response the same way as the transcript.
+  const [initialOq, setInitialOq] = useState<OutstandingQuestion[]>([]);
+  const [initialTopicSummaries, setInitialTopicSummaries] = useState<Record<number, string> | undefined>(
+    undefined,
+  );
   const [resumeError, setResumeError] = useState<string | null>(null);
 
   // Folder pick → chat. `name` is forwarded to /api/init but lives on the
@@ -131,7 +139,7 @@ export function NewIdeaScreen() {
         // transcripts from before the marker was added, or the BA simply
         // hasn't transitioned yet), fall back to counting user→assistant
         // pairs so the sidebar still lands at a sensible step.
-        const base = buildInitialSteps();
+        const base = buildInitialSteps(data.project.folder_path);
         const serverCursor = data.topicProgress.currentTopic;
         let resolved = 0;
         let skipped = 0;
@@ -167,6 +175,8 @@ export function NewIdeaScreen() {
         setInitialMessages(data.messages);
         setInitialSteps(base);
         setInitialStepIndex(cursor);
+        setInitialOq(data.outstandingQuestions ?? []);
+        setInitialTopicSummaries(data.topicSummaries);
         setStep('chat');
       } catch (err) {
         if (cancelled) return;
@@ -240,6 +250,8 @@ export function NewIdeaScreen() {
           initialMessages={initialMessages ?? undefined}
           initialSteps={initialSteps ?? undefined}
           initialCurrentStepIndex={initialStepIndex ?? undefined}
+          initialOutstandingQuestions={initialOq}
+          initialTopicSummaries={initialTopicSummaries}
           maxMessages={maxMessages}
           warnThreshold={warnThreshold}
         />

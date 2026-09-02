@@ -136,12 +136,38 @@ export async function initProjectDir(dir: string, projectName: string | null): P
 
 export type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
+// One logged outstanding question — the BA Agent defers a blocking question
+// mid-interview (::oq-add:: sentinel) and resolves it later (::oq-resolve::).
+// One shape everywhere: server, resume payload, and the chat-side panel.
+export type OutstandingQuestion = {
+  // BA-chosen stable id, e.g. "OQ-3".
+  id: string;
+  // One line, no markdown.
+  question: string;
+  // Group label: "Requirements", "Design", …
+  blockerFor: string;
+  // Story id the question blocks, e.g. "ONB-04" — "—" when none.
+  blocksStory: string;
+  // Server-stamped ISO timestamp.
+  askedAt: string;
+};
+
 export type ChatTokenEvent = { type: 'token'; content: string };
 export type ChatErrorEvent = { type: 'error'; message: string };
 // Emitted when the BA Agent transitions from one interview topic to the next
 // (e.g. ::topic=3::). The index is 1-based and matches the BA's prompt order.
-// The client uses this to advance the sidebar — see ChatStep.handleEvent.
-export type ChatTopicEvent = { type: 'topic'; index: number };
+// `summary` is the optional one-line detail the BA provides for the topic it
+// just completed (::topic=3::summary text::) — the sidebar shows it as the
+// completed step's detail. The client uses this to advance the sidebar —
+// see ChatStep.handleEvent.
+export type ChatTopicEvent = { type: 'topic'; index: number; summary?: string };
+// Emitted when the BA logs a blocking question the user deferred
+// (::oq-add:: sentinel). The server validates + caps the payload and stamps
+// askedAt — the sentinel JSON is never forwarded raw.
+export type ChatOqAddEvent = { type: 'oq_add'; question: OutstandingQuestion };
+// Emitted when the BA resolves a logged question (::oq-resolve:: sentinel).
+// Unknown ids are a no-op on the client.
+export type ChatOqResolveEvent = { type: 'oq_resolve'; id: string };
 export type ChatDoneEvent = {
   type: 'done';
   model: string;
@@ -166,7 +192,13 @@ export type ChatDoneEvent = {
   // survives reconnects and matches the persisted transcript on resume.
   currentTopic?: number | null;
 };
-export type ChatEvent = ChatTokenEvent | ChatErrorEvent | ChatTopicEvent | ChatDoneEvent;
+export type ChatEvent =
+  | ChatTokenEvent
+  | ChatErrorEvent
+  | ChatTopicEvent
+  | ChatOqAddEvent
+  | ChatOqResolveEvent
+  | ChatDoneEvent;
 
 export async function streamChat(
   sessionId: string,
@@ -255,6 +287,12 @@ export type ResumeResponse = {
     // back to currentIndex in that case.
     currentTopic: number | null;
   };
+  // Outstanding questions derived from the persisted ::oq-add:: /
+  // ::oq-resolve:: markers — the panel state the user left behind.
+  outstandingQuestions: OutstandingQuestion[];
+  // BA-provided one-line summaries for completed topics, keyed by topic
+  // index (marker index − 1). Seeds the sidebar details on resume.
+  topicSummaries: Record<number, string>;
 };
 
 export class ResumeUnavailableError extends Error {
