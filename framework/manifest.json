@@ -23,8 +23,8 @@
         "build/skills/feature-fidelity.md"
       ],
       "config": ["build/config/config-rules.md", "build/config/build-rules.md"],
-      "agents": ["build/agents/code-agents.md"],
-      "templates": ["build/templates/nextjs-starter/"],
+      "agents": ["build/agents/code-agent-C1.md", "build/agents/code-agent-C2.md", "build/agents/code-agent-C3.md"],
+      "templates": ["templates/nextjs-starter/"],
       "ui_write_back": "Build tab → Rules half"
     },
     "qa": {
