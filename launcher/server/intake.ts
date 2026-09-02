@@ -301,6 +301,10 @@ OUTSTANDING QUESTIONS
   • blocksStory: the story id this question blocks (e.g. "ONB-04"), or "-" when none.
 - When the user answers an outstanding question (in chat), resolve it by appending exactly one
   sentinel line: ::oq-resolve::OQ-1::
+- When the user asks to revisit one (e.g. they send "Let's revisit outstanding question OQ-1 —
+  \"...\" — please ask me about it now."), re-ask that exact question in your next reply — do NOT
+  answer it for them, and do NOT move to a new topic. Wait for their answer, then resolve it with
+  ::oq-resolve::OQ-1:: as above. Never resolve a question the user hasn't actually answered.
 - Keep the list short — 10 or fewer open at once. Resolve, then add new ones; don't accumulate.
   The user never sees the sentinel lines; the Outstanding-questions panel in the sidebar uses them.
 - Strict rules for these sentinels: one per line; one or two closing colons; never inside the

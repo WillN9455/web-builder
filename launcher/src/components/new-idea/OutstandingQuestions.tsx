@@ -3,9 +3,11 @@
 // Always visible in the chat side, below the tip card. Empty state = greyed
 // locked treatment (.oq-empty, "No outstanding questions."); populated =
 // .oq-list grouped under `Blocker for: <group>` headers. Each item is a real
-// button that drops the question into the chat draft (focus, never
-// auto-send) — a convenience, not an out-of-chat answer surface, so the
-// sitemap's "no per-item action" spirit still holds (plan §4 D1).
+// button that sends a re-ask request to the BA: click → the BA re-asks the
+// question in chat → the user answers → the BA resolves it with
+// ::oq-resolve::ID:: and the item leaves the panel. Owner-approved
+// interaction change over the mockup's original click-to-draft hint (plan
+// §4 D1); the sitemap's Screen 8 zone-3 line documents the new loop.
 //
 // Purely a renderer: the question list lives in ChatStep state, fed by the
 // server's oq_add / oq_resolve NDJSON events and seeded on resume.
@@ -14,9 +16,11 @@ import type { OutstandingQuestion } from '../../lib/api';
 
 type Props = {
   questions: OutstandingQuestion[];
-  // Drop the question into the chat draft. No-op while streaming.
+  // Send a re-ask request for this question (click → BA re-asks → user
+  // answers → item resolves). No-op while streaming or at the message cap.
   onPick: (question: OutstandingQuestion) => void;
-  // Disabled while the BA is streaming — the draft isn't editable then.
+  // Disabled while the BA is streaming or the conversation is at its cap —
+  // the chat can't accept the re-ask request then.
   disabled: boolean;
 };
 
@@ -64,7 +68,7 @@ export function OutstandingQuestions({ questions, onPick, disabled }: Props) {
         </div>
       ) : (
         <>
-          <div className="oq-hint">Click a question to drop it into the chat and answer.</div>
+          <div className="oq-hint">Click a question and the BA Agent will ask it again — answer in chat to clear it.</div>
           <div className="oq-list">
             {groups.map(([group, items], gi) => (
               // Index-keyed id: group labels are BA-supplied free text and may
