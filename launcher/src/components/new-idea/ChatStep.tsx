@@ -361,19 +361,18 @@ export function ChatStep({
 
   const taRef = useRef<HTMLTextAreaElement | null>(null);
 
-  // Outstanding-questions panel: drop the clicked question into the chat
-  // draft and focus the textarea — never auto-send (mockup #s8b hint, plan
-  // §4 D1). No-op while streaming, when the draft isn't editable.
+  // Outstanding-questions panel: clicking an item asks the BA to re-ask that
+  // question in chat — click → BA re-asks → user answers → BA resolves with
+  // ::oq-resolve::ID:: and the panel item is removed. This is an
+  // owner-approved interaction change over the mockup's original
+  // click-to-draft hint (#s8b, plan §4 D1); the panel hint copy and the
+  // sitemap's Screen 8 zone-3 line were updated to match. No-op while
+  // streaming or at the conversation limit (same guards as Send).
   function pickQuestion(q: OutstandingQuestion) {
-    if (streaming) return;
-    setDraft(q.question);
-    const ta = taRef.current;
-    if (ta) {
-      ta.focus();
-      // Move the caret to the end once the controlled textarea has
-      // re-rendered with the seeded draft.
-      requestAnimationFrame(() => ta.setSelectionRange(ta.value.length, ta.value.length));
-    }
+    if (streaming || atLimit) return;
+    void send(
+      `Let's revisit outstanding question ${q.id} — "${q.question}" — please ask me about it now.`,
+    );
   }
 
   function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
@@ -506,7 +505,7 @@ export function ChatStep({
           <OutstandingQuestions
             questions={outstandingQuestions}
             onPick={pickQuestion}
-            disabled={streaming}
+            disabled={streaming || atLimit}
           />
         }
       />
