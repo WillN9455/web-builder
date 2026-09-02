@@ -94,6 +94,28 @@ export async function deleteProject(id: number | string): Promise<DeleteProjectR
   return data as DeleteProjectResponse;
 }
 
+// ── /api/projects/:id (project shell) ──────────────────────────────────────
+
+// The server returns the full project row plus its stage rows; the shell
+// (ProjectDetailScreen) only consumes these fields today.
+export type ProjectDetailResponse = {
+  project: Pick<Project, 'id' | 'name' | 'slug' | 'current_stage' | 'folder_path'>;
+};
+
+export async function fetchProject(idOrSlug: string): Promise<ProjectDetailResponse> {
+  const res = await fetch(`/api/projects/${encodeURIComponent(idOrSlug)}`);
+  // Same offline-detection as fetchProjects — Vite's SPA fallback returns
+  // index.html (text/html) when the /api proxy target is unreachable.
+  const contentType = res.headers.get('content-type') ?? '';
+  if (!contentType.includes('application/json')) {
+    throw new Error(
+      'API server is not running. Start it with `npm run dev` (or `npm run dev:api` in another terminal).',
+    );
+  }
+  if (!res.ok) throw new Error(`Failed to load project: ${res.status}`);
+  return res.json() as Promise<ProjectDetailResponse>;
+}
+
 // ── /api/init (intake — folder pick + scaffold) ───────────────────────────
 
 export type InitResponse = {
