@@ -27,25 +27,46 @@ The two cases map to two different repos:
 
 ## Project Structure
 
+This file is a manifest `root_files` entry: it ships with the framework repo **and** is copied into every new project, so this section describes both layouts (see [`README.md`](./README.md) §Project Structure for the full trees).
+
+**This repository (the framework repo)** is a *rules library* plus the tooling that runs the pipeline — not itself a project:
+
+```
+web-builder/
+├── launcher/, idea-intake/  # Framework-repo only: the Buzz launcher app and intake chat (not exported)
+├── init-frame.js            # Single-entry bootstrap — scaffolds framework/ into a fresh project folder
+├── framework/               # The stage rule library (contract: framework/manifest.json)
+│   ├── design/ · build/ · qa/ · review/   # Stage rulebooks — skills/, config/, agents/ per stage
+│   ├── shared/              # Rule bodies consumed by 2+ stages (security, general best practices)
+│   └── templates/           # Starter scaffolds (nextjs-starter) + template-selection doc
+├── PRD/templates/           # PRD template + supporting docs (copied at export time)
+├── design-system/           # Design specs used by the Design stage; per-project outputs live in the project's own workspace
+├── workflows/               # Orchestration patterns for agent coordination (copied at export time)
+└── CLAUDE.md · AGENTS.md · FRAMEWORK-FLOW.md · README.md   # Framework docs (manifest root_files — copied at export time)
+```
+
+**An exported project repo** already has `framework/` copied in at export time. It has no `project-dir.txt`: the repository root is the workspace, and `PRD/`, `design-system/`, app code, and tests are written here:
+
 ```
 <project-repo>/
-├── CLAUDE.md              # This file — framework docs
-├── AGENTS.md              # Agent roles, coordination, and communication
-├── FRAMEWORK-FLOW.md      # File dependency table (upstream inputs → downstream consumers)
-├── idea.md                # Living idea document (source of truth)
+├── idea.md                # Living idea document (source of truth) — written at idea creation
+├── CLAUDE.md              # This file — framework docs (copied at export time)
+├── AGENTS.md              # Agent roles, coordination, and communication (copied at export time)
+├── FRAMEWORK-FLOW.md      # File dependency table (upstream inputs → downstream consumers) (copied at export time)
 ├── PRD/
-│   └── templates/         # Product Requirements Document templates (incl. supporting docs)
-├── framework/             # The stage rule library (copied at export time; manifest: framework/manifest.json)
+│   └── templates/         # Product Requirements Document templates (incl. supporting docs) (copied at export time)
+├── framework/             # The stage rule library — copied wholesale (manifest: framework/manifest.json)
 │   ├── design/            #   Design stage — skills (a11y, UI), config, agent brief
 │   ├── build/             #   Build stage — skills (coding, quality, fidelity), config, agent briefs
 │   ├── qa/                #   QA stage — testing guidelines + playwright helpers, config, agent brief
 │   ├── review/            #   Review stage — review bar, severity ladder, agent brief
 │   ├── shared/            #   Rule bodies consumed by 2+ stages (security, general best practices)
-│   └── templates/         #   Starter scaffolds (nextjs-starter) + template-selection doc
-├── design-system/         # Design stage OUTPUT — tokens/, components/, states/ for this project
-├── workflows/             # Orchestration patterns for agent coordination
-└── launcher/, idea-intake/  # Framework-repo only: the Buzz launcher app and intake chat (not exported)
+│   └── templates/         # Starter scaffolds (nextjs-starter) + template-selection doc
+├── workflows/             # Orchestration patterns for agent coordination (copied at export time)
+└── design-system/         # Design stage OUTPUT — tokens/, components/, states/ created per project during the design stage
 ```
+
+Everything under `framework/` is copied wholesale; the launcher and intake tooling stay behind (per [`framework/README.md`](./framework/README.md)). `design-system/` is **not** exported.
 
 ## Workflow Overview
 
