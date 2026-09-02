@@ -16,6 +16,9 @@ out/
 # …but the framework export unit has a legit folder named build/ (Build stage)
 !framework/build/
 
+# TypeScript incremental build artifacts
+*.tsbuildinfo
+
 # Test output
 testing/playwright/reports/
 test-results/
