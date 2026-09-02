@@ -89,6 +89,14 @@ type IntakeSession = {
   // instead of quadratically. Reset to 0 on a fresh session; seeded with the
   // deduped transcript length on resume.
   persistedCount: number;
+  // Where this interview's .idea-memory lives: inside the project folder or
+  // the launcher-side staging dir. Decided once — at the first successful
+  // memory write (or on /resume, from whichever home holds the transcript) —
+  // then sticky for the rest of the interview. A mid-interview session never
+  // switches homes: switching when the user creates the folder at the picked
+  // path would strand the early transcript in staging while /resume looks
+  // folder-first, silently dropping it (PR #17 review finding 2).
+  memoryHome: "folder" | "staging" | null;
   // Highest 1-based topic index the BA has transitioned to in this session.
   // Drives the interview progress cursor; on resume, the /resume endpoint
   // re-derives this from the persisted transcript so the cursor lines up
@@ -257,6 +265,7 @@ app.post('/api/init', async (req, res) => {
       earlyProjectSlug: null,
       history: [],
       persistedCount: 0,
+      memoryHome: null,
       currentTopic: null,
       outstandingQuestions: [],
     });
@@ -354,15 +363,38 @@ function writeMemoryFiles(
   }
 }
 
-// Resolve where this session's .idea-memory writes land: inside the project
-// folder when it exists (post-capture, or the user picked a pre-existing
-// folder), otherwise the launcher-side staging dir keyed by the early project
-// row. Null when there's nowhere to write yet (no folder, no row — e.g. the
-// very first reply when createEarlyProject failed); the transcript still
-// lives in session history and the next reply retries.
-function resolveMemoryDir(session: IntakeSession): string | null {
-  if (fs.existsSync(session.dir)) return path.join(session.dir, '.idea-memory');
-  if (session.earlyProjectId !== null) return stagedMemoryDir(session.earlyProjectId);
+// Resolve where this session's .idea-memory writes land. The home is decided
+// once per interview (null = undecided) and then sticky: a pre-existing
+// folder is the home for the whole interview; a deferred folder stages until
+// capture folds the staged files in (moveStagedMemory). Never re-decide from
+// disk mid-interview — if the user creates the folder at the picked path
+// while staging is the home, switching would strand the early transcript in
+// staging while /resume looks folder-first, silently dropping it (PR #17
+// review finding 2). Null when there's nowhere to write yet (no folder, no
+// row — e.g. the first reply when createEarlyProject failed); the transcript
+// still lives in session history and the next reply retries.
+function resolveMemoryDir(
+  session: IntakeSession,
+): { dir: string; home: "folder" | "staging" } | null {
+  if (session.memoryHome) {
+    if (session.memoryHome === "staging") {
+      if (session.earlyProjectId === null) {
+        // Unreachable in practice — staging is only ever decided with an
+        // early row present. Fail soft: no write this turn, retry next reply.
+        return null;
+      }
+      return { dir: stagedMemoryDir(session.earlyProjectId), home: "staging" };
+    }
+    return { dir: path.join(session.dir, ".idea-memory"), home: "folder" };
+  }
+  // Undecided — decide from disk: a folder that exists at the first write
+  // (pre-existing at pick) is the home; otherwise stage.
+  if (fs.existsSync(session.dir)) {
+    return { dir: path.join(session.dir, ".idea-memory"), home: "folder" };
+  }
+  if (session.earlyProjectId !== null) {
+    return { dir: stagedMemoryDir(session.earlyProjectId), home: "staging" };
+  }
   return null;
 }
 
@@ -838,9 +870,13 @@ app.post('/api/chat', async (req, res) => {
   // them so /resume can re-derive the sidebar cursor. writeMemoryFiles
   // handles the split — it appends only the messages added since the last
   // write (history.slice(persistedCount)) so the JSONL grows linearly.
-  const memDir = resolveMemoryDir(session);
-  const memResult = memDir ? writeMemoryFiles(memDir, session.dir, session.history, session.persistedCount) : null;
-  if (memResult) session.persistedCount = session.history.length;
+  const mem = resolveMemoryDir(session);
+  const memResult = mem ? writeMemoryFiles(mem.dir, session.dir, session.history, session.persistedCount) : null;
+  if (mem && memResult) {
+    session.persistedCount = session.history.length;
+    // Sticky from the first successful write — see resolveMemoryDir.
+    session.memoryHome = mem.home;
+  }
 
   const doneEvent: DoneEvent = {
     type: 'done',
@@ -1053,6 +1089,19 @@ app.get('/api/projects/:id/resume', (req, res) => {
     return;
   }
 
+  // Transitional consolidation: a session started under the pre-sticky build
+  // may have split its transcript across both homes (staging holds the early
+  // part, the folder the tail) — folder-first lookup would reconstruct only
+  // the tail. When both hold a conversation.jsonl, fold the staged part into
+  // the folder chronologically (moveStagedMemory) before reading, so /resume
+  // reconstructs the whole conversation and capture later finds nothing to
+  // scramble.
+  const folderJsonl = path.join(row.folder_path, '.idea-memory', 'conversation.jsonl');
+  const stagedJsonl = path.join(stagedMemoryDir(row.id), 'conversation.jsonl');
+  if (fs.existsSync(folderJsonl) && fs.existsSync(stagedJsonl)) {
+    moveStagedMemory(row.id, row.folder_path);
+  }
+
   // Transcript lookup — project folder first (legacy sessions and any
   // post-capture replay), then the launcher-side staging dir used while the
   // folder was still deferred. /resume only serves Intake rows, so the
@@ -1133,6 +1182,10 @@ app.get('/api/projects/:id/resume', (req, res) => {
     // The JSONL now holds exactly `history` entries (compacted above if it
     // was bloated), so the next /api/chat append-delta starts from here.
     persistedCount: history.length,
+    // Sticky memory home for the resumed session: continue in whichever home
+    // held the transcript. (After the consolidation above, a split-home
+    // session is unified into the folder.)
+    memoryHome: memDir === memDirCandidates[1] ? 'staging' : 'folder',
     currentTopic: null, // populated below from the transcript
     outstandingQuestions,
   });

@@ -278,12 +278,17 @@ export function stagedMemoryDir(projectId: number): string {
 
 /**
  * Move a session's staged .idea-memory into the now-scaffolded project
- * folder. If the folder already has a conversation.jsonl (the user created
- * the folder mid-interview and memory started landing there), the staged
- * entries are appended after it — dedupeMessages on resume recovers the
- * overlap, so order-of-merge doesn't need to be clever. Best-effort: any
- * failure logs and leaves the staging dir in place rather than breaking
- * capture.
+ * folder. Under the sticky memory-home design a mid-interview session lives
+ * entirely in one home, so this normally takes the rename branch. The merge
+ * branch (the folder already holds a conversation.jsonl) is a transitional
+ * fallback for sessions started before the sticky home fix, which switched
+ * homes when the user created the folder mid-interview: it merges
+ * chronologically — staged entries are the EARLIER part of the conversation,
+ * so the correct order is staged ++ live — instead of appending staged after
+ * the live tail. transcript.md: the folder's mirror is kept (the staged one
+ * is discarded; the jsonl is the source of truth, the transcript is a
+ * best-effort convenience mirror). Best-effort: any failure logs and leaves
+ * the staging dir in place rather than breaking capture.
  */
 export function moveStagedMemory(
   projectId: number,
@@ -298,16 +303,23 @@ export function moveStagedMemory(
     fs.mkdirSync(targetDir, { recursive: true });
     const targetJsonl = path.join(targetDir, "conversation.jsonl");
     if (fs.existsSync(targetJsonl)) {
-      // Append staged entries (skip the staged header line) after the live ones.
-      const lines = fs
-        .readFileSync(stagedJsonl, "utf-8")
-        .split("\n")
-        .filter((l) => l.trim() && !l.startsWith('{"kind":"header"'));
-      if (lines.length > 0) {
-        fs.appendFileSync(targetJsonl, lines.join("\n") + "\n", "utf-8");
-      }
-      // transcript.md: the live one is the fuller mirror (it was rewritten in
-      // full after the folder appeared) — keep it.
+      // Chronological merge: read both files, keep only their message lines,
+      // rewrite the folder jsonl as header + staged ++ live via a same-dir
+      // temp file so the swap is atomic.
+      const isHeaderLine = (l: string) => l.includes('"kind":"header"');
+      const msgLines = (file: string) =>
+        fs
+          .readFileSync(file, "utf-8")
+          .split("\n")
+          .filter((l) => l.trim() && !isHeaderLine(l));
+      const merged = msgLines(stagedJsonl).concat(msgLines(targetJsonl));
+      const header =
+        '{"kind":"header","ts":"' + new Date().toISOString() + '","messageCount":' + merged.length + "}";
+      const tmp = targetJsonl + ".merge-tmp";
+      fs.writeFileSync(tmp, [header, ...merged].join("\n") + "\n", "utf-8");
+      fs.renameSync(tmp, targetJsonl);
+      // transcript.md: the folder's mirror is kept (partial either way in
+      // this transitional case) — the jsonl is the source of truth.
     } else {
       fs.renameSync(staged, targetDir);
     }

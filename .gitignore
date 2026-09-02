@@ -40,8 +40,11 @@ npm-debug.log*
 design-system/*/tokens/tokens.css
 launcher/.vite/deps
 
-# Machine-local workspace pointer (written by idea-intake)
+# Machine-local launcher state (written by idea-intake)
+# .idea-sessions/ holds staged mid-interview transcripts — the user's raw
+# business ideas — so it must never reach GitHub.
 project-dir.txt
+.idea-sessions/
 
 # Codespaces setup reference (contains provider secrets — never commit)
 .codespace-secrets.txt
