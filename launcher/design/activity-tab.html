@@ -1,0 +1,624 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Idea Hub — Activity tab (v5.2)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ─── Design tokens (mirror qa-tab.html / build-tab.html / design-tab.html / agents-tab.html) ─ */
+  :root {
+    --ground-a: #d9d5ec;
+    --ground-b: #c3cde8;
+    --panel:    rgba(255, 255, 255, 0.72);
+    --panel-stroke: rgba(255, 255, 255, 0.6);
+    --ink:      #2b2547;
+    --ink-2:    #8b87a5;
+    --ink-3:    #b6b2cc;
+    --shadow:   0 30px 60px -30px rgba(50, 42, 92, 0.25), 0 8px 24px -10px rgba(50, 42, 92, 0.12);
+
+    --navy:     #322a5c;
+    --navy-2:   #4a4080;
+
+    --peach:    #fbdcbe;
+    --sky:      #cfe0f4;
+    --lavender: #e6e1f7;
+    --mint:     #d7efe4;
+    --butter:   #f7edc6;
+    --blush:    #fadcd9;
+    --sea:      #cde6ea;
+
+    --coral:    #ef7f57;
+    --blue:     #6fa9e0;
+    --purple:   #9b7fde;
+    --green:    #5fbf95;
+    --amber:    #e8b94a;
+    --rose:     #d97a8e;
+
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+
+    --r-sm: 10px;
+    --r-md: 16px;
+    --r-lg: 20px;
+    --r-xl: 24px;
+    --r-2xl: 28px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { font-family: var(--font-sans); color: var(--ink); -webkit-font-smoothing: antialiased; }
+  body {
+    min-height: 100vh;
+    background:
+      radial-gradient(120% 80% at 10% 0%, #e3dff2 0%, transparent 60%),
+      linear-gradient(135deg, var(--ground-a) 0%, var(--ground-b) 100%);
+    padding: 40px 32px 80px;
+  }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; cursor: pointer; border: 0; background: none; color: inherit; }
+
+  /* ─── Document chrome ─────────────────────────────────────────────────── */
+  .doc { max-width: 1440px; margin: 0 auto 64px; }
+  .doc-header { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 28px; color: var(--ink); }
+  .doc-title { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; }
+  .doc-sub { color: var(--ink-2); font-size: 14px; max-width: 720px; line-height: 1.55; margin-top: 6px; }
+  .doc-sub a { color: var(--ink); font-weight: 600; text-decoration: underline; }
+  .doc-meta { font-family: var(--font-mono); font-size: 12px; color: var(--ink-2); white-space: nowrap; }
+
+  .toc { display: flex; flex-direction: column; gap: 4px; margin: -8px 0 24px; font-size: 12px; color: var(--ink-2); }
+  .toc a { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 8px; width: fit-content; }
+  .toc a:hover { background: rgba(255,255,255,0.6); color: var(--ink); }
+  .toc a b { color: var(--ink); margin-right: 6px; }
+
+  /* ─── Section frame ───────────────────────────────────────────────────── */
+  .screen { background: var(--panel); border: 1px solid var(--panel-stroke); border-radius: var(--r-xl); margin-bottom: 64px; overflow: hidden; backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); }
+  .screen-label { display: flex; align-items: center; gap: 12px; padding: 16px 22px; border-bottom: 1px solid rgba(50,42,92,0.06); font-size: 13px; }
+  .screen-label .num { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 6px; background: var(--navy); color: #fff; font-size: 12px; font-weight: 700; }
+  .screen-label .name { font-weight: 600; color: var(--ink); }
+  .screen-label .route { font-family: var(--font-mono); color: var(--ink-2); margin-left: auto; }
+  .screen-body { padding: 0; }
+
+  /* ─── App shell ───────────────────────────────────────────────────────── */
+  .app { display: grid; grid-template-columns: 248px 1fr; min-height: 1180px; }
+  .side { border-right: 1px solid rgba(50,42,92,0.08); background: rgba(255,255,255,0.4); padding: 18px 14px; display: flex; flex-direction: column; gap: 18px; }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 4px 6px 10px; }
+  .brand-mark { width: 28px; height: 28px; border-radius: 8px; background: var(--navy); color: #fff; display: grid; place-items: center; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; }
+  .brand-name { font-size: 14px; font-weight: 700; color: var(--ink); }
+  .menu-label { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-2); padding: 0 8px 6px; }
+  .nav { display: flex; flex-direction: column; gap: 1px; }
+  .nav a { display: flex; align-items: center; gap: 9px; padding: 7px 9px; border-radius: 8px; color: var(--ink); font-size: 13px; font-weight: 500; position: relative; }
+  .nav a:hover { background: rgba(255,255,255,0.6); }
+  .nav a.active { background: rgba(50,42,92,0.08); color: var(--ink); font-weight: 600; }
+  .nav a .count { margin-left: auto; font-size: 11px; color: var(--ink-2); background: rgba(50,42,92,0.08); border-radius: 6px; padding: 1px 6px; }
+  .nav a.active .count { background: var(--navy); color: #fff; }
+  .nav .ico { width: 16px; height: 16px; flex: none; }
+
+  .side-promo { margin-top: auto; background: var(--lavender); border-radius: 12px; padding: 12px 14px; font-size: 12px; line-height: 1.5; }
+  .side-promo h4 { font-size: 12px; font-weight: 700; margin-bottom: 4px; }
+  .side-promo p { color: var(--ink-2); }
+  .side-promo button { margin-top: 8px; color: var(--ink); font-weight: 600; text-decoration: underline; }
+  .side-foot { padding: 6px 8px 2px; font-size: 12px; }
+  .side-foot a { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); }
+  .side-foot a:hover { color: var(--ink); }
+
+  /* ─── Main + topbar + cards ──────────────────────────────────────────── */
+  .main { padding: 18px 26px 60px; }
+  .topbar { display: flex; align-items: center; gap: 10px; padding: 0 4px 14px; }
+  .search { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.7); border: 1px solid rgba(50,42,92,0.08); border-radius: 10px; padding: 7px 12px; width: 360px; }
+  .search input { border: 0; outline: 0; flex: 1; background: transparent; color: var(--ink); font: inherit; }
+  .search .ico { color: var(--ink-2); width: 14px; height: 14px; }
+
+  .card { background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: var(--r-lg); box-shadow: var(--shadow); }
+
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 999px; font-size: 13px; font-weight: 500; border: 1px solid transparent; transition: background 0.12s ease; }
+  .btn-primary { background: var(--navy); color: #fff; }
+  .btn-primary:hover { background: var(--navy-2); }
+  .btn-ghost { background: #fff; color: var(--ink); border: 1px solid rgba(50,42,92,0.1); }
+  .btn-ghost:hover { background: rgba(50,42,92,0.04); }
+  .btn-soft { background: rgba(255,255,255,0.6); color: var(--ink); border: 1px solid rgba(50,42,92,0.08); }
+  .btn-soft:hover { background: rgba(255,255,255,0.85); }
+  .btn-pill { padding: 6px 12px; font-size: 12px; }
+
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 500; background: var(--peach); color: var(--ink); }
+  .pill .dot { width: 6px; height: 6px; border-radius: 50%; }
+  .pill.todo     { background: var(--lavender); color: var(--ink); }
+  .pill.todo     .dot { background: var(--purple); }
+  .pill.inprog   { background: var(--sky);     color: var(--ink); }
+  .pill.inprog   .dot { background: var(--blue); }
+  .pill.review   { background: var(--butter);  color: var(--ink); }
+  .pill.review   .dot { background: var(--amber); }
+  .pill.done     { background: var(--mint);    color: var(--ink); }
+  .pill.done     .dot { background: var(--green); }
+  .pill.blocked  { background: var(--blush);   color: var(--ink); }
+  .pill.blocked  .dot { background: var(--rose); }
+
+  /* Project header */
+  .proj-head { display: flex; align-items: center; gap: 16px; padding: 22px; }
+  .proj-head .ico-lg { width: 56px; height: 56px; border-radius: 14px; display: grid; place-items: center; background: var(--peach); color: var(--ink); }
+  .proj-head h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
+  .proj-head .one { color: var(--ink-2); font-size: 13.5px; margin-top: 2px; }
+  .proj-head .path { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-2); margin-top: 6px; }
+  .proj-head .actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+  .stage-pt { font-size: 11.5px; color: var(--ink-2); font-family: var(--font-mono); }
+
+  /* 7-stage stepper */
+  .stepper { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0; align-items: center; }
+  .step { display: flex; align-items: center; gap: 8px; }
+  .step .num { width: 22px; height: 22px; border-radius: 50%; background: rgba(50,42,92,0.08); color: var(--ink-2); display: grid; place-items: center; font-size: 11px; font-weight: 700; }
+  .step .lbl { font-size: 12px; color: var(--ink-2); }
+  .step .bar { flex: 1; height: 2px; background: rgba(50,42,92,0.08); margin: 0 6px; }
+  .step.done .num { background: var(--green); color: #fff; }
+  .step.done .lbl { color: var(--ink); }
+  .step.done .bar { background: var(--green); }
+  .step.active .num { background: var(--navy); color: #fff; box-shadow: 0 0 0 4px rgba(50,42,92,0.12); }
+  .step.active .lbl { color: var(--ink); font-weight: 600; }
+
+  /* ─── Filter bar (3 axes: agent / stage / kind) ─────────────────────── */
+  .filters { display: flex; align-items: center; gap: 12px; padding: 14px 22px; border-bottom: 1px solid rgba(50,42,92,0.06); }
+  .filters .axis { display: flex; align-items: center; gap: 6px; }
+  .filters .axis .axis-lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-2); margin-right: 4px; }
+  .filters .axis button { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; font-size: 11.5px; border-radius: 999px; background: rgba(50,42,92,0.04); color: var(--ink-2); }
+  .filters .axis button.on { background: rgba(50,42,92,0.1); color: var(--ink); font-weight: 600; }
+  .filters .axis button .av-tiny { width: 14px; height: 14px; border-radius: 50%; display: grid; place-items: center; font-size: 8px; font-weight: 700; flex: none; }
+  /* tiny avatar palette mirrors agents-tab.html / sitemap spec */
+  .av-tiny.ba { background: var(--peach);    color: var(--ink); }
+  .av-tiny.da { background: var(--sky);      color: var(--ink); }
+  .av-tiny.db { background: var(--sea);      color: var(--ink); }
+  .av-tiny.c1 { background: var(--mint);     color: var(--ink); }
+  .av-tiny.c2 { background: var(--butter);   color: var(--ink); }
+  .av-tiny.c3 { background: var(--blush);    color: var(--ink); }
+  .av-tiny.qa { background: var(--lavender); color: var(--ink); }
+  .av-tiny.rv { background: var(--sea);      color: var(--ink); }
+  .av-tiny.or { background: var(--navy);     color: #fff; }
+  .filters .axis button.on .av-tiny { box-shadow: 0 0 0 2px #fff, 0 0 0 4px currentColor; }
+  .filters .right { margin-left: auto; display: flex; gap: 8px; align-items: center; font-size: 11.5px; color: var(--ink-2); }
+  .filters .right .chip-clear { font-size: 11.5px; color: var(--ink-2); text-decoration: underline; }
+  .filters .right .chip-clear:hover { color: var(--ink); }
+  .filters .summary { font-family: var(--font-mono); font-size: 11px; color: var(--ink-2); }
+  .filters .summary b { color: var(--ink); font-weight: 600; }
+
+  /* ─── Timeline ───────────────────────────────────────────────────────── */
+  .timeline { padding: 8px 22px 22px; }
+  .day-head { display: flex; align-items: center; gap: 10px; margin: 18px 0 10px; }
+  .day-head:first-child { margin-top: 6px; }
+  .day-head .h { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-2); }
+  .day-head .line { flex: 1; height: 1px; background: rgba(50,42,92,0.08); }
+  .day-head .ct { font-size: 11px; color: var(--ink-2); font-family: var(--font-mono); }
+
+  .tl-row { display: grid; grid-template-columns: 36px 90px 1fr 110px 90px; gap: 12px; align-items: start; padding: 12px 0; border-top: 1px solid rgba(50,42,92,0.05); position: relative; }
+  .tl-row:first-of-type { border-top: 0; }
+
+  /* Connector rail — vertical line through column 1 */
+  .tl-rail { position: relative; }
+  .tl-rail::before { content: ""; position: absolute; top: -14px; bottom: -14px; left: 17px; width: 2px; background: rgba(50,42,92,0.06); }
+  .tl-row:first-of-type .tl-rail::before { top: 12px; }
+  .tl-rail .node { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; color: var(--ink); position: relative; z-index: 1; }
+  /* Role-tinted avatars (sitemap spec: BA peach, Design sky, Code mint, Review butter, QA lavender, Orchestrator navy) */
+  .tl-rail .node.ba { background: var(--peach); }
+  .tl-rail .node.da { background: var(--sky); }
+  .tl-rail .node.db { background: var(--sea); }
+  .tl-rail .node.c1 { background: var(--mint); }
+  .tl-rail .node.c2 { background: var(--butter); }
+  .tl-rail .node.c3 { background: var(--blush); }
+  .tl-rail .node.qa { background: var(--lavender); }
+  .tl-rail .node.rv { background: var(--sea); }
+  .tl-rail .node.or { background: var(--navy); color: #fff; }
+
+  .tl-when { font-size: 11px; color: var(--ink-2); font-family: var(--font-mono); padding-top: 8px; }
+  .tl-when b { color: var(--ink); font-weight: 600; font-family: var(--font-sans); }
+
+  .tl-body { padding-top: 6px; }
+  .tl-body .who { font-size: 13px; font-weight: 600; }
+  .tl-body .who .role { color: var(--ink-2); font-weight: 400; margin-left: 4px; font-size: 11.5px; }
+  .tl-body .msg { font-size: 12.5px; color: var(--ink); margin-top: 2px; line-height: 1.5; }
+  .tl-body .msg code { font-family: var(--font-mono); font-size: 11.5px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px; color: var(--ink); }
+  .tl-body .msg .ref { color: var(--navy); font-weight: 600; }
+  .tl-body .meta { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 11px; color: var(--ink-2); }
+  .tl-body .meta .stage { font-family: var(--font-mono); }
+  .tl-body .meta .stage code { background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px; color: var(--ink); font-family: var(--font-mono); }
+  .tl-body .meta .link { color: var(--navy); font-weight: 600; }
+  .tl-body .evid { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+  .tl-body .evid .thumb { width: 64px; height: 40px; border-radius: 6px; border: 1px solid rgba(50,42,92,0.08); }
+  .tl-body .evid .thumb.ok  { background: linear-gradient(135deg, var(--mint) 0%, var(--sky) 100%); }
+  .tl-body .evid .thumb.fail { background: linear-gradient(135deg, var(--blush) 0%, var(--butter) 100%); position: relative; }
+  .tl-body .evid .thumb.fail::after { content: "✕"; position: absolute; inset: 0; display: grid; place-items: center; color: var(--rose); font-weight: 700; font-size: 13px; }
+  .tl-body .evid .evid-link { font-size: 11.5px; color: var(--navy); font-weight: 600; }
+
+  .tl-stage { padding-top: 8px; }
+  .tl-stage .pill { font-size: 10.5px; padding: 2px 7px; }
+
+  .tl-kind { padding-top: 8px; }
+  .tl-kind .kind-tag { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--ink-2); font-family: var(--font-mono); background: rgba(50,42,92,0.04); padding: 3px 8px; border-radius: 4px; }
+  .tl-kind .kind-tag .ico { width: 11px; height: 11px; }
+  .tl-kind .kind-tag.commit .ico { color: var(--purple); }
+  .tl-kind .kind-tag.review  .ico { color: var(--amber); }
+  .tl-kind .kind-tag.test    .ico { color: var(--green); }
+  .tl-kind .kind-tag.test.fail .ico { color: var(--rose); }
+  .tl-kind .kind-tag.design  .ico { color: var(--blue); }
+  .tl-kind .kind-tag.chat    .ico { color: var(--coral); }
+  .tl-kind .kind-tag.system  .ico { color: var(--ink-2); }
+  .tl-kind .kind-tag.gate    .ico { color: var(--green); }
+
+  /* Pinned row (orchestrator event) */
+  .tl-row.pinned { background: linear-gradient(90deg, rgba(50,42,92,0.04) 0%, transparent 100%); border-radius: 10px; padding: 12px 12px; margin: 4px -12px; }
+  .tl-row.pinned .tl-body .msg { font-weight: 500; }
+
+  /* Notes block */
+  .notes { margin: 0 22px 22px; background: rgba(50,42,92,0.02); border: 1px dashed rgba(50,42,92,0.15); border-radius: 12px; padding: 16px 18px; display: flex; align-items: center; gap: 14px; font-size: 12.5px; color: var(--ink-2); }
+  .notes b { color: var(--ink); font-weight: 600; }
+  .notes .right { margin-left: auto; }
+</style>
+</head>
+<body>
+<div class="doc">
+
+  <header class="doc-header">
+    <div>
+      <div class="doc-title">Idea Hub — Activity tab (v5.2)</div>
+      <div class="doc-sub">Full-width activity timeline. The Overview right-column feed, expanded. Filter axes = <b>agent / stage / kind</b> (confirmed 2026-08-27). Agent-coloured avatars: BA peach, Design sky/sea, Code mint/butter/blush, Reviewer sea, QA lavender, Orchestrator navy. Single-half monitor — no Rules tab; to change what the agents do, edit the stage tab rules. <b>Source of truth:</b> <a href="sitemap.md">sitemap.md § Activity</a>.</div>
+    </div>
+    <div class="doc-meta">v5.2 · launcher/design/activity-tab.html<br/>1 screen (Activity · 3-axis filter + 3-day timeline)</div>
+  </header>
+
+  <nav class="toc">
+    <a href="mockups.html"><b>←</b> All screens → mockups.html</a>
+    <a href="agents-tab.html"><b>AG</b> Agents tab mockup →</a>
+    <a href="artifacts-tab.html"><b>AR</b> Artifacts tab mockup →</a>
+    <a href="#sac"><b>AC</b> Activity tab (timeline + 3-axis filter)</a>
+  </nav>
+
+  <!-- ═════════════ AC · Activity tab ═════════════ -->
+  <section class="screen" id="sac">
+    <div class="screen-label">
+      <span class="num">AC</span>
+      <span class="name">Activity tab — full-width timeline with agent / stage / kind filters</span>
+      <span class="route">/projects/tenant-maintenance · Activity</span>
+    </div>
+    <div class="screen-body">
+      <div class="app">
+        <aside class="side">
+          <div class="brand"><div class="brand-mark">IH</div><div class="brand-name">Idea Hub</div></div>
+          <div>
+            <div class="menu-label">Menu</div>
+            <nav class="nav">
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12l9-9 9 9 M5 10v10h14V10"/></svg> Overview</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h11l3 3v13H5z M16 4v3h3 M8 11h8 M8 14h8 M8 17h5"/></svg> Project Background <span class="count">17</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3h7v7 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> Requirements <span class="count">14</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Sprint <span class="count">14</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z M4 9h16 M9 4v16"/></svg> Design</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Build <span class="count">14</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="9" r="3"/><path d="M3 19c0-3 2.7-5 6-5s6 2 6 5 M14 19c0-3 2.7-5 6-5"/></svg> Agents</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 12l2 2 4-4 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg> QA <span class="count">2</span></a>
+              <a href="#" class="active"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> Activity</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 8H3 M21 16H3 M5 4h14v16H5z"/></svg> Artifacts</a>
+            </nav>
+          </div>
+          <div class="side-promo">
+            <h4>Filter tips</h4>
+            <p>Stack filters to narrow down — e.g. <b>agent: Code 1 + stage: Build + kind: commit</b> shows C1's build commits. Saved filters are per-user.</p>
+            <button>View filter syntax →</button>
+          </div>
+          <div class="side-foot">
+            <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 3h6v6 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> ← All projects</a>
+          </div>
+        </aside>
+
+        <main class="main">
+          <div class="topbar">
+            <a href="#" style="font-size:13px; color: var(--ink-2);">← Projects</a>
+            <div class="search">
+              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+              <input placeholder="Search activity (agent, file, story, commit SHA)…" />
+            </div>
+            <button class="btn btn-soft btn-pill">Export</button>
+            <button class="btn btn-soft btn-pill">Subscribe →</button>
+            <button class="btn btn-primary btn-pill">Pin row</button>
+          </div>
+
+          <!-- Project header -->
+          <div class="card">
+            <div class="proj-head">
+              <div class="ico-lg tile-peach"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2b2547" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+              <div>
+                <h1>Tenant Maintenance Portal</h1>
+                <div class="one">Maintenance request app for property managers</div>
+                <div class="path">~/Code/tenant-maintenance · 3,418 events · 28 days</div>
+              </div>
+              <div class="actions">
+                <span class="pill inprog"><span class="dot"></span> Live</span>
+                <span class="stage-pt">Updated 4s ago</span>
+              </div>
+            </div>
+
+            <!-- 7-stage stepper (Build active) -->
+            <div class="stepper" style="padding: 0 22px 22px;">
+              <div class="step done"><div class="num"><b>1</b></div><div class="lbl">Intake</div><div class="bar"></div></div>
+              <div class="step done"><div class="num"><b>2</b></div><div class="lbl">Requirements</div><div class="bar"></div></div>
+              <div class="step done"><div class="num"><b>3</b></div><div class="lbl">Design</div><div class="bar"></div></div>
+              <div class="step active"><div class="num"><b>4</b></div><div class="lbl">Build</div><div class="bar"></div></div>
+              <div class="step"><div class="num"><b>5</b></div><div class="lbl">Review</div><div class="bar"></div></div>
+              <div class="step"><div class="num"><b>6</b></div><div class="lbl">QA</div><div class="bar"></div></div>
+              <div class="step"><div class="num"><b>7</b></div><div class="lbl">Deployed</div></div>
+            </div>
+          </div>
+
+          <!-- ══════ FILTER BAR (3 axes) ══════ -->
+          <div class="card" style="margin-top: 14px;">
+            <div class="filters">
+              <!-- Axis 1: Agent -->
+              <div class="axis">
+                <span class="axis-lbl">Agent</span>
+                <button class="on"><span class="av-tiny ba">BA</span> BA</button>
+                <button><span class="av-tiny da">DA</span> DA</button>
+                <button class="on"><span class="av-tiny db">DB</span> DB</button>
+                <button class="on"><span class="av-tiny c1">C1</span> C1</button>
+                <button><span class="av-tiny c2">C2</span> C2</button>
+                <button class="on"><span class="av-tiny c3">C3</span> C3</button>
+                <button><span class="av-tiny qa">QA</span> QA</button>
+                <button><span class="av-tiny rv">RV</span> RV</button>
+                <button class="on"><span class="av-tiny or">OR</span> OR</button>
+              </div>
+
+              <!-- Axis 2: Stage -->
+              <div class="axis">
+                <span class="axis-lbl">Stage</span>
+                <button>Intake</button>
+                <button>Requirements</button>
+                <button>Design</button>
+                <button class="on">Build</button>
+                <button>Review</button>
+                <button>QA</button>
+                <button>Deployed</button>
+              </div>
+
+              <!-- Axis 3: Kind -->
+              <div class="axis">
+                <span class="axis-lbl">Kind</span>
+                <button class="on">commit</button>
+                <button>review</button>
+                <button>test</button>
+                <button>design</button>
+                <button>chat</button>
+                <button class="on">system</button>
+                <button>gate</button>
+              </div>
+
+              <div class="right">
+                <span class="summary"><b>3 agents</b> · <b>Build</b> · <b>2 kinds</b> → <b>11 of 3,418 events</b></span>
+                <a href="#" class="chip-clear">Clear all</a>
+                <button class="btn btn-soft btn-pill">Save filter</button>
+              </div>
+            </div>
+
+            <!-- ══════ TIMELINE ══════ -->
+            <div class="timeline">
+              <!-- Day 1: Today -->
+              <div class="day-head">
+                <span class="h">Today</span>
+                <span class="line"></span>
+                <span class="ct">5 events</span>
+              </div>
+
+              <!-- 1. C1 commit (latest) -->
+              <div class="tl-row">
+                <div class="tl-rail"><div class="node c1">C1</div></div>
+                <div class="tl-when"><b>09:42</b><br/>4m ago</div>
+                <div class="tl-body">
+                  <div class="who">Code 1 <span class="role">Build · TM-19</span></div>
+                  <div class="msg">pushed <code>8f2a91</code> — Add status update API + idempotent <code>POST /api/requests/:id/status</code></div>
+                  <div class="meta">
+                    <span>story <code>TM-19</code></span>
+                    <span>PR <a class="link" href="#">#214</a> · 2 nits pending</span>
+                    <span>+147 −12</span>
+                  </div>
+                </div>
+                <div class="tl-stage"><span class="pill inprog"><span class="dot"></span> Build</span></div>
+                <div class="tl-kind"><span class="kind-tag commit"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><path d="M6 8v8 M6 6c0 8 12 0 12 12"/></svg> commit</span></div>
+              </div>
+
+              <!-- 2. RV review (pinned) -->
+              <div class="tl-row pinned">
+                <div class="tl-rail"><div class="node rv">RV</div></div>
+                <div class="tl-when"><b>09:38</b><br/>8m ago</div>
+                <div class="tl-body">
+                  <div class="who">Reviewer Agent <span class="role">Review · PR #214</span></div>
+                  <div class="msg">left 1 nit on <code>src/components/StatusPill.tsx</code> — focus ring invisible on low-contrast <code>.blocked</code> dot (WCAG 2.4.7). 1 unresolved.</div>
+                  <div class="meta">
+                    <span>story <code>TM-19</code></span>
+                    <span>PR <a class="link" href="#">#214</a> · 2/3 nits resolved</span>
+                  </div>
+                </div>
+                <div class="tl-stage"><span class="pill review"><span class="dot"></span> Review</span></div>
+                <div class="tl-kind"><span class="kind-tag review"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg> review</span></div>
+              </div>
+
+              <!-- 3. C1 commit (older) -->
+              <div class="tl-row">
+                <div class="tl-rail"><div class="node c1">C1</div></div>
+                <div class="tl-when"><b>09:28</b><br/>17m ago</div>
+                <div class="tl-body">
+                  <div class="who">Code 1 <span class="role">Build · TM-19</span></div>
+                  <div class="msg">pushed <code>5c1d04</code> — Status pill states (active / done / blocked)</div>
+                  <div class="meta">
+                    <span>story <code>TM-19</code></span>
+                    <span>PR <a class="link" href="#">#214</a></span>
+                    <span>+98 −0</span>
+                  </div>
+                </div>
+                <div class="tl-stage"><span class="pill inprog"><span class="dot"></span> Build</span></div>
+                <div class="tl-kind"><span class="kind-tag commit"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><path d="M6 8v8 M6 6c0 8 12 0 12 12"/></svg> commit</span></div>
+              </div>
+
+              <!-- 4. OR system event (assignment) -->
+              <div class="tl-row">
+                <div class="tl-rail"><div class="node or">OR</div></div>
+                <div class="tl-when"><b>08:30</b><br/>1h 12m ago</div>
+                <div class="tl-body">
+                  <div class="who">Orchestrator <span class="role">Build · assignment</span></div>
+                  <div class="msg">assigned <b>TM-19</b> → <b>Code 1</b> (1h 12m ago) and <b>TM-17</b> → <b>Code 2</b> based on prior pass-rate. Code 3 put on hold pending Design A clarification on TM-21.</div>
+                  <div class="meta">
+                    <span>3 stories assigned</span>
+                    <span>memory: 14 prior · 12 first-pass pass</span>
+                  </div>
+                </div>
+                <div class="tl-stage"><span class="pill inprog"><span class="dot"></span> Build</span></div>
+                <div class="tl-kind"><span class="kind-tag system"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 6 6 1-4.5 4.5L18 20l-6-3-6 3 1.5-6.5L3 9l6-1z"/></svg> system</span></div>
+              </div>
+
+              <!-- 5. OR system event (DA reactivated) -->
+              <div class="tl-row">
+                <div class="tl-rail"><div class="node or">OR</div></div>
+                <div class="tl-when"><b>08:25</b><br/>1h 17m ago</div>
+                <div class="tl-body">
+                  <div class="who">Orchestrator <span class="role">Build · reactivation</span></div>
+                  <div class="msg">reactivated <b>Design B</b> for clarification on <b>TM-21</b> — status-pill dot colour in low-contrast mode blocks Code 3 (C3).</div>
+                  <div class="meta">
+                    <span>1 unblock chain started</span>
+                    <span>stage · Design → Build</span>
+                  </div>
+                </div>
+                <div class="tl-stage"><span class="pill inprog"><span class="dot"></span> Build</span></div>
+                <div class="tl-kind"><span class="kind-tag system"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 6 6 1-4.5 4.5L18 20l-6-3-6 3 1.5-6.5L3 9l6-1z"/></svg> system</span></div>
+              </div>
+
+              <!-- Day 2: Yesterday -->
+              <div class="day-head">
+                <span class="h">Yesterday</span>
+                <span class="line"></span>
+                <span class="ct">4 events</span>
+              </div>
+
+              <!-- 6. DB peer review (Design complete) -->
+              <div class="tl-row">
+                <div class="tl-rail"><div class="node db">DB</div></div>
+                <div class="tl-when"><b>18:14</b><br/>15h 28m ago</div>
+                <div class="tl-body">
+                  <div class="who">Design B <span class="role">Design · DSGN-14</span></div>
+                  <div class="msg">signed off on <b>DSGN-14</b> · Property list — hi-fi reviewed. 14/14 designs complete. 3 disagreements resolved (latest: status-pill dot/text darken debate).</div>
+                  <div class="meta">
+                    <span>story <code>DSGN-14</code></span>
+                    <span>a11y · 5/5 checks pass</span>
+                  </div>
+                </div>
+                <div class="tl-stage"><span class="pill done"><span class="dot"></span> Design</span></div>
+                <div class="tl-kind"><span class="kind-tag design"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z M4 9h16 M9 4v16"/></svg> design</span></div>
+              </div>
+
+              <!-- 7. C1 commit -->
+              <div class="tl-row">
+                <div class="tl-rail"><div class="node c1">C1</div></div>
+                <div class="tl-when"><b>16:02</b><br/>17h 40m ago</div>
+                <div class="tl-body">
+                  <div class="who">Code 1 <span class="role">Build · TM-19</span></div>
+                  <div class="msg">pushed <code>3b7e2f</code> — Request detail screen + tabs</div>
+                  <div class="meta">
+                    <span>story <code>TM-19</code></span>
+                    <span>PR <a class="link" href="#">#214</a></span>
+                    <span>+312 −0</span>
+                  </div>
+                </div>
+                <div class="tl-stage"><span class="pill inprog"><span class="dot"></span> Build</span></div>
+                <div class="tl-kind"><span class="kind-tag commit"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><path d="M6 8v8 M6 6c0 8 12 0 12 12"/></svg> commit</span></div>
+              </div>
+
+              <!-- 8. QA test pass -->
+              <div class="tl-row">
+                <div class="tl-rail"><div class="node qa">QA</div></div>
+                <div class="tl-when"><b>14:20</b><br/>19h 22m ago</div>
+                <div class="tl-body">
+                  <div class="who">QA Agent <span class="role">QA · TM-18</span></div>
+                  <div class="msg">passed 6/6 tests on <b>TM-18</b> · Auth flow — tenant sign in / sign out. 5 screenshots confirmed, deployed to QA env.</div>
+                  <div class="evid">
+                    <div class="thumb ok"></div>
+                    <div class="thumb ok"></div>
+                    <div class="thumb ok"></div>
+                    <a class="evid-link" href="#">qa-evidence/tm-18/run-187/</a>
+                  </div>
+                </div>
+                <div class="tl-stage"><span class="pill done"><span class="dot"></span> QA</span></div>
+                <div class="tl-kind"><span class="kind-tag test"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg> test</span></div>
+              </div>
+
+              <!-- 9. QA test fail (TM-17) -->
+              <div class="tl-row">
+                <div class="tl-rail"><div class="node qa">QA</div></div>
+                <div class="tl-when"><b>14:18</b><br/>19h 24m ago</div>
+                <div class="tl-body">
+                  <div class="who">QA Agent <span class="role">QA · TM-17</span></div>
+                  <div class="msg">failed 1/6 tests on <b>TM-17</b> · "Tab order skips 'Active' chip — focus jumps from 'All' to 'Inactive'" (WCAG 2.4.3). Sent to <b>Build · rework queue</b>.</div>
+                  <div class="evid">
+                    <div class="thumb fail"></div>
+                    <div class="thumb ok"></div>
+                    <a class="evid-link" href="#">qa-evidence/tm-17/run-187/</a>
+                  </div>
+                </div>
+                <div class="tl-stage"><span class="pill blocked"><span class="dot"></span> Build</span></div>
+                <div class="tl-kind"><span class="kind-tag test fail"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12 M18 6L6 18 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg> test</span></div>
+              </div>
+
+              <!-- Day 3: 2 days ago -->
+              <div class="day-head">
+                <span class="h">2 days ago</span>
+                <span class="line"></span>
+                <span class="ct">2 events</span>
+              </div>
+
+              <!-- 10. OR gate event (Sprint → Build) -->
+              <div class="tl-row pinned">
+                <div class="tl-rail"><div class="node or">OR</div></div>
+                <div class="tl-when"><b>11:05</b><br/>2d 02h ago</div>
+                <div class="tl-body">
+                  <div class="who">Orchestrator <span class="role">Sprint → Build · gate</span></div>
+                  <div class="msg">Sprint pushed <b>14 requirements as TM-1 … TM-14</b> to Build. Jira two-way sync confirmed (30s tick). Code Agents C1/C2/C3 picked up TM-15, TM-17, TM-19 (load-balanced by prior pass-rate).</div>
+                  <div class="meta">
+                    <span>14 stories → 3 agents</span>
+                    <span>Jira project <code>TM</code> · 14 tickets created</span>
+                  </div>
+                </div>
+                <div class="tl-stage"><span class="pill inprog"><span class="dot"></span> Build</span></div>
+                <div class="tl-kind"><span class="kind-tag gate"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14 M13 6l6 6-6 6"/></svg> gate</span></div>
+              </div>
+
+              <!-- 11. OR system event (DSGN-08 done) -->
+              <div class="tl-row">
+                <div class="tl-rail"><div class="node or">OR</div></div>
+                <div class="tl-when"><b>10:50</b><br/>2d 02h ago</div>
+                <div class="tl-body">
+                  <div class="who">Orchestrator <span class="role">Design → Sprint · gate</span></div>
+                  <div class="msg"><b>DSGN-08</b> marked "Design complete" by Design B after peer-review pass. Advanced to Sprint queue (Sprint will push to Build on next tick).</div>
+                  <div class="meta">
+                    <span>story <code>DSGN-08</code></span>
+                    <span>1 of 14 designs</span>
+                  </div>
+                </div>
+                <div class="tl-stage"><span class="pill inprog"><span class="dot"></span> Sprint</span></div>
+                <div class="tl-kind"><span class="kind-tag system"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 6 6 1-4.5 4.5L18 20l-6-3-6 3 1.5-6.5L3 9l6-1z"/></svg> system</span></div>
+              </div>
+            </div>
+
+            <!-- Footer pagination + notes -->
+            <div style="padding: 0 22px 22px; display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--ink-2);">
+              <span>Showing <b>11</b> of 3,418 events (filter: 3 agents · Build · commit + system)</span>
+              <button class="btn btn-soft btn-pill" style="margin-left: auto;">Load 20 more ↓</button>
+            </div>
+
+            <!-- Notes block -->
+            <div class="notes">
+              <div>
+                <b>Read-only feed.</b> Activity is a monitor — to change what the agents do, edit the rules on the stage tab. Pin rows to surface the ones you keep checking; saved filters are per-user and apply to the Overview right-column feed too.
+              </div>
+              <div class="right">
+                <button class="btn btn-soft btn-pill">Saved filters →</button>
+              </div>
+            </div>
+
+          </div>
+        </main>
+      </div>
+    </div>
+  </section>
+
+</div>
+</body></html>
