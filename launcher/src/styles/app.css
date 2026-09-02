@@ -852,6 +852,72 @@
 .tip-card b { font-weight: 700; }
 .tip-card i { font-style: italic; }
 
+/* Outstanding questions — locked (no questions yet) and active (questions exist, read-only). */
+/* Ported from mockups.html #s8/#s8b (lines 1637–1686); .oq-list scrolls past a sane height. */
+.chat-side h4.oq-head { margin-top: 22px; }
+.oq-hint {
+  font-size: 11px;
+  color: var(--ink-2);
+  margin: 0 0 10px;
+  line-height: 1.4;
+}
+.oq-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.oq-item {
+  background: #fff;
+  border: 1px solid rgba(50,42,92,0.08);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.oq-q { font-size: 13px; font-weight: 500; line-height: 1.4; }
+.oq-meta {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--ink-2);
+}
+.oq-group {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-2);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 12px 0 6px;
+}
+.oq-group:first-child { margin-top: 0; }
+
+/* Clickable outstanding-question button (drops question into the chat) */
+button.oq-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  transition: background 0.12s, border-color 0.12s, transform 0.12s;
+}
+button.oq-btn:hover { background: var(--lavender); border-color: rgba(50,42,92,0.18); }
+button.oq-btn:active { transform: translateY(1px); }
+button.oq-btn:focus-visible {
+  outline: 2px solid var(--navy);
+  outline-offset: 2px;
+}
+.oq-empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--ink-2);
+  padding: 10px 12px;
+  background: rgba(50,42,92,0.04);
+  border-radius: 10px;
+}
+.oq-empty svg { flex: none; opacity: 0.7; }
+
 /* ─── Captured step (screen 9) ────────────────────────────────────────── */
 
 .success-mark {

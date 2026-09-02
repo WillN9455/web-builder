@@ -253,7 +253,7 @@ The BA Agent interviews the user about their idea and writes `idea.md`. Two-colu
 ### Zones
 1. **Chat thread** (left) — BA ↔ user bubbles; streaming via `POST /api/chat` (NDJSON).
 2. **Interview progress** (right) — checklist of captured fields (Problem, Users & scale, MVP scope, Business rules, Brand & design, Tech stack…) with ✓/current/pending states.
-3. **Outstanding questions** (right, below Interview progress) — read-only list grouped by `Blocker-for:` (e.g. `Blocker-for: PRD-approval`, `Blocker-for: Design`). **Always visible** in the chat side panel. Uses the same greyed-out WCAG locked-tab treatment (see Global conventions § Locked tabs) while there are no outstanding questions; unlocks to the active style once questions exist. No per-item action button — the user is already in the chat.
+3. **Outstanding questions** (right, below Interview progress) — read-only list grouped by `Blocker-for:` (e.g. `Blocker-for: PRD-approval`, `Blocker-for: Design`). **Always visible** in the chat side panel. Uses the same greyed-out WCAG locked-tab treatment (see Global conventions § Locked tabs) while there are no outstanding questions; unlocks to the active style once questions exist. No inline answer surface — but each item is clickable and drops the question into the chat draft (mockup `#s8b`, which postdates the original no-per-item-action line here).
 4. **Header** — workspace name = folder path; "← Change folder" link back to step 1.
 
 ### State

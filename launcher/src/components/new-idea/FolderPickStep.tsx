@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { initProjectDir } from '../../lib/api';
 
 type Props = {
@@ -12,6 +12,20 @@ type Props = {
   onCancel: () => void;
 };
 
+// Screen 7 (#s7) — "Use last folder" shortcut. The last successfully
+// scaffolded path is remembered locally after a successful /api/init and
+// offered back on the next visit. Hidden on a fresh browser profile.
+const LAST_DIR_KEY = 'ih:last-project-dir';
+
+function readLastDir(): string | null {
+  try {
+    return localStorage.getItem(LAST_DIR_KEY);
+  } catch {
+    // Storage unavailable (privacy mode / denied) — the shortcut just hides.
+    return null;
+  }
+}
+
 // Screen 7 of the v5 plan — folder pick.
 //
 // Accepts an optional project name. If provided, it's used as the seed for the
@@ -23,6 +37,14 @@ export function FolderPickStep({ onInit, onCancel }: Props) {
   const [name, setName] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Last successfully used folder — read after mount (localStorage isn't
+  // available during SSR-style first renders and reading it in the
+  // initializer would hide the button on a fresh profile anyway).
+  const [lastDir, setLastDir] = useState<string | null>(null);
+  useEffect(() => {
+    const stored = readLastDir();
+    if (stored) setLastDir(stored);
+  }, []);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -31,6 +53,13 @@ export function FolderPickStep({ onInit, onCancel }: Props) {
     try {
       const trimmedName = name.trim();
       const res = await initProjectDir(path, trimmedName || null);
+      // Remember the scaffolded path for the "Use last folder" shortcut.
+      try {
+        localStorage.setItem(LAST_DIR_KEY, res.dir);
+      } catch {
+        // Non-fatal — the shortcut just won't be offered next time.
+      }
+      setLastDir(res.dir);
       onInit(res.sessionId, res.dir, trimmedName || null, res.maxMessages, res.warnThreshold);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not create folder');
@@ -99,6 +128,16 @@ export function FolderPickStep({ onInit, onCancel }: Props) {
             ← Cancel
           </button>
           <div className="right">
+            {lastDir && (
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={() => setPath(lastDir)}
+                title={`Prefill the last folder you used (${lastDir})`}
+              >
+                Use last folder
+              </button>
+            )}
             <button type="submit" className="btn btn-primary" disabled={submitting || !path.trim()}>
               {submitting ? 'Creating…' : 'Create project folder →'}
             </button>

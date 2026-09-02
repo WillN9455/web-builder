@@ -282,8 +282,29 @@ TOPIC TRANSITIONS
 - Strict rules for the marker:
     • Place it on its OWN line at the very end of the reply.
     • Use lowercase ::topic=N:: (no spaces around the \`=\`; one or two closing colons).
+    • Optional topic summary: you may append a one-line summary of the topic you JUST
+      completed, as a second segment on the SAME line as the marker:
+      ::topic=4::tenant submits, manager assigns, tech resolves::
+      The sidebar shows it as the completed topic's detail. Keep it under 140 characters, no colons.
+      The bare form stays valid when you have nothing to add.
     • Never put a marker inside the final \`\`\`idea\`\`\` fence.
-    • Never put more than one marker in a single reply.
+    • Never put more than one topic marker in a single reply.
+
+OUTSTANDING QUESTIONS
+- When the user defers a genuinely blocking question — one they can't answer right now but that
+  will block a requirement or design decision later — log it so it isn't lost. Append exactly one
+  sentinel line (its own line, no markdown inside the fields):
+    ::oq-add::{"id":"OQ-1","question":"How do tenants authenticate — phone, email, magic link?","blockerFor":"Requirements","blocksStory":"ONB-04"}::
+  • id: a stable id of your choosing (OQ-1, OQ-2, …). Reuse the SAME id when the question is
+    answered later. Never re-add an id that is already on the list.
+  • blockerFor: short group label ("Requirements", "Design", "Compliance", …).
+  • blocksStory: the story id this question blocks (e.g. "ONB-04"), or "-" when none.
+- When the user answers an outstanding question (in chat), resolve it by appending exactly one
+  sentinel line: ::oq-resolve::OQ-1::
+- Keep the list short — 10 or fewer open at once. Resolve, then add new ones; don't accumulate.
+  The user never sees the sentinel lines; the Outstanding-questions panel in the sidebar uses them.
+- Strict rules for these sentinels: one per line; one or two closing colons; never inside the
+  final \`\`\`idea\`\`\` fence; payload JSON with double quotes and no newlines.
 
 HANDLING "SKIP"
 - If the user says "skip" (alone or as part of a longer message), accept it gracefully: confirm
@@ -335,6 +356,199 @@ for technical preferences the user deferred; put everything you invented into "a
 minimalist tone"); never include the block in a normal interview reply — only when finalizing.`;
 
 export { SYSTEM_PROMPT };
+
+// ── BA sentinels ───────────────────────────────────────────────────────────
+//
+// The BA Agent signals side-channel state by appending sentinel lines to its
+// replies. The user never sees them — the server strips them from the token
+// stream and turns each one into a typed NDJSON event. Mirrors the established
+// ::topic=N:: conventions (SYSTEM_PROMPT §TOPIC TRANSITIONS):
+//
+//   ::topic=N::                       → topic event (sidebar advances)
+//   ::topic=N::summary::              → topic event + summary of the topic the
+//                                       BA just completed (sidebar detail)
+//   ::oq-add::{json}::                → oq_add event (outstanding-questions panel)
+//   ::oq-resolve::ID::                → oq_resolve event (panel item removed)
+
+// Topic sentinel. Group 1 = the 1-based topic index; group 2 (optional) = a
+// one-line summary of the topic the BA just completed. The marker's own
+// closing `::` doubles as the summary's opener, so the two branches are:
+//   extended  ::topic=N::Summary text::   — the summary stays on the marker's
+//                                          line (`[^\S\n]`, never `\s`, so a
+//                                          newline after the bare marker
+//                                          proves there is no summary) and
+//                                          must end its line (`(?=\s|$)`
+//                                          lookahead), which keeps this form
+//                                          from swallowing the next
+//                                          sentinel's opener
+//   bare      ::topic=N::
+// The summary may not contain `:` or newlines: those terminate it.
+export const TOPIC_SENTINEL_RE =
+  /::\s*topic\s*=\s*(\d+)\s*(?:::[^\S\n]*([^:\n]{1,140})[^\S\n]*::(?=\s|$)|::)/gi;
+
+// Outstanding-question sentinels. The oq-add payload is flat JSON with
+// double-quoted string fields only (see parseOqAddPayload); `::` never occurs
+// inside it, so a non-greedy match up to the first `}::` is safe. An invalid
+// payload never leaks: the sentinel is stripped either way.
+export const OQ_ADD_SENTINEL_RE = /::\s*oq-add\s*::\s*(\{[\s\S]*?\})\s*::/gi;
+export const OQ_RESOLVE_SENTINEL_RE = /::\s*oq-resolve\s*::\s*([A-Za-z0-9_-]{1,32})\s*::/gi;
+
+// Combined stream-matching form used by the chat handler (server/index.ts) so
+// a single carry-buffer pass catches every sentinel kind. Alternation order is
+// irrelevant here — the three forms cannot share a prefix.
+export const SENTINEL_RE = new RegExp(
+  TOPIC_SENTINEL_RE.source + '|' + OQ_ADD_SENTINEL_RE.source + '|' + OQ_RESOLVE_SENTINEL_RE.source,
+  'gi',
+);
+
+// Strip every sentinel from free text (human-readable transcript.md, resume
+// payloads). Built from the same precise forms as SENTINEL_RE — a greedy
+// `[^\n]*::` here would swallow all prose between two sentinels on one line.
+// A malformed near-miss (`::topic=2` with no closing `::`) survives as plain
+// text, which beats eating the rest of the line.
+export const SENTINEL_STRIP_RE = new RegExp(
+  TOPIC_SENTINEL_RE.source + '|' + OQ_ADD_SENTINEL_RE.source + '|' + OQ_RESOLVE_SENTINEL_RE.source,
+  'g',
+);
+
+// Shape caps for the oq-add payload — the sentinel is untrusted model output,
+// so every field is bounded before it is ever emitted to a client (security.md
+// §Server-Side Input Validation). askedAt is server-stamped, never BA-supplied.
+export const MAX_OQ_ID_CHARS = 32;
+export const MAX_OQ_QUESTION_CHARS = 300;
+export const MAX_OQ_BLOCKER_CHARS = 60;
+export const MAX_OQ_BLOCKS_STORY_CHARS = 32;
+// Hard cap on the persisted/returned outstanding-questions list. The BA prompt
+// asks for ≤10; anything past this during a very long session is dropped.
+export const MAX_OQ_LIST = 25;
+
+export type OutstandingQuestion = {
+  /** BA-chosen stable id, e.g. "OQ-3". */
+  id: string;
+  /** One line, no markdown. */
+  question: string;
+  /** Group label: "Requirements", "Design", … */
+  blockerFor: string;
+  /** Story id the question blocks, e.g. "ONB-04" — "—" when none. */
+  blocksStory: string;
+  /** Server-stamped ISO timestamp. */
+  askedAt: string;
+};
+
+export const OQ_ID_RE = /^[A-Za-z0-9_-]{1,32}$/;
+
+/** True when `value` is a single line (no \r / \n) after collapsing whitespace. */
+function isOneLine(value: string): boolean {
+  return !/[\r\n]/.test(value);
+}
+
+/**
+ * Parse + validate the BA's ::oq-add:: sentinel payload. Returns the
+ * validated fields (askedAt still open — the caller stamps it) or null when
+ * the payload is invalid. Invalid payloads are dropped, never forwarded raw
+ * and never persisted.
+ */
+export function parseOqAddPayload(payload: string): Omit<OutstandingQuestion, 'askedAt'> | null {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(payload);
+  } catch {
+    return null;
+  }
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const r = raw as Record<string, unknown>;
+
+  const str = (v: unknown): string | null =>
+    typeof v === 'string' ? v.replace(/\s+/g, ' ').trim() : null;
+
+  const id = str(r.id);
+  const question = str(r.question);
+  const blockerFor = str(r.blockerFor);
+  const blocksStory = str(r.blocksStory);
+  if (!id || !question || !blockerFor || !blocksStory) return null;
+  if (!OQ_ID_RE.test(id)) return null;
+  if (!isOneLine(question)) return null;
+
+  return {
+    id,
+    question: question.slice(0, MAX_OQ_QUESTION_CHARS),
+    blockerFor: blockerFor.slice(0, MAX_OQ_BLOCKER_CHARS),
+    blocksStory: blocksStory.slice(0, MAX_OQ_BLOCKS_STORY_CHARS),
+  };
+}
+
+/**
+ * Rebuild the outstanding-questions list from a persisted transcript. Scans
+ * assistant messages (oldest first) for ::oq-add:: / ::oq-resolve:: sentinels
+ * and replays them in order — the same shape /api/chat emits live, so a
+ * resumed session shows exactly the panel state the user left behind.
+ *
+ * `resolveTimestamps` maps an assistant message to a fallback askedAt for
+ * markers that predate askedAt stamping (older transcripts) — callers pass the
+ * per-message JSONL timestamps.
+ */
+export function deriveOutstandingQuestions(
+  messages: Array<{ role: string; content: string }>,
+  resolveTimestamps?: (index: number) => string | undefined,
+): OutstandingQuestion[] {
+  const list: OutstandingQuestion[] = [];
+  const seen = new Set<string>();
+  messages.forEach((m, i) => {
+    if (m.role !== 'assistant') return;
+    // Replay adds and resolves in positional order within the message —
+    // collecting all adds before all resolves would drop a same-id re-add
+    // that follows its resolve in the same reply.
+    const events: Array<{ at: number; kind: 'add' | 'resolve'; match: RegExpExecArray }> = [];
+    OQ_ADD_SENTINEL_RE.lastIndex = 0;
+    let add: RegExpExecArray | null;
+    while ((add = OQ_ADD_SENTINEL_RE.exec(m.content)) !== null) {
+      events.push({ at: add.index, kind: 'add', match: add });
+    }
+    OQ_RESOLVE_SENTINEL_RE.lastIndex = 0;
+    let res: RegExpExecArray | null;
+    while ((res = OQ_RESOLVE_SENTINEL_RE.exec(m.content)) !== null) {
+      events.push({ at: res.index, kind: 'resolve', match: res });
+    }
+    events.sort((a, b) => a.at - b.at);
+    for (const evt of events) {
+      if (evt.kind === 'add') {
+        const parsed = parseOqAddPayload(evt.match[1]);
+        if (!parsed || seen.has(parsed.id) || list.length >= MAX_OQ_LIST) continue;
+        seen.add(parsed.id);
+        list.push({
+          ...parsed,
+          askedAt: embeddedAskedAt(evt.match) ?? resolveTimestamps?.(i) ?? new Date().toISOString(),
+        });
+      } else {
+        const id = evt.match[1];
+        const at = list.findIndex((q) => q.id === id);
+        if (at >= 0) {
+          list.splice(at, 1);
+          // `seen` keeps the id forever: a resolved question never re-enters
+          // the panel (matches the live path's resolvedIds guard — a re-ask
+          // of a resolved id is treated as a model stutter, not intent).
+        }
+      }
+    }
+  });
+  return list;
+}
+
+// Extracts an embedded askedAt from a persisted (server-enriched) oq-add
+// sentinel. The chat handler rewrites the BA's raw marker into
+// ::oq-add::{"id":…,"askedAt":"…"}:: before it lands in the JSONL, so a
+// resumed panel shows the original ask time instead of the resume time.
+function embeddedAskedAt(match: RegExpExecArray): string | null {
+  try {
+    const enriched = JSON.parse(match[1]) as { askedAt?: unknown };
+    if (typeof enriched.askedAt === 'string' && !Number.isNaN(Date.parse(enriched.askedAt))) {
+      return enriched.askedAt;
+    }
+  } catch {
+    // fall through — caller falls back to the message timestamp
+  }
+  return null;
+}
 
 // ── idea.md writer ─────────────────────────────────────────────────────────
 

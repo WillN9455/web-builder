@@ -5,6 +5,7 @@
 //
 // State transitions are driven by ChatStep — this component is purely a
 // renderer. See ChatStep.handleSend and handleSkip for the source of truth.
+import type { ReactNode } from 'react';
 
 type StepState = 'done' | 'current' | 'pending' | 'skipped';
 
@@ -21,9 +22,13 @@ type Props = {
   // `data-step-index` attribute on the rail so devtools can verify the
   // cursor matches the live topic. Mirrors steps[i].state === 'current'.
   currentStepIndex: number;
+  // Content rendered below the tip card — the Outstanding-questions panel
+  // (Screen 8 zone 3). Kept as a slot so InterviewProgress stays a pure
+  // checklist renderer; ChatStep owns the panel's state.
+  outstanding?: ReactNode;
 };
 
-export function InterviewProgress({ steps, currentStepIndex }: Props) {
+export function InterviewProgress({ steps, currentStepIndex, outstanding }: Props) {
   return (
     <aside className="chat-side" aria-label="Interview progress" data-step-index={currentStepIndex}>
       <h4>Interview progress</h4>
@@ -45,6 +50,8 @@ export function InterviewProgress({ steps, currentStepIndex }: Props) {
         <b>Tip:</b> Say <i>“just fill it in”</i> at any time and the BA Agent will finalise the idea doc
         itself, flagging any assumptions it made.
       </div>
+
+      {outstanding}
     </aside>
   );
 }
