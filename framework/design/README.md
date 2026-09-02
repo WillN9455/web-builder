@@ -17,6 +17,6 @@ Contract for everything the Design stage's agents need at task pickup.
 - Design tokens, component specs, state docs (`design-system/` in the project)
 
 ## Legacy mapping
-- `skills/accessibility-guidelines.md` ← migrates from repo-root `skills/accessibility-guidelines.md`
-- `skills/ui-best-practices.md` ← migrates from repo-root `skills/ui-best-practices.md`
+- `skills/accessibility-guidelines.md` — a11y rule body (migrated from the former repo-root `skills/`)
+- `skills/ui-best-practices.md` — UI completeness checklist (migrated from the former repo-root `skills/`)
 - `config/design-rules.md` ← new; Design · Rules half previously had no single on-disk target

@@ -2,7 +2,7 @@
 
 Define the complete color palette before design or implementation begins.
 
-**Cross-references:** Inputs from [`idea.md`](../../idea.md) (§Overall — user brand colors); PRD Section 6 UX Design Principles (brand tone → color selection); `skills/accessibility-guidelines.md` §Color & Contrast (WCAG AA constraint on all semantic colors). Outputs consumed by: all component specs in `design-system/components/`; QA Agent contrast audit; [`code-builder/templates/nextjs-starter/app/globals.css`](../../code-builder/templates/nextjs-starter/app/globals.css) compilation.
+**Cross-references:** Inputs from [`idea.md`](../../idea.md) (§Overall — user brand colors); PRD Section 6 UX Design Principles (brand tone → color selection); `skills/accessibility-guidelines.md` §Color & Contrast (WCAG AA constraint on all semantic colors). Outputs consumed by: all component specs in `design-system/components/`; QA Agent contrast audit; [`code-builder/templates/nextjs-starter/app/globals.css`](../../framework/templates/nextjs-starter/app/globals.css) compilation.
 
 ## Token Structure
 
@@ -61,7 +61,7 @@ Categories: `brand`, `neutral`, `semantic`, `surface`
 
 ## Validation Checklist
 
-- [ ] Every brand color passes WCAG AA contrast (4.5:1 for text, 3:1 for large text/UI) — check against [`skills/accessibility-guidelines.md`](../../skills/accessibility-guidelines.md) §Color & Contrast rules
+- [ ] Every brand color passes WCAG AA contrast (4.5:1 for text, 3:1 for large text/UI) — check against [`skills/accessibility-guidelines.md`](../../framework/design/skills/accessibility-guidelines.md) §Color & Contrast rules
 - [ ] Semantic colors are distinguishable by non-color cues (icon, pattern) — required per `accessibility-guidelines.md` "Never use color alone" rule
 - [ ] Color palette supports both light and dark modes if required — check PRD §6 UX Design Principles for mode requirements
 - [ ] All tokens documented with CSS custom property names
@@ -78,4 +78,4 @@ Categories: `brand`, `neutral`, `semantic`, `surface`
 | `states/info.md` (if exists) | Semantic info colors (info-500/info-700) for informational banners |
 | [`components/button.md`](../components/button.md) | Button primary/secondary variants use brand-primary/brand-secondary palette |
 | [`components/form-input.md`](../components/form-input.md) | Form field borders, focus rings, validation colors use semantic and neutral palette |
-| [`skills/ui-best-practices.md`](../../skills/ui-best-practices.md) §2 Error States | Error color must pair with `role="alert"` for screen reader announcement |
+| [`skills/ui-best-practices.md`](../../framework/design/skills/ui-best-practices.md) §2 Error States | Error color must pair with `role="alert"` for screen reader announcement |

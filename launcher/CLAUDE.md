@@ -43,7 +43,7 @@ A project has a per-project sidebar with 10 tabs. **Project Background is the ga
 The **Sprint tab is the master board** (every story, every status); Design/Build/QA each show the slice of stories currently in that stage plus their editable rules.
 
 ## Stage + status model (global — applies to every project page)
-- **7 stages:** Intake · Requirements · Design · Build · Review · QA · Deployed.
+- **7 pipeline steps, 8 stage keys:** Intake · Requirements · Design · Build · Review · QA · Deployed. The Requirements step has two sub-states: `Requirements` (intake chat completed, idea captured, PRD not started) and `PRD` (requirements documents in progress).
 - **5 statuses:** active · blocked · on_hold · cancelled · done.
 - Canonical source: `design/sitemap.md` § Global conventions.
 

@@ -181,5 +181,5 @@ Full state semantics (consent opt-in/opt-out toggles, age-gate, dismiss behaviou
 | [`../../PRD/templates/prd-template.md`](../../PRD/templates/prd-template.md) §6c | Source of truth for which consent surfaces exist and their opt-in/opt-out model |
 | [`../../PRD/templates/prd-template.md`](../../PRD/templates/prd-template.md) §6d | Source of truth for all consent copy (locale-aware) and locale fallback |
 | [`../../PRD/templates/supporting/data-flow.md`](../../PRD/templates/supporting/data-flow.md) §2 | Lists the third-party analytics/marketing flows a banner controls — `surfaces[].id` must match these flow ids |
-| [`../../skills/accessibility-guidelines.md`](../../skills/accessibility-guidelines.md) §Keyboard Accessibility + §Screen Reader Support | Focus trap for modal/age-gate; `role="dialog"` + `aria-modal`; visible labels on toggles; 44px touch targets |
-| [`../../skills/ui-best-practices.md`](../../skills/ui-best-practices.md) §2 Error States | Save-failure error state; never expose raw save error to the user |
+| [`../../framework/design/skills/accessibility-guidelines.md`](../../framework/design/skills/accessibility-guidelines.md) §Keyboard Accessibility + §Screen Reader Support | Focus trap for modal/age-gate; `role="dialog"` + `aria-modal`; visible labels on toggles; 44px touch targets |
+| [`../../framework/design/skills/ui-best-practices.md`](../../framework/design/skills/ui-best-practices.md) §2 Error States | Save-failure error state; never expose raw save error to the user |

@@ -110,7 +110,7 @@ BA Agent asks clarifying questions, fills the PRD template, then Requirements Re
 Design Agents define tokens (colors, typography, spacing), create component specs with all interaction states, and peer-review each other's work. WCAG AA compliance is verified.
 
 ### Stage 3: Code Generation
-Tech stack confirmed via `code-builder/config-rules.md`. Scaffolded from templates. Three Code Agents build features in parallel on separate branches with unit tests.
+Tech stack confirmed via `framework/build/config/config-rules.md`. Scaffolded from templates. Three Code Agents build features in parallel on separate branches with unit tests.
 
 ### Stage 4: Review
 Three Dev Reviewers check code across dimensions (maintainability, security, accessibility). BA + Design agents verify output via Playwright runs.
@@ -125,10 +125,10 @@ All artifacts documented. Summary of what was built, tested, and known limitatio
 
 This framework is designed to evolve. When you discover gaps during projects:
 
-- **New skill needed?** Add to `skills/`
+- **New skill needed?** Add to the owning stage's `framework/<stage>/skills/` (or `framework/shared/skills/` when 2+ stages consume it)
 - **New component pattern?** Add to `design-system/components/`
 - **New interaction state?** Add to `design-system/states/`
-- **New tech stack option?** Update `code-builder/templates/` and `config-rules.md`
+- **New tech stack option?** Update `framework/templates/` and `framework/build/config/config-rules.md`
 - **PRD template gap?** Extend `PRD/templates/prd-template.md`
 
 ## License

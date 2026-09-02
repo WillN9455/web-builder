@@ -195,4 +195,4 @@ interface NavLink {
 | [`states/error.md`](../states/error.md) | Navigation error state: banner if nav data fails to load |
 | [`states/loading.md`](../states/loading.md) | Nav skeleton/shimmer during SSR or initial fetch |
 | [`states/interaction.md`](../states/interaction.md) required states table | Default/hover/focus/active/disabled for all nav items |
-| [`skills/accessibility-guidelines.md`](../../skills/accessibility-guidelines.md) §Keyboard Accessibility + §Screen Reader Support | Skip navigation link (first focusable), landmark `<nav>` with aria-label, focus trap in mobile menu, ESC closes, touch targets ≥44px |
+| [`skills/accessibility-guidelines.md`](../../framework/design/skills/accessibility-guidelines.md) §Keyboard Accessibility + §Screen Reader Support | Skip navigation link (first focusable), landmark `<nav>` with aria-label, focus trap in mobile menu, ESC closes, touch targets ≥44px |

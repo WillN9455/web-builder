@@ -14,10 +14,10 @@ which file, so a user edit lands on disk in exactly one place.
 | `revision` | number | Debate/lock revision of this file. `2` = locked consensus |
 | `status` | string | `draft` while under debate, `locked` once agreed |
 | `export_root` | path | The folder copied wholesale into a new project on idea creation. Everything under it exports; nothing outside it does |
-| `root_files` | list | Repo-root framework-meta files copied into a new project on idea creation (`CLAUDE.md`, `AGENTS.md`, `README.md`, `FRAMEWORK-FLOW.md`, `gaps.md`, `questions.md`, `.gitignore`). Lifecycle matches `outside_export_root` but the launcher copies them rather than just referencing them |
+| `root_files` | list | Repo-root framework-meta files copied into a new project on idea creation (`CLAUDE.md`, `AGENTS.md`, `README.md`, `FRAMEWORK-FLOW.md`, `.gitignore`). `gaps.md` and `questions.md` are framework-repo meta and are deliberately not exported |
 | `stages` | object | One entry per pipeline stage. Key = stage id |
 | `shared` | object | Cross-stage skills and who consumes them |
-| `outside_export_root` | object | Repo-root artifacts the launcher references at export time but does **not** copy (different lifecycle than the framework) |
+| `outside_export_root` | object | Repo-root artifacts (outside `framework/`) copied into the new project at export time — existing files are never overwritten |
 
 ## Per-stage keys (each entry in `stages`)
 
@@ -51,7 +51,7 @@ enforces; QA and Review audit).
 
 ## Outside the export root
 
-`prd/` (per-project lifecycle) and `workflows/` (framework-meta the launcher
-orchestrates from) stay at the repo root and are referenced via
-`outside_export_root`. They are inputs at export time, not part of the copied
-unit.
+`PRD/templates/` (per-project lifecycle) and `workflows/` (framework-meta the
+launcher orchestrates from) stay at the repo root and are copied into the
+project via `outside_export_root` at export time — they live outside
+`framework/` because their lifecycle differs, but they do ship.

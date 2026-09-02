@@ -111,7 +111,7 @@
 - `PRD/<project>/prd.md` §5 — personas → roles mapping
 - `PRD/<project>/data-model.md` — per-entity CRUD ownership (this matrix consolidates it)
 - `PRD/<project>/business-rules.md` BR-04x — eligibility conditions behind the gating
-- `skills/security.md` §IDOR / §RBAC — the implementation checks that verify this matrix
+- `framework/shared/skills/security.md` §IDOR / §RBAC — the implementation checks that verify this matrix
 - `PRD/<project>/tech-decision-brief.md` §1.12 — drives the SA's auth model choice
 
 ---

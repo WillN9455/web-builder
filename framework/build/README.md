@@ -23,7 +23,7 @@ Contract for everything the Code Agents (C1–C3) need at task pickup.
 - Feature-branch code, PRs, `app/` scaffold in the project
 
 ## Legacy mapping
-- `skills/coding-guidelines.md`, `skills/code-quality.md`, `skills/feature-fidelity.md` ← migrate from repo-root `skills/`
-- `skills/security.md` ← binding; body migrates from repo-root `skills/security.md` + `skills/security-guidelines.md` into `shared/`
-- `config/config-rules.md` ← migrates from `code-builder/config-rules.md`
+- `skills/coding-guidelines.md`, `skills/code-quality.md`, `skills/feature-fidelity.md` — migrated from the former repo-root `skills/`
+- `skills/security.md` — thin binding; the consolidated body lives in `shared/skills/security.md`
+- `config/config-rules.md` — migrated from the former `code-builder/config-rules.md`
 - `config/build-rules.md` ← new; Build · Rules half previously had no single on-disk target

@@ -118,7 +118,7 @@
 - `PRD/<project>/data-model.md` — PII classification at rest (this file is in motion)
 - `PRD/<project>/nfr-catalog.md` SEC-001..008, DR-001..002 — the controls each boundary must meet
 - `PRD/<project>/rbac-matrix.md` — who can initiate each flow (authz)
-- `skills/security.md` — in-transit encryption, IDOR, secrets
+- `framework/shared/skills/security.md` — in-transit encryption, IDOR, secrets
 - `PRD/<project>/tech-decision-brief.md` §1.14 — SA places boundaries + PCI scope from this map; Part 2.3 architecture diagram reflects it
 
 ---

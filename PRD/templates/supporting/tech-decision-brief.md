@@ -3,7 +3,7 @@
 > The handoff contract from the **BA Agent** to the **Solution Architect**.
 > The BA fills the top half; the SA fills the bottom half. This file is
 > the single source of truth for the stack decision; it feeds
-> `code-builder/config-rules.md` and the per-feature tech specs.
+> `framework/build/config/config-rules.md` and the per-feature tech specs.
 
 **Project:** <Project Name>
 **BA completed:** <Date>
@@ -54,7 +54,7 @@
 
 ### 1.3 Stack-selection questionnaire
 
-> Mirrors the 5 questions in `code-builder/config-rules.md` §"User
+> Mirrors the 5 questions in `framework/build/config/config-rules.md` §"User
 > Questions Before Building". Each must have a definitive answer (or be
 > marked `defer-to-SA` with a reason).
 
@@ -66,7 +66,7 @@
 | 4 | Team familiarity with any framework? | <e.g., "React + TypeScript, 3 yrs; no Vue/Svelte experience"> | User interview |
 | 5 | Budget constraints? | <e.g., "<$500/mo at MVP; can scale to $2k/mo by 12 months"> | User interview |
 
-**Cross-references:** `code-builder/config-rules.md` §User Questions
+**Cross-references:** `framework/build/config/config-rules.md` §User Questions
 
 ---
 
@@ -199,7 +199,7 @@
 - **IDOR boundaries (own/group scoping):** <list the own-scoped resources the SA must design query scoping for>
 - **Role transitions:** <e.g., "coach losing Stripe → loses publish perms (BR-040)">
 
-**Cross-references:** `PRD/<project>/rbac-matrix.md` (full matrix + IDOR table); `prd.md` §9c summary; `business-rules.md` BR-04x; `skills/security.md` §RBAC / §IDOR
+**Cross-references:** `PRD/<project>/rbac-matrix.md` (full matrix + IDOR table); `prd.md` §9c summary; `business-rules.md` BR-04x; `framework/shared/skills/security.md` §RBAC / §IDOR
 
 ---
 
@@ -430,7 +430,7 @@ so we can swap vendors without rewriting the calling code. The
 **Orchestrator approval:** <name, date>
 
 **Once signed, this brief is the source of truth for:**
-- `code-builder/config-rules.md` — which template + library choices apply
+- `framework/build/config/config-rules.md` — which template + library choices apply
 - Design Agent specs — what API contracts to design around
 - Code Agent task briefs — what stack each feature builds in
 - QA Agent test plan — what tools/environments to test against

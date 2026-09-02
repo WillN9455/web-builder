@@ -190,7 +190,7 @@ For every phase below, fill the table or it fails §13 sign-off.
 
 - `PRD/<project>/risks.md` — every "one-way door" feature gets a risk row.
 - `PRD/<project>/nfr-catalog.md` Observability + Availability — rollback metrics depend on the observability stack.
-- `code-builder/config-rules.md` — the SA's flag mechanism choice (LaunchDarkly, Unleash, env vars, custom) lives there.
+- `framework/build/config/config-rules.md` — the SA's flag mechanism choice (LaunchDarkly, Unleash, env vars, custom) lives there.
 
 ---
 

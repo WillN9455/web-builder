@@ -88,5 +88,5 @@ border-radius: var(--ds-space-2);
 | [`states/error.md`](../states/error.md) | Danger variant error border/icon rules for destructive actions |
 | [`states/loading.md`](../states/loading.md) | Spinner overlay CSS on button during in-flight requests |
 | [`states/interaction.md`](../states/interaction.md) required states table | Every state the button must implement (default/hover/focus/active/disabled/error/loading) |
-| [`skills/accessibility-guidelines.md`](../../skills/accessibility-guidelines.md) §Interactive Elements Required States | Minimum touch target 44x44px, focus ring contrast, keyboard activation |
-| [`skills/ui-best-practices.md`](../../skills/ui-best-practices.md) §3 | Success feedback pattern for confirmation banners after button-triggered actions |
+| [`skills/accessibility-guidelines.md`](../../framework/design/skills/accessibility-guidelines.md) §Interactive Elements Required States | Minimum touch target 44x44px, focus ring contrast, keyboard activation |
+| [`skills/ui-best-practices.md`](../../framework/design/skills/ui-best-practices.md) §3 | Success feedback pattern for confirmation banners after button-triggered actions |

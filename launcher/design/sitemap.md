@@ -17,7 +17,7 @@ A project is always in exactly one stage. This value drives the 7-segment steppe
 | # | Stage key (DB) | Pill label | What happens | Owner |
 |---|---|---|---|---|
 | 1 | `Intake` | Intake | BA chat interview → `idea.md` | BA |
-| 2 | `Requirements` | Requirements | BA drafts 17 PRD files, SA reviews file-by-file; Requirements tab = signed-off BR/TR list | BA + SA |
+| 2 | `Requirements` / `PRD` | Requirements | Two sub-states: `Requirements` = intake chat completed, idea captured, PRD not started (the stepper still shows step 2); `PRD` = BA drafting the 17 PRD files, SA reviews file-by-file; Requirements tab = signed-off BR/TR list | BA + SA |
 | 3 | `Design` | Design | Design A+B: tokens, wireframes, all interaction states | Design A/B |
 | 4 | `Build` | Build | 3 Code Agents in parallel; Build tab = config/architecture/rework; Sprint tab = the board | Code 1/2/3 |
 | 5 | `Review` | Review | Dev reviewers + BA/Design verify code & design quality | Dev reviewers |
@@ -105,8 +105,8 @@ Projects-screen ⌘F (Screen 1) is a **different scope** — it filters the proj
 
 ### DB migration (deferred to implementation)
 
-- `project.current_stage` CHECK → `('Intake','Requirements','Design','Build','Review','QA','Deployed')`
-  - rename data: `PRD` → `Requirements`, `Shipped` → `Deployed`
+- `project.current_stage` CHECK → `('Intake','Requirements','PRD','Design','Build','Review','QA','Shipped')`
+  - implemented: `Requirements` is the intake-complete sub-state between `Intake` and `PRD` (the full `PRD`→`Requirements` / `Shipped`→`Deployed` rename remains deferred)
 - `project.status` CHECK → `('active','blocked','on_hold','cancelled','done')`
   - map old → new: `queued`→`active`, `active`→`active`, `review`→`active`, `blocked`→`blocked`, `done`→`done` (or `active` if stage ≠ Deployed), `shipped`→`done` (stage becomes `Deployed`)
 - `stage.stage_key` CHECK updated to the same 7 stage keys.
@@ -296,16 +296,16 @@ Confirm the idea was captured and hand off into the project. The project record 
 2. **Actions** — `View idea.md` + `Open project →`.
 
 ### State
-- On fence: create the project row (`current_stage: Intake`), write `idea.md`, append `activity`.
+- On fence: create the project row (`current_stage: Requirements` — intake chat complete), write `idea.md`, append `activity`. The early row created at `/api/init` stays `Intake`; `renameProject` advances it on the fence.
 
 ### Actions
-- `Open project →` → `/projects/:id` (stage = `Intake`, lands on Overview).
+- `Open project →` → `/projects/:id` (stage = `Requirements` — intake complete, lands on Overview).
 - `View idea.md` → **in-app markdown viewer**.
 
 ### Exit → `/projects/:id` · `/projects` (back)
 
 ### Decisions locked
-1. Project is created at `Intake` stage; the Overview focus tab is Project Background (next stage), but landing is still Overview.
+1. The early project row is created at `Intake`; on the final fence the row advances to `Requirements` (intake complete). The Overview focus tab is Project Background (next stage), but landing is still Overview.
 2. `View idea.md` = in-app markdown viewer.
 3. **Next stop is Project Background** (not the legacy "PRD" surface).
 

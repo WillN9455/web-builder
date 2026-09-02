@@ -80,8 +80,8 @@
 ### Rules governing this state
 | Rule source | Specific requirement |
 |-------------|---------------------|
-| [`skills/accessibility-guidelines.md`](../../skills/accessibility-guidelines.md) §Content & Layout | "Empty states show actionable messaging, not just 'no data'" — CTA must be present; heading hierarchy within empty state (h3 for title) |
-| [`skills/ui-best-practices.md`](../../skills/ui-best-practices.md) §2.5 Empty States | Never show a spinner in place of an empty state; include a CTA if user can take action; do not reuse the error component — separate markup and copy |
+| [`skills/accessibility-guidelines.md`](../../framework/design/skills/accessibility-guidelines.md) §Content & Layout | "Empty states show actionable messaging, not just 'no data'" — CTA must be present; heading hierarchy within empty state (h3 for title) |
+| [`skills/ui-best-practices.md`](../../framework/design/skills/ui-best-practices.md) §2.5 Empty States | Never show a spinner in place of an empty state; include a CTA if user can take action; do not reuse the error component — separate markup and copy |
 | [`../../PRD/templates/prd-template.md`](../../PRD/templates/prd-template.md) §6d Content, copy & localisation | Empty-state copy is **mandatory** (§6d "Empty-state copy" section) — title, description, and CTA text must be pulled from §6d, locale-aware, with the §6d locale-fallback rule applying. Do not invent copy. |
 | `design-system/components/README.md` Component Rules §3 | All components with data display (Card, Navigation list items) must define empty state per this spec |
 

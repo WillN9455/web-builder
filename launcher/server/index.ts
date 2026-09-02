@@ -139,7 +139,7 @@ function insertProjectFromIdea(idea: IdeaJson, folderPath: string): InsertProjec
           chats_count, tile_color, updated_relative)
        VALUES
          (@name, @slug, @one_liner, @category, @folder_path,
-          'Intake', 'active', 'medium', 0, 0,
+          'Requirements', 'active', 'medium', 0, 0,
           1, @tile_color, 'just now')`,
     )
     .run({
@@ -153,10 +153,11 @@ function insertProjectFromIdea(idea: IdeaJson, folderPath: string): InsertProjec
 
   const projectId = Number(info.lastInsertRowid);
 
-  // Stage row so the project shows up as "in Intake" on detail views.
+  // Stage row so the project shows up as "in Requirements (intake complete)"
+  // on detail views — the chat finished, the PRD has not started yet.
   db.prepare(
     `INSERT INTO stage (project_id, stage_key, status, started_at)
-     VALUES (?, 'Intake', 'active', datetime('now'))`,
+     VALUES (?, 'Requirements', 'active', datetime('now'))`,
   ).run(projectId);
 
   // Activity entry — BA Agent milestone.
@@ -168,7 +169,7 @@ function insertProjectFromIdea(idea: IdeaJson, folderPath: string): InsertProjec
   // Initial artifact — the idea.md that just landed.
   db.prepare(
     `INSERT INTO artifact (project_id, stage_key, label, path, kind)
-     VALUES (?, 'Intake', 'idea.md', 'idea.md', 'markdown')`,
+     VALUES (?, 'Requirements', 'idea.md', 'idea.md', 'markdown')`,
   ).run(projectId);
 
   return { id: projectId, slug };
@@ -411,6 +412,8 @@ function createEarlyProject(session: IntakeSession): { id: number; slug: string 
     });
   const projectId = Number(info.lastInsertRowid);
 
+  // Early row keeps `Intake` — the interview is still running. The row moves
+  // to `Requirements` when the final idea fence lands (renameProject below).
   db.prepare(
     `INSERT INTO stage (project_id, stage_key, status, started_at)
      VALUES (?, 'Intake', 'active', datetime('now'))`,
@@ -428,13 +431,31 @@ function createEarlyProject(session: IntakeSession): { id: number; slug: string 
 
 // Rename an existing project row + refresh its slug/updated_at.
 // Called when the BA emits the final idea fence and we have a real name.
+// Also advances the stage: the intake chat is complete, so the project moves
+// Intake → Requirements (the "chat completed, PRD not started" sub-state).
 function renameProject(projectId: number, newName: string): void {
   const slug = uniqueSlug(slugify(newName));
   db.prepare(
     `UPDATE project
-       SET name = ?, slug = ?, updated_at = datetime('now')
+       SET name = ?, slug = ?, updated_at = datetime('now'),
+           current_stage = 'Requirements'
      WHERE id = ?`,
   ).run(newName, slug, projectId);
+
+  // Close the Intake stage row and open the Requirements one so stage
+  // history reflects the completed interview.
+  db.prepare(
+    `UPDATE stage
+       SET status = 'done', completed_at = datetime('now')
+     WHERE project_id = ? AND stage_key = 'Intake' AND status = 'active'`,
+  ).run(projectId);
+  db.prepare(
+    `INSERT INTO stage (project_id, stage_key, status, started_at)
+     SELECT ?, 'Requirements', 'active', datetime('now')
+     WHERE NOT EXISTS (
+       SELECT 1 FROM stage WHERE project_id = ? AND stage_key = 'Requirements'
+     )`,
+  ).run(projectId, projectId);
 }
 
 app.post('/api/chat', async (req, res) => {
@@ -780,9 +801,10 @@ app.get('/api/projects', (_req, res) => {
     .prepare(
       `SELECT * FROM project ORDER BY
          CASE current_stage WHEN 'Build' THEN 0 WHEN 'Design' THEN 1
-                             WHEN 'PRD'   THEN 2 WHEN 'Review' THEN 3
-                             WHEN 'QA'    THEN 4 WHEN 'Intake' THEN 5
-                             ELSE 6 END,
+                             WHEN 'PRD'  THEN 2 WHEN 'Requirements' THEN 3
+                             WHEN 'Review' THEN 4 WHEN 'QA' THEN 5
+                             WHEN 'Intake' THEN 6
+                             ELSE 7 END,
          updated_at DESC`,
     )
     .all() as ProjectRow[];

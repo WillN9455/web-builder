@@ -65,7 +65,7 @@
 
 ## 1.3 Stack-selection questionnaire
 
-> These 5 questions mirror `code-builder/config-rules.md` §User
+> These 5 questions mirror `framework/build/config/config-rules.md` §User
 > Questions. They're filled by the BA from the PRD and stakeholder
 > interviews so the SA does not have to re-ask the BA. The SA may
 > still need follow-ups — those go in §2.7.

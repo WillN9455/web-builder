@@ -114,8 +114,8 @@ User action → API call fails →
 ### Rules governing this state
 | Rule source | Specific requirement |
 |-------------|---------------------|
-| [`skills/accessibility-guidelines.md`](../../skills/accessibility-guidelines.md) §Screen Reader Support | `role="alert"` on error banners; `aria-invalid="true"` on form fields with errors; focus management to first error |
-| [`skills/ui-best-practices.md`](../../skills/ui-best-practices.md) §2 Error States | Move focus to error on form submission failure; never expose raw server errors; distinguish error states from empty states |
+| [`skills/accessibility-guidelines.md`](../../framework/design/skills/accessibility-guidelines.md) §Screen Reader Support | `role="alert"` on error banners; `aria-invalid="true"` on form fields with errors; focus management to first error |
+| [`skills/ui-best-practices.md`](../../framework/design/skills/ui-best-practices.md) §2 Error States | Move focus to error on form submission failure; never expose raw server errors; distinguish error states from empty states |
 | [`../../PRD/templates/prd-template.md`](../../PRD/templates/prd-template.md) §6d Content, copy & localisation | Error-message copy is **mandatory** (§6d "Error-message copy" section) — the [what went wrong] + [what to do] text must be pulled from §6d, locale-aware, with the §6d locale-fallback rule applying. Do not invent error copy. |
 | `skills/security.md` §10 No Raw Error Leakage | Never show raw stack traces, SQL errors, or internal paths to clients — sanitize in UI |
 

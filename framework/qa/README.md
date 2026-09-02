@@ -19,7 +19,6 @@ moved to its own stage — see `../review/`.)
 ## Outputs
 - Test results, verdicts, rework round-trips to Build
 
-## Legacy mapping
-- `skills/testing-guidelines.md` ← consolidates from repo-root `skills/` + `testing/playwright/README.md`
-- `config/test-rules.md` ← new; QA · Rules half previously had no single on-disk target
-- `playwright/` ← migrates from `testing/playwright/`
+## Provenance
+- `skills/testing-guidelines.md` — consolidates the QA-relevant rules from the shared security body, the build code-quality skill, and the former `testing/playwright/README.md` (test tree now lives at `framework/qa/features/<feature>/`); `skills/helpers/form.ts` carries the shared Playwright form helper
+- `config/test-rules.md` — QA · Rules half's on-disk target (framework config + rules in force)
