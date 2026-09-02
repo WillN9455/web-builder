@@ -135,5 +135,5 @@ When user input exceeds available space:
 | [`states/error.md`](../states/error.md) | Error state: error border, `role="alert"` on error message, focus management |
 | [`states/validation.md`](../states/validation.md) | Validation state: inline field-level errors with `aria-invalid` + `aria-describedby` |
 | [`states/interaction.md`](../states/interaction.md) required states table | Default/focus/hover/disabled/readonly/error — all required per WCAG |
-| [`skills/accessibility-guidelines.md`](../../skills/accessibility-guidelines.md) §Screen Reader Support | `aria-describedby`, `aria-invalid` linkage, label association, focus management |
-| [`skills/ui-best-practices.md`](../../skills/ui-best-practices.md) §7 Form Validation | Client + server validation rules; field-level error placement; `noValidate` attribute |
+| [`skills/accessibility-guidelines.md`](../../framework/design/skills/accessibility-guidelines.md) §Screen Reader Support | `aria-describedby`, `aria-invalid` linkage, label association, focus management |
+| [`skills/ui-best-practices.md`](../../framework/design/skills/ui-best-practices.md) §7 Form Validation | Client + server validation rules; field-level error placement; `noValidate` attribute |

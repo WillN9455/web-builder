@@ -105,8 +105,8 @@ current repository. Never write artifacts to both places.
 
 | File | Relationship |
 |------|-------------|
-| [`../../PRD/templates/prd-template.md`](../../PRD/templates/prd-template.md) §9 Supporting Documents + §13 Review Log | BA Agent uses MoSCoW from this file to prioritize features; PRD template is the artifact produced by general-best-practices rules |
-| [`../../PRD/templates/supporting/`](../../PRD/templates/supporting/) (nfr-catalog, traffic-profile, business-rules, rbac-matrix, cost-model, data-flow) | The BA Agent §rules above mandate these supporting artifacts; the Requirements Reviewer §rules reject incomplete versions of them |
-| [`../../AGENTS.md`](../../AGENTS.md) each agent row | Agent-specific rules in each skill section are implemented by all agents per these general best practices |
+| [`../../PRD/templates/prd-template.md`](../../../PRD/templates/prd-template.md) §9 Supporting Documents + §13 Review Log | BA Agent uses MoSCoW from this file to prioritize features; PRD template is the artifact produced by general-best-practices rules |
+| [`../../PRD/templates/supporting/`](../../../PRD/templates/supporting) (nfr-catalog, traffic-profile, business-rules, rbac-matrix, cost-model, data-flow) | The BA Agent §rules above mandate these supporting artifacts; the Requirements Reviewer §rules reject incomplete versions of them |
+| [`../../AGENTS.md`](../../../AGENTS.md) each agent row | Agent-specific rules in each skill section are implemented by all agents per these general best practices |
 | `workflows/README.md` Phase structure | Each workflow phase corresponds to a stage where these best practices must be enforced (e.g., "Gather" phase → BA Agent rules §1-#2; "Approve" phase → Artifacts Are Source of Truth) |
 | [`../../build/config/config-rules.md`](../../build/config/config-rules.md) Stack Selection Decision Tree | Tech stack choices from config-rules feed into which general best practices apply (e.g., React → hooks rule; Vue → composables rule) |

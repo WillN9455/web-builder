@@ -101,9 +101,9 @@ Defines the behaviour when a user reaches a feature, route, or resource they lac
 |-------------|---------------------|
 | [`../../PRD/templates/prd-template.md`](../../PRD/templates/prd-template.md) §9c | RBAC matrix is the source of truth for who can access what; every route/handler needs a row |
 | [`../../PRD/templates/prd-template.md`](../../PRD/templates/prd-template.md) §6d | Source of truth for forbidden copy (locale-aware) + locale fallback |
-| [`../../skills/security.md`](../../skills/security.md) §IDOR prevention | Never leak whether an IDOR-blocked resource exists; identical message for absent vs. forbidden |
-| [`../../skills/accessibility-guidelines.md`](../../skills/accessibility-guidelines.md) §Screen Reader Support | `role="alert"` on full-page/inline forbidden; `aria-disabled` + `aria-describedby` reason on disabled controls |
-| [`../../skills/ui-best-practices.md`](../../skills/ui-best-practices.md) §2 Error States | Forbidden is distinct from error — separate markup and copy; do not reuse the error-banner component |
+| [`../../framework/shared/skills/security.md`](../../framework/shared/skills/security.md) §IDOR prevention | Never leak whether an IDOR-blocked resource exists; identical message for absent vs. forbidden |
+| [`../../framework/design/skills/accessibility-guidelines.md`](../../framework/design/skills/accessibility-guidelines.md) §Screen Reader Support | `role="alert"` on full-page/inline forbidden; `aria-disabled` + `aria-describedby` reason on disabled controls |
+| [`../../framework/design/skills/ui-best-practices.md`](../../framework/design/skills/ui-best-practices.md) §2 Error States | Forbidden is distinct from error — separate markup and copy; do not reuse the error-banner component |
 
 ### Components that use this state
 | Component (from `components/`) | How forbidden appears | Recovery action |

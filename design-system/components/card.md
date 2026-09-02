@@ -96,4 +96,4 @@
 | [`states/empty.md`](../states/empty.md) | Empty state: illustration + "No data" text with actionable CTA |
 | [`states/loading.md`](../states/loading.md) | Skeleton placeholder bars matching card shape during content fetch |
 | [`states/interaction.md`](../states/interaction.md) required states table | Default and hover states for interactive cards |
-| [`skills/accessibility-guidelines.md`](../../skills/accessibility-guidelines.md) §Screen Reader Support | Proper heading hierarchy within card; aria labels on interactive cards |
+| [`skills/accessibility-guidelines.md`](../../framework/design/skills/accessibility-guidelines.md) §Screen Reader Support | Proper heading hierarchy within card; aria labels on interactive cards |

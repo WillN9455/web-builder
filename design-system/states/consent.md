@@ -97,8 +97,8 @@ The `data-state` attribute transitions: `undecided` → `saving` → `saved` (or
 ### Rules governing this state
 | Rule source | Specific requirement |
 |-------------|---------------------|
-| [`skills/accessibility-guidelines.md`](../../skills/accessibility-guidelines.md) §Keyboard Accessibility + §Screen Reader Support | `role="dialog"` + `aria-modal`; focus trap for modal/age-gate; `aria-labelledby`/`aria-describedby`; visible labels on toggles; 44px touch targets |
-| [`skills/ui-best-practices.md`](../../skills/ui-best-practices.md) §2 Error States | Save-failure error state; never expose raw save error |
+| [`skills/accessibility-guidelines.md`](../../framework/design/skills/accessibility-guidelines.md) §Keyboard Accessibility + §Screen Reader Support | `role="dialog"` + `aria-modal`; focus trap for modal/age-gate; `aria-labelledby`/`aria-describedby`; visible labels on toggles; 44px touch targets |
+| [`skills/ui-best-practices.md`](../../framework/design/skills/ui-best-practices.md) §2 Error States | Save-failure error state; never expose raw save error |
 | [`../../PRD/templates/prd-template.md`](../../PRD/templates/prd-template.md) §6c | Source of truth for which consent surfaces exist and their opt-in/opt-out model |
 | [`../../PRD/templates/prd-template.md`](../../PRD/templates/prd-template.md) §6d | Source of truth for all consent copy (locale-aware) + locale fallback + age-gate behaviour |
 | [`../../PRD/templates/supporting/data-flow.md`](../../PRD/templates/supporting/data-flow.md) §2 | Flow ids the consent record controls; scripts must not load without matching consent |

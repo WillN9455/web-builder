@@ -80,9 +80,9 @@ Different user contexts render different views:
 
 | File | Relationship |
 |------|-------------|
-| [`../design-system/tokens/color.md`](../design-system/tokens/color.md) §Validation Checklist | Token contrast decisions (WCAG AA 4.5:1 for text, 3:1 for large text/UI) are the foundation; this skill defines what to build with those tokens |
-| [`../design-system/states/interaction.md`](../design-system/states/interaction.md) required states table | Every interactive element state is defined here — this is the implementation spec that components must follow |
-| [`../design-system/states/error.md`](../design-system/states/error.md) accessibility rules | `role="alert"` for error banners; focus management to first invalid field |
-| [`../design-system/components/README.md`](../design-system/components/README.md) Component Rules §5 | Components must implement all states per this guideline — not just default/hover/focus but also disabled/error/loading |
-| [`../design-system/states/validation.md`](../design-system/states/validation.md) accessibility rules | `aria-describedby` and `aria-invalid` linkage on form fields; focus management |
+| [`../design-system/tokens/color.md`](../../../design-system/tokens/color.md) §Validation Checklist | Token contrast decisions (WCAG AA 4.5:1 for text, 3:1 for large text/UI) are the foundation; this skill defines what to build with those tokens |
+| [`../design-system/states/interaction.md`](../../../design-system/states/interaction.md) required states table | Every interactive element state is defined here — this is the implementation spec that components must follow |
+| [`../design-system/states/error.md`](../../../design-system/states/error.md) accessibility rules | `role="alert"` for error banners; focus management to first invalid field |
+| [`../design-system/components/README.md`](../../../design-system/components/README.md) Component Rules §5 | Components must implement all states per this guideline — not just default/hover/focus but also disabled/error/loading |
+| [`../design-system/states/validation.md`](../../../design-system/states/validation.md) accessibility rules | `aria-describedby` and `aria-invalid` linkage on form fields; focus management |
 | [`./ui-best-practices.md`](./ui-best-practices.md) §6 Accessibility | UI-specific accessibility rules (fieldset/legend for grouped inputs, heading hierarchy, icon-only aria-labels) — complementary to this skill's broader guidelines |

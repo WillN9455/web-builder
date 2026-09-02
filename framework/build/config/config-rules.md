@@ -55,8 +55,8 @@ How to choose tech stack, hosting, and tooling based on user input.
 
 | File | Relationship |
 |------|-------------|
-| [`PRD/templates/prd-template.md`](../PRD/templates/prd-template.md) §3 Timing/Priority + §5 Target Users | PRD sections that feed stack selection — constraints, budget, scale requirements from the PRD drive every decision in this file |
-| [`templates/README.md`](./templates/README.md) | Config-rules selects which template is used; templates are filled with token values from design-system |
+| [`PRD/templates/prd-template.md`](../../../PRD/templates/prd-template.md) §3 Timing/Priority + §5 Target Users | PRD sections that feed stack selection — constraints, budget, scale requirements from the PRD drive every decision in this file |
+| [`templates/README.md`](../../templates/README.md) | Config-rules selects which template is used; templates are filled with token values from design-system |
 | `design-system/tokens/color.md` §Brand Palette | Brand colors (primary/secondary) determine the "branding tier" which may influence hosting decisions (e.g., CDN for brand assets) |
 | [`skills/coding-guidelines.md`](../skills/coding-guidelines.md) | Coding conventions match the chosen framework — React hooks vs Vue composables vs Svelte stores |
 | `workflows/README.md` Workflow 3 Phase "Confirm Stack" | This workflow phase asks the user questions from this file's §User Questions section |

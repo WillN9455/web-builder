@@ -4,14 +4,15 @@
   "status": "locked",
   "description": "Export contract for the Idea Hub web builder. Everything in framework/ is copied into a new project on idea creation. The launcher reads this file — not the filesystem — to learn what to export, which agents read which files, and where the UI writes back. Key-by-key schema: MANIFEST.md.",
   "export_root": "framework/",
-  "root_files": ["CLAUDE.md", "AGENTS.md", "README.md", "FRAMEWORK-FLOW.md", "gaps.md", "questions.md", ".gitignore"],
+  "root_files": ["CLAUDE.md", "AGENTS.md", "README.md", "FRAMEWORK-FLOW.md", ".gitignore"],
   "stages": {
     "design": {
       "label": "Design",
       "folder": "design/",
       "skills": ["design/skills/accessibility-guidelines.md", "design/skills/ui-best-practices.md"],
       "config": ["design/config/design-rules.md"],
-      "agents": ["design/agents/design-agent.md"],
+      "agents": ["design/agents/design-agent.md", "design/agents/design-agent-b.md"],
+      "shared_inputs": ["shared/skills/general-best-practices.md"],
       "ui_write_back": "Design tab → Rules half",
       "downstream": "design tokens, component specs, and state docs are stage OUTPUTS and live in the project's own design-system workspace, not in the export unit"
     },
@@ -59,7 +60,7 @@
     }
   },
   "outside_export_root": {
-    "note": "Referenced at export time, not copied. Settled at rev 2: different export lifecycles.",
+    "note": "Lives outside framework/ but is copied into the project at export time (existing files are never overwritten) — same copy lifecycle as root_files, different source location.",
     "prd_templates": "PRD/templates/",
     "workflows": "workflows/"
   }

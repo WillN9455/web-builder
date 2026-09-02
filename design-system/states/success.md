@@ -98,8 +98,8 @@ Examples:
 ### Rules governing this state
 | Rule source | Specific requirement |
 |-------------|---------------------|
-| [`skills/accessibility-guidelines.md`](../../skills/accessibility-guidelines.md) §Screen Reader Support | Use `role="status"` (not `role="alert"`) — success is informational, not urgent; screen reader should announce "Success. [what was done]" |
-| [`skills/ui-best-practices.md`](../../skills/ui-best-practices.md) §3 Success Feedback | Use `role="status"` for in-page confirmation; show submitted value back to user; auto-dismiss after 3–5s unless message contains action link |
+| [`skills/accessibility-guidelines.md`](../../framework/design/skills/accessibility-guidelines.md) §Screen Reader Support | Use `role="status"` (not `role="alert"`) — success is informational, not urgent; screen reader should announce "Success. [what was done]" |
+| [`skills/ui-best-practices.md`](../../framework/design/skills/ui-best-practices.md) §3 Success Feedback | Use `role="status"` for in-page confirmation; show submitted value back to user; auto-dismiss after 3–5s unless message contains action link |
 | `features-fidelity.md` §During Implementation — Follow All Design States | Must implement success state explicitly as a code path — don't skip it because it's "unlikely" to fail |
 
 ### Components that use this state

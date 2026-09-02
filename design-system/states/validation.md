@@ -120,8 +120,8 @@ Bad examples:
 ### Rules governing this state
 | Rule source | Specific requirement |
 |-------------|---------------------|
-| [`skills/accessibility-guidelines.md`](../../skills/accessibility-guidelines.md) §Screen Reader Support | `aria-describedby` links error message to input; `aria-invalid="true"` on invalid fields; focus management to first error on submit |
-| [`skills/ui-best-practices.md`](../../skills/ui-best-practices.md) §7 Form Validation | Validate on submit (always) + blur (per field, after first interaction); show field-level errors adjacent to input; `noValidate` attribute on form; clear all errors button for 5+ errors |
+| [`skills/accessibility-guidelines.md`](../../framework/design/skills/accessibility-guidelines.md) §Screen Reader Support | `aria-describedby` links error message to input; `aria-invalid="true"` on invalid fields; focus management to first error on submit |
+| [`skills/ui-best-practices.md`](../../framework/design/skills/ui-best-practices.md) §7 Form Validation | Validate on submit (always) + blur (per field, after first interaction); show field-level errors adjacent to input; `noValidate` attribute on form; clear all errors button for 5+ errors |
 | `design-system/components/form-input.md` Required States table | Valid/error/validated/required-empty states must match this spec exactly |
 
 ### Components that use this state

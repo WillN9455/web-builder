@@ -20,5 +20,5 @@ moved to its own stage — see `../review/`.)
 - Test results, verdicts, rework round-trips to Build
 
 ## Provenance
-- `skills/testing-guidelines.md` — consolidates the QA-relevant rules from the shared security body, the build code-quality skill, and the former `testing/playwright/README.md`; `skills/helpers/form.ts` carries the shared Playwright form helper
+- `skills/testing-guidelines.md` — consolidates the QA-relevant rules from the shared security body, the build code-quality skill, and the former `testing/playwright/README.md` (test tree now lives at `framework/qa/features/<feature>/`); `skills/helpers/form.ts` carries the shared Playwright form helper
 - `config/test-rules.md` — QA · Rules half's on-disk target (framework config + rules in force)

@@ -108,8 +108,8 @@ For page-level loading (> 1s):
 ### Rules governing this state
 | Rule source | Specific requirement |
 |-------------|---------------------|
-| [`skills/accessibility-guidelines.md`](../../skills/accessibility-guidelines.md) §Screen Reader Support | Use `aria-busy="true"` on loading elements; never block interaction without cancel option |
-| [`skills/ui-best-practices.md`](../../skills/ui-best-practices.md) §1 Loading States | Disable interactive elements during in-flight requests; change button labels to "Saving…"/"Processing…" during loading |
+| [`skills/accessibility-guidelines.md`](../../framework/design/skills/accessibility-guidelines.md) §Screen Reader Support | Use `aria-busy="true"` on loading elements; never block interaction without cancel option |
+| [`skills/ui-best-practices.md`](../../framework/design/skills/ui-best-practices.md) §1 Loading States | Disable interactive elements during in-flight requests; change button labels to "Saving…"/"Processing…" during loading |
 | `skills/security.md` §9 No Hardcoded Secrets | Spinner/loading color tokens come from CSS custom properties, not hardcoded values |
 
 ### Components that use this state

@@ -69,8 +69,7 @@ Every stage folder has the same tri-fold: **`skills/`** (loaded on demand),
 
 ## Provenance
 
-Stage skill and config bodies are migrated (not stubs): `skills/*.md` and
-`code-builder/config-rules.md` from the former repo-root trees, QA test rules
+Stage skill and config bodies are migrated (not stubs): the former repo-root `skills/` and `code-builder/` rulebooks, QA test rules
 consolidated from the former `testing/playwright/README.md`, and the four
 per-stage Rules config files filled from the launcher design mockups
 (`launcher/design/*-tab.html`). Thin bindings remain the one exception:

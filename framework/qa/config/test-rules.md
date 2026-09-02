@@ -12,7 +12,7 @@ this file holds the configuration and policy.
 - Trace: `trace=on-first-retry` · full trace on flake investigation
 - Retries: 2 in CI · 0 locally
 - Base URL: the QA env URL after Build deploys (per `../config` — see build-rules.md §Environments)
-- Config lives at `testing/playwright.config.ts` in the project
+- Config lives at `framework/qa/playwright.config.ts` in the project (copied into the project workspace when the QA harness is scaffolded)
 
 ## Rules in force
 

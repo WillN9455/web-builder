@@ -114,9 +114,9 @@ Every clickable/selectable element must implement all states below:
 ### Rules governing this state
 | Rule source | Specific requirement |
 |-------------|---------------------|
-| [`skills/accessibility-guidelines.md`](../../skills/accessibility-guidelines.md) §Interactive Elements Required States | Every clickable/selectable element MUST define all states: default/hover/focus/active/disabled/error/loading — with exact screen reader announcements per the table |
-| [`skills/accessibility-guidelines.md`](../../skills/accessibility-guidelines.md) §Keyboard Accessibility | All interactive elements reachable via keyboard; focus ring ≥3:1 contrast against surrounding; skip navigation link as first tab stop |
-| [`skills/ui-best-practices.md`](../../skills/ui-best-practices.md) §6 Accessibility | All interactive elements must be Tab-reachable and operable by Enter/Space; use `<button>` not `<div onClick>`; fieldset/legend for grouped inputs; aria-describedby for field errors |
+| [`skills/accessibility-guidelines.md`](../../framework/design/skills/accessibility-guidelines.md) §Interactive Elements Required States | Every clickable/selectable element MUST define all states: default/hover/focus/active/disabled/error/loading — with exact screen reader announcements per the table |
+| [`skills/accessibility-guidelines.md`](../../framework/design/skills/accessibility-guidelines.md) §Keyboard Accessibility | All interactive elements reachable via keyboard; focus ring ≥3:1 contrast against surrounding; skip navigation link as first tab stop |
+| [`skills/ui-best-practices.md`](../../framework/design/skills/ui-best-practices.md) §6 Accessibility | All interactive elements must be Tab-reachable and operable by Enter/Space; use `<button>` not `<div onClick>`; fieldset/legend for grouped inputs; aria-describedby for field errors |
 
 ### Components that implement all required states
 | Component (from `components/`) | States table reference | Notes |

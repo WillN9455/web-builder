@@ -27,7 +27,7 @@ framework/qa/
         └── states.spec.ts /* Component state tests (error, loading, etc.) */
 ```
 
-Tests live in the **project's own** test tree — typically `testing/playwright/features/<feature>/`. The QA agent copies this layout into the project workspace when scaffolding the harness.
+Tests live in the **project's own** test tree — typically `framework/qa/features/<feature>/`. The QA agent copies this layout into the project workspace when scaffolding the harness.
 
 ---
 
@@ -231,7 +231,7 @@ The shared security body (`../../shared/skills/security.md`) is the rule source;
 
 | File | Relationship |
 |------|-------------|
-| [`../../PRD/templates/prd-template.md`](../../PRD/templates/prd-template.md) §8 User Stories | Every test traces to a specific user story (#N) — test name and file path include the PRD section reference |
+| [`../../PRD/templates/prd-template.md`](../../../PRD/templates/prd-template.md) §8 User Stories | Every test traces to a specific user story (#N) — test name and file path include the PRD section reference |
 | Project `design-system/states/` (all state docs) | Each state doc's Testing Requirements list becomes the playwright test checklist for that state |
 | Project `design-system/components/README.md` Component Index | Maps each user story to a component — determines which tests cover which feature |
 | [`../../design/skills/accessibility-guidelines.md`](../../design/skills/accessibility-guidelines.md) §Testing Requirements | WCAG AA testing rules (keyboard-only, screen reader, contrast ratios) implemented as playwright tests |

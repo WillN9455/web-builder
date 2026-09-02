@@ -198,7 +198,7 @@ useEffect(() => {
 
 | File | Relationship |
 |------|-------------|
-| [`../../PRD/templates/prd-template.md`](../../PRD/templates/prd-template.md) §12 Assumptions | Avoid over-engineering per PRD scope — if PRD says "simple search," don't add full-text indexing; feature-fidelity.md cross-checks design against actual requirements |
+| [`../../PRD/templates/prd-template.md`](../../../PRD/templates/prd-template.md) §12 Assumptions | Avoid over-engineering per PRD scope — if PRD says "simple search," don't add full-text indexing; feature-fidelity.md cross-checks design against actual requirements |
 | [`../../../design-system/tokens/color.md`](../../../design-system/tokens/color.md) §Validation Checklist | Semantic color tokens must use CSS custom properties, not hardcoded hex values — aligns with token-driven approach in this skill's "search before creating" rule |
 | [`../../templates/nextjs-starter/`](../../templates/nextjs-starter/) | Templates follow file organization conventions from `coding-guidelines.md` which this skill builds on (src/lib, src/services, etc.) |
 | [`../../qa/skills/testing-guidelines.md`](../../qa/skills/testing-guidelines.md) §Required Test Coverage | Timezone bugs should be tested in state tests — e.g., "should display correct date/time for user's timezone" per the edge case test requirement |
