@@ -1,1 +1,0 @@
-{"root":["./server/db.ts","./server/index.ts","./server/intake.ts","./scripts/reset-db.ts","./scripts/seed-db.ts","./scripts/wipe-db.ts"],"version":"5.9.3"}
