@@ -48,32 +48,82 @@ export const MAX_CONTEXT_CHARS = 320_000;
 export const WARN_THRESHOLD = 120;
 
 // ── Project scaffolding (mirrors init-frame.js) ────────────────────────────
+//
+// Structure contract: this file does NOT hardcode framework layout. It reads
+// `framework/manifest.json` from the repo root and uses it to scaffold the
+// new project — same contract as init-frame.js, same loader shape, same
+// per-stage tri-fold guarantee. Skip-on-existing and project-dir.txt pinning
+// stay here because they are launcher-specific (intake tolerates partial
+// pre-existing projects), not part of the structure contract.
 
-const FRAMEWORK_DIRS = [
-  "PRD/templates",
-  "design-system/tokens",
-  "design-system/components",
-  "design-system/states",
-  "code-builder/templates/nextjs-starter",
-  "code-builder/templates/vue-nuxt-starter",
-  "code-builder/templates/svelte-kit-starter",
-  "skills",
-  "testing/playwright",
-  "workflows",
-];
+type ManifestStage = { folder: string; skills?: string[]; config?: string[]; agents?: string[]; templates?: string[]; shared_inputs?: string[] };
+type Manifest = {
+  export_root: string;
+  root_files: string[];
+  stages: Record<string, ManifestStage>;
+  shared?: { skills?: string[] };
+  outside_export_root?: Record<string, string>;
+};
 
-const ROOT_FILES = ["CLAUDE.md", "AGENTS.md", "README.md", "FRAMEWORK-FLOW.md", "gaps.md", "questions.md", ".gitignore"];
-const COPY_SUBDIRS = ["skills", "design-system", "PRD", "code-builder", "testing", "workflows"];
+export const MANIFEST_PATH = path.join(REPO_ROOT, "framework", "manifest.json");
+
+/** Load and validate framework/manifest.json. Throws on missing/bad JSON — fail fast. */
+export function loadManifest(): Manifest {
+  if (!fs.existsSync(MANIFEST_PATH)) {
+    throw new Error("Framework manifest not found at " + MANIFEST_PATH + " — init-frame.js and the launchers all read framework/manifest.json; it is no longer hardcoded.");
+  }
+  let raw: unknown;
+  try {
+    raw = JSON.parse(fs.readFileSync(MANIFEST_PATH, "utf-8"));
+  } catch (err) {
+    throw new Error("framework/manifest.json is not valid JSON: " + (err as Error).message);
+  }
+  const m = raw as Partial<Manifest>;
+  if (!m.export_root || typeof m.stages !== "object" || m.stages === null) {
+    throw new Error('manifest.json must define "export_root" and a "stages" object (see framework/MANIFEST.md).');
+  }
+  if (!Array.isArray(m.root_files) || m.root_files.length === 0) {
+    throw new Error('manifest.json must define a non-empty "root_files" array (see framework/MANIFEST.md).');
+  }
+  for (const [id, stage] of Object.entries(m.stages)) {
+    if (!stage || typeof stage.folder !== "string") {
+      throw new Error('manifest stage "' + id + '" is missing its "folder" path (see framework/MANIFEST.md).');
+    }
+  }
+  return m as Manifest;
+}
 
 const SKIP_DIRS = new Set(["node_modules", ".git", ".next", "dist", "build", "coverage"]);
 
-function copyRecursiveSkippingExisting(src: string, dest: string, stats: { copied: number; skipped: number }): void {
+/**
+ * Stage folders are contract content (framework/build is the Build stage), so a
+ * name in SKIP_DIRS only prunes when it is NOT a manifest-promised stage folder
+ * or a descendant of one. `protectedDirs` holds the absolute source paths of the
+ * manifest stage folders under the export root.
+ */
+function isProtectedDir(src: string, protectedDirs: ReadonlySet<string>): boolean {
+  for (const dir of protectedDirs) {
+    // Strip trailing separators: manifest folder values are written like
+    // "build/" and path.join preserves that slash, which would defeat the
+    // prefix comparison below ("dir" + sep would look for a double slash).
+    const clean = dir.replace(/[\\/]+$/, "");
+    if (src === clean || src.startsWith(clean + path.sep)) return true;
+  }
+  return false;
+}
+
+function copyRecursiveSkippingExisting(
+  src: string,
+  dest: string,
+  stats: { copied: number; skipped: number },
+  protectedDirs: ReadonlySet<string> = new Set(),
+): void {
   const stat = fs.statSync(src);
   if (stat.isDirectory()) {
-    if (SKIP_DIRS.has(path.basename(src))) return;
+    if (SKIP_DIRS.has(path.basename(src)) && !isProtectedDir(src, protectedDirs)) return;
     fs.mkdirSync(dest, { recursive: true });
     for (const entry of fs.readdirSync(src)) {
-      copyRecursiveSkippingExisting(path.join(src, entry), path.join(dest, entry), stats);
+      copyRecursiveSkippingExisting(path.join(src, entry), path.join(dest, entry), stats, protectedDirs);
     }
     return;
   }
@@ -102,10 +152,18 @@ export function initProjectDir(rawInput: unknown): { abs: string; existed: boole
   }
 
   const existed = fs.existsSync(abs);
-  for (const dir of FRAMEWORK_DIRS) fs.mkdirSync(path.join(abs, dir), { recursive: true });
+  const manifest = loadManifest();
 
+  // 0. Materialise the project folder itself when the user typed a path that
+  //    does not exist yet — the launcher is what "creates a folder when a path
+  //    is provided" (same contract as init-frame.js, which mkdirs its target
+  //    before scaffolding). Without this, the first copyFileSync below throws
+  //    ENOENT and the whole scaffold aborts for a brand-new directory.
+  fs.mkdirSync(abs, { recursive: true });
+
+  // 0. Root files: framework-meta docs copied from the manifest list.
   const stats = { copied: 0, skipped: 0 };
-  for (const file of ROOT_FILES) {
+  for (const file of manifest.root_files) {
     const src = path.join(REPO_ROOT, file);
     const dest = path.join(abs, file);
     if (!fs.existsSync(src)) continue;
@@ -113,10 +171,38 @@ export function initProjectDir(rawInput: unknown): { abs: string; existed: boole
     fs.copyFileSync(src, dest);
     stats.copied++;
   }
-  for (const subdir of COPY_SUBDIRS) {
-    const src = path.join(REPO_ROOT, subdir);
-    if (fs.existsSync(src)) copyRecursiveSkippingExisting(src, path.join(abs, subdir), stats);
+
+  // 1. Copy the export root wholesale — every stage folder + shared/ + templates/.
+  //    Stage folders are protected from the SKIP_DIRS prune: framework/build is
+  //    a stage named "build", not a build-output directory, and pruning it
+  //    silently dropped the entire Build stage (Code Agent files included).
+  const exportSrc = path.join(REPO_ROOT, manifest.export_root);
+  if (fs.existsSync(exportSrc)) {
+    const stageDirs = new Set(
+      Object.values(manifest.stages).map((stage) => path.resolve(exportSrc, stage.folder)),
+    );
+    copyRecursiveSkippingExisting(exportSrc, path.join(abs, manifest.export_root), stats, stageDirs);
   }
+
+  // 2. Guarantee the per-stage tri-fold (skills/, config/, agents/) even where
+  //    git could not carry empty directories — the manifest promises it.
+  for (const stage of Object.values(manifest.stages)) {
+    for (const leaf of ["skills", "config", "agents"]) {
+      fs.mkdirSync(path.join(abs, manifest.export_root, stage.folder, leaf), { recursive: true });
+    }
+  }
+
+  // 3. Reference outside_export_root artifacts (PRD/templates, workflows) at
+  //    scaffold time — same as init-frame.js, so a chat-initiated project and
+  //    a CLI-initiated project end up with the same layout.
+  for (const entry of Object.values(manifest.outside_export_root || {})) {
+    if (typeof entry !== "string" || !entry) continue;
+    const src = path.join(REPO_ROOT, entry);
+    if (fs.existsSync(src)) {
+      copyRecursiveSkippingExisting(src, path.join(abs, entry), stats);
+    }
+  }
+
   return { abs, existed, ...stats };
 }
 

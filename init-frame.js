@@ -13,10 +13,17 @@
  *
  * MVP additions covered: #1 bootstrap mechanism, #6 stack selection questionnaire.
  * Also seeds idea.md with initial answers so the Main Orchestrator has signal to work from.
+ *
+ * Structure contract: this script does NOT hardcode the framework layout. It reads
+ * framework/manifest.json (schema: framework/MANIFEST.md) — the export root is
+ * copied wholesale, stage folders are validated against it, and outside-export
+ * artifacts are referenced from its outside_export_root map. Structure evolves
+ * via the manifest, not via launcher code changes.
  */
 
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { createInterface } from "node:readline";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -42,22 +49,45 @@ function ensureDir(dir) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 }
 
-// ── Framework directory structure ──────────────────────────────────────────
+// ── Framework manifest (the only structure contract) ───────────────────────
 
-const FRAMEWORK_DIRS = [
-  "PRD/templates",
-  "design-system/tokens",
-  "design-system/components",
-  "design-system/states",
-  "code-builder/templates/nextjs-starter",
-  "code-builder/templates/vue-nuxt-starter",
-  "code-builder/templates/svelte-kit-starter",
-  "skills",
-  "testing/playwright",
-  "workflows",
-];
+// Framework repo root — this script lives at the repo root.
+const SOURCE_DIR = path.dirname(fileURLToPath(import.meta.url));
+const MANIFEST_PATH = path.join(SOURCE_DIR, "framework", "manifest.json");
 
-const SOURCE_DIR = path.resolve("/Users/willnguyen/Documents/Claude coding");
+/**
+ * Load and validate framework/manifest.json. Fail fast — before the interview —
+ * so the user never answers 15 questions only to hit a broken scaffold.
+ */
+function loadManifest() {
+  if (!fs.existsSync(MANIFEST_PATH)) {
+    console.error("Error: framework manifest not found at " + MANIFEST_PATH);
+    console.error("init-frame.js reads framework/manifest.json for the structure — it is no longer hardcoded.");
+    process.exit(1);
+  }
+  let manifest;
+  try {
+    manifest = JSON.parse(fs.readFileSync(MANIFEST_PATH, "utf-8"));
+  } catch (err) {
+    console.error("Error: framework/manifest.json is not valid JSON: " + err.message);
+    process.exit(1);
+  }
+  if (!manifest.export_root || typeof manifest.stages !== "object" || manifest.stages === null) {
+    console.error('Error: manifest.json must define "export_root" and a "stages" object (see framework/MANIFEST.md).');
+    process.exit(1);
+  }
+  if (!Array.isArray(manifest.root_files) || manifest.root_files.length === 0) {
+    console.error('Error: manifest.json must define a non-empty "root_files" array (see framework/MANIFEST.md).');
+    process.exit(1);
+  }
+  for (const [id, stage] of Object.entries(manifest.stages)) {
+    if (!stage || typeof stage.folder !== "string") {
+      console.error('Error: manifest stage "' + id + '" is missing its "folder" path (see framework/MANIFEST.md).');
+      process.exit(1);
+    }
+  }
+  return manifest;
+}
 
 // ── The 15 questions (consolidated from questions.md) ──────────────────────
 
@@ -298,45 +328,81 @@ async function askAllQuestions() {
 
 // ── Scaffold & file writing ────────────────────────────────────────────────
 
-function scaffoldFramework(absTarget, vars) {
+function scaffoldFramework(absTarget, vars, manifest) {
   process.chdir(absTarget);
-
-  // Create all directories
-  for (const dir of FRAMEWORK_DIRS) {
-    ensureDir(dir);
-  }
 
   // Copy framework files from source repo into new directory
   if (fs.existsSync(SOURCE_DIR)) {
-    const filesToCopy = [
-      "CLAUDE.md",
-      "AGENTS.md",
-      "README.md",
-      "FRAMEWORK-FLOW.md",
-      "gaps.md",
-      ".gitignore",
-    ];
-
-    for (const file of filesToCopy) {
+    // 0. Root files: framework-meta docs copied alongside the export root.
+    //    The manifest lists them so the launcher never hardcodes filenames.
+    for (const file of manifest.root_files) {
       const src = path.join(SOURCE_DIR, file);
       if (fs.existsSync(src)) {
         fs.copyFileSync(src, path.join(absTarget, file));
       }
     }
 
-    // Recursively copy subdirectories
-    const subdirs = ["skills", "design-system", "PRD", "code-builder", "testing", "workflows"];
-    for (const subdir of subdirs) {
-      const srcSubdir = path.join(SOURCE_DIR, subdir);
-      if (fs.existsSync(srcSubdir)) {
-        copyRecursive(srcSubdir, path.join(absTarget, subdir));
+    // 1. Copy the export root wholesale — everything under framework/ ships
+    //    into the new project (settled position 7: manifest-driven, no dir list).
+    const exportSrc = path.join(SOURCE_DIR, manifest.export_root);
+    if (fs.existsSync(exportSrc)) {
+      copyRecursive(exportSrc, path.join(absTarget, manifest.export_root));
+    }
+
+    // 2. Guarantee the per-stage tri-fold (skills/, config/, agents/) even where
+    //    git could not carry empty directories — the manifest promises it.
+    for (const stage of Object.values(manifest.stages)) {
+      for (const leaf of ["skills", "config", "agents"]) {
+        ensureDir(path.join(absTarget, manifest.export_root, stage.folder, leaf));
       }
     }
+
+    // 3. Reference the outside-export-root artifacts. These have a different
+    //    lifecycle than framework/ (settled position 4): the manifest lists them
+    //    so the scaffold consumes exactly what it declares — no more, no less.
+    for (const entry of Object.values(manifest.outside_export_root || {})) {
+      if (typeof entry !== "string" || !entry) continue;
+      const src = path.join(SOURCE_DIR, entry);
+      if (fs.existsSync(src)) {
+        copyRecursive(src, path.join(absTarget, entry));
+      }
+    }
+
+    // 4. Validate the export against the manifest — every file the contract
+    //    promises must exist in the scaffolded project. Warnings, not failures:
+    //    a missing template should be visible, not block a bootstrap.
+    validateManifestExport(absTarget, manifest);
   }
 
   console.log("\nFramework scaffolding created in: " + absTarget);
 
   return vars;
+}
+
+/**
+ * Check every path the manifest lists (stage skills/config/agents/templates,
+ * shared_inputs, shared.skills) against the scaffolded export. Paths are
+ * relative to export_root. Missing entries are warned about so the gap between
+ * contract and tree is visible at every bootstrap.
+ */
+function validateManifestExport(absTarget, manifest) {
+  const listed = [];
+  for (const stage of Object.values(manifest.stages)) {
+    for (const key of ["skills", "config", "agents", "shared_inputs", "templates"]) {
+      for (const rel of stage[key] || []) listed.push(rel);
+    }
+  }
+  if (manifest.shared && Array.isArray(manifest.shared.skills)) {
+    for (const rel of manifest.shared.skills) listed.push(rel);
+  }
+
+  const missing = listed.filter(
+    (rel) => !fs.existsSync(path.join(absTarget, manifest.export_root, rel))
+  );
+  if (missing.length > 0) {
+    console.warn("\nWarning: manifest lists entries missing from the export (contract ≠ tree):");
+    for (const rel of missing) console.warn("  - " + rel);
+  }
 }
 
 function copyRecursive(src, dest) {
@@ -459,6 +525,9 @@ function writeQuickstart(absTarget) {
 
 async function main() {
   try {
+    // Phase 0: Load the structure contract — fail fast, before the interview
+    const manifest = loadManifest();
+
     // Phase 1: Foundation (target dir + project name)
     const foundation = await askFoundation();
 
@@ -467,8 +536,8 @@ async function main() {
     // Merge foundation
     Object.assign(vars, foundation);
 
-    // Phase 3: Scaffold the framework structure
-    scaffoldFramework(foundation.absTarget, vars);
+    // Phase 3: Scaffold the framework structure (manifest-driven)
+    scaffoldFramework(foundation.absTarget, vars, manifest);
 
     // Write idea.md with gathered answers
     writeIdeaTxt(foundation.absTarget, vars);

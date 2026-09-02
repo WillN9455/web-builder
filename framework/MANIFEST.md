@@ -14,6 +14,7 @@ which file, so a user edit lands on disk in exactly one place.
 | `revision` | number | Debate/lock revision of this file. `2` = locked consensus |
 | `status` | string | `draft` while under debate, `locked` once agreed |
 | `export_root` | path | The folder copied wholesale into a new project on idea creation. Everything under it exports; nothing outside it does |
+| `root_files` | list | Repo-root framework-meta files copied into a new project on idea creation (`CLAUDE.md`, `AGENTS.md`, `README.md`, `FRAMEWORK-FLOW.md`, `gaps.md`, `questions.md`, `.gitignore`). Lifecycle matches `outside_export_root` but the launcher copies them rather than just referencing them |
 | `stages` | object | One entry per pipeline stage. Key = stage id |
 | `shared` | object | Cross-stage skills and who consumes them |
 | `outside_export_root` | object | Repo-root artifacts the launcher references at export time but does **not** copy (different lifecycle than the framework) |
