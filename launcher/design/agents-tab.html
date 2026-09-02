@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Idea Hub — Agents tab (v5.4)</title>
+<title>Idea Hub — Agents tab (v5.5)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -354,6 +354,132 @@
   .turn .trace-row .body code { font-family: var(--font-mono); font-size: 11px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
   .turn .trace-row .ts { font-size: 11px; color: var(--ink-2); font-family: var(--font-mono); text-align: right; }
   .turn .trace-row .av-sm { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 10px; font-weight: 700; }
+
+  /* ─── v5.5 additions — interactive editor (was monitor-only) ─────────── */
+
+  /* Selection checkbox + per-card actions on roster */
+  .card-checkbox { position: absolute; top: 10px; left: 10px; width: 18px; height: 18px; border-radius: 5px; border: 1.5px solid rgba(50,42,92,0.25); background: rgba(255,255,255,0.85); display: grid; place-items: center; opacity: 0; transition: opacity 0.12s ease; cursor: pointer; z-index: 3; }
+  .card-checkbox:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; opacity: 1; }
+  .agent-card:hover .card-checkbox, .agent-card:focus-within .card-checkbox, .agent-card.selected .card-checkbox { opacity: 1; }
+  .agent-card.selected .card-checkbox { background: var(--navy); border-color: var(--navy); }
+  .agent-card.selected .card-checkbox::after { content: ""; width: 9px; height: 5px; border-left: 2px solid #fff; border-bottom: 2px solid #fff; transform: rotate(-45deg) translate(1px,-1px); }
+  .agent-card.selected { border-color: var(--navy); background: rgba(50,42,92,0.06); }
+  .card-actions { position: absolute; bottom: 10px; right: 10px; display: flex; gap: 4px; opacity: 0; transition: opacity 0.12s ease; z-index: 3; }
+  .agent-card:hover .card-actions, .agent-card:focus-within .card-actions { opacity: 1; }
+  .icon-btn { width: 24px; height: 24px; border-radius: 6px; background: rgba(255,255,255,0.9); border: 1px solid rgba(50,42,92,0.1); display: grid; place-items: center; color: var(--ink-2); cursor: pointer; transition: all 0.12s ease; }
+  .icon-btn:hover { background: #fff; color: var(--ink); border-color: rgba(50,42,92,0.25); }
+  .icon-btn:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
+  .icon-btn.danger:hover { color: var(--rose); border-color: rgba(217,122,142,0.4); background: var(--blush); }
+  .icon-btn svg { width: 12px; height: 12px; }
+
+  /* Bulk-actions bar (roster) */
+  .bulk-bar { background: var(--navy); color: #fff; padding: 10px 16px; margin: 0 22px 12px; border-radius: 12px; display: flex; align-items: center; gap: 10px; font-size: 13px; flex-wrap: wrap; }
+  .bulk-bar .count { background: rgba(255,255,255,0.18); padding: 2px 9px; border-radius: 999px; font-weight: 700; font-size: 12px; }
+  .bulk-bar .actions { display: flex; gap: 6px; margin-left: auto; flex-wrap: wrap; }
+  .bulk-bar button { padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 500; color: #fff; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); cursor: pointer; transition: background 0.12s ease; }
+  .bulk-bar button:hover { background: rgba(255,255,255,0.25); }
+  .bulk-bar button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  .bulk-bar button.danger { background: rgba(217,122,142,0.35); border-color: rgba(217,122,142,0.5); }
+  .bulk-bar .clear { color: rgba(255,255,255,0.75); font-size: 11.5px; text-decoration: underline; background: none; border: 0; padding: 6px 4px; }
+
+  /* Form controls (editor mode) */
+  .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .field-head { display: flex; align-items: center; gap: 6px; font-size: 10.5px; color: var(--ink-2); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+  .field-head .help { width: 14px; height: 14px; border-radius: 50%; background: rgba(50,42,92,0.1); color: var(--ink-2); display: grid; place-items: center; font-size: 9px; font-weight: 700; cursor: help; border: 0; padding: 0; }
+  .field-head .help:hover { background: rgba(50,42,92,0.18); color: var(--ink); }
+  .field-head .help:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
+  .field-input, .field-select, .field-textarea { font: inherit; color: var(--ink); background: #fff; border: 1px solid rgba(50,42,92,0.18); border-radius: 8px; padding: 7px 10px; width: 100%; min-width: 0; outline: none; transition: border-color 0.12s ease, box-shadow 0.12s ease; }
+  .field-textarea { resize: vertical; min-height: 70px; font-family: inherit; line-height: 1.5; }
+  .field-input:hover, .field-select:hover, .field-textarea:hover { border-color: rgba(50,42,92,0.35); }
+  .field-input:focus, .field-select:focus, .field-textarea:focus { border-color: var(--navy); box-shadow: 0 0 0 3px rgba(50,42,92,0.14); }
+  .field-input[aria-invalid="true"], .field-select[aria-invalid="true"], .field-textarea[aria-invalid="true"] { border-color: var(--rose); box-shadow: 0 0 0 3px rgba(217,122,142,0.18); }
+  .field-input[disabled], .field-select[disabled], .field-textarea[disabled] { background: rgba(50,42,92,0.04); color: var(--ink-2); cursor: not-allowed; }
+  .field-select { appearance: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238b87a5' stroke-width='2'><path d='m6 9 6 6 6-6'/></svg>"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px; }
+  .field-error { font-size: 11.5px; color: var(--rose); display: flex; align-items: center; gap: 4px; }
+  .field-error::before { content: "!"; display: grid; place-items: center; width: 14px; height: 14px; border-radius: 50%; background: var(--rose); color: #fff; font-weight: 700; font-size: 10px; }
+
+  /* Segmented control (for trigger type, isolation, etc.) */
+  .segmented { display: inline-flex; gap: 2px; background: rgba(50,42,92,0.06); padding: 3px; border-radius: 9px; flex-wrap: wrap; }
+  .segmented button { padding: 5px 11px; border-radius: 7px; font-size: 12px; font-weight: 500; color: var(--ink-2); cursor: pointer; transition: all 0.12s ease; }
+  .segmented button:hover:not(.on):not(:disabled) { color: var(--ink); }
+  .segmented button.on { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(50,42,92,0.12); font-weight: 600; }
+  .segmented button:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
+  .segmented button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* Skill chip toggle */
+  .chip-group { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip-toggle { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px; font-size: 11.5px; font-weight: 500; background: #fff; color: var(--ink-2); border: 1px solid rgba(50,42,92,0.14); cursor: pointer; transition: all 0.12s ease; font-family: var(--font-mono); }
+  .chip-toggle:hover:not(:disabled) { border-color: rgba(50,42,92,0.3); color: var(--ink); }
+  .chip-toggle.on { background: var(--navy); color: #fff; border-color: var(--navy); }
+  .chip-toggle:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
+  .chip-toggle:disabled { opacity: 0.5; cursor: not-allowed; }
+  .chip-toggle .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: 0.4; }
+  .chip-toggle.on .dot { opacity: 1; }
+
+  /* Sticky edit toolbar (save / cancel) */
+  .edit-toolbar { position: sticky; bottom: 0; background: rgba(255,255,255,0.96); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-top: 1px solid rgba(50,42,92,0.08); padding: 12px 18px; margin: 14px -22px -22px; border-radius: 0 0 var(--r-lg) var(--r-lg); display: flex; align-items: center; gap: 10px; z-index: 5; flex-wrap: wrap; }
+  .edit-toolbar .changes { font-size: 12.5px; color: var(--ink); display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .edit-toolbar .changes .badge { background: var(--mint); color: var(--ink); padding: 2px 8px; border-radius: 999px; font-family: var(--font-mono); font-size: 11px; font-weight: 700; }
+  .edit-toolbar .changes .dot-saving { width: 8px; height: 8px; border-radius: 50%; background: var(--blue); animation: pulse 1.4s ease-in-out infinite; }
+  .edit-toolbar .actions { margin-left: auto; display: flex; gap: 8px; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  /* Diff preview */
+  .diff-preview { background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: 12px; padding: 14px 16px; min-width: 0; }
+  .diff-preview h5 { margin: 0 0 10px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-2); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .diff-preview h5 .changes-badge { background: var(--mint); color: var(--ink); font-family: var(--font-mono); font-size: 11px; padding: 2px 7px; border-radius: 4px; text-transform: none; letter-spacing: 0; font-weight: 600; }
+  .diff-row { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 10px; padding: 8px 0; border-top: 1px solid rgba(50,42,92,0.05); font-size: 12px; align-items: start; min-width: 0; }
+  .diff-row:first-of-type { border-top: 0; padding-top: 2px; }
+  .diff-row .k { color: var(--ink-2); font-weight: 600; font-size: 11.5px; padding-top: 2px; }
+  .diff-row .v { min-width: 0; }
+  .diff-row .v-old { color: var(--ink-2); background: rgba(217,122,142,0.1); border-radius: 4px; padding: 2px 7px; text-decoration: line-through; display: inline-block; margin-right: 6px; font-family: var(--font-mono); font-size: 11px; overflow-wrap: anywhere; max-width: 100%; }
+  .diff-row .v-new { color: var(--ink); background: rgba(95,191,149,0.15); border-radius: 4px; padding: 2px 7px; font-family: var(--font-mono); font-size: 11px; font-weight: 600; display: inline-block; overflow-wrap: anywhere; max-width: 100%; }
+  .diff-row .arrow { color: var(--ink-3); margin: 0 2px; font-family: var(--font-mono); font-size: 11px; }
+
+  /* Edit-mode toggle button states */
+  .mode-switch { display: inline-flex; gap: 2px; background: rgba(50,42,92,0.06); padding: 3px; border-radius: 9px; }
+  .mode-switch button { padding: 5px 12px; border-radius: 7px; font-size: 12px; font-weight: 500; color: var(--ink-2); cursor: pointer; transition: all 0.12s ease; display: inline-flex; align-items: center; gap: 5px; }
+  .mode-switch button:hover:not(.on) { color: var(--ink); }
+  .mode-switch button.on { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(50,42,92,0.12); font-weight: 600; }
+  .mode-switch button:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
+  .mode-switch button .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ink-3); }
+  .mode-switch button.on .dot { background: var(--green); }
+
+  /* Memory bank editor */
+  .mem-list { display: flex; flex-direction: column; gap: 6px; }
+  .mem-item { display: flex; align-items: center; gap: 8px; background: rgba(50,42,92,0.03); border: 1px solid rgba(50,42,92,0.06); border-radius: 8px; padding: 6px 10px; font-size: 12px; }
+  .mem-item .key { font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--ink); flex: none; }
+  .mem-item .val { color: var(--ink-2); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mem-item button { color: var(--ink-2); cursor: pointer; padding: 2px 6px; font-size: 11px; border-radius: 4px; }
+  .mem-item button:hover { background: rgba(217,122,142,0.15); color: var(--rose); }
+  .mem-item button:focus-visible { outline: 2px solid var(--rose); outline-offset: 1px; }
+  .mem-add { display: flex; gap: 6px; }
+  .mem-add .field-input { padding: 6px 10px; font-size: 12px; }
+
+  /* Section: roster "Add agent" CTA */
+  .add-agent-card { background: transparent; border: 1.5px dashed rgba(50,42,92,0.25); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; cursor: pointer; color: var(--ink-2); font-size: 12.5px; font-weight: 500; min-height: 144px; transition: all 0.12s ease; text-align: center; }
+  .add-agent-card:hover { background: rgba(50,42,92,0.04); border-color: var(--navy); color: var(--ink); }
+  .add-agent-card:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
+  .add-agent-card .plus { width: 32px; height: 32px; border-radius: 50%; background: rgba(50,42,92,0.08); display: grid; place-items: center; font-size: 18px; font-weight: 300; color: var(--ink); }
+  .add-agent-card:hover .plus { background: var(--navy); color: #fff; }
+
+  /* Modal — Add/Clone agent */
+  .modal-back { position: fixed; inset: 0; background: rgba(43,37,71,0.5); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); display: grid; place-items: center; z-index: 100; padding: 24px; }
+  .modal-card { background: #fff; border-radius: var(--r-xl); padding: 22px; max-width: 480px; width: 100%; box-shadow: 0 40px 80px -20px rgba(50,42,92,0.35); max-height: 90vh; overflow: auto; }
+  .modal-card h4 { margin: 0 0 4px; font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
+  .modal-card .modal-sub { color: var(--ink-2); font-size: 13px; margin-bottom: 16px; line-height: 1.5; }
+  .modal-card .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(50,42,92,0.08); }
+  .role-picker { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .role-picker label { background: rgba(50,42,92,0.04); border: 1.5px solid transparent; border-radius: 8px; padding: 8px 10px; font-size: 12px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px; min-width: 0; transition: all 0.12s ease; }
+  .role-picker label:hover { background: rgba(50,42,92,0.08); }
+  .role-picker input { position: absolute; opacity: 0; pointer-events: none; }
+  .role-picker input:checked + .role-pick-body { font-weight: 600; }
+  .role-picker label.selected { border-color: var(--navy); background: rgba(50,42,92,0.06); }
+  .role-picker label:focus-within { outline: 2px solid var(--navy); outline-offset: 2px; }
+  .role-picker .swatch { width: 16px; height: 16px; border-radius: 5px; flex: none; }
+  .role-picker .role-pick-body { min-width: 0; }
+  .role-picker .role-pick-body b { display: block; font-size: 12.5px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; }
+  .role-picker .role-pick-body span { display: block; font-size: 10.5px; color: var(--ink-2); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -361,10 +487,10 @@
 
   <header class="doc-header">
     <div>
-      <div class="doc-title">Idea Hub — Agents tab (v5.4)</div>
-      <div class="doc-sub">Single-half monitor — Agents is <b>always visible</b> and does not split into Status/Rules; you watch what the framework's agents are doing and steer by editing rules on the stage tabs themselves. <b>v5.4 changes</b> — the inline agent-detail panel and the 3-Code-Agent strip have been removed from the roster; the roster now anchors to a second <b>agent detail screen</b> stacked below the roster in this same file. Both screens share one token block. <b>Process overview</b> strip retains the 6-stage pipeline bar, sprint stats, and blocked banner. <b>No editor controls</b> anywhere on either screen — only pointer links. <b>Source of truth:</b> <a href="sitemap.md">sitemap.md § Agents</a>.</div>
+      <div class="doc-title">Idea Hub — Agents tab (v5.5)</div>
+      <div class="doc-sub">Single-half <b>editor</b> — Agents is <b>always visible</b> and now carries inline editors on the roster and detail. <b>v5.5 changes</b> — added selection + bulk-actions bar on the roster, per-card icon actions (clone · remove), an <b>Add agent</b> modal, full <b>inline editor</b> on the detail screen (model · effort · fallback · harness · isolation · trigger · skills · memory bank · adversarial review), <b>diff/preview</b> pane, sticky save toolbar, and a Monitor/Edit mode switch. <b>Source of truth:</b> <a href="sitemap.md">sitemap.md § Agents</a>.</div>
     </div>
-    <div class="doc-meta">v5.4 · launcher/design/agents-tab.html<br/>2 screens in one file (Agents roster + Agent detail · Code 1)</div>
+    <div class="doc-meta">v5.5 · launcher/design/agents-tab.html<br/>2 screens in one file (Agents roster + Agent detail · Code 1)</div>
   </header>
 
   <nav class="toc">
@@ -380,7 +506,7 @@
   <section class="screen" id="sag">
     <div class="screen-label">
       <span class="num">AG</span>
-      <span class="name">Agents tab — process strip + roster (detail moved to its own screen)</span>
+      <span class="name">Agents tab — process strip + editable roster (detail moved to its own screen)</span>
       <span class="route">/projects/tenant-maintenance · Agents</span>
     </div>
     <div class="screen-body">
@@ -403,8 +529,8 @@
             </nav>
           </div>
           <div class="side-promo">
-            <h4>Always visible</h4>
-            <p>Agents is a monitor, not a workspace. Edit behavior on the stage tabs (Design / Build / QA Rules) — those write back to the framework folders.</p>
+            <h4>Always visible · editable</h4>
+            <p>Agents is a single-half editor. Tune model, effort, skills, memory, and triggers here — changes write back to the framework folders (<code>code-builder/</code>, <code>design-system/</code>, <code>qa/</code>).</p>
             <button>View agent roster →</button>
           </div>
           <div class="side-foot">
@@ -422,6 +548,7 @@
             <button class="btn btn-soft btn-pill">Filter</button>
             <button class="btn btn-soft btn-pill">Export</button>
             <button class="btn btn-soft btn-pill">Reroute assignments</button>
+            <button class="btn btn-primary btn-pill" style="margin-left: auto;" onclick="document.getElementById('add-agent-modal').classList.add('open')">+ Add agent</button>
           </div>
 
           <!-- Project header -->
@@ -541,9 +668,24 @@
               </div>
             </div>
 
+            <!-- Bulk-actions bar (visible when 1+ agent selected) -->
+            <div class="bulk-bar" role="region" aria-label="Bulk actions">
+              <span class="count">1 selected</span>
+              <span style="font-size: 12px; opacity: 0.85;">BA Agent</span>
+              <div class="actions">
+                <button type="button">Clone</button>
+                <button type="button">Change isolation</button>
+                <button type="button">Pause</button>
+                <button type="button">Reroute story</button>
+                <button type="button" class="danger">Remove</button>
+                <button type="button" class="clear">Clear selection</button>
+              </div>
+            </div>
+
             <div class="roster">
               <!-- 1. BA Agent -->
-              <a class="agent-card" href="#sagd">
+              <a class="agent-card selected" href="#sagd">
+                <input type="checkbox" class="card-checkbox" aria-label="Select BA Agent" checked />
                 <div class="row1">
                   <div class="av av-ba">BA</div>
                   <div class="name"><b>BA Agent</b><span class="role">Business analyst · intake → requirements</span></div>
@@ -552,10 +694,15 @@
                 <div class="task">Awaiting next project <span class="sub">Idle since intake handed off 3h ago</span></div>
                 <div class="footer"><span>elapsed —</span><span class="right">stage · Requirements</span></div>
                 <span class="open" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14 M13 6l6 6-6 6"/></svg></span>
+                <div class="card-actions">
+                  <button type="button" class="icon-btn" aria-label="Clone BA Agent" title="Clone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button>
+                  <button type="button" class="icon-btn danger" aria-label="Remove BA Agent" title="Remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7h14 M9 7V4h6v3 M7 7v13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V7"/></svg></button>
+                </div>
               </a>
 
               <!-- 2. Design A (sky) -->
               <a class="agent-card" href="#sagd">
+                <input type="checkbox" class="card-checkbox" aria-label="Select Design A" />
                 <div class="row1">
                   <div class="av av-da">DA</div>
                   <div class="name"><b>Design A</b><span class="role">Tokens + wireframes</span></div>
@@ -564,10 +711,15 @@
                 <div class="task">All designs complete <span class="sub">DSGN-01 … DSGN-14 · ready for dev</span></div>
                 <div class="footer"><span>elapsed —</span><span class="right">stage · Design</span></div>
                 <span class="open" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14 M13 6l6 6-6 6"/></svg></span>
+                <div class="card-actions">
+                  <button type="button" class="icon-btn" aria-label="Clone Design A" title="Clone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button>
+                  <button type="button" class="icon-btn danger" aria-label="Remove Design A" title="Remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7h14 M9 7V4h6v3 M7 7v13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V7"/></svg></button>
+                </div>
               </a>
 
               <!-- 3. Design B (sea) -->
               <a class="agent-card" href="#sagd">
+                <input type="checkbox" class="card-checkbox" aria-label="Select Design B" />
                 <div class="row1">
                   <div class="av av-db">DB</div>
                   <div class="name"><b>Design B</b><span class="role">Peer reviewer</span></div>
@@ -576,10 +728,15 @@
                 <div class="task">All peer reviews signed off <span class="sub">14/14 designs · 3 disagreements → resolved</span></div>
                 <div class="footer"><span>elapsed —</span><span class="right">stage · Design</span></div>
                 <span class="open" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14 M13 6l6 6-6 6"/></svg></span>
+                <div class="card-actions">
+                  <button type="button" class="icon-btn" aria-label="Clone Design B" title="Clone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button>
+                  <button type="button" class="icon-btn danger" aria-label="Remove Design B" title="Remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7h14 M9 7V4h6v3 M7 7v13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V7"/></svg></button>
+                </div>
               </a>
 
               <!-- 4. Code 1 (mint) -->
               <a class="agent-card" href="#sagd">
+                <input type="checkbox" class="card-checkbox" aria-label="Select Code 1" />
                 <div class="row1">
                   <div class="av av-c1">C1</div>
                   <div class="name"><b>Code 1</b><span class="role">Tenant request detail + status updates</span></div>
@@ -588,10 +745,15 @@
                 <div class="task">Building TM-19 <span class="sub">PR #214 · 6/8 files pushed</span></div>
                 <div class="footer"><span>elapsed 1h 12m</span><span class="right">ETA 24m · stage · Build</span></div>
                 <span class="open" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14 M13 6l6 6-6 6"/></svg></span>
+                <div class="card-actions">
+                  <button type="button" class="icon-btn" aria-label="Clone Code 1" title="Clone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button>
+                  <button type="button" class="icon-btn danger" aria-label="Remove Code 1" title="Remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7h14 M9 7V4h6v3 M7 7v13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V7"/></svg></button>
+                </div>
               </a>
 
               <!-- 5. Code 2 (butter) -->
               <a class="agent-card" href="#sagd">
+                <input type="checkbox" class="card-checkbox" aria-label="Select Code 2" />
                 <div class="row1">
                   <div class="av av-c2">C2</div>
                   <div class="name"><b>Code 2</b><span class="role">Property list + filters</span></div>
@@ -600,10 +762,15 @@
                 <div class="task">Building TM-17 <span class="sub">PR #211 · 4/6 files · awaiting FE re-review</span></div>
                 <div class="footer"><span>elapsed 2h 04m</span><span class="right">ETA 1h 08m · stage · Build</span></div>
                 <span class="open" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14 M13 6l6 6-6 6"/></svg></span>
+                <div class="card-actions">
+                  <button type="button" class="icon-btn" aria-label="Clone Code 2" title="Clone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button>
+                  <button type="button" class="icon-btn danger" aria-label="Remove Code 2" title="Remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7h14 M9 7V4h6v3 M7 7v13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V7"/></svg></button>
+                </div>
               </a>
 
               <!-- 6. Code 3 (blush) -->
               <a class="agent-card" href="#sagd">
+                <input type="checkbox" class="card-checkbox" aria-label="Select Code 3" />
                 <div class="row1">
                   <div class="av av-c3">C3</div>
                   <div class="name"><b>Code 3</b><span class="role">Auth + tenant invite flow</span></div>
@@ -612,10 +779,15 @@
                 <div class="task">Waiting on Design A to clarify TM-21 <span class="sub">Status-pill dot colour in low-contrast mode</span></div>
                 <div class="footer"><span>elapsed 38m</span><span class="right">stage · Build</span></div>
                 <span class="open" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14 M13 6l6 6-6 6"/></svg></span>
+                <div class="card-actions">
+                  <button type="button" class="icon-btn" aria-label="Clone Code 3" title="Clone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button>
+                  <button type="button" class="icon-btn danger" aria-label="Remove Code 3" title="Remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7h14 M9 7V4h6v3 M7 7v13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V7"/></svg></button>
+                </div>
               </a>
 
               <!-- 7. QA Agent (lavender) -->
               <a class="agent-card" href="#sagd">
+                <input type="checkbox" class="card-checkbox" aria-label="Select QA Agent" />
                 <div class="row1">
                   <div class="av av-qa">QA</div>
                   <div class="name"><b>QA Agent</b><span class="role">Playwright · a11y · fidelity</span></div>
@@ -624,10 +796,15 @@
                 <div class="task">Running TM-17 test suite <span class="sub">3/6 tests passed · 1 failed (a11y)</span></div>
                 <div class="footer"><span>elapsed 6m</span><span class="right">ETA 4m · stage · QA</span></div>
                 <span class="open" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14 M13 6l6 6-6 6"/></svg></span>
+                <div class="card-actions">
+                  <button type="button" class="icon-btn" aria-label="Clone QA Agent" title="Clone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button>
+                  <button type="button" class="icon-btn danger" aria-label="Remove QA Agent" title="Remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7h14 M9 7V4h6v3 M7 7v13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V7"/></svg></button>
+                </div>
               </a>
 
               <!-- 8. Reviewer (sea) -->
               <a class="agent-card" href="#sagd">
+                <input type="checkbox" class="card-checkbox" aria-label="Select Reviewer Agent" />
                 <div class="row1">
                   <div class="av av-rev">RV</div>
                   <div class="name"><b>Reviewer Agent</b><span class="role">Code review + nit pick</span></div>
@@ -636,13 +813,24 @@
                 <div class="task">Reviewing PR #214 <span class="sub">2 nits pending · 1 unresolved (a11y)</span></div>
                 <div class="footer"><span>elapsed 12m</span><span class="right">ETA 8m · stage · Review</span></div>
                 <span class="open" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14 M13 6l6 6-6 6"/></svg></span>
+                <div class="card-actions">
+                  <button type="button" class="icon-btn" aria-label="Clone Reviewer Agent" title="Clone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button>
+                  <button type="button" class="icon-btn danger" aria-label="Remove Reviewer Agent" title="Remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7h14 M9 7V4h6v3 M7 7v13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V7"/></svg></button>
+                </div>
               </a>
+
+              <!-- 9. Add agent CTA -->
+              <button type="button" class="add-agent-card" onclick="document.getElementById('add-agent-modal').classList.add('open')" aria-label="Add a new agent">
+                <div class="plus" aria-hidden="true">+</div>
+                <div><b>Add agent</b></div>
+                <div style="font-size: 11px; color: var(--ink-2); font-weight: 400;">Clone an existing role or define a custom one</div>
+              </button>
             </div>
 
             <!-- Notes block -->
             <div class="notes">
               <div>
-                <b>Single-half monitor.</b> Agents is read-mostly. To change what an agent does, edit the rules on the stage tab (Design / Build / QA). Click any agent card to open its full detail on a separate screen.
+                <b>Editable roster.</b> Select agents with the checkbox to bulk-act (clone, pause, reroute, remove). Click any agent card to open its full detail with inline editors.
               </div>
               <div class="right">
                 <a href="#sagd" class="btn btn-soft btn-pill">Open Code 1 detail →</a>
@@ -654,6 +842,56 @@
       </div>
     </div>
   </section>
+
+  <!-- ═════════════ ADD AGENT MODAL ═════════════ -->
+  <div class="modal-back" id="add-agent-modal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="add-agent-title">
+    <div class="modal-card">
+      <h4 id="add-agent-title">Add agent</h4>
+      <p class="modal-sub">Pick a role and a default loadout. The new agent joins the roster and inherits the framework rules in force on its stage tab.</p>
+
+      <div class="field" style="margin-bottom: 14px;">
+        <div class="field-head">Display name</div>
+        <input class="field-input" value="New Code Agent" aria-label="Display name" />
+      </div>
+
+      <div class="field" style="margin-bottom: 14px;">
+        <div class="field-head">Role <button type="button" class="help" aria-label="What is a role?" title="Role determines default loadout, skills, and review relationships.">?</button></div>
+        <div class="role-picker" role="radiogroup" aria-label="Role">
+          <label class="selected"><input type="radio" name="role" value="code" checked /><span class="swatch av-c1"></span><div class="role-pick-body"><b>Code Agent</b><span>feature delivery · tests · PR</span></div></label>
+          <label><input type="radio" name="role" value="design" /><span class="swatch av-da"></span><div class="role-pick-body"><b>Design Agent</b><span>tokens + components</span></div></label>
+          <label><input type="radio" name="role" value="qa" /><span class="swatch av-qa"></span><div class="role-pick-body"><b>QA Agent</b><span>tests · a11y · fidelity</span></div></label>
+          <label><input type="radio" name="role" value="reviewer" /><span class="swatch av-rev"></span><div class="role-pick-body"><b>Reviewer</b><span>code review + nits</span></div></label>
+          <label><input type="radio" name="role" value="ba" /><span class="swatch av-ba"></span><div class="role-pick-body"><b>BA Agent</b><span>intake → requirements</span></div></label>
+          <label><input type="radio" name="role" value="custom" /><span class="swatch" style="background: var(--lavender);"></span><div class="role-pick-body"><b>Custom</b><span>define loadout from scratch</span></div></label>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px;">
+        <div class="field">
+          <div class="field-head">Model <button type="button" class="help" aria-label="What model?" title="Primary model used for this agent.">?</button></div>
+          <select class="field-select" aria-label="Model">
+            <option>opus · 5</option>
+            <option>sonnet · 5</option>
+            <option>haiku · 4.5</option>
+          </select>
+        </div>
+        <div class="field">
+          <div class="field-head">Effort</div>
+          <div class="segmented" role="radiogroup" aria-label="Effort">
+            <button type="button">low</button>
+            <button type="button">med</button>
+            <button type="button" class="on">high</button>
+            <button type="button">max</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost btn-pill" onclick="document.getElementById('add-agent-modal').style.display='none'">Cancel</button>
+        <button type="button" class="btn btn-primary btn-pill" onclick="document.getElementById('add-agent-modal').style.display='none'">Add agent</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ═════════════ AG·D · Agent detail (Screen 2 of 2) ═════════════ -->
   <section class="screen" id="sagd">
@@ -682,8 +920,8 @@
             </nav>
           </div>
           <div class="side-promo">
-            <h4>Read-mostly</h4>
-            <p>This is the agent detail screen. To steer what C1 does, edit the rules on the Build · Rules tab — those write back to <code style="font-family: var(--font-mono); font-size: 11px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">code-builder/</code>.</p>
+            <h4>Editable · save to apply</h4>
+            <p>Inline editors write back to the framework folder (<code style="font-family: var(--font-mono); font-size: 11px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">code-builder/</code>) when you Save. Use the diff pane to review before committing.</p>
           </div>
           <div class="side-foot">
             <a href="#sag"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 3h6v6 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> ← All agents</a>
@@ -706,6 +944,12 @@
             </div>
             <button class="btn btn-soft btn-pill">Switch agent</button>
             <button class="btn btn-soft btn-pill">View PR #214 ↗</button>
+            <div class="mode-switch" role="radiogroup" aria-label="Detail mode" style="margin-left: auto;">
+              <button type="button" role="radio" aria-checked="false"><span class="dot"></span>Monitor</button>
+              <button type="button" role="radio" aria-checked="true" class="on"><span class="dot"></span>Edit</button>
+            </div>
+            <button type="button" class="btn btn-soft btn-pill" aria-label="Clone Code 1">Clone</button>
+            <button type="button" class="btn btn-soft btn-pill" style="color: var(--rose); border-color: rgba(217,122,142,0.4);" aria-label="Remove Code 1">Remove</button>
           </div>
 
           <!-- ══════ TWO-COLUMN DETAIL BODY ══════ -->
@@ -718,8 +962,9 @@
                 <div class="detail-head">
                   <div class="av-lg av-c1">C1</div>
                   <div class="body">
-                    <h4>Code 1 — Code Agent</h4>
-                    <div class="sub">Tenant request detail + status updates · worktree <code style="font-family: var(--font-mono); font-size: 11.5px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">feat/tm-19-request-detail</code></div>
+                    <input class="field-input" value="Code 1 — Code Agent" aria-label="Agent name" style="font-size: 15px; font-weight: 700; padding: 4px 8px; margin-bottom: 4px;" />
+                    <input class="field-input" value="Tenant request detail + status updates" aria-label="Role description" style="font-size: 12px; color: var(--ink-2); padding: 4px 8px;" />
+                    <div class="sub" style="margin-top: 6px;">worktree <code style="font-family: var(--font-mono); font-size: 11.5px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">feat/tm-19-request-detail</code></div>
                   </div>
                   <div class="right">
                     <span class="pill active"><span class="dot"></span> active</span>
@@ -779,26 +1024,113 @@
                 </div>
 
                 <div class="meta-card">
-                  <h5>Configuration · loadout</h5>
-                  <div class="meta-row">
-                    <div class="k">Model + effort</div>
-                    <div class="v"><code>opus · high</code> · fallback <code>sonnet · medium</code></div>
+                  <h5>Configuration · loadout <span style="font-weight: 400; color: var(--ink-2); font-size: 11px; text-transform: none; letter-spacing: 0; margin-left: 6px;">(editing)</span></h5>
+
+                  <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; margin-bottom: 12px;">
+                    <div class="field">
+                      <div class="field-head">Primary model <button type="button" class="help" aria-label="What model?" title="Primary model used for this agent.">?</button></div>
+                      <select class="field-select" aria-label="Primary model">
+                        <option>opus · 5</option>
+                        <option>sonnet · 5</option>
+                        <option>haiku · 4.5</option>
+                      </select>
+                    </div>
+                    <div class="field">
+                      <div class="field-head">Effort</div>
+                      <div class="segmented" role="radiogroup" aria-label="Effort">
+                        <button type="button" role="radio">low</button>
+                        <button type="button" role="radio">med</button>
+                        <button type="button" role="radio" class="on" aria-checked="true">high</button>
+                        <button type="button" role="radio">max</button>
+                      </div>
+                    </div>
                   </div>
-                  <div class="meta-row">
-                    <div class="k">Harness / runtime</div>
-                    <div class="v"><code>worktree</code> isolation · <code>claude</code> harness · on disk at <code>code-builder/</code></div>
+
+                  <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; margin-bottom: 12px;">
+                    <div class="field">
+                      <div class="field-head">Fallback model <button type="button" class="help" aria-label="What fallback?" title="Used when primary is unavailable or rate-limited.">?</button></div>
+                      <select class="field-select" aria-label="Fallback model">
+                        <option>sonnet · 5</option>
+                        <option>haiku · 4.5</option>
+                        <option>opus · 5</option>
+                      </select>
+                    </div>
+                    <div class="field">
+                      <div class="field-head">Fallback effort</div>
+                      <div class="segmented" role="radiogroup" aria-label="Fallback effort">
+                        <button type="button" role="radio">low</button>
+                        <button type="button" role="radio" class="on" aria-checked="true">med</button>
+                        <button type="button" role="radio">high</button>
+                      </div>
+                    </div>
                   </div>
-                  <div class="meta-row">
-                    <div class="k">Trigger</div>
-                    <div class="v"><span class="trigger-tag"><span class="dot"></span> reactive</span> activated by Orchestrator when design approved for <code>TM-19</code> · <b>7 turns</b> taken so far</div>
+
+                  <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; margin-bottom: 12px;">
+                    <div class="field">
+                      <div class="field-head">Harness <button type="button" class="help" aria-label="What harness?" title="Runtime harness (claude / codex / custom).">?</button></div>
+                      <div class="segmented" role="radiogroup" aria-label="Harness">
+                        <button type="button" role="radio" class="on" aria-checked="true">claude</button>
+                        <button type="button" role="radio">codex</button>
+                        <button type="button" role="radio">custom</button>
+                      </div>
+                    </div>
+                    <div class="field">
+                      <div class="field-head">Isolation <button type="button" class="help" aria-label="What isolation?" title="File-system isolation per run.">?</button></div>
+                      <div class="segmented" role="radiogroup" aria-label="Isolation">
+                        <button type="button" role="radio" class="on" aria-checked="true">worktree</button>
+                        <button type="button" role="radio">shared</button>
+                        <button type="button" role="radio">remote</button>
+                        <button type="button" role="radio">none</button>
+                      </div>
+                    </div>
                   </div>
-                  <div class="meta-row">
-                    <div class="k">Context in force</div>
-                    <div class="v">4 skills active this turn · <a href="#ctx-card" class="pointer-link">view context →</a></div>
+
+                  <div style="margin-bottom: 12px;">
+                    <div class="field-head" style="margin-bottom: 6px;">Trigger <button type="button" class="help" aria-label="What trigger?" title="How this agent gets activated.">?</button></div>
+                    <div class="segmented" role="radiogroup" aria-label="Trigger" style="display: flex;">
+                      <button type="button" role="radio" class="on" aria-checked="true">reactive</button>
+                      <button type="button" role="radio">cron</button>
+                      <button type="button" role="radio">manual</button>
+                      <button type="button" role="radio">event</button>
+                    </div>
+                    <div style="font-size: 11.5px; color: var(--ink-2); margin-top: 6px;">Activated by Orchestrator when design approved for <code style="font-family: var(--font-mono); font-size: 11px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">TM-19</code> · <b>7 turns</b> taken so far</div>
                   </div>
-                  <div class="meta-row">
-                    <div class="k">Steer here</div>
-                    <div class="v">Edit on the <a href="build-tab.html" class="pointer-link">Build · Rules</a> tab · writes back to <code>code-builder/</code> + <code>../skills/coding-guidelines.md</code></div>
+
+                  <div style="margin-bottom: 12px;">
+                    <div class="field-head" style="margin-bottom: 6px;">Skills in force <button type="button" class="help" aria-label="What skills?" title="Per-agent always-loaded skills. On-demand skills fire on context.">?</button></div>
+                    <div class="chip-group" role="group" aria-label="Skills">
+                      <button type="button" class="chip-toggle on" aria-pressed="true"><span class="dot"></span>code-quality.md</button>
+                      <button type="button" class="chip-toggle on" aria-pressed="true"><span class="dot"></span>feature-fidelity.md</button>
+                      <button type="button" class="chip-toggle on" aria-pressed="true"><span class="dot"></span>security.md</button>
+                      <button type="button" class="chip-toggle on" aria-pressed="true"><span class="dot"></span>ui-best-practices.md</button>
+                      <button type="button" class="chip-toggle" aria-pressed="false"><span class="dot"></span>accessibility.md</button>
+                      <button type="button" class="chip-toggle" aria-pressed="false"><span class="dot"></span>general-best-practices.md</button>
+                      <button type="button" class="chip-toggle" aria-pressed="false"><span class="dot"></span>coding-guidelines.md</button>
+                      <button type="button" class="chip-toggle" aria-pressed="false"><span class="dot"></span>test-coverage.md</button>
+                    </div>
+                    <div style="font-size: 11.5px; color: var(--ink-2); margin-top: 6px;">4 of 8 active · on-demand skills fire by skill-invocation rules</div>
+                  </div>
+
+                  <div style="margin-bottom: 12px;">
+                    <div class="field-head" style="margin-bottom: 6px;">Adversarial review <button type="button" class="help" aria-label="What review?" title="Reviewer agent and depth for adversarial pass on this agent's PR.">?</button></div>
+                    <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px;">
+                      <select class="field-select" aria-label="Reviewer agent">
+                        <option>Reviewer Agent (RV)</option>
+                        <option>Design B (DB)</option>
+                        <option>QA Agent (QA)</option>
+                        <option>none</option>
+                      </select>
+                      <select class="field-select" aria-label="Review depth">
+                        <option>light · top-of-file only</option>
+                        <option>medium · diff + 2 deep dives</option>
+                        <option>deep · full file review</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div class="field-head" style="margin-bottom: 6px;">Steering notes <button type="button" class="help" aria-label="What notes?" title="Free-text steering notes appended to every prompt for this agent.">?</button></div>
+                    <textarea class="field-textarea" rows="3" aria-label="Steering notes">Prefer small, surgical PRs. Always run unit tests before pushing. Defer accessibility nits to follow-up story unless blocking.</textarea>
                   </div>
                 </div>
 
@@ -949,6 +1281,31 @@
                   <div style="font-size: 11.5px; color: var(--ink-2); margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(50,42,92,0.05);">Skill invocation per <code style="font-family: var(--font-mono); font-size: 11px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">CLAUDE.md § Skill Invocation Rules</code> · fired 4 of 8 for this story</div>
                 </div>
 
+                <div class="diff-preview">
+                  <h5>Diff preview <span class="changes-badge">5 changes</span></h5>
+                  <div class="diff-row">
+                    <div class="k">Model</div>
+                    <div class="v"><span class="v-old">opus 4.8 · high</span><span class="arrow">→</span><span class="v-new">opus 5 · high</span></div>
+                  </div>
+                  <div class="diff-row">
+                    <div class="k">Fallback</div>
+                    <div class="v"><span class="v-old">sonnet 4.8 · medium</span><span class="arrow">→</span><span class="v-new">sonnet 5 · medium</span></div>
+                  </div>
+                  <div class="diff-row">
+                    <div class="k">Isolation</div>
+                    <div class="v"><span class="v-old">shared</span><span class="arrow">→</span><span class="v-new">worktree</span></div>
+                  </div>
+                  <div class="diff-row">
+                    <div class="k">Trigger</div>
+                    <div class="v"><span class="v-old">manual</span><span class="arrow">→</span><span class="v-new">reactive</span></div>
+                  </div>
+                  <div class="diff-row">
+                    <div class="k">Skills</div>
+                    <div class="v"><span class="v-old">code-quality · security · feature-fidelity · coding-guidelines</span><span class="arrow">→</span><span class="v-new">+ ui-best-practices, − coding-guidelines</span></div>
+                  </div>
+                  <div style="font-size: 11.5px; color: var(--ink-2); margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(50,42,92,0.05);">Writes to <code style="font-family: var(--font-mono); font-size: 11px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">code-builder/code-1/agent.yaml</code> on Save.</div>
+                </div>
+
                 <div class="job-queue">
                   <h5>Job-board queue · up next</h5>
                   <div class="job-row">
@@ -969,19 +1326,35 @@
                 </div>
 
                 <div class="meta-card">
-                  <h5>Steer here</h5>
-                  <div class="meta-row">
-                    <div class="k">Build rules</div>
-                    <div class="v"><a href="build-tab.html" class="pointer-link">edit on the Build · Rules tab</a> — writes to <code>code-builder/</code> and <code>../skills/coding-guidelines.md</code></div>
+                  <h5>Memory bank <span style="font-weight: 400; color: var(--ink-2); font-size: 11px; text-transform: none; letter-spacing: 0; margin-left: 6px;">(14 prior stories · editable)</span></h5>
+                  <div class="mem-list">
+                    <div class="mem-item">
+                      <span class="key">bias.style</span>
+                      <span class="val">CRM-style data tables, CSS modules</span>
+                      <button type="button" aria-label="Remove bias.style">✕</button>
+                    </div>
+                    <div class="mem-item">
+                      <span class="key">bias.test</span>
+                      <span class="val">Vitest + Playwright; prefers integration over unit for flows</span>
+                      <button type="button" aria-label="Remove bias.test">✕</button>
+                    </div>
+                    <div class="mem-item">
+                      <span class="key">bias.defer</span>
+                      <span class="val">a11y nits → follow-up story unless blocking</span>
+                      <button type="button" aria-label="Remove bias.defer">✕</button>
+                    </div>
+                    <div class="mem-item">
+                      <span class="key">rework.rounds</span>
+                      <span class="val">2 of 14 stories required rework loop</span>
+                      <button type="button" aria-label="Remove rework.rounds">✕</button>
+                    </div>
                   </div>
-                  <div class="meta-row">
-                    <div class="k">Memory bank</div>
-                    <div class="v">14 prior stories · biases toward CRM-style data tables and CSS modules</div>
+                  <div class="mem-add" style="margin-top: 8px;">
+                    <input class="field-input" placeholder="bias.key" aria-label="New key" style="max-width: 140px;" />
+                    <input class="field-input" placeholder="value…" aria-label="New value" />
+                    <button type="button" class="btn btn-soft btn-pill" style="flex: none;">+ Add</button>
                   </div>
-                  <div class="meta-row">
-                    <div class="k">Manual override</div>
-                    <div class="v"><a href="#sag" style="color: var(--navy); font-weight: 600;">Reroute assignments</a> · <a href="#sag" style="color: var(--navy); font-weight: 600;">Pause agent</a></div>
-                  </div>
+                  <div style="font-size: 11.5px; color: var(--ink-2); margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(50,42,92,0.05);"><a href="build-tab.html" class="pointer-link">edit on the Build · Rules tab</a> · writes to <code style="font-family: var(--font-mono); font-size: 11px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">code-builder/</code> and <code style="font-family: var(--font-mono); font-size: 11px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">../skills/coding-guidelines.md</code></div>
                 </div>
 
               </div>
@@ -989,11 +1362,24 @@
 
             <div class="notes">
               <div>
-                <b>Single-half monitor.</b> To change what Code 1 does, edit the rules on the <a href="build-tab.html">Build · Rules tab</a>. The active Code 1 here runs the rules currently in force on the Build tab.
+                <b>Editing Code 1.</b> Inline changes write back to <code style="font-family: var(--font-mono); font-size: 11px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">code-builder/</code> when you Save. The active run keeps the previous loadout until the next turn.
               </div>
               <div class="right">
                 <a href="#sag" class="btn btn-soft btn-pill">← Back to roster</a>
-                <a href="build-tab.html" class="btn btn-soft btn-pill">Open Build · Rules →</a>
+                <a href="#sag" class="btn btn-soft btn-pill">Switch agent</a>
+              </div>
+            </div>
+
+            <!-- Sticky save toolbar -->
+            <div class="edit-toolbar" role="region" aria-label="Pending changes">
+              <div class="changes">
+                <span class="dot-saving" aria-hidden="true"></span>
+                <span><b>5 unsaved changes</b></span>
+                <span class="badge">model · fallback · isolation · trigger · skills</span>
+              </div>
+              <div class="actions">
+                <button type="button" class="btn btn-ghost btn-pill">Reset</button>
+                <button type="button" class="btn btn-primary btn-pill">Save changes</button>
               </div>
             </div>
 
