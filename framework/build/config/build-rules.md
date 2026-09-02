@@ -1,3 +1,4 @@
+<!-- fill-from: build-tab.html -->
 # Build Rules (rules in force)
 
 > Written by the Idea Hub **Build tab → Rules half**. The Code Agents read this

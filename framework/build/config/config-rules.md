@@ -1,3 +1,4 @@
+<!-- migrate-from: code-builder/config-rules.md -->
 # Config Rules (stack selection)
 
 > Written by the Idea Hub **Build tab → Rules half** (Architecture card).

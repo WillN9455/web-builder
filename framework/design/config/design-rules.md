@@ -1,3 +1,4 @@
+<!-- fill-from: design-tab.html -->
 # Design Rules (rules in force)
 
 > Written by the Idea Hub **Design tab → Rules half**. The Design Agent reads

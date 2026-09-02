@@ -4,11 +4,12 @@
 > every task pickup.
 
 ## Loadout
-- Role: Reviewer Agent (adversarial review across Design, Build, QA)
-- Stage: Review (pipeline position 4; parked in the QA export unit in v1)
+- Role: Reviewer Agent (adversarial review across BA, Design, Build, QA)
+- Stage: Review (pipeline position 4 — own stage, not a QA role)
 - Model / effort: *(edited on Agents tab — values written here)*
 - Trigger: work marked "Ready for review"
-- Skills in force: `../skills/testing-guidelines.md`, `../../shared/skills/general-best-practices.md`
+- Skills in force: `../../shared/skills/general-best-practices.md`, `../../shared/skills/security.md` (audit lens — the same rules Build enforces)
+- Config in force: `../config/review-rules.md`
 
 ## Adversarial review
 - Critiqued by: Main Orchestrator

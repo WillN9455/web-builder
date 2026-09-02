@@ -8,7 +8,7 @@
 - Stage: QA
 - Model / effort: *(edited on Agents tab — values written here)*
 - Trigger: story reaches "Ready for QA" on the board
-- Skills in force: `../skills/testing-guidelines.md`
+- Skills in force: `../skills/testing-guidelines.md`, `../skills/security.md` (binding → `../../shared/skills/security.md`)
 - Config in force: `../config/test-rules.md`
 
 ## Adversarial review

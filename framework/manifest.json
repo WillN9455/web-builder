@@ -1,7 +1,8 @@
 {
-  "version": "0.1.0-draft",
-  "revision": 1,
-  "description": "Export contract for the Idea Hub web builder. Everything in framework/ is copied into a new project on idea creation. The launcher reads this file — not the filesystem — to learn what to export, which agents read which files, and where the UI writes back.",
+  "version": "0.2.0",
+  "revision": 2,
+  "status": "locked",
+  "description": "Export contract for the Idea Hub web builder. Everything in framework/ is copied into a new project on idea creation. The launcher reads this file — not the filesystem — to learn what to export, which agents read which files, and where the UI writes back. Key-by-key schema: MANIFEST.md.",
   "export_root": "framework/",
   "stages": {
     "design": {
@@ -25,23 +26,39 @@
       "config": ["build/config/config-rules.md", "build/config/build-rules.md"],
       "agents": ["build/agents/code-agent-C1.md", "build/agents/code-agent-C2.md", "build/agents/code-agent-C3.md"],
       "templates": ["templates/nextjs-starter/"],
+      "shared_inputs": ["shared/skills/general-best-practices.md"],
       "ui_write_back": "Build tab → Rules half"
     },
     "qa": {
-      "label": "QA + Review",
+      "label": "QA",
       "folder": "qa/",
-      "skills": ["qa/skills/testing-guidelines.md"],
+      "skills": ["qa/skills/testing-guidelines.md", "qa/skills/security.md"],
       "config": ["qa/config/test-rules.md"],
-      "agents": ["qa/agents/qa-agent.md", "qa/agents/reviewer-agent.md"],
+      "agents": ["qa/agents/qa-agent.md"],
+      "shared_inputs": ["shared/skills/general-best-practices.md"],
       "ui_write_back": "QA tab → Rules half"
+    },
+    "review": {
+      "label": "Review",
+      "folder": "review/",
+      "skills": [],
+      "config": ["review/config/review-rules.md"],
+      "agents": ["review/agents/reviewer-agent.md"],
+      "shared_inputs": ["shared/skills/general-best-practices.md", "shared/skills/security.md"],
+      "ui_write_back": "Agents tab → Reviewer panel (Rules half)",
+      "note": "Pipeline position 4. Own stage, not a QA role: its inputs span BA, Design, Build, and QA. Owns no skill bodies — audits via shared rules."
     }
   },
   "shared": {
-    "skills": ["shared/skills/general-best-practices.md"],
-    "consumers": ["design", "build", "qa"]
+    "skills": ["shared/skills/general-best-practices.md", "shared/skills/security.md"],
+    "rule": "a skill body lives here only when two or more stages consume it; consumers keep a thin binding file in their own skills/ folder",
+    "consumers": {
+      "general-best-practices.md": ["design", "build", "qa", "review"],
+      "security.md": ["build", "qa", "review"]
+    }
   },
   "outside_export_root": {
-    "note": "Referenced at export time but not yet relocated. Debate item.",
+    "note": "Referenced at export time, not copied. Settled at rev 2: different export lifecycles.",
     "prd_templates": "PRD/templates/",
     "workflows": "workflows/"
   }

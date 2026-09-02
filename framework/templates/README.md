@@ -1,9 +1,9 @@
 # templates/ — starter scaffolds (top-level)
 
-Lives **outside** every stage folder. Reason: templates are reused across
-build/templates, but also inspected at intake time (the Idea Hub needs to
-preview a "starter" before the user even picks a stage). The Build stage
-*references* this one, it does not *own* it.
+Lives **outside** every stage folder. Reason: templates are consumed before
+stage assignment — the Idea Hub previews a "starter" at intake time, before
+the user even picks a stage. The Build stage *references* this folder, it
+does not *own* it (`build/README.md` § Inputs).
 
 | File | Purpose | Written by |
 |---|---|---|
