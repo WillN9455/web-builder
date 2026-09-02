@@ -168,13 +168,24 @@
 .tile-butter   { background: var(--butter); }
 .tile-blush    { background: var(--blush); }
 
-.tile-ico {
-  width: 30px; height: 30px;
-  border-radius: 8px;
-  background: rgba(255,255,255,0.55);
-  display: flex; align-items: center; justify-content: center;
-  color: var(--ink);
+/* Active-now expand affordance (mockup `#s1` — chevron under the tile grid) */
+.expand-row {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
 }
+.expand-btn {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.7);
+  border: 1px solid rgba(50,42,92,0.06);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: transform 200ms;
+}
+.expand-btn:hover { color: var(--ink); }
+.expand-btn[aria-expanded="true"] svg { transform: rotate(180deg); }
 
 .tile h3 {
   margin: 0 0 4px;
@@ -225,6 +236,8 @@
 .pill.draft    .dot { background: var(--coral); }
 .pill.done     .dot { background: var(--green); }
 .pill.shipped  .dot { background: var(--mint); }
+.pill.onhold   .dot { background: var(--amber); }
+.pill.cancelled .dot { background: var(--ink-2); }
 
 .more-btn {
   margin-left: auto;
@@ -278,9 +291,9 @@
 }
 
 .ring-legend {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   font-size: 12.5px;
 }
 .ring-legend .item {
@@ -299,27 +312,6 @@
   color: var(--ink-2);
 }
 
-.next-milestone {
-  margin-left: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 180px;
-}
-.next-milestone .lbl {
-  font-size: 11px;
-  color: var(--ink-2);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-weight: 600;
-}
-.next-milestone .name { font-size: 14px; font-weight: 600; color: var(--ink); }
-.next-milestone .days {
-  display: inline-flex; align-items: center; gap: 6px;
-  font-size: 12px; color: var(--ink-2);
-}
-.next-milestone .days svg { width: 12px; height: 12px; }
-
 /* ─── All projects table ─────────────────────────────────────────────── */
 
 .rows {
@@ -329,17 +321,19 @@
   border: 1px solid rgba(50,42,92,0.04);
 }
 
-.row {
+/* Table rows are scoped to `.rows` so the tile pill row (`ProjectTile` also
+ * uses `.row`) keeps its flex layout instead of inheriting the grid. */
+.rows .row {
   display: grid;
-  grid-template-columns: 2fr 0.7fr 0.5fr 0.9fr 0.7fr 0.7fr 1.2fr 32px;
+  grid-template-columns: 2fr 0.8fr 0.9fr 0.8fr 1.2fr 32px;
   align-items: center;
   gap: 12px;
   padding: 12px 8px;
   border-bottom: 1px solid rgba(50,42,92,0.06);
   font-size: 12.5px;
 }
-.row:last-child { border-bottom: 0; }
-.row.head {
+.rows .row:last-child { border-bottom: 0; }
+.rows .row.head {
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -347,7 +341,10 @@
   color: var(--ink-2);
   border-bottom: 1px solid rgba(50,42,92,0.08);
 }
-.row.head > span { padding: 0 2px; }
+.rows .row.head > span { padding: 0 2px; }
+
+/* Tile pill row: pill left, ⋯ button right (mockup `#s1`). */
+.tile .row { justify-content: space-between; }
 
 .ttl b { display: block; font-weight: 600; color: var(--ink); font-size: 13px; }
 .ttl span {
@@ -1057,3 +1054,29 @@
   border-radius: 50%;
   background: var(--green);
 }
+
+/* ─── Screen 2 — empty state (mockup `#s2`) ────────────────────────────── */
+.empty {
+  background: #fff;
+  border-radius: var(--r-2xl);
+  padding: 56px 32px;
+  text-align: center;
+  border: 1px dashed rgba(50, 42, 92, 0.18);
+}
+.empty .illu {
+  width: 88px; height: 88px;
+  margin: 0 auto 16px;
+  border-radius: 24px;
+  background: linear-gradient(160deg, var(--peach), var(--lavender));
+  display: grid; place-items: center;
+  color: var(--ink);
+}
+.empty h2 { font-size: 22px; font-weight: 700; margin: 0 0 6px; }
+.empty p {
+  color: var(--ink-2);
+  font-size: 14px;
+  max-width: 380px;
+  margin: 0 auto 18px;
+  line-height: 1.55;
+}
+.empty-actions { display: flex; gap: 10px; justify-content: center; }
