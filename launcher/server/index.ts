@@ -9,10 +9,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { migrate, db } from './db.js';
 import {
-  initProjectDir,
+  validateProjectDir,
+  scaffoldProjectDir,
+  stagedMemoryDir,
+  STAGED_SESSIONS_DIR,
+  moveStagedMemory,
   MODEL,
   OLLAMA,
-  REPO_ROOT,
   SYSTEM_PROMPT,
   MAX_BODY_BYTES,
   MAX_MESSAGES,
@@ -237,7 +240,11 @@ app.post('/api/init', async (req, res) => {
   // safety in case the limit is exceeded and the raw stream is needed.
   const body = (req.body ?? {}) as { dir?: unknown; projectName?: unknown };
   try {
-    const info = initProjectDir(body.dir);
+    // Validate only — nothing is written to disk here. The project folder is
+    // created, scaffolded and pinned when the interview completes (final idea
+    // fence), so an abandoned chat never leaves a scaffolded folder behind.
+    // Owner decision, Web-builder thread 2026-09-02.
+    const info = validateProjectDir(body.dir);
     const sessionId = newSessionId();
     // Accept an optional project name (Task 1.4 / Task 2): when set, the BA
     // Agent won't override it. Trim once and store the canonical form.
@@ -254,20 +261,11 @@ app.post('/api/init', async (req, res) => {
       outstandingQuestions: [],
     });
 
-    // Pin the workspace root for any framework session launched from this repo:
-    // CLAUDE.md §Workspace Root tells every agent to read project-dir.txt and
-    // direct all artifact writes there instead of into the framework repo.
-    const pointerPath = path.join(REPO_ROOT, 'project-dir.txt');
-    fs.writeFileSync(pointerPath, info.abs + '\n', 'utf-8');
-
     res.json({
       ok: true,
       sessionId,
       dir: info.abs,
       existed: info.existed,
-      filesCopied: info.copied,
-      filesSkipped: info.skipped,
-      workspacePinnedAt: pointerPath,
       // Conversation caps — surfaced so the chat UI can warn as the user
       // approaches the limit without duplicating the constants client-side.
       maxMessages: MAX_MESSAGES,
@@ -289,16 +287,20 @@ function sendNdjson(res: express.Response, obj: unknown): void {
 //   • conversation.jsonl — one JSON entry per message (machine-readable)
 //   • transcript.md      — human-readable mirror (what the user sees in chat)
 //
+// The caller resolves where .idea-memory lives: inside the project folder
+// when it exists, or the launcher-side staging dir while the folder is still
+// deferred (moveStagedMemory folds the staged files in at capture).
+//
 // Writes are best-effort: a filesystem failure logs to stderr but doesn't
 // break the chat stream. The DB row is the source of truth — these files
 // are convenience artefacts.
 function writeMemoryFiles(
-  projectDir: string,
+  memDir: string,
+  displayDir: string,
   history: ChatMessage[],
   persistedCount: number,
 ): { transcriptPath: string; jsonlPath: string } | null {
   try {
-    const memDir = path.join(projectDir, '.idea-memory');
     fs.mkdirSync(memDir, { recursive: true });
     const ts = new Date().toISOString();
     const jsonlPath = path.join(memDir, 'conversation.jsonl');
@@ -329,7 +331,7 @@ function writeMemoryFiles(
     const lines: string[] = [];
     lines.push('# BA Agent interview transcript');
     lines.push('');
-    lines.push(`Project: \`${projectDir}\``);
+    lines.push(`Project: \`${displayDir}\``);
     lines.push(`Captured: ${ts}`);
     lines.push(`Messages: ${history.length}`);
     lines.push('');
@@ -350,6 +352,18 @@ function writeMemoryFiles(
     console.error('[api] failed to write memory files:', err);
     return null;
   }
+}
+
+// Resolve where this session's .idea-memory writes land: inside the project
+// folder when it exists (post-capture, or the user picked a pre-existing
+// folder), otherwise the launcher-side staging dir keyed by the early project
+// row. Null when there's nowhere to write yet (no folder, no row — e.g. the
+// very first reply when createEarlyProject failed); the transcript still
+// lives in session history and the next reply retries.
+function resolveMemoryDir(session: IntakeSession): string | null {
+  if (fs.existsSync(session.dir)) return path.join(session.dir, '.idea-memory');
+  if (session.earlyProjectId !== null) return stagedMemoryDir(session.earlyProjectId);
+  return null;
 }
 
 // Recover the true conversation from a JSONL that the old (quadratic-append)
@@ -377,8 +391,7 @@ function dedupeMessages(all: ChatMessage[]): ChatMessage[] {
 // Rewrite .idea-memory/conversation.jsonl from scratch with a clean history.
 // Used on resume when dedupeMessages shrank the array — compacts bloated files
 // in place so the next append starts from a tidy baseline.
-function rewriteConversationJsonl(projectDir: string, messages: ChatMessage[]): void {
-  const memDir = path.join(projectDir, '.idea-memory');
+function rewriteConversationJsonl(memDir: string, messages: ChatMessage[]): void {
   const jsonlPath = path.join(memDir, 'conversation.jsonl');
   const ts = new Date().toISOString();
   const fd = fs.openSync(jsonlPath, 'w');
@@ -800,19 +813,11 @@ app.post('/api/chat', async (req, res) => {
   const assistantReply: ChatMessage = { role: 'assistant', content: full };
   session.history = [...incoming, assistantReply];
 
-  // Persist the conversation every reply (Task 2.2). A aborted session
-  // still has its transcript on disk.
-  //
-  // For the human-readable transcript.md we want the topic markers gone
-  // (they're internal signalling, not conversation); for the JSONL we keep
-  // them so /resume can re-derive the sidebar cursor. writeMemoryFiles
-  // handles the split — it appends only the messages added since the last
-  // write (history.slice(persistedCount)) so the JSONL grows linearly.
-  const memResult = writeMemoryFiles(session.dir, session.history, session.persistedCount);
-  if (memResult) session.persistedCount = session.history.length;
-
   // Create the project row on the first BA reply (Task 2.1). Idempotent —
-  // if a row already exists from a previous reply, we reuse it.
+  // if a row already exists from a previous reply, we reuse it. Runs BEFORE
+  // the memory write: while the project folder is deferred (owner decision —
+  // nothing on disk until capture), the staged .idea-memory is keyed by this
+  // row id, so the row must exist before the transcript is persisted.
   if (session.earlyProjectId === null) {
     try {
       const proj = createEarlyProject(session);
@@ -824,6 +829,18 @@ app.post('/api/chat', async (req, res) => {
       console.error('[api] failed to create early project row:', err);
     }
   }
+
+  // Persist the conversation every reply (Task 2.2). A aborted session
+  // still has its transcript on disk.
+  //
+  // For the human-readable transcript.md we want the topic markers gone
+  // (they're internal signalling, not conversation); for the JSONL we keep
+  // them so /resume can re-derive the sidebar cursor. writeMemoryFiles
+  // handles the split — it appends only the messages added since the last
+  // write (history.slice(persistedCount)) so the JSONL grows linearly.
+  const memDir = resolveMemoryDir(session);
+  const memResult = memDir ? writeMemoryFiles(memDir, session.dir, session.history, session.persistedCount) : null;
+  if (memResult) session.persistedCount = session.history.length;
 
   const doneEvent: DoneEvent = {
     type: 'done',
@@ -844,6 +861,15 @@ app.post('/api/chat', async (req, res) => {
   const idea = extractIdea(full);
   if (idea) {
     try {
+      // Intake completes here: create the project folder, scaffold the
+      // framework files into it, and pin the workspace root. This is the
+      // deferred-creation moment (owner decision — nothing lands on disk at
+      // folder-pick, so an abandoned interview leaves nothing behind). Then
+      // fold any staged .idea-memory into the folder so /resume keeps working
+      // from disk. A scaffold failure surfaces through the same catch below
+      // as ideaWriteError — idea.md can't be written without the folder.
+      scaffoldProjectDir(session.dir);
+      if (session.earlyProjectId !== null) moveStagedMemory(session.earlyProjectId, session.dir);
       const result = writeIdeaFile(session.dir, idea);
       doneEvent.ideaWritten = true;
       doneEvent.ideaPath = result.path;
@@ -986,6 +1012,14 @@ app.delete('/api/projects/:id', (req, res) => {
       db.prepare('DELETE FROM project WHERE id = ?').run(projectId);
     });
     tx(row.id);
+    // Best-effort: drop the deferred-interview memory staging dir, if the
+    // project never reached capture. Legacy project folders stay in place
+    // (see comment above — the launcher never deletes project folders).
+    try {
+      fs.rmSync(path.join(STAGED_SESSIONS_DIR, 'proj-' + row.id), { recursive: true, force: true });
+    } catch {
+      // staging cleanup is a convenience, not a correctness requirement
+    }
     res.json({ ok: true, id: row.id, slug: row.slug, name: row.name });
   } catch {
     // Log internally; return a generic message so we never leak the underlying
@@ -1019,11 +1053,20 @@ app.get('/api/projects/:id/resume', (req, res) => {
     return;
   }
 
-  const jsonlPath = path.join(row.folder_path, '.idea-memory', 'conversation.jsonl');
-  if (!fs.existsSync(jsonlPath)) {
+  // Transcript lookup — project folder first (legacy sessions and any
+  // post-capture replay), then the launcher-side staging dir used while the
+  // folder was still deferred. /resume only serves Intake rows, so the
+  // staging dir is the normal home mid-interview now.
+  const memDirCandidates = [
+    path.join(row.folder_path, '.idea-memory'),
+    stagedMemoryDir(row.id),
+  ];
+  const memDir = memDirCandidates.find((d) => fs.existsSync(path.join(d, 'conversation.jsonl')));
+  if (!memDir) {
     res.status(410).json({ error: 'No transcript on disk for this project.' });
     return;
   }
+  const jsonlPath = path.join(memDir, 'conversation.jsonl');
 
   // Parse the JSONL. Skip the header line, validate every entry, drop
   // anything that doesn't look like a message — never trust the file blindly.
@@ -1058,7 +1101,7 @@ app.get('/api/projects/:id/resume', (req, res) => {
   const deduped = dedupeMessages(messages);
   if (deduped.length < messages.length) {
     try {
-      rewriteConversationJsonl(row.folder_path, deduped);
+      rewriteConversationJsonl(memDir, deduped);
       console.log(
         `[api] compacted resume JSONL: ${messages.length} -> ${deduped.length} entries`,
       );
