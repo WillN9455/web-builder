@@ -9,7 +9,7 @@ Idea (idea.md)
     ↓
 [Stage 1] Product Requirements → PRD/<project>/prd.md
     ↓
-[Stage 2] Design System → design-system/<project>/
+[Stage 2] Design System → design-system/
     ↓
 [Stage 3] Code Generation → Feature branches
     ↓
