@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS project (
   category        TEXT    NOT NULL DEFAULT 'Maintenance',
   folder_path     TEXT    NOT NULL,
   current_stage   TEXT    NOT NULL CHECK (current_stage IN
-                    ('Intake','PRD','Design','Build','Review','QA','Shipped')),
+                    ('Intake','Requirements','PRD','Design','Build','Review','QA','Shipped')),
   status          TEXT    NOT NULL CHECK (status IN
                     ('queued','active','review','blocked','done','shipped')),
   priority        TEXT    NOT NULL DEFAULT 'medium' CHECK (priority IN
@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS stage (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
   project_id   INTEGER NOT NULL REFERENCES project(id) ON DELETE CASCADE,
   stage_key    TEXT    NOT NULL CHECK (stage_key IN
-                 ('Intake','PRD','Design','Build','Review','QA','Shipped')),
+                 ('Intake','Requirements','PRD','Design','Build','Review','QA','Shipped')),
   status       TEXT    NOT NULL CHECK (status IN
                  ('queued','active','review','blocked','done','shipped')),
   started_at   TEXT,

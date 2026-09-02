@@ -139,7 +139,7 @@ Each workflow reads from upstream artifacts and produces outputs consumed by dow
 | Confirm Stack | PRD §3 Dependencies + user answers; `config-rules.md` §User Questions #1-#5 | Stack selection output (frontend, DB, hosting, API) | Template selection |
 | Scaffold | Stack choice from config-rules; `templates/nextjs-starter/` (or chosen template per `templates/README.md`); design token files | Scaffolded project with filled token values in CSS/TS files | Feature assignment |
 | Build Features | Approved PRD §8 User Stories (assigned features); component specs (`components/<feature>.md`); state specs (`states/*.md`); all skill files via Skill Invocation Rules table | Feature branch code implementing all states, following all rules | Unit tests |
-| Unit Tests | Feature spec; `testing/playwright/README.md` §Required Test Coverage; PRD acceptance criteria per user story (#N) | Unit + integration test files in feature's test directory | Push & Notify |
+| Unit Tests | Feature spec; `framework/qa/skills/testing-guidelines.md` §Required Test Coverage; PRD acceptance criteria per user story (#N) | Unit + integration test files in feature's test directory | Push & Notify |
 | Push & Notify | Feature branch code + tests | Pushed feature branch | **Workflow 4** — Dev Reviewers begin review |
 
 ### Workflow 4 (Code Review)
@@ -155,7 +155,7 @@ Each workflow reads from upstream artifacts and produces outputs consumed by dow
 | Phase | Reads from | Writes to | Triggers |
 |-------|-----------|----------|---------|
 | Clarify Requirements | PRD §8 User Stories + §13 reviewer comments; BA Agent for ambiguities per `general-best-practices.md` §BA Agent rule #2 (ask twice, then document) | Clarified requirements list | Test suite generation |
-| Write Test Suite | Clarified requirements; PRD §8 acceptance criteria per user story (#N); component specs; state docs (all 6 states' Testing Requirements lists); `accessibility-guidelines.md` §Testing Requirements | Playwright test files in `testing/playwright/features/<feature>/` | Test execution |
+| Write Test Suite | Clarified requirements; PRD §8 acceptance criteria per user story (#N); component specs; state docs (all 6 states' Testing Requirements lists); `framework/design/skills/accessibility-guidelines.md` §Testing Requirements | Playwright test files in `framework/qa/features/<feature>/` | Test execution |
 | Execute Tests | Written tests; deployed/staged feature URL | Test results per feature: pass/fail per user story per state | Assess results |
 | Assess Results | Test results per PRD requirement traceability; `playwright/README.md` §QA Agent Test Execution Rules #3-#5 | Final verdict: deploy or send back to dev with failure details | Deployment (if all pass) |
 

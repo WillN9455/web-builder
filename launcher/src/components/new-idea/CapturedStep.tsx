@@ -27,7 +27,7 @@ export function CapturedStep({ doneEvent, projectDir, onOpenProject, onBack }: P
         <p className="sub" style={{ textAlign: 'center' }}>
           Your idea was saved to{' '}
           <code style={{ fontFamily: 'var(--font-mono)' }}>{ideaPath}</code>. The project is now in{' '}
-          <b>Intake</b> — next stop is the PRD.
+          <b>Requirements</b> (intake complete) — next stop is the PRD.
         </p>
 
         <div className="captured-summary">

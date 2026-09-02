@@ -67,16 +67,14 @@ Every stage folder has the same tri-fold: **`skills/`** (loaded on demand),
    write-back targets, and skill→agent mapping all come from `manifest.json`,
    so structure can evolve without launcher code changes.
 
-## Migration
+## Provenance
 
-Stub bodies carry uniform HTML-comment markers — no separate MIGRATION.md to
-rot after the migration lands. The full migration map is one command:
+Stage skill and config bodies are migrated (not stubs): `skills/*.md` and
+`code-builder/config-rules.md` from the former repo-root trees, QA test rules
+consolidated from the former `testing/playwright/README.md`, and the four
+per-stage Rules config files filled from the launcher design mockups
+(`launcher/design/*-tab.html`). Thin bindings remain the one exception:
 
 ```sh
-grep -rn "migrate-from:" framework/
 grep -rn "binding:" framework/        # thin bindings → shared bodies
-grep -rn "fill-from:" framework/      # stubs filled from a UI mockup, no source file
 ```
-
-Execute the migration (copy real content over the stubs) only after the
-launcher reads `manifest.json`; until then the stubs are the record of intent.

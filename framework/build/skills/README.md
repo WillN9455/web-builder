@@ -7,5 +7,4 @@ Skill files the Code Agents (C1–C3) load on demand. One concern per file.
 - `security.md` — security rules
 - `feature-fidelity.md` — design↔code fidelity checklist
 
-**v1 draft:** bodies migrate from repo-root `skills/` after the debate
-converges.
+Bodies are the migrated repo-root rulebooks; this folder is their canonical home.

@@ -1,7 +1,11 @@
 // Shared types + thin fetch helpers for the launcher API.
 
+// Stage keys. The 7-segment pipeline stepper stays 7 steps; `Requirements` is
+// the "intake chat completed, idea captured" sub-state of the Requirements
+// step — the project leaves `Intake` on capture and enters `PRD` once the BA
+// starts drafting the PRD documents.
 export type StageKey =
-  | 'Intake' | 'PRD' | 'Design' | 'Build' | 'Review' | 'QA' | 'Shipped';
+  | 'Intake' | 'Requirements' | 'PRD' | 'Design' | 'Build' | 'Review' | 'QA' | 'Shipped';
 
 export type ProjectStatus =
   | 'queued' | 'active' | 'review' | 'blocked' | 'done' | 'shipped';
