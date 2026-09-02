@@ -24,27 +24,62 @@ Idea (idea.md)
 
 All files below link to each other via cross-references defined in [`FRAMEWORK-FLOW.md`](./FRAMEWORK-FLOW.md) and throughout each file's "Related Files" / "Cross-references" sections. See that table for the complete dependency graph.
 
+This README ships with the framework repo **and** is copied into every new project (manifest `root_files`), so this section describes both layouts.
+
+### This repository (the framework repo)
+
+The framework repo is a *rules library* plus the tooling that runs the pipeline — it is not itself a project. Everything under `framework/` is exported wholesale; the launcher and intake tooling stay behind (per [`framework/README.md`](./framework/README.md)).
+
+```
+web-builder/
+├── launcher/                    # Idea Hub app — web builder + control console; drives ideas through the pipeline and steers agent rules (writes back to on-disk project folders)
+├── idea-intake/                 # Stage 0 intake chat — Ollama BA interview; scaffolds the chosen project folder, writes idea.md and project-dir.txt
+├── init-frame.js                # Single-entry bootstrap — scaffolds framework/ into a fresh project folder
+├── framework/                   # The exportable stage rule library (contract: framework/manifest.json)
+│   ├── manifest.json            #   Export contract — what gets copied, which agents read which files, where the UI writes back
+│   ├── MANIFEST.md              #   Key-by-key manifest schema
+│   ├── design/ · build/ · qa/ · review/   # Stage rulebooks — skills/, config/, agents/ per stage
+│   ├── shared/                  #   Rule bodies consumed by 2+ stages (security, general best practices)
+│   └── templates/               #   Starter scaffolds (nextjs-starter/) + template-selection doc
+├── PRD/
+│   ├── templates/               # prd-template.md + supporting/ docs (copied at export time)
+│   └── example/                 # acme-coaching — worked example PRD set
+├── design-system/               # Design specs (tokens/ components/ states/) used by the Design stage; per-project outputs live in the project's own workspace
+├── workflows/                   # Orchestration patterns for agent coordination (copied at export time)
+├── CLAUDE.md                    # Framework rules and workflow docs
+├── AGENTS.md                    # Agent roles, states, communication
+├── FRAMEWORK-FLOW.md            # Complete file dependency / cross-reference table
+├── README.md                    # This file
+├── idea.md                      # Living idea document for the framework itself (source of truth) → feeds PRD template
+├── gaps.md · questions.md       # Known framework gaps; BA interview question set
+└── Modelfile · LICENSE · .devcontainer/   # Ollama model definition; license; dev container config
+```
+
+### A new web-build app (what export generates)
+
+On idea creation, the launcher copies `framework/` wholesale plus the manifest `root_files`, `PRD/templates/`, and `workflows/` into the chosen project folder — nothing else is exported, and existing files are never overwritten. `design-system/` is **not** exported: it is created per project as Design-stage output.
+
 ```
 <project-repo>/
-├── idea.md                      # Living idea document (source of truth) → feeds PRD template
-├── CLAUDE.md                    # Framework rules and workflow docs
-├── FRAMEWORK-FLOW.md            # Complete file dependency / cross-reference table
-├── AGENTS.md                    # Agent roles, states, communication (+ agent-specific file references in each row)
-├── PRD/                         # Product requirements per project (copied at export time)
-│   └── templates/prd-template.md # PRD template with input/output chain cross-references
-├── design-system/               # Design stage OUTPUT — created per project during the design stage
-│   ├── tokens/                  # Color, typography, spacing tokens (each has "Related Files" → components/skills)
-│   ├── components/              # Component specifications (each has "Related Files" → tokens/states/skills)
-│   └── states/                  # Interaction state definitions (each has "Cross-References" → tokens/components/QA)
-├── framework/                   # The stage rule library (copied at export time; contract: framework/manifest.json)
+├── idea.md                      # Written at idea creation by idea-intake/init-frame.js (source of truth) → feeds PRD template
+├── CLAUDE.md                    # Framework rules and workflow docs (copied at export time)
+├── AGENTS.md                    # Agent roles, states, communication (+ agent-specific file references in each row) (copied at export time)
+├── README.md / FRAMEWORK-FLOW.md / .gitignore   # Copied at export time (manifest root_files)
+├── PRD/                         # Product requirements per project
+│   └── templates/prd-template.md # PRD template with input/output chain cross-references (copied at export time)
+├── framework/                   # The stage rule library — copied wholesale (contract: framework/manifest.json)
 │   ├── design/                  #   Design stage — skills/ (a11y, UI), config/, agents/
 │   ├── build/                   #   Build stage — skills/ (coding, quality, fidelity), config/, agents/
 │   ├── qa/                      #   QA stage — skills/ (testing guidelines + playwright helpers), config/, agents/
 │   ├── review/                  #   Review stage — config/ (review bar, severity ladder), agents/
 │   ├── shared/                  #   Rule bodies consumed by 2+ stages (security, general best practices)
 │   └── templates/               #   Starter scaffolds (nextjs-starter/) + template-selection doc
-└── workflows/                   # Orchestration scripts for agent coordination (copied at export time)
-    └── README.md                # Workflow patterns with file dependency map (§all 5 workflows: reads-from / writes-to / triggers)
+├── workflows/                   # Orchestration scripts for agent coordination (copied at export time)
+│   └── README.md                # Workflow patterns with file dependency map (§all 5 workflows: reads-from / writes-to / triggers)
+└── design-system/               # Design stage OUTPUT — created per project during the design stage
+    ├── tokens/                  #   Color, typography, spacing tokens (each has "Related Files" → components/skills)
+    ├── components/              #   Component specifications (each has "Related Files" → tokens/states/skills)
+    └── states/                  #   Interaction state definitions (each has "Cross-References" → tokens/components/QA)
 ```
 
 Skills and stage configs live inside `framework/` — stage rulebooks in `framework/<stage>/`, shared bodies in `framework/shared/skills/`, starter scaffolds in `framework/templates/`.
