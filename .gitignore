@@ -13,6 +13,8 @@ node_modules/
 dist/
 build/
 out/
+# …but the framework export unit has a legit folder named build/ (Build stage)
+!framework/build/
 
 # Test output
 testing/playwright/reports/

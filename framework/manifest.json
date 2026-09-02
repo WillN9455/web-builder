@@ -1,0 +1,65 @@
+{
+  "version": "0.2.0",
+  "revision": 2,
+  "status": "locked",
+  "description": "Export contract for the Idea Hub web builder. Everything in framework/ is copied into a new project on idea creation. The launcher reads this file — not the filesystem — to learn what to export, which agents read which files, and where the UI writes back. Key-by-key schema: MANIFEST.md.",
+  "export_root": "framework/",
+  "stages": {
+    "design": {
+      "label": "Design",
+      "folder": "design/",
+      "skills": ["design/skills/accessibility-guidelines.md", "design/skills/ui-best-practices.md"],
+      "config": ["design/config/design-rules.md"],
+      "agents": ["design/agents/design-agent.md"],
+      "ui_write_back": "Design tab → Rules half",
+      "downstream": "design tokens, component specs, and state docs are stage OUTPUTS and live in the project's own design-system workspace, not in the export unit"
+    },
+    "build": {
+      "label": "Build",
+      "folder": "build/",
+      "skills": [
+        "build/skills/coding-guidelines.md",
+        "build/skills/code-quality.md",
+        "build/skills/security.md",
+        "build/skills/feature-fidelity.md"
+      ],
+      "config": ["build/config/config-rules.md", "build/config/build-rules.md"],
+      "agents": ["build/agents/code-agent-C1.md", "build/agents/code-agent-C2.md", "build/agents/code-agent-C3.md"],
+      "templates": ["templates/nextjs-starter/"],
+      "shared_inputs": ["shared/skills/general-best-practices.md"],
+      "ui_write_back": "Build tab → Rules half"
+    },
+    "qa": {
+      "label": "QA",
+      "folder": "qa/",
+      "skills": ["qa/skills/testing-guidelines.md", "qa/skills/security.md"],
+      "config": ["qa/config/test-rules.md"],
+      "agents": ["qa/agents/qa-agent.md"],
+      "shared_inputs": ["shared/skills/general-best-practices.md"],
+      "ui_write_back": "QA tab → Rules half"
+    },
+    "review": {
+      "label": "Review",
+      "folder": "review/",
+      "skills": [],
+      "config": ["review/config/review-rules.md"],
+      "agents": ["review/agents/reviewer-agent.md"],
+      "shared_inputs": ["shared/skills/general-best-practices.md", "shared/skills/security.md"],
+      "ui_write_back": "Agents tab → Reviewer panel (Rules half)",
+      "note": "Pipeline position 4. Own stage, not a QA role: its inputs span BA, Design, Build, and QA. Owns no skill bodies — audits via shared rules."
+    }
+  },
+  "shared": {
+    "skills": ["shared/skills/general-best-practices.md", "shared/skills/security.md"],
+    "rule": "a skill body lives here only when two or more stages consume it; consumers keep a thin binding file in their own skills/ folder",
+    "consumers": {
+      "general-best-practices.md": ["design", "build", "qa", "review"],
+      "security.md": ["build", "qa", "review"]
+    }
+  },
+  "outside_export_root": {
+    "note": "Referenced at export time, not copied. Settled at rev 2: different export lifecycles.",
+    "prd_templates": "PRD/templates/",
+    "workflows": "workflows/"
+  }
+}
