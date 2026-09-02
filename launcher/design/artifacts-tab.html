@@ -1,0 +1,784 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Idea Hub — Artifacts tab (v5.2)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ─── Design tokens (mirror agents-tab.html / activity-tab.html) ─── */
+  :root {
+    --ground-a: #d9d5ec;
+    --ground-b: #c3cde8;
+    --panel:    rgba(255, 255, 255, 0.72);
+    --panel-stroke: rgba(255, 255, 255, 0.6);
+    --ink:      #2b2547;
+    --ink-2:    #8b87a5;
+    --ink-3:    #b6b2cc;
+    --shadow:   0 30px 60px -30px rgba(50, 42, 92, 0.25), 0 8px 24px -10px rgba(50, 42, 92, 0.12);
+
+    --navy:     #322a5c;
+    --navy-2:   #4a4080;
+
+    --peach:    #fbdcbe;
+    --sky:      #cfe0f4;
+    --lavender: #e6e1f7;
+    --mint:     #d7efe4;
+    --butter:   #f7edc6;
+    --blush:    #fadcd9;
+    --sea:      #cde6ea;
+
+    --coral:    #ef7f57;
+    --blue:     #6fa9e0;
+    --purple:   #9b7fde;
+    --green:    #5fbf95;
+    --amber:    #e8b94a;
+    --rose:     #d97a8e;
+
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+
+    --r-sm: 10px;
+    --r-md: 16px;
+    --r-lg: 20px;
+    --r-xl: 24px;
+    --r-2xl: 28px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { font-family: var(--font-sans); color: var(--ink); -webkit-font-smoothing: antialiased; }
+  body {
+    min-height: 100vh;
+    background:
+      radial-gradient(120% 80% at 10% 0%, #e3dff2 0%, transparent 60%),
+      linear-gradient(135deg, var(--ground-a) 0%, var(--ground-b) 100%);
+    padding: 40px 32px 80px;
+  }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; cursor: pointer; border: 0; background: none; color: inherit; }
+
+  /* ─── Document chrome ──────────────────────────────────────────────── */
+  .doc { max-width: 1440px; margin: 0 auto 64px; }
+  .doc-header { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 28px; color: var(--ink); }
+  .doc-title { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; }
+  .doc-sub { color: var(--ink-2); font-size: 14px; max-width: 720px; line-height: 1.55; margin-top: 6px; }
+  .doc-sub a { color: var(--ink); font-weight: 600; text-decoration: underline; }
+  .doc-meta { font-family: var(--font-mono); font-size: 12px; color: var(--ink-2); white-space: nowrap; }
+
+  .toc { display: flex; flex-direction: column; gap: 4px; margin: -8px 0 24px; font-size: 12px; color: var(--ink-2); }
+  .toc a { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 8px; width: fit-content; }
+  .toc a:hover { background: rgba(255,255,255,0.6); color: var(--ink); }
+  .toc a b { color: var(--ink); margin-right: 6px; }
+
+  /* ─── Section frame ───────────────────────────────────────────────── */
+  .screen { background: var(--panel); border: 1px solid var(--panel-stroke); border-radius: var(--r-xl); margin-bottom: 64px; overflow: hidden; backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); }
+  .screen-label { display: flex; align-items: center; gap: 12px; padding: 16px 22px; border-bottom: 1px solid rgba(50,42,92,0.06); font-size: 13px; }
+  .screen-label .num { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 6px; background: var(--navy); color: #fff; font-size: 12px; font-weight: 700; }
+  .screen-label .name { font-weight: 600; color: var(--ink); }
+  .screen-label .route { font-family: var(--font-mono); color: var(--ink-2); margin-left: auto; }
+  .screen-body { padding: 0; }
+
+  /* ─── App shell ───────────────────────────────────────────────────── */
+  .app { display: grid; grid-template-columns: 248px 1fr; min-height: 1240px; }
+  .side { border-right: 1px solid rgba(50,42,92,0.08); background: rgba(255,255,255,0.4); padding: 18px 14px; display: flex; flex-direction: column; gap: 18px; }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 4px 6px 10px; }
+  .brand-mark { width: 28px; height: 28px; border-radius: 8px; background: var(--navy); color: #fff; display: grid; place-items: center; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; }
+  .brand-name { font-size: 14px; font-weight: 700; color: var(--ink); }
+  .menu-label { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-2); padding: 0 8px 6px; }
+  .nav { display: flex; flex-direction: column; gap: 1px; }
+  .nav a { display: flex; align-items: center; gap: 9px; padding: 7px 9px; border-radius: 8px; color: var(--ink); font-size: 13px; font-weight: 500; position: relative; }
+  .nav a:hover { background: rgba(255,255,255,0.6); }
+  .nav a.active { background: rgba(50,42,92,0.08); color: var(--ink); font-weight: 600; }
+  .nav a .count { margin-left: auto; font-size: 11px; color: var(--ink-2); background: rgba(50,42,92,0.08); border-radius: 6px; padding: 1px 6px; }
+  .nav a.active .count { background: var(--navy); color: #fff; }
+  .nav .ico { width: 16px; height: 16px; flex: none; }
+
+  .side-promo { margin-top: auto; background: var(--lavender); border-radius: 12px; padding: 12px 14px; font-size: 12px; line-height: 1.5; }
+  .side-promo h4 { font-size: 12px; font-weight: 700; margin-bottom: 4px; }
+  .side-promo p { color: var(--ink-2); }
+  .side-promo button { margin-top: 8px; color: var(--ink); font-weight: 600; text-decoration: underline; }
+  .side-foot { padding: 6px 8px 2px; font-size: 12px; }
+  .side-foot a { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); }
+  .side-foot a:hover { color: var(--ink); }
+
+  /* ─── Main + topbar + cards ───────────────────────────────────────── */
+  .main { padding: 18px 26px 60px; }
+  .topbar { display: flex; align-items: center; gap: 10px; padding: 0 4px 14px; }
+  .search { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.7); border: 1px solid rgba(50,42,92,0.08); border-radius: 10px; padding: 7px 12px; width: 360px; }
+  .search input { border: 0; outline: 0; flex: 1; background: transparent; color: var(--ink); font: inherit; }
+  .search .ico { color: var(--ink-2); width: 14px; height: 14px; }
+
+  .card { background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: var(--r-lg); box-shadow: var(--shadow); }
+
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 999px; font-size: 13px; font-weight: 500; border: 1px solid transparent; transition: background 0.12s ease; }
+  .btn-primary { background: var(--navy); color: #fff; }
+  .btn-primary:hover { background: var(--navy-2); }
+  .btn-ghost { background: #fff; color: var(--ink); border: 1px solid rgba(50,42,92,0.1); }
+  .btn-ghost:hover { background: rgba(50,42,92,0.04); }
+  .btn-soft { background: rgba(255,255,255,0.6); color: var(--ink); border: 1px solid rgba(50,42,92,0.08); }
+  .btn-soft:hover { background: rgba(255,255,255,0.85); }
+  .btn-pill { padding: 6px 12px; font-size: 12px; }
+
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 500; background: var(--peach); color: var(--ink); }
+  .pill .dot { width: 6px; height: 6px; border-radius: 50%; }
+  .pill.archive { background: var(--lavender); color: var(--ink); }
+  .pill.archive .dot { background: var(--purple); }
+  .pill.live    { background: var(--mint); color: var(--ink); }
+  .pill.live    .dot { background: var(--green); }
+  .pill.evidence{ background: var(--sky); color: var(--ink); }
+  .pill.evidence .dot { background: var(--blue); }
+  .pill.code    { background: var(--butter); color: var(--ink); }
+  .pill.code    .dot { background: var(--amber); }
+  .pill.design  { background: var(--blush); color: var(--ink); }
+  .pill.design  .dot { background: var(--rose); }
+
+  /* Project header */
+  .proj-head { display: flex; align-items: center; gap: 16px; padding: 22px; }
+  .proj-head .ico-lg { width: 56px; height: 56px; border-radius: 14px; display: grid; place-items: center; background: var(--peach); color: var(--ink); }
+  .proj-head h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
+  .proj-head .one { color: var(--ink-2); font-size: 13.5px; margin-top: 2px; }
+  .proj-head .path { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-2); margin-top: 6px; }
+  .proj-head .actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+  .stage-pt { font-size: 11.5px; color: var(--ink-2); font-family: var(--font-mono); }
+
+  /* 7-stage stepper */
+  .stepper { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0; align-items: center; }
+  .step { display: flex; align-items: center; gap: 8px; }
+  .step .num { width: 22px; height: 22px; border-radius: 50%; background: rgba(50,42,92,0.08); color: var(--ink-2); display: grid; place-items: center; font-size: 11px; font-weight: 700; }
+  .step .lbl { font-size: 12px; color: var(--ink-2); }
+  .step .bar { flex: 1; height: 2px; background: rgba(50,42,92,0.08); margin: 0 6px; }
+  .step.done .num { background: var(--green); color: #fff; }
+  .step.done .lbl { color: var(--ink); }
+  .step.done .bar { background: var(--green); }
+  .step.active .num { background: var(--navy); color: #fff; box-shadow: 0 0 0 4px rgba(50,42,92,0.12); }
+  .step.active .lbl { color: var(--ink); font-weight: 600; }
+
+  /* ─── Filter bar (3 axes: kind / stage / source) ────────────────── */
+  .filters { display: flex; align-items: center; gap: 12px; padding: 14px 22px; border-bottom: 1px solid rgba(50,42,92,0.06); flex-wrap: wrap; }
+  .filters .axis { display: flex; align-items: center; gap: 6px; }
+  .filters .axis .axis-lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-2); margin-right: 4px; }
+  .filters .axis button { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; font-size: 11.5px; border-radius: 999px; background: rgba(50,42,92,0.04); color: var(--ink-2); }
+  .filters .axis button.on { background: rgba(50,42,92,0.1); color: var(--ink); font-weight: 600; }
+  .filters .axis button .kind-dot { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+  .filters .axis button .kind-dot.doc      { background: var(--purple); }
+  .filters .axis button .kind-dot.code     { background: var(--amber); }
+  .filters .axis button .kind-dot.design   { background: var(--rose); }
+  .filters .axis button .kind-dot.evidence { background: var(--blue); }
+  .filters .axis button .kind-dot.config   { background: var(--green); }
+  .filters .axis button .kind-dot.archive  { background: var(--ink-3); }
+  .filters .right { margin-left: auto; display: flex; gap: 8px; align-items: center; font-size: 11.5px; color: var(--ink-2); }
+  .filters .right .chip-clear { font-size: 11.5px; color: var(--ink-2); text-decoration: underline; }
+  .filters .right .chip-clear:hover { color: var(--ink); }
+  .filters .summary { font-family: var(--font-mono); font-size: 11px; color: var(--ink-2); }
+  .filters .summary b { color: var(--ink); font-weight: 600; }
+
+  /* ─── File tree (grouped by stage) ──────────────────────────────── */
+  .tree { padding: 6px 0 14px; }
+  .group { padding: 0 22px; }
+  .group-head { display: flex; align-items: center; gap: 10px; padding: 14px 0 8px; border-bottom: 1px solid rgba(50,42,92,0.06); }
+  .group-head .h { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-2); }
+  .group-head .ico { width: 14px; height: 14px; color: var(--ink-2); }
+  .group-head .ct { font-size: 11px; color: var(--ink-2); font-family: var(--font-mono); }
+  .group-head .line { flex: 1; height: 1px; background: rgba(50,42,92,0.06); }
+
+  /* Row: kind tag (color) · file path (mono, indent by depth) · size · created · Open */
+  .art-row { display: grid; grid-template-columns: 110px 1fr 90px 130px 110px; gap: 12px; align-items: center; padding: 9px 0; border-bottom: 1px solid rgba(50,42,92,0.05); font-size: 12.5px; cursor: pointer; }
+  .art-row:last-child { border-bottom: 0; }
+  .art-row:hover { background: rgba(50,42,92,0.03); }
+  .art-row.selected { background: linear-gradient(90deg, rgba(155,127,222,0.1) 0%, transparent 100%); border-left: 3px solid var(--purple); padding-left: 9px; margin-left: -12px; border-radius: 0 8px 8px 0; }
+
+  .art-row .kind { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px; font-size: 10.5px; font-weight: 500; font-family: var(--font-sans); }
+  .art-row .kind .ico { width: 11px; height: 11px; }
+  .art-row .kind.doc      { background: var(--lavender); color: var(--ink); }
+  .art-row .kind.doc      .ico { color: var(--purple); }
+  .art-row .kind.code     { background: var(--butter);   color: var(--ink); }
+  .art-row .kind.code     .ico { color: var(--amber); }
+  .art-row .kind.design   { background: var(--blush);    color: var(--ink); }
+  .art-row .kind.design   .ico { color: var(--rose); }
+  .art-row .kind.evidence { background: var(--sky);      color: var(--ink); }
+  .art-row .kind.evidence .ico { color: var(--blue); }
+  .art-row .kind.config   { background: var(--mint);     color: var(--ink); }
+  .art-row .kind.config   .ico { color: var(--green); }
+  .art-row .kind.archive  { background: rgba(50,42,92,0.06); color: var(--ink-2); }
+  .art-row .kind.archive  .ico { color: var(--ink-2); }
+
+  .art-row .path { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink); display: flex; align-items: center; gap: 4px; min-width: 0; }
+  .art-row .path .indent { color: var(--ink-3); white-space: pre; }
+  .art-row .path .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .art-row .path .name .ext { color: var(--ink-2); }
+  .art-row .path .live { font-size: 9.5px; color: var(--green); font-weight: 700; font-family: var(--font-sans); margin-left: 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+
+  .art-row .size { font-family: var(--font-mono); font-size: 11px; color: var(--ink-2); text-align: right; }
+  .art-row .created { font-size: 11.5px; color: var(--ink-2); font-family: var(--font-mono); }
+  .art-row .open { display: flex; gap: 6px; justify-content: flex-end; }
+  .art-row .open .open-btn { font-size: 11px; font-weight: 600; color: var(--navy); padding: 4px 10px; border-radius: 6px; background: rgba(50,42,92,0.04); }
+  .art-row .open .open-btn:hover { background: rgba(50,42,92,0.1); }
+  .art-row .open .more { color: var(--ink-2); padding: 4px 6px; border-radius: 6px; }
+  .art-row .open .more:hover { background: rgba(50,42,92,0.06); color: var(--ink); }
+
+  /* ─── In-app viewer (selected artifact preview) ─────────────────── */
+  .viewer { border-top: 1px solid rgba(50,42,92,0.06); padding: 18px 22px 22px; background: rgba(50,42,92,0.02); display: grid; grid-template-columns: 1.4fr 1fr; gap: 18px; }
+  .viewer .left { display: flex; flex-direction: column; gap: 12px; }
+  .viewer .right { display: flex; flex-direction: column; gap: 12px; }
+
+  .viewer-head { display: flex; align-items: center; gap: 10px; }
+  .viewer-head .kind { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px; font-size: 10.5px; font-weight: 500; background: var(--lavender); color: var(--ink); }
+  .viewer-head .kind .ico { width: 11px; height: 11px; color: var(--purple); }
+  .viewer-head h4 { margin: 0; font-size: 15px; font-weight: 700; }
+  .viewer-head .path { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-2); }
+  .viewer-head .right { margin-left: auto; display: flex; gap: 6px; }
+
+  .doc-stage { background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: 12px; padding: 18px 22px; max-height: 360px; overflow-y: auto; }
+  .doc-stage .h1 { font-size: 20px; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.01em; }
+  .doc-stage .meta { font-size: 12px; color: var(--ink-2); margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid rgba(50,42,92,0.06); }
+  .doc-stage .h2 { font-size: 14px; font-weight: 700; margin-top: 14px; margin-bottom: 6px; color: var(--ink); }
+  .doc-stage p { font-size: 13px; line-height: 1.6; color: var(--ink); margin-bottom: 8px; }
+  .doc-stage ul { font-size: 13px; line-height: 1.7; color: var(--ink); margin: 4px 0 8px 18px; }
+  .doc-stage code { font-family: var(--font-mono); font-size: 11.5px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px; color: var(--ink); }
+  .doc-stage .pinned { background: var(--butter); padding: 8px 12px; border-radius: 8px; font-size: 12.5px; color: var(--ink); margin: 10px 0; }
+  .doc-stage .pinned b { color: var(--ink); }
+
+  /* Meta panel on right */
+  .meta-card { background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: 12px; padding: 14px 16px; }
+  .meta-card h5 { margin: 0 0 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-2); }
+  .meta-row { display: grid; grid-template-columns: 90px 1fr; gap: 10px; padding: 6px 0; border-top: 1px solid rgba(50,42,92,0.05); font-size: 12.5px; }
+  .meta-row:first-of-type { border-top: 0; }
+  .meta-row .k { color: var(--ink-2); font-weight: 600; }
+  .meta-row .v { color: var(--ink); }
+  .meta-row .v code { font-family: var(--font-mono); font-size: 11.5px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px; }
+
+  /* Related artifacts list */
+  .related { background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: 12px; padding: 14px 16px; }
+  .related h5 { margin: 0 0 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-2); }
+  .rel-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; padding: 6px 0; border-top: 1px solid rgba(50,42,92,0.05); font-size: 12px; }
+  .rel-row:first-of-type { border-top: 0; }
+  .rel-row .p { font-family: var(--font-mono); font-size: 11px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rel-row .p .ext { color: var(--ink-2); }
+  .rel-row .open { font-size: 11px; font-weight: 600; color: var(--navy); }
+
+  /* Notes block */
+  .notes { margin: 0 22px 22px; background: rgba(50,42,92,0.02); border: 1px dashed rgba(50,42,92,0.15); border-radius: 12px; padding: 16px 18px; display: flex; align-items: center; gap: 14px; font-size: 12.5px; color: var(--ink-2); }
+  .notes b { color: var(--ink); font-weight: 600; }
+  .notes .right { margin-left: auto; }
+</style>
+</head>
+<body>
+<div class="doc">
+
+  <header class="doc-header">
+    <div>
+      <div class="doc-title">Idea Hub — Artifacts tab (v5.2)</div>
+      <div class="doc-sub">Full-width artifact file tree (kind, path, size, created_at) grouped by stage. Opens via <b>in-app viewer</b> (sitemap § Artifacts decision 1) — never a download. Single-half monitor — Artifacts is <b>always visible</b> and read-only; you steer behavior on the stage tab rules, not here. <b>Source of truth:</b> <a href="sitemap.md">sitemap.md § Artifacts</a>.</div>
+    </div>
+    <div class="doc-meta">v5.2 · launcher/design/artifacts-tab.html<br/>1 screen (Artifacts · file tree + in-app viewer)</div>
+  </header>
+
+  <nav class="toc">
+    <a href="mockups.html"><b>←</b> All screens → mockups.html</a>
+    <a href="activity-tab.html"><b>AC</b> Activity tab mockup →</a>
+    <a href="agents-tab.html"><b>AG</b> Agents tab mockup →</a>
+    <a href="#sar"><b>AR</b> Artifacts tab (file tree + in-app viewer)</a>
+  </nav>
+
+  <!-- ═════════════ AR · Artifacts tab ═════════════ -->
+  <section class="screen" id="sar">
+    <div class="screen-label">
+      <span class="num">AR</span>
+      <span class="name">Artifacts tab — full-width file tree + in-app viewer</span>
+      <span class="route">/projects/tenant-maintenance · Artifacts</span>
+    </div>
+    <div class="screen-body">
+      <div class="app">
+        <aside class="side">
+          <div class="brand"><div class="brand-mark">IH</div><div class="brand-name">Idea Hub</div></div>
+          <div>
+            <div class="menu-label">Menu</div>
+            <nav class="nav">
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12l9-9 9 9 M5 10v10h14V10"/></svg> Overview</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h11l3 3v13H5z M16 4v3h3 M8 11h8 M8 14h8 M8 17h5"/></svg> Project Background <span class="count">17</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3h7v7 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> Requirements <span class="count">14</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Sprint <span class="count">14</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z M4 9h16 M9 4v16"/></svg> Design</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Build <span class="count">14</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="9" r="3"/><path d="M3 19c0-3 2.7-5 6-5s6 2 6 5 M14 19c0-3 2.7-5 6-5"/></svg> Agents</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 12l2 2 4-4 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg> QA <span class="count">2</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> Activity</a>
+              <a href="#" class="active"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 8H3 M21 16H3 M5 4h14v16H5z"/></svg> Artifacts <span class="count">27</span></a>
+            </nav>
+          </div>
+          <div class="side-promo">
+            <h4>Everything ever generated</h4>
+            <p>PRD docs, design tokens, code, screenshots, QA evidence — all in one tree. Opens in-app; nothing leaves the project.</p>
+            <button>View source-of-truth list →</button>
+          </div>
+          <div class="side-foot">
+            <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 3h6v6 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> ← All projects</a>
+          </div>
+        </aside>
+
+        <main class="main">
+          <div class="topbar">
+            <a href="#" style="font-size:13px; color: var(--ink-2);">← Projects</a>
+            <div class="search">
+              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+              <input placeholder="Search artifacts (path, kind, story ID)…" />
+            </div>
+            <button class="btn btn-soft btn-pill">Filter</button>
+            <button class="btn btn-soft btn-pill">Export</button>
+            <button class="btn btn-primary btn-pill">Open in viewer</button>
+          </div>
+
+          <!-- Project header -->
+          <div class="card">
+            <div class="proj-head">
+              <div class="ico-lg tile-peach"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2b2547" stroke-width="1.8"><path d="M21 8H3 M21 16H3 M5 4h14v16H5z"/></svg></div>
+              <div>
+                <h1>Tenant Maintenance Portal</h1>
+                <div class="one">Maintenance request app for property managers</div>
+                <div class="path">~/Code/tenant-maintenance · 27 files · 1.4 MB · 28 days</div>
+              </div>
+              <div class="actions">
+                <span class="pill archive"><span class="dot"></span> 27 files</span>
+                <span class="stage-pt">Updated 6s ago</span>
+              </div>
+            </div>
+
+            <!-- 7-stage stepper (Build active — project is mid-Build) -->
+            <div class="stepper" style="padding: 0 22px 22px;">
+              <div class="step done"><div class="num"><b>1</b></div><div class="lbl">Intake</div><div class="bar"></div></div>
+              <div class="step done"><div class="num"><b>2</b></div><div class="lbl">Requirements</div><div class="bar"></div></div>
+              <div class="step done"><div class="num"><b>3</b></div><div class="lbl">Design</div><div class="bar"></div></div>
+              <div class="step active"><div class="num"><b>4</b></div><div class="lbl">Build</div><div class="bar"></div></div>
+              <div class="step"><div class="num"><b>5</b></div><div class="lbl">Review</div><div class="bar"></div></div>
+              <div class="step"><div class="num"><b>6</b></div><div class="lbl">QA</div><div class="bar"></div></div>
+              <div class="step"><div class="num"><b>7</b></div><div class="lbl">Deployed</div></div>
+            </div>
+          </div>
+
+          <!-- ══════ FILE TREE CARD ══════ -->
+          <div class="card" style="margin-top: 14px;">
+
+            <!-- Filter bar (3 axes: kind / stage / source) -->
+            <div class="filters">
+              <!-- Axis 1: Kind -->
+              <div class="axis">
+                <span class="axis-lbl">Kind</span>
+                <button class="on"><span class="kind-dot doc"></span> doc</button>
+                <button class="on"><span class="kind-dot code"></span> code</button>
+                <button><span class="kind-dot design"></span> design</button>
+                <button class="on"><span class="kind-dot evidence"></span> evidence</button>
+                <button><span class="kind-dot config"></span> config</button>
+                <button><span class="kind-dot archive"></span> archive</button>
+              </div>
+
+              <!-- Axis 2: Stage -->
+              <div class="axis">
+                <span class="axis-lbl">Stage</span>
+                <button class="on">Intake</button>
+                <button class="on">Requirements</button>
+                <button class="on">Design</button>
+                <button class="on">Build</button>
+                <button>Review</button>
+                <button class="on">QA</button>
+                <button>Deployed</button>
+              </div>
+
+              <!-- Axis 3: Source (who wrote it) -->
+              <div class="axis">
+                <span class="axis-lbl">Source</span>
+                <button class="on">Agent</button>
+                <button>Human</button>
+                <button>External</button>
+              </div>
+
+              <div class="right">
+                <span class="summary"><b>3 kinds</b> · <b>4 stages</b> · <b>agent</b> → <b>18 of 27 files</b></span>
+                <a href="#" class="chip-clear">Clear all</a>
+                <button class="btn btn-soft btn-pill">Save filter</button>
+              </div>
+            </div>
+
+            <!-- ══════ FILE TREE (grouped by stage, 7 groups · 27 files) ══════ -->
+            <div class="tree">
+
+              <!-- Group 1: Intake -->
+              <div class="group">
+                <div class="group-head">
+                  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7l9-4 9 4-9 4-9-4z M3 12l9 4 9-4 M3 17l9 4 9-4"/></svg>
+                  <span class="h">Intake</span>
+                  <span class="line"></span>
+                  <span class="ct">1 file · 6.2 KB</span>
+                </div>
+
+                <div class="art-row selected">
+                  <span class="kind doc"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l4 4v14H6z M15 3v4h4"/></svg> doc</span>
+                  <div class="path"><span class="indent"></span><span class="name">idea<span class="ext">.md</span></span><span class="live">selected</span></div>
+                  <div class="size">6.2 KB</div>
+                  <div class="created">2026-07-30 · 14:08</div>
+                  <div class="open">
+                    <button class="open-btn">Open</button>
+                    <button class="more" aria-label="More">⋯</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Group 2: Requirements -->
+              <div class="group">
+                <div class="group-head">
+                  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v16H5z M5 9h14 M9 4v16"/></svg>
+                  <span class="h">Requirements</span>
+                  <span class="line"></span>
+                  <span class="ct">15 files · 184 KB</span>
+                </div>
+
+                <div class="art-row">
+                  <span class="kind doc"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l4 4v14H6z M15 3v4h4"/></svg> doc</span>
+                  <div class="path"><span class="indent">├─ </span><span class="name">PRD/tenant-maintenance/prd<span class="ext">.md</span></span></div>
+                  <div class="size">42.1 KB</div>
+                  <div class="created">2026-08-01 · 09:24</div>
+                  <div class="open"><button class="open-btn">Open</button><button class="more" aria-label="More">⋯</button></div>
+                </div>
+                <div class="art-row">
+                  <span class="kind doc"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l4 4v14H6z M15 3v4h4"/></svg> doc</span>
+                  <div class="path"><span class="indent">├─ </span><span class="name">PRD/.../personas<span class="ext">.md</span></span></div>
+                  <div class="size">8.4 KB</div>
+                  <div class="created">2026-08-01 · 10:11</div>
+                  <div class="open"><button class="open-btn">Open</button><button class="more" aria-label="More">⋯</button></div>
+                </div>
+                <div class="art-row">
+                  <span class="kind doc"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l4 4v14H6z M15 3v4h4"/></svg> doc</span>
+                  <div class="path"><span class="indent">├─ </span><span class="name">PRD/.../user-journeys<span class="ext">.md</span></span></div>
+                  <div class="size">11.7 KB</div>
+                  <div class="created">2026-08-01 · 10:14</div>
+                  <div class="open"><button class="open-btn">Open</button><button class="more" aria-label="More">⋯</button></div>
+                </div>
+                <div class="art-row">
+                  <span class="kind doc"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l4 4v14H6z M15 3v4h4"/></svg> doc</span>
+                  <div class="path"><span class="indent">├─ </span><span class="name">PRD/.../scope-and-rules<span class="ext">.md</span></span></div>
+                  <div class="size">6.0 KB</div>
+                  <div class="created">2026-08-02 · 11:02</div>
+                  <div class="open"><button class="open-btn">Open</button><button class="more" aria-label="More">⋯</button></div>
+                </div>
+                <div class="art-row">
+                  <span class="kind doc"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l4 4v14H6z M15 3v4h4"/></svg> doc</span>
+                  <div class="path"><span class="indent">├─ </span><span class="name">PRD/.../data-model<span class="ext">.md</span></span></div>
+                  <div class="size">18.3 KB</div>
+                  <div class="created">2026-08-02 · 14:30</div>
+                  <div class="open"><button class="open-btn">Open</button><button class="more" aria-label="More">⋯</button></div>
+                </div>
+                <div class="art-row">
+                  <span class="kind doc"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l4 4v14H6z M15 3v4h4"/></svg> doc</span>
+                  <div class="path"><span class="indent">├─ </span><span class="name">PRD/.../nfr-catalog<span class="ext">.md</span></span></div>
+                  <div class="size">9.6 KB</div>
+                  <div class="created">2026-08-02 · 15:11</div>
+                  <div class="open"><button class="open-btn">Open</button><button class="more" aria-label="More">⋯</button></div>
+                </div>
+                <div class="art-row">
+                  <span class="kind doc"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l4 4v14H6z M15 3v4h4"/></svg> doc</span>
+                  <div class="path"><span class="indent">├─ </span><span class="name">PRD/.../phasing-plan<span class="ext">.md</span></span></div>
+                  <div class="size">5.8 KB</div>
+                  <div class="created">2026-08-03 · 09:02</div>
+                  <div class="open"><button class="open-btn">Open</button><button class="more" aria-label="More">⋯</button></div>
+                </div>
+                <div class="art-row">
+                  <span class="kind doc"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l4 4v14H6z M15 3v4h4"/></svg> doc</span>
+                  <div class="path"><span class="indent">├─ </span><span class="name">PRD/.../tech-decision-brief<span class="ext">.md</span></span></div>
+                  <div class="size">14.2 KB</div>
+                  <div class="created">2026-08-03 · 16:48</div>
+                  <div class="open"><button class="open-btn">Open</button><button class="more" aria-label="More">⋯</button></div>
+                </div>
+                <div class="art-row">
+                  <span class="kind doc"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l4 4v14H6z M15 3v4h4"/></svg> doc</span>
+                  <div class="path"><span class="indent">├─ </span><span class="name">PRD/.../open-questions<span class="ext">.md</span></span></div>
+                  <div class="size">3.1 KB</div>
+                  <div class="created">2026-08-04 · 12:00</div>
+                  <div class="open"><button class="open-btn">Open</button><button class="more" aria-label="More">⋯</button></div>
+                </div>
+                <div class="art-row">
+                  <span class="kind doc"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l4 4v14H6z M15 3v4h4"/></svg> doc</span>
+                  <div class="path"><span class="indent">├─ </span><span class="name">PRD/.../risk-register<span class="ext">.md</span></span></div>
+                  <div class="size">7.4 KB</div>
+                  <div class="created">2026-08-05 · 10:22</div>
+                  <div class="open"><button class="open-btn">Open</button><button class="more" aria-label="More">⋯</button></div>
+                </div>
+                <div class="art-row">
+                  <span class="kind doc"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l4 4v14H6z M15 3v4h4"/></svg> doc</span>
+                  <div class="path"><span class="indent">├─ </span><span class="name">PRD/.../rbac-matrix<span class="ext">.md</span></span></div>
+                  <div class="size">4.9 KB</div>
+                  <div class="created">2026-08-05 · 11:08</div>
+                  <div class="open"><button class="open-btn">Open</button><button class="more" aria-label="More">⋯</button></div>
+                </div>
+                <div class="art-row">
+                  <span class="kind doc"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l4 4v14H6z M15 3v4h4"/></svg> doc</span>
+                  <div class="path"><span class="indent">├─ </span><span class="name">PRD/.../decision-register<span class="ext">.md</span></span></div>
+                  <div class="size">5.5 KB</div>
+                  <div class="created">2026-08-05 · 14:50</div>
+                  <div class="open"><button class="open-btn">Open</button><button class="more" aria-label="More">⋯</button></div>
+                </div>
+                <div class="art-row">
+                  <span class="kind doc"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l4 4v14H6z M15 3v4h4"/></svg> doc</span>
+                  <div class="path"><span class="indent">├─ </span><span class="name">PRD/.../assumptions<span class="ext">.md</span></span></div>
+                  <div class="size">2.7 KB</div>
+                  <div class="created">2026-08-06 · 09:00</div>
+                  <div class="open"><button class="open-btn">Open</button><button class="more" aria-label="More">⋯</button></div>
+                </div>
+                <div class="art-row">
+                  <span class="kind doc"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l4 4v14H6z M15 3v4h4"/></svg> doc</span>
+                  <div class="path"><span class="indent">├─ </span><span class="name">PRD/.../br-traceability<span class="ext">.md</span></span></div>
+                  <div class="size">6.0 KB</div>
+                  <div class="created">2026-08-06 · 11:30</div>
+                  <div class="open"><button class="open-btn">Open</button><button class="more" aria-label="More">⋯</button></div>
+                </div>
+                <div class="art-row">
+                  <span class="kind doc"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l4 4v14H6z M15 3v4h4"/></svg> doc</span>
+                  <div class="path"><span class="indent">└─ </span><span class="name">PRD/.../sign-off<span class="ext">.md</span></span></div>
+                  <div class="size">1.6 KB</div>
+                  <div class="created">2026-08-07 · 17:00</div>
+                  <div class="open"><button class="open-btn">Open</button><button class="more" aria-label="More">⋯</button></div>
+                </div>
+              </div>
+
+              <!-- Group 3: Design -->
+              <div class="group">
+                <div class="group-head">
+                  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z M4 9h16 M9 4v16"/></svg>
+                  <span class="h">Design</span>
+                  <span class="line"></span>
+                  <span class="ct">3 files · 21.4 KB</span>
+                </div>
+
+                <div class="art-row">
+                  <span class="kind design"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 9 9h-9z M3 12a9 9 0 0 0 9 9V12z"/></svg> design</span>
+                  <div class="path"><span class="indent">├─ </span><span class="name">design-system/tokens/colour<span class="ext">.json</span></span></div>
+                  <div class="size">4.2 KB</div>
+                  <div class="created">2026-08-10 · 13:22</div>
+                  <div class="open"><button class="open-btn">Open</button><button class="more" aria-label="More">⋯</button></div>
+                </div>
+                <div class="art-row">
+                  <span class="kind design"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 9 9h-9z M3 12a9 9 0 0 0 9 9V12z"/></svg> design</span>
+                  <div class="path"><span class="indent">├─ </span><span class="name">design-system/tokens/typography<span class="ext">.json</span></span></div>
+                  <div class="size">1.8 KB</div>
+                  <div class="created">2026-08-10 · 13:24</div>
+                  <div class="open"><button class="open-btn">Open</button><button class="more" aria-label="More">⋯</button></div>
+                </div>
+                <div class="art-row">
+                  <span class="kind design"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3h7v7 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> design</span>
+                  <div class="path"><span class="indent">└─ </span><span class="name">design-system/wireframes/tenant-maintenance/figma-link<span class="ext">.md</span></span></div>
+                  <div class="size">15.4 KB</div>
+                  <div class="created">2026-08-18 · 11:08</div>
+                  <div class="open"><button class="open-btn">Open in Figma ↗</button><button class="more" aria-label="More">⋯</button></div>
+                </div>
+              </div>
+
+              <!-- Group 4: Build -->
+              <div class="group">
+                <div class="group-head">
+                  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg>
+                  <span class="h">Build</span>
+                  <span class="line"></span>
+                  <span class="ct">4 files · 412 KB</span>
+                </div>
+
+                <div class="art-row">
+                  <span class="kind code"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l-6-6 6-6 M15 6l6 6-6 6"/></svg> code</span>
+                  <div class="path"><span class="indent">├─ </span><span class="name">code-builder/src/components/StatusPill<span class="ext">.tsx</span></span></div>
+                  <div class="size">3.1 KB</div>
+                  <div class="created">2026-08-22 · 09:42</div>
+                  <div class="open"><button class="open-btn">Open</button><button class="more" aria-label="More">⋯</button></div>
+                </div>
+                <div class="art-row">
+                  <span class="kind code"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l-6-6 6-6 M15 6l6 6-6 6"/></svg> code</span>
+                  <div class="path"><span class="indent">├─ </span><span class="name">code-builder/src/app/api/requests/[id]/status/route<span class="ext">.ts</span></span></div>
+                  <div class="size">4.8 KB</div>
+                  <div class="created">2026-08-22 · 09:38</div>
+                  <div class="open"><button class="open-btn">Open</button><button class="more" aria-label="More">⋯</button></div>
+                </div>
+                <div class="art-row">
+                  <span class="kind config"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.6-2-3.4-2.4.9a7 7 0 0 0-2-1.2L14 3h-4l-.5 2.5a7 7 0 0 0-2 1.2l-2.4-.9-2 3.4 2 1.6A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.6 2 3.4 2.4-.9a7 7 0 0 0 2 1.2L10 21h4l.5-2.5a7 7 0 0 0 2-1.2l2.4.9 2-3.4-2-1.6c.1-.4.1-.8.1-1.2z"/></svg> config</span>
+                  <div class="path"><span class="indent">├─ </span><span class="name">code-builder/architecture<span class="ext">.yaml</span></span></div>
+                  <div class="size">6.4 KB</div>
+                  <div class="created">2026-08-19 · 14:00</div>
+                  <div class="open"><button class="open-btn">Open</button><button class="more" aria-label="More">⋯</button></div>
+                </div>
+                <div class="art-row">
+                  <span class="kind config"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7l9-4 9 4-9 4-9-4z M3 12l9 4 9-4 M3 17l9 4 9-4"/></svg> config</span>
+                  <div class="path"><span class="indent">└─ </span><span class="name">code-builder/Dockerfile</span></div>
+                  <div class="size">0.7 KB</div>
+                  <div class="created">2026-08-19 · 13:50</div>
+                  <div class="open"><button class="open-btn">Open</button><button class="more" aria-label="More">⋯</button></div>
+                </div>
+              </div>
+
+              <!-- Group 5: Review -->
+              <div class="group">
+                <div class="group-head">
+                  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 12l2 2 4-4 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg>
+                  <span class="h">Review</span>
+                  <span class="line"></span>
+                  <span class="ct">0 files</span>
+                </div>
+                <div style="padding: 8px 0 6px; font-size: 12px; color: var(--ink-2); font-style: italic;">No review artifacts yet — review runs inline in PRs (GitHub). Will show review threads once PRs are opened.</div>
+              </div>
+
+              <!-- Group 6: QA -->
+              <div class="group">
+                <div class="group-head">
+                  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 12l2 2 4-4 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg>
+                  <span class="h">QA</span>
+                  <span class="line"></span>
+                  <span class="ct">3 files · 762 KB</span>
+                </div>
+
+                <div class="art-row">
+                  <span class="kind evidence"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M3 14l5-5 4 4 3-3 6 6"/></svg> evidence</span>
+                  <div class="path"><span class="indent">├─ </span><span class="name">qa-evidence/tm-18/run-187/auth-flow/sign-in<span class="ext">.png</span></span></div>
+                  <div class="size">188 KB</div>
+                  <div class="created">2026-08-26 · 14:21</div>
+                  <div class="open"><button class="open-btn">Open</button><button class="more" aria-label="More">⋯</button></div>
+                </div>
+                <div class="art-row">
+                  <span class="kind evidence"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M3 14l5-5 4 4 3-3 6 6"/></svg> evidence</span>
+                  <div class="path"><span class="indent">├─ </span><span class="name">qa-evidence/tm-17/run-187/filters/tab-order-fail<span class="ext">.png</span></span></div>
+                  <div class="size">214 KB</div>
+                  <div class="created">2026-08-26 · 14:19</div>
+                  <div class="open"><button class="open-btn">Open</button><button class="more" aria-label="More">⋯</button></div>
+                </div>
+                <div class="art-row">
+                  <span class="kind evidence"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M3 14l5-5 4 4 3-3 6 6"/></svg> evidence</span>
+                  <div class="path"><span class="indent">└─ </span><span class="name">qa-evidence/tm-18/run-187/auth-flow/redirect<span class="ext">.webm</span></span></div>
+                  <div class="size">360 KB</div>
+                  <div class="created">2026-08-26 · 14:22</div>
+                  <div class="open"><button class="open-btn">Open</button><button class="more" aria-label="More">⋯</button></div>
+                </div>
+              </div>
+
+              <!-- Group 7: Deployed -->
+              <div class="group">
+                <div class="group-head">
+                  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12h14 M13 6l6 6-6 6"/></svg>
+                  <span class="h">Deployed</span>
+                  <span class="line"></span>
+                  <span class="ct">0 files</span>
+                </div>
+                <div style="padding: 8px 0 6px; font-size: 12px; color: var(--ink-2); font-style: italic;">No deployed artifacts yet — production deploys land here when the project reaches the Deployed stage.</div>
+              </div>
+
+            </div>
+
+            <!-- Footer pagination -->
+            <div style="padding: 0 22px 14px; display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--ink-2);">
+              <span>Showing <b>18</b> of 27 files (filter: doc + code + evidence · 4 stages · agent)</span>
+              <button class="btn btn-soft btn-pill" style="margin-left: auto;">Load 9 more ↓</button>
+            </div>
+
+            <!-- Notes block -->
+            <div class="notes">
+              <div>
+                <b>Read-only tree.</b> Artifacts is a monitor of the project's on-disk folder — nothing here writes back. To steer what the agents produce, edit the rules on the stage tab (Design / Build / QA). Click any file to open in the in-app viewer (no downloads — files stay in the project workspace).
+              </div>
+              <div class="right">
+                <button class="btn btn-soft btn-pill">Saved filters →</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ══════ IN-APP VIEWER (selected artifact preview) ══════ -->
+          <div class="card" style="margin-top: 14px;">
+            <div class="viewer">
+
+              <!-- LEFT: in-app viewer rendering of idea.md -->
+              <div class="left">
+                <div class="viewer-head">
+                  <span class="kind doc"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l4 4v14H6z M15 3v4h4"/></svg> doc</span>
+                  <h4>idea.md</h4>
+                  <span class="path">idea.md · in-app viewer</span>
+                  <div class="right">
+                    <button class="btn btn-soft btn-pill">Copy path</button>
+                    <button class="btn btn-soft btn-pill">Reveal in Finder</button>
+                    <button class="btn btn-soft btn-pill">Close ✕</button>
+                  </div>
+                </div>
+
+                <div class="doc-stage">
+                  <div class="h1">Tenant Maintenance Portal</div>
+                  <div class="meta">Maintenance request app for property managers · v0.4 · last edited by BA Agent 2026-07-30</div>
+
+                  <p><code>idea.md</code> is the living source-of-truth for the project. The BA Agent and SA Agent edit it together during the intake chat; subsequent agents read it before producing any artifact.</p>
+
+                  <div class="h2">Problem</div>
+                  <p>Property managers at small-to-mid landlords spend 3–4 hours/day triaging maintenance requests across email, SMS, and phone. Tenants wait an average of 2.1 days for a status update. There is no audit trail.</p>
+
+                  <div class="h2">Users (3 personas)</div>
+                  <ul>
+                    <li><b>Pat</b> — tenant at a 60-unit building. Files a request once a quarter. Mostly mobile.</li>
+                    <li><b>Sam</b> — property manager at a 200-unit portfolio. Handles 15–30 requests/day. Lives in the app.</li>
+                    <li><b>Riley</b> — vendor / contractor. Receives work orders. Mobile-first, on the job.</li>
+                  </ul>
+
+                  <div class="h2">What's in scope for MVP</div>
+                  <ul>
+                    <li>Tenant submits a request (text + photo).</li>
+                    <li>Sam triages → assigns to Riley → status updates push to Pat.</li>
+                    <li>Audit trail visible to all three.</li>
+                    <li>Notifications via email + SMS (Twilio).</li>
+                  </ul>
+
+                  <div class="pinned"><b>Pinned:</b> the four MVP stories drive the 14 requirement IDs (BR-1 … BR-14) and the 14 Jira tickets (TM-1 … TM-14) that the Sprint board renders. See § Risks for what we explicitly cut.</div>
+
+                  <div class="h2">Success metrics</div>
+                  <p>Median request-to-assign time &lt; 1h (baseline 4h). Tenant satisfaction (post-resolution survey) &gt; 4.2/5. Vendor on-time arrival &gt; 90%.</p>
+                </div>
+              </div>
+
+              <!-- RIGHT: meta + related -->
+              <div class="right">
+                <div class="meta-card">
+                  <h5>Artifact info</h5>
+                  <div class="meta-row"><div class="k">Kind</div><div class="v"><span class="kind doc" style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;font-size:10.5px;background:var(--lavender);color:var(--ink);"><svg style="width:10px;height:10px;color:var(--purple);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l4 4v14H6z M15 3v4h4"/></svg> doc</span></div></div>
+                  <div class="meta-row"><div class="k">Path</div><div class="v"><code>idea.md</code></div></div>
+                  <div class="meta-row"><div class="k">Size</div><div class="v">6.2 KB (148 lines)</div></div>
+                  <div class="meta-row"><div class="k">Created</div><div class="v">2026-07-30 · 14:08</div></div>
+                  <div class="meta-row"><div class="k">Last opened</div><div class="v">2 days ago (by you)</div></div>
+                  <div class="meta-row"><div class="k">Stage</div><div class="v">Intake (source-of-truth · lives in every stage)</div></div>
+                  <div class="meta-row"><div class="k">Writers</div><div class="v">BA Agent + Sam (human)</div></div>
+                  <div class="meta-row"><div class="k">Read by</div><div class="v">All agents</div></div>
+                  <div class="meta-row"><div class="k">Status</div><div class="v"><span class="pill live" style="font-size:10.5px;padding:2px 8px;"><span class="dot"></span> current</span></div></div>
+                </div>
+
+                <div class="related">
+                  <h5>Related artifacts (5)</h5>
+                  <div class="rel-row">
+                    <div class="p">PRD/tenant-maintenance/personas<span class="ext">.md</span></div>
+                    <a class="open" href="#">Open →</a>
+                  </div>
+                  <div class="rel-row">
+                    <div class="p">PRD/tenant-maintenance/user-journeys<span class="ext">.md</span></div>
+                    <a class="open" href="#">Open →</a>
+                  </div>
+                  <div class="rel-row">
+                    <div class="p">PRD/tenant-maintenance/scope-and-rules<span class="ext">.md</span></div>
+                    <a class="open" href="#">Open →</a>
+                  </div>
+                  <div class="rel-row">
+                    <div class="p">PRD/tenant-maintenance/open-questions<span class="ext">.md</span></div>
+                    <a class="open" href="#">Open →</a>
+                  </div>
+                  <div class="rel-row">
+                    <div class="p">design-system/wireframes/tenant-maintenance/figma-link<span class="ext">.md</span></div>
+                    <a class="open" href="#">Open in Figma ↗</a>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </main>
+      </div>
+    </div>
+  </section>
+
+</div>
+</body></html>

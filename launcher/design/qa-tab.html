@@ -1,0 +1,1493 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Idea Hub — QA tab (v5.3)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ─── Design tokens (mirror build-tab.html / design-tab.html) ───────── */
+  :root {
+    --ground-a: #d9d5ec;
+    --ground-b: #c3cde8;
+    --panel:    rgba(255, 255, 255, 0.72);
+    --panel-stroke: rgba(255, 255, 255, 0.6);
+    --ink:      #2b2547;
+    --ink-2:    #8b87a5;
+    --ink-3:    #b6b2cc;
+    --shadow:   0 30px 60px -30px rgba(50, 42, 92, 0.25), 0 8px 24px -10px rgba(50, 42, 92, 0.12);
+
+    --navy:     #322a5c;
+    --navy-2:   #4a4080;
+
+    --peach:    #fbdcbe;
+    --sky:      #cfe0f4;
+    --lavender: #e6e1f7;
+    --mint:     #d7efe4;
+    --butter:   #f7edc6;
+    --blush:    #fadcd9;
+    --sea:      #cde6ea;
+
+    --coral:    #ef7f57;
+    --blue:     #6fa9e0;
+    --purple:   #9b7fde;
+    --green:    #5fbf95;
+    --amber:    #e8b94a;
+    --rose:     #d97a8e;
+
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+
+    --r-sm: 10px;
+    --r-md: 16px;
+    --r-lg: 20px;
+    --r-xl: 24px;
+    --r-2xl: 28px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { font-family: var(--font-sans); color: var(--ink); -webkit-font-smoothing: antialiased; }
+  body {
+    min-height: 100vh;
+    background:
+      radial-gradient(120% 80% at 10% 0%, #e3dff2 0%, transparent 60%),
+      linear-gradient(135deg, var(--ground-a) 0%, var(--ground-b) 100%);
+    padding: 40px 32px 80px;
+  }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; cursor: pointer; border: 0; background: none; color: inherit; }
+
+  /* ─── Document chrome ─────────────────────────────────────────────────── */
+  .doc { max-width: 1440px; margin: 0 auto 64px; }
+  .doc-header { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 28px; color: var(--ink); }
+  .doc-title { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; }
+  .doc-sub { color: var(--ink-2); font-size: 14px; max-width: 720px; line-height: 1.55; margin-top: 6px; }
+  .doc-sub a { color: var(--ink); font-weight: 600; text-decoration: underline; }
+  .doc-meta { font-family: var(--font-mono); font-size: 12px; color: var(--ink-2); white-space: nowrap; }
+
+  .toc { display: flex; flex-direction: column; gap: 4px; margin: -8px 0 24px; font-size: 12px; color: var(--ink-2); }
+  .toc a { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 8px; width: fit-content; }
+  .toc a:hover { background: rgba(255,255,255,0.6); color: var(--ink); }
+  .toc a b { color: var(--ink); margin-right: 6px; }
+
+  /* ─── Section frame ───────────────────────────────────────────────────── */
+  .screen { background: var(--panel); border: 1px solid var(--panel-stroke); border-radius: var(--r-xl); margin-bottom: 64px; overflow: hidden; backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); }
+  .screen-label { display: flex; align-items: center; gap: 12px; padding: 16px 22px; border-bottom: 1px solid rgba(50,42,92,0.06); font-size: 13px; }
+  .screen-label .num { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 6px; background: var(--navy); color: #fff; font-size: 12px; font-weight: 700; }
+  .screen-label .name { font-weight: 600; color: var(--ink); }
+  .screen-label .route { font-family: var(--font-mono); color: var(--ink-2); margin-left: auto; }
+  .screen-body { padding: 0; }
+
+  /* ─── App shell ───────────────────────────────────────────────────────── */
+  .app { display: grid; grid-template-columns: 248px 1fr; min-height: 1080px; }
+  .side { border-right: 1px solid rgba(50,42,92,0.08); background: rgba(255,255,255,0.4); padding: 18px 14px; display: flex; flex-direction: column; gap: 18px; }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 4px 6px 10px; }
+  .brand-mark { width: 28px; height: 28px; border-radius: 8px; background: var(--navy); color: #fff; display: grid; place-items: center; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; }
+  .brand-name { font-size: 14px; font-weight: 700; color: var(--ink); }
+  .menu-label { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-2); padding: 0 8px 6px; }
+  .nav { display: flex; flex-direction: column; gap: 1px; }
+  .nav a { display: flex; align-items: center; gap: 9px; padding: 7px 9px; border-radius: 8px; color: var(--ink); font-size: 13px; font-weight: 500; position: relative; }
+  .nav a:hover { background: rgba(255,255,255,0.6); }
+  .nav a.active { background: rgba(50,42,92,0.08); color: var(--ink); font-weight: 600; }
+  .nav a .count { margin-left: auto; font-size: 11px; color: var(--ink-2); background: rgba(50,42,92,0.08); border-radius: 6px; padding: 1px 6px; }
+  .nav a.active .count { background: var(--navy); color: #fff; }
+  .nav .ico { width: 16px; height: 16px; flex: none; }
+  /* WCAG-locked tab treatment (per project-launcher-design-standards §4 + §11) */
+  .nav a.locked { color: var(--ink-2); }
+  .nav a.locked .count { background: rgba(50,42,92,0.04); color: var(--ink-3); }
+  .nav a.locked:hover { background: rgba(255,255,255,0.4); color: var(--ink-2); }
+
+  .side-promo { margin-top: auto; background: var(--lavender); border-radius: 12px; padding: 12px 14px; font-size: 12px; line-height: 1.5; }
+  .side-promo h4 { font-size: 12px; font-weight: 700; margin-bottom: 4px; }
+  .side-promo p { color: var(--ink-2); }
+  .side-promo button { margin-top: 8px; color: var(--ink); font-weight: 600; text-decoration: underline; }
+  .side-foot { padding: 6px 8px 2px; font-size: 12px; }
+  .side-foot a { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); }
+  .side-foot a:hover { color: var(--ink); }
+
+  /* ─── Main + topbar + cards ──────────────────────────────────────────── */
+  .main { padding: 18px 26px 60px; }
+  .topbar { display: flex; align-items: center; gap: 10px; padding: 0 4px 14px; }
+  .search { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.7); border: 1px solid rgba(50,42,92,0.08); border-radius: 10px; padding: 7px 12px; width: 360px; }
+  .search input { border: 0; outline: 0; flex: 1; background: transparent; color: var(--ink); font: inherit; }
+  .search .ico { color: var(--ink-2); width: 14px; height: 14px; }
+
+  /* Back arrow on Story detail / Rules topbar (consistent with build-tab) */
+  .back-arrow {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; font-weight: 500;
+    color: var(--ink-2);
+    padding: 4px 8px; border-radius: 6px;
+  }
+  .back-arrow:hover { background: rgba(255,255,255,0.6); color: var(--ink); }
+  .back-arrow svg { color: inherit; }
+
+  .card { background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: var(--r-lg); box-shadow: var(--shadow); }
+
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 999px; font-size: 13px; font-weight: 500; border: 1px solid transparent; transition: background 0.12s ease; }
+  .btn-primary { background: var(--navy); color: #fff; }
+  .btn-primary:hover { background: var(--navy-2); }
+  .btn-ghost { background: #fff; color: var(--ink); border: 1px solid rgba(50,42,92,0.1); }
+  .btn-ghost:hover { background: rgba(50,42,92,0.04); }
+  .btn-soft { background: rgba(255,255,255,0.6); color: var(--ink); border: 1px solid rgba(50,42,92,0.08); }
+  .btn-soft:hover { background: rgba(255,255,255,0.85); }
+  .btn-pill { padding: 6px 12px; font-size: 12px; }
+  .btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 500; background: var(--peach); color: var(--ink); }
+  .pill .dot { width: 6px; height: 6px; border-radius: 50%; }
+  .pill.todo     { background: var(--lavender); color: var(--ink); }
+  .pill.todo     .dot { background: var(--purple); }
+  .pill.inprog   { background: var(--sky);     color: var(--ink); }
+  .pill.inprog   .dot { background: var(--blue); }
+  .pill.review   { background: var(--butter);  color: var(--ink); }
+  .pill.review   .dot { background: var(--amber); }
+  .pill.done     { background: var(--mint);    color: var(--ink); }
+  .pill.done     .dot { background: var(--green); }
+  .pill.blocked  { background: var(--blush);   color: var(--ink); }
+  .pill.blocked  .dot { background: var(--rose); }
+  .pill.draft    { background: var(--peach);   color: var(--ink); }
+  .pill.draft    .dot { background: var(--coral); }
+  /* v5.3 new statuses (item 10) */
+  .pill.flaky            { background: var(--butter);  color: var(--ink); }
+  .pill.flaky            .dot { background: var(--amber); }
+  .pill.blocked-skipped  { background: rgba(50,42,92,0.06); color: var(--ink-2); }
+  .pill.blocked-skipped  .dot { background: var(--ink-3); }
+
+  /* Pass / fail micro-chips on per-test rows */
+  .pass-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 600; background: var(--mint); color: var(--ink); }
+  .pass-chip .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--green); }
+  .pass-chip.warn { background: var(--blush); color: var(--ink); }
+  .pass-chip.warn .dot { background: var(--rose); }
+  .pass-chip.skip { background: rgba(50,42,92,0.06); color: var(--ink-2); }
+  .pass-chip.skip .dot { background: var(--ink-3); }
+
+  /* Dimension badge (B.15) */
+  .qa-dim { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 600; background: var(--lavender); color: var(--ink); }
+  .qa-dim .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--purple); }
+  .qa-dim.func { background: var(--mint); }
+  .qa-dim.func .dot { background: var(--green); }
+  .qa-dim.a11y { background: var(--lavender); }
+  .qa-dim.a11y .dot { background: var(--purple); }
+  .qa-dim.fidelity { background: var(--sky); }
+  .qa-dim.fidelity .dot { background: var(--blue); }
+
+  /* Project header */
+  .proj-head { display: flex; align-items: center; gap: 16px; padding: 22px; }
+  .proj-head .ico-lg { width: 56px; height: 56px; border-radius: 14px; display: grid; place-items: center; background: var(--peach); color: var(--ink); }
+  .proj-head h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
+  .proj-head .one { color: var(--ink-2); font-size: 13.5px; margin-top: 2px; }
+  .proj-head .path { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-2); margin-top: 6px; }
+  .proj-head .actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+  .stage-pt { font-size: 11.5px; color: var(--ink-2); font-family: var(--font-mono); }
+
+  /* Story detail header (L1556-1567 of build-tab.html v5.5) */
+  .story-head { display: flex; align-items: center; gap: 16px; padding: 22px; }
+  .story-head .title-stack { flex: 1; min-width: 0; }
+  .story-head h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+  .story-head .one { color: var(--ink-2); font-size: 12.5px; margin-top: 4px; }
+
+  /* 7-stage stepper */
+  .stepper { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0; align-items: center; }
+  .step { display: flex; align-items: center; gap: 8px; }
+  .step .num { width: 22px; height: 22px; border-radius: 50%; background: rgba(50,42,92,0.08); color: var(--ink-2); display: grid; place-items: center; font-size: 11px; font-weight: 700; }
+  .step .lbl { font-size: 12px; color: var(--ink-2); }
+  .step .bar { flex: 1; height: 2px; background: rgba(50,42,92,0.08); margin: 0 6px; }
+  .step.done .num { background: var(--green); color: #fff; }
+  .step.done .lbl { color: var(--ink); }
+  .step.done .bar { background: var(--green); }
+  .step.active .num { background: var(--navy); color: #fff; box-shadow: 0 0 0 4px rgba(50,42,92,0.12); }
+  .step.active .lbl { color: var(--ink); font-weight: 600; }
+
+  /* ─── Tab bar + write-back ─────────────────────────────────────────── */
+  .tab-bar { display: flex; align-items: center; gap: 14px; padding: 16px 22px 0; }
+  .tab-bar .writeback { margin-left: auto; font-size: 11.5px; color: var(--ink-2); font-family: var(--font-mono); }
+  .tab-bar .writeback code { background: rgba(50,42,92,0.06); padding: 1px 6px; border-radius: 4px; color: var(--ink); }
+
+  /* kit-tabs (Status / Rules pill switch) removed in v5.3 — the Rules half
+     is now opened from a cog button in the project header. */
+
+  /* Cog button in the project header — opens the Rules screen. */
+  .hdr-cog {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 11px; border-radius: 999px;
+    background: rgba(255,255,255,0.7);
+    border: 1px solid rgba(50,42,92,0.12);
+    color: var(--ink); font-size: 12px; font-weight: 600;
+    transition: background 0.12s ease;
+  }
+  .hdr-cog:hover { background: #fff; border-color: rgba(50,42,92,0.22); }
+  .hdr-cog:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
+  .hdr-cog svg { color: var(--ink-2); }
+  .hdr-cog:hover svg { color: var(--ink); }
+
+  /* ─── Verdict banner (B.14) ─────────────────────────────────────────── */
+  .qa-verdict { display: flex; align-items: center; gap: 16px; padding: 18px 22px; background: var(--blush); border: 1px solid rgba(217,122,142,0.25); border-radius: 12px; }
+  .qa-verdict .ico { width: 36px; height: 36px; border-radius: 10px; background: rgba(255,255,255,0.6); display: grid; place-items: center; color: var(--rose); flex: none; }
+  .qa-verdict .headline { font-size: 14px; font-weight: 700; color: var(--ink); }
+  .qa-verdict .headline span { color: var(--rose); }
+  .qa-verdict .sub { font-size: 12px; color: var(--ink-2); margin-top: 2px; }
+  .qa-verdict .actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+  .qa-verdict.all-pass { background: var(--mint); border-color: rgba(95,191,149,0.3); }
+  .qa-verdict.all-pass .ico { color: var(--green); }
+  .qa-verdict.all-pass .headline span { color: var(--green); }
+
+  /* ─── Environment panel (B.7) ──────────────────────────────────────── */
+  .qa-env { background: rgba(50,42,92,0.02); border: 1px dashed rgba(50,42,92,0.12); border-radius: 12px; padding: 14px 16px; }
+  .qa-env .h { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .qa-env .h h4 { margin: 0; font-size: 12.5px; font-weight: 700; }
+  .qa-env .h .badge { font-size: 10.5px; color: var(--ink-2); background: rgba(50,42,92,0.06); padding: 1px 6px; border-radius: 4px; font-family: var(--font-mono); }
+  .qa-env .row { display: grid; grid-template-columns: 130px 1fr; gap: 8px; padding: 4px 0; font-size: 12px; }
+  .qa-env .row .k { color: var(--ink-2); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; font-size: 11px; }
+  .qa-env .row .v { color: var(--ink); font-family: var(--font-mono); font-size: 11.5px; }
+  .qa-env .caption { margin-top: 8px; font-size: 11px; color: var(--ink-2); font-style: italic; }
+
+  /* ─── Coverage strip (B.8) ─────────────────────────────────────────── */
+  .qa-coverage { display: flex; align-items: center; gap: 14px; padding: 14px 18px; background: var(--lavender); border-radius: 12px; }
+  .qa-coverage .n { font-size: 22px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+  .qa-coverage .lbl { font-size: 12px; color: var(--ink); font-weight: 500; }
+  .qa-coverage .lbl .muted { color: var(--ink-2); font-weight: 400; }
+  .qa-coverage .bar { flex: 1; height: 6px; background: rgba(50,42,92,0.08); border-radius: 3px; overflow: hidden; }
+  .qa-coverage .bar .fill { height: 100%; background: var(--purple); }
+  .qa-coverage .actions { margin-left: auto; display: flex; gap: 6px; }
+
+  /* ─── QA summary stats (now 6 tiles, item 10) ──────────────────────── */
+  .qa-stats { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; padding: 18px 22px; }
+  .qa-stat { background: rgba(50,42,92,0.04); border-radius: 12px; padding: 14px 16px; position: relative; }
+  .qa-stat .n { font-size: 22px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+  .qa-stat .lbl { font-size: 11px; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
+  .qa-stat .sub { font-size: 11.5px; color: var(--ink-2); margin-top: 6px; }
+  .qa-stat .sub.ok { color: var(--green); }
+  .qa-stat .sub.warn { color: var(--rose); }
+  .qa-stat .rate { position: absolute; top: 14px; right: 14px; font-size: 10.5px; color: var(--ink-2); font-family: var(--font-mono); }
+  .qa-footnote { padding: 0 22px 14px; font-size: 11px; color: var(--ink-2); font-style: italic; }
+
+  /* Per-story QA test list */
+  .stories-head { display: flex; align-items: center; gap: 10px; padding: 6px 22px 12px; }
+  .stories-head h3 { margin: 0; font-size: 14px; font-weight: 700; }
+  .stories-head .filter { margin-left: auto; display: flex; gap: 4px; }
+  .stories-head .filter button { padding: 4px 10px; font-size: 11.5px; border-radius: 999px; background: transparent; color: var(--ink-2); }
+  .stories-head .filter button.on { background: rgba(50,42,92,0.08); color: var(--ink); }
+
+  .qa-row { display: grid; grid-template-columns: 100px 1fr 130px 130px 90px; gap: 12px; align-items: center; padding: 12px 22px; border-top: 1px solid rgba(50,42,92,0.06); }
+  .qa-row .id { font-family: var(--font-mono); font-size: 12px; color: var(--ink-2); }
+  .qa-row .title { font-size: 13.5px; font-weight: 500; }
+  .qa-row .title .sub { display: block; color: var(--ink-2); font-size: 11.5px; font-weight: 400; margin-top: 2px; }
+  .qa-row .title .roundtrip { display: block; color: var(--rose); font-size: 11px; font-family: var(--font-mono); margin-top: 4px; }
+
+  /* Inline test-result strip (small green/rose dots) */
+  .tests-strip { display: flex; align-items: center; gap: 4px; }
+  .tests-strip .t { width: 18px; height: 18px; border-radius: 4px; display: grid; place-items: center; font-size: 10px; font-weight: 700; }
+  .tests-strip .t.pass { background: var(--mint); color: var(--ink); }
+  .tests-strip .t.pass .dot { background: var(--green); width: 6px; height: 6px; border-radius: 50%; }
+  .tests-strip .t.fail { background: var(--blush); color: var(--ink); }
+  .tests-strip .t.fail .dot { background: var(--rose); width: 6px; height: 6px; border-radius: 50%; }
+  .tests-strip .t.skip { background: rgba(50,42,92,0.06); color: var(--ink-2); }
+  .tests-strip .t.flaky { background: var(--butter); color: var(--ink); }
+  .tests-strip .t.flaky .dot { background: var(--amber); width: 6px; height: 6px; border-radius: 50%; }
+  .tests-strip .count { margin-left: 6px; font-size: 11.5px; color: var(--ink-2); font-family: var(--font-mono); }
+
+  .qa-row .shots { display: flex; align-items: center; gap: 4px; }
+  .qa-row .shots .thumb { width: 38px; height: 28px; border-radius: 4px; border: 1px solid rgba(50,42,92,0.1); }
+  .qa-row .shots .thumb.ok { background: linear-gradient(135deg, var(--mint) 0%, var(--sky) 100%); }
+  .qa-row .shots .thumb.fail { background: linear-gradient(135deg, var(--blush) 0%, var(--butter) 100%); position: relative; }
+  .qa-row .shots .thumb.fail::after { content: "✕"; position: absolute; inset: 0; display: grid; place-items: center; color: var(--rose); font-weight: 700; font-size: 12px; }
+  .qa-row .shots .more { font-size: 11px; color: var(--ink-2); }
+
+  /* ─── Screenshot viewer (relocated to #qasd) ──────────────────────── */
+  .shots-viewer { display: flex; flex-direction: column; gap: 12px; }
+  .shots-h { display: flex; align-items: center; gap: 10px; }
+  .shots-h h4 { margin: 0; font-size: 12.5px; font-weight: 700; }
+  .shots-h .step { margin-left: auto; font-size: 11.5px; color: var(--ink-2); font-family: var(--font-mono); }
+  .shot-stage { background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: 12px; padding: 12px; position: relative; }
+  .shot-stage .stage-img { aspect-ratio: 16/9; border-radius: 8px; background: linear-gradient(135deg, var(--lavender) 0%, var(--peach) 50%, var(--sky) 100%); position: relative; overflow: hidden; }
+  .shot-stage .stage-img .frame { position: absolute; top: 14px; left: 14px; right: 14px; bottom: 14px; background: rgba(255,255,255,0.5); border-radius: 6px; border: 1px dashed rgba(50,42,92,0.18); }
+  .shot-stage .stage-img .frame::before { content: ""; position: absolute; top: 8px; left: 8px; right: 8px; height: 12px; background: rgba(50,42,92,0.1); border-radius: 3px; }
+  .shot-stage .stage-img .frame::after { content: ""; position: absolute; top: 28px; left: 8px; right: 60%; height: 8px; background: rgba(50,42,92,0.06); border-radius: 3px; }
+  /* No-screenshots state (C.20) */
+  .shot-stage .stage-img.empty { background: rgba(50,42,92,0.04); display: grid; place-items: center; }
+  .shot-stage .stage-img.empty::before { content: "Screenshots appear after the first run."; color: var(--ink-2); font-size: 12px; font-style: italic; }
+
+  .annot { position: absolute; top: 18px; right: 22px; background: var(--blush); border: 1px solid var(--rose); border-radius: 8px; padding: 6px 8px; font-size: 11px; color: var(--ink); display: flex; align-items: center; gap: 6px; max-width: 180px; }
+  .annot svg { color: var(--rose); flex: none; }
+  .annot::before { content: ""; position: absolute; bottom: -7px; right: 18px; width: 12px; height: 12px; background: var(--blush); border-right: 1px solid var(--rose); border-bottom: 1px solid var(--rose); transform: rotate(45deg); }
+
+  .shot-toolbar { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+  .shot-toolbar .nav-btn { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; font-size: 11.5px; border-radius: 999px; background: rgba(50,42,92,0.06); color: var(--ink); }
+  .shot-toolbar .meta { font-size: 11px; color: var(--ink-2); font-family: var(--font-mono); }
+  .shot-toolbar .right { margin-left: auto; display: flex; gap: 6px; }
+
+  .test-list { display: flex; flex-direction: column; gap: 6px; }
+  .test-list .t-row { display: grid; grid-template-columns: 22px 1fr 70px 90px; gap: 8px; align-items: center; padding: 7px 10px; background: #fff; border: 1px solid rgba(50,42,92,0.06); border-radius: 8px; font-size: 12px; }
+  .test-list .t-row .ico { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-size: 10px; font-weight: 700; color: #fff; }
+  .test-list .t-row .ico.pass { background: var(--green); }
+  .test-list .t-row .ico.fail { background: var(--rose); }
+  .test-list .t-row .ico.skip { background: var(--ink-3); }
+  .test-list .t-row .name { color: var(--ink); }
+  .test-list .t-row .name .expected { display: block; color: var(--ink-2); font-size: 11px; margin-top: 2px; }
+  .test-list .t-row .dur { font-size: 11px; color: var(--ink-2); font-family: var(--font-mono); }
+
+  /* Per-story test thread (QA Agent + Reviewer) */
+  .thread { display: flex; flex-direction: column; gap: 10px; }
+  .thread .thread-head { display: flex; align-items: center; gap: 8px; font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-2); }
+  .thread .thread-head .who { margin-left: auto; font-size: 11px; color: var(--ink-2); font-weight: 500; text-transform: none; letter-spacing: 0; }
+  .comment { background: #fff; border: 1px solid rgba(50,42,92,0.06); border-left: 3px solid var(--mint); border-radius: 10px; padding: 10px 12px; }
+  .comment.qa { border-left-color: var(--mint); }
+  .comment.rev { border-left-color: var(--lavender); }
+  .comment .body { font-size: 12.5px; line-height: 1.5; }
+  .comment .body .who { font-size: 11.5px; font-weight: 600; color: var(--ink); }
+  .comment .body .who span { color: var(--ink-2); font-weight: 400; margin-left: 6px; }
+  .comment .body p { margin: 4px 0 0; color: var(--ink); }
+  .comment .meta { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 11px; color: var(--ink-2); }
+  .comment .meta code { font-family: var(--font-mono); font-size: 10.5px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px; }
+  .comment .meta .pass { color: var(--green); font-weight: 600; }
+  .comment .meta .fail { color: var(--rose); font-weight: 600; }
+  .compose { display: flex; gap: 10px; align-items: end; background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: 10px; padding: 8px 10px; }
+  .compose textarea { flex: 1; border: 0; outline: 0; resize: none; font: inherit; font-size: 12.5px; color: var(--ink); background: transparent; min-height: 36px; }
+  .compose .who { font-size: 11px; color: var(--ink-2); }
+
+  /* ─── Rework round-trip banner (B.11, build-tab v5.5 L376-387) ───── */
+  .rework-banner { background: var(--blush); border: 1px solid rgba(217,122,142,0.3); border-radius: 12px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; font-size: 12.5px; color: var(--ink); }
+  .rework-banner .ico { width: 28px; height: 28px; border-radius: 8px; background: rgba(255,255,255,0.6); display: grid; place-items: center; color: var(--rose); flex: none; }
+  .rework-banner .body { flex: 1; }
+  .rework-banner .body .round { font-size: 11px; color: var(--ink-2); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.06em; }
+  .rework-banner .body .story { font-weight: 600; margin-top: 2px; }
+  .rework-banner .body .detail { color: var(--ink-2); margin-top: 2px; font-size: 12px; }
+  .rework-banner .body .escalation { color: var(--rose); font-weight: 600; margin-top: 4px; font-size: 11.5px; }
+
+  /* ─── Run history (B.9) ───────────────────────────────────────────── */
+  .qa-history { background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: 12px; overflow: hidden; }
+  .qa-history .h { padding: 12px 16px; border-bottom: 1px solid rgba(50,42,92,0.06); display: flex; align-items: center; gap: 8px; }
+  .qa-history .h h4 { margin: 0; font-size: 12.5px; font-weight: 700; }
+  .qa-history .h .right { margin-left: auto; font-size: 11px; color: var(--ink-2); }
+  .qa-history table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .qa-history th { text-align: left; padding: 8px 16px; font-size: 10.5px; font-weight: 600; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.06em; background: rgba(50,42,92,0.02); }
+  .qa-history td { padding: 9px 16px; border-top: 1px solid rgba(50,42,92,0.05); }
+  .qa-history td.mono { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-2); }
+
+  /* ─── Run scope selector (B.12) ───────────────────────────────────── */
+  .qa-scope { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 999px; background: rgba(255,255,255,0.7); border: 1px solid rgba(50,42,92,0.12); font-size: 11.5px; color: var(--ink-2); }
+  .qa-scope::after { content: "▾"; color: var(--ink-2); font-size: 10px; }
+
+  /* ─── QA agent panel (B.13, mirrors build-tab .agent-card) ────────── */
+  .qa-agent-card { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: 12px; }
+  .qa-agent-card .avatar { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 13px; flex: none; }
+  .qa-agent-card .avatar.qa { background: var(--purple); }
+  .qa-agent-card .avatar.rev { background: var(--amber); color: var(--ink); }
+  .qa-agent-card .name { font-size: 13px; font-weight: 600; }
+  .qa-agent-card .activity { font-size: 11.5px; color: var(--ink-2); margin-top: 2px; font-family: var(--font-mono); }
+  .qa-agent-card .queue { font-size: 11px; color: var(--ink-2); margin-top: 4px; }
+  .qa-agent-card .right { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+
+  /* ─── Visual diff (B.16) ──────────────────────────────────────────── */
+  .qa-diff { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 12px; }
+  .qa-diff .pane { background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: 10px; padding: 10px 12px; }
+  .qa-diff .pane h5 { margin: 0 0 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-2); }
+  .qa-diff .pane .img { aspect-ratio: 16/9; border-radius: 6px; }
+  .qa-diff .expected .img { background: linear-gradient(135deg, var(--mint) 0%, var(--sky) 100%); }
+  .qa-diff .actual .img { background: linear-gradient(135deg, var(--blush) 0%, var(--butter) 100%); position: relative; }
+  .qa-diff .actual .img::after { content: "✕"; position: absolute; inset: 0; display: grid; place-items: center; color: var(--rose); font-weight: 700; }
+  .qa-diff .diff .img { background: repeating-linear-gradient(45deg, var(--rose) 0 4px, transparent 4px 8px), var(--blush); position: relative; }
+  .qa-diff .diff .img::after { content: "diff overlay"; position: absolute; inset: 0; display: grid; place-items: center; color: var(--rose); font-size: 10px; font-weight: 600; }
+  .qa-diff.deferred .pane { background: rgba(50,42,92,0.02); border-style: dashed; }
+  .qa-diff.deferred .pane .img { background: transparent; border: 1px dashed rgba(50,42,92,0.15); display: grid; place-items: center; color: var(--ink-2); font-size: 11px; font-style: italic; }
+  .qa-diff.deferred .actual .img::after { display: none; }
+
+  /* ─── UI states (ui-best-practices C.17-20) ──────────────────────── */
+  .qa-state-empty { background: rgba(50,42,92,0.02); border: 1px dashed rgba(50,42,92,0.15); border-radius: 12px; padding: 28px 22px; text-align: center; }
+  .qa-state-empty .ico { width: 44px; height: 44px; border-radius: 12px; background: var(--lavender); color: var(--purple); margin: 0 auto 10px; display: grid; place-items: center; }
+  .qa-state-empty h4 { margin: 0; font-size: 14px; font-weight: 700; color: var(--ink); }
+  .qa-state-empty p { margin: 6px auto 0; color: var(--ink-2); font-size: 12px; max-width: 360px; }
+  .qa-state-running { background: var(--sky); border: 1px solid rgba(111,169,224,0.3); border-radius: 12px; padding: 14px 18px; display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--ink); }
+  .qa-state-running .ico { width: 28px; height: 28px; border-radius: 50%; background: var(--blue); color: #fff; display: grid; place-items: center; }
+  .qa-state-running .body { flex: 1; }
+  .qa-state-running .progress { height: 4px; background: rgba(50,42,92,0.1); border-radius: 2px; margin-top: 6px; overflow: hidden; }
+  .qa-state-running .progress .fill { height: 100%; background: var(--blue); }
+  .qa-state-error { background: var(--blush); border: 1px solid rgba(217,122,142,0.3); border-radius: 12px; padding: 14px 18px; display: flex; align-items: center; gap: 12px; font-size: 12.5px; color: var(--ink); }
+  .qa-state-error .ico { width: 28px; height: 28px; border-radius: 8px; background: rgba(255,255,255,0.6); color: var(--rose); display: grid; place-items: center; flex: none; }
+  .qa-state-error .body { flex: 1; }
+  .qa-state-error .body .reason { color: var(--ink-2); font-size: 12px; }
+  .qa-state-error .actions { margin-left: auto; display: flex; gap: 6px; }
+
+  /* ─── Linked-requirement / story-at-a-glance row (build-tab v5.5) ─ */
+  .req-surface-row { display: grid; grid-template-columns: 1.4fr 1fr; gap: 14px; margin-top: 14px; }
+  .req-card { background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: 12px; padding: 14px 16px; }
+  .req-card .h { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .req-card .h h4 { margin: 0; font-size: 12.5px; font-weight: 700; }
+  .req-card .h .id { font-family: var(--font-mono); font-size: 11px; color: var(--ink-2); }
+  .req-card .h .open { margin-left: auto; font-size: 11.5px; color: var(--navy); font-weight: 600; }
+  .req-card .desc { font-size: 12.5px; line-height: 1.55; color: var(--ink); }
+  .req-card .users-row { display: flex; align-items: center; gap: 6px; margin-top: 10px; font-size: 11px; color: var(--ink-2); }
+  .req-card .user-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; background: rgba(50,42,92,0.04); color: var(--ink); font-size: 11px; font-weight: 500; }
+  .req-card .user-chip .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--purple); }
+  .req-card .user-chip.u-tenant .dot { background: var(--blue); }
+  .req-card .user-chip.u-admin .dot { background: var(--rose); }
+
+  /* Dimension summary on Story detail (B.15) */
+  .qa-dim-summary { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 14px; }
+  .qa-dim-summary .lane { background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: 12px; padding: 14px 16px; }
+  .qa-dim-summary .lane .h { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .qa-dim-summary .lane .h h4 { margin: 0; font-size: 12.5px; font-weight: 700; }
+  .qa-dim-summary .lane .h .tag { margin-left: auto; font-size: 10.5px; color: var(--ink-2); background: rgba(50,42,92,0.04); padding: 1px 6px; border-radius: 4px; }
+  .qa-dim-summary .lane .row { display: flex; align-items: center; gap: 6px; font-size: 11.5px; padding: 3px 0; }
+  .qa-dim-summary .lane .row .n { font-family: var(--font-mono); font-weight: 600; color: var(--ink); }
+  .qa-dim-summary .lane .row .lbl { color: var(--ink-2); }
+  .qa-dim-summary .lane .row.fail .n { color: var(--rose); }
+  .qa-dim-summary .lane .row.pass .n { color: var(--green); }
+
+  /* ─── QA tools panel (Playwright only) ──────────────────────────────── */
+  .tools { display: flex; flex-direction: column; gap: 10px; }
+  .tools-card { background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: 12px; padding: 14px; }
+  .tools-card .h { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .tools-card .h h4 { margin: 0; font-size: 12.5px; font-weight: 700; }
+  .tools-card .h .badge { font-size: 10.5px; color: var(--ink-2); background: rgba(50,42,92,0.06); padding: 1px 6px; border-radius: 4px; }
+  .tools-row { display: grid; grid-template-columns: 80px 1fr; gap: 8px; padding: 6px 0; border-top: 1px solid rgba(50,42,92,0.05); font-size: 12px; }
+  .tools-row:first-of-type { border-top: 0; }
+  .tools-row .k { color: var(--ink-2); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; font-size: 11px; }
+  .tools-row .v { color: var(--ink); }
+  .tools-row .v code { font-family: var(--font-mono); font-size: 11.5px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px; }
+
+  /* ─── Rules-screen cards (mirror build-tab .arch-card / .rules-section) ── */
+  .rules-section { display: flex; flex-direction: column; gap: 14px; margin-top: 14px; }
+  .arch-card { background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: 12px; padding: 14px 16px; }
+  .arch-h { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .arch-h h4 { margin: 0; font-size: 12.5px; font-weight: 700; }
+  .arch-h .ico { width: 22px; height: 22px; border-radius: 6px; background: var(--lavender); color: var(--purple); display: grid; place-items: center; }
+  .arch-h .edit { margin-left: auto; font-size: 11px; color: var(--navy); font-weight: 600; }
+  .arch-row { display: grid; grid-template-columns: 110px 1fr auto; gap: 10px; padding: 6px 0; border-top: 1px solid rgba(50,42,92,0.05); font-size: 12px; align-items: center; }
+  .arch-row:first-of-type { border-top: 0; }
+  .arch-row .k { color: var(--ink-2); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; font-size: 11px; }
+  .arch-row .v { color: var(--ink); }
+  .arch-row .v code { font-family: var(--font-mono); font-size: 11.5px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px; }
+  .arch-row .edit { font-size: 11px; color: var(--navy); font-weight: 600; }
+
+  .md-card { background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: 12px; padding: 14px 16px; }
+  .md-card .h { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .md-card .h h4 { margin: 0; font-size: 12.5px; font-weight: 700; }
+  .md-card .h .right { margin-left: auto; font-size: 11px; color: var(--ink-2); }
+  .md-card .h .right code { font-family: var(--font-mono); font-size: 11px; background: rgba(50,42,92,0.06); padding: 1px 6px; border-radius: 4px; }
+  .md-card textarea { width: 100%; min-height: 120px; border: 1px solid rgba(50,42,92,0.1); border-radius: 8px; padding: 10px 12px; font: inherit; font-size: 12.5px; color: var(--ink); background: rgba(50,42,92,0.02); resize: vertical; }
+  .md-card .foot { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 11px; color: var(--ink-2); }
+  .md-card .foot .right { margin-left: auto; display: flex; gap: 6px; }
+
+  .agent-md-card { background: #fff; border: 1px solid rgba(50,42,92,0.08); border-radius: 12px; padding: 14px 16px; }
+  .agent-md-card .h { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; cursor: pointer; }
+  .agent-md-card .h .avatar { width: 24px; height: 24px; border-radius: 6px; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 11px; }
+  .agent-md-card .h .avatar.qa { background: var(--purple); }
+  .agent-md-card .h .avatar.rev { background: var(--amber); color: var(--ink); }
+  .agent-md-card .h h4 { margin: 0; font-size: 12.5px; font-weight: 700; }
+  .agent-md-card .h .sub { font-size: 11.5px; color: var(--ink-2); }
+  .agent-md-card .h .right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .agent-md-card .h .right code { font-family: var(--font-mono); font-size: 10.5px; background: rgba(50,42,92,0.06); padding: 1px 6px; border-radius: 4px; color: var(--ink-2); }
+  .agent-md-card .body { display: none; font-size: 12px; color: var(--ink); line-height: 1.55; padding-top: 8px; border-top: 1px solid rgba(50,42,92,0.05); }
+  .agent-md-card.open .body { display: block; }
+</style>
+</head>
+<body>
+<div class="doc">
+
+  <header class="doc-header">
+    <div>
+      <div class="doc-title">Idea Hub — QA tab (v5.3)</div>
+      <div class="doc-sub">QA stage workspace. <b>3 screens</b> — <b>Status list</b> (verdict banner, environment panel, coverage strip, per-story test list with Flaky/Blocked statuses, QA agent panel), <b>Story QA detail</b> (back arrow top-left returns to the Status list; per-test rows with expected vs actual + Playwright trace + dimension badges; annotated screenshot viewer; rework round-trip banner; visual diff), and <b>Rules</b> (editable <b>test framework config</b> + <b>test rules in force</b> + per-agent QA guidelines writing back to <code style="font-family: var(--font-mono); font-size: 12px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">testing/</code> + <code style="font-family: var(--font-mono); font-size: 12px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">../skills/</code>). <b>Screenshots are first-class</b> — pass confirmations and fail issue shots per test step. <b>Tools = Playwright only</b> for now. <b>Manual Re-run tests</b> is exposed alongside the QA agent's autonomous runs. <b>v5.3 change</b> — the inline Status / Rules pill switcher is removed; the Rules half is opened from a <b>cog button</b> in the project header (consistent with build-tab v5.5 + the back-arrow pattern used to leave Story detail). The QA summary stats grew from 4 to 6 tiles to add <b>Flaky</b> (excluded from pass-rate) and <b>Blocked/Skipped-with-reason</b>. Source of truth: <a href="sitemap.md">sitemap.md § QA</a>.</div>
+    </div>
+    <div class="doc-meta">v5.3 · launcher/design/qa-tab.html<br/>3 screens (QA · Status list + Story QA detail + Rules)</div>
+  </header>
+
+  <nav class="toc">
+    <a href="mockups.html"><b>←</b> All screens → mockups.html</a>
+    <a href="design-tab.html"><b>D</b> Design tab mockup →</a>
+    <a href="build-tab.html"><b>BU</b> Build tab mockup →</a>
+    <a href="#qa"><b>Q</b> QA tab — Status list (verdict · env · coverage · per-story tests · QA agent panel)</a>
+    <a href="#qasd"><b>QSD</b> QA — Story detail (per-test · expected vs actual · trace · screenshots · diff · notes)</a>
+    <a href="#qar"><b>QR</b> QA tab — Rules (test framework + test rules + per-agent guidelines)</a>
+  </nav>
+
+  <!-- ═════════════ Q · QA tab — Status list ═════════════ -->
+  <section class="screen" id="qa">
+    <div class="screen-label">
+      <span class="num">Q</span>
+      <span class="name">QA tab — Status list</span>
+      <span class="route">/projects/tenant-maintenance · QA</span>
+    </div>
+    <div class="screen-body">
+      <div class="app">
+        <aside class="side">
+          <div class="brand"><div class="brand-mark">IH</div><div class="brand-name">Idea Hub</div></div>
+          <div>
+            <div class="menu-label">Menu</div>
+            <nav class="nav">
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12l9-9 9 9 M5 10v10h14V10"/></svg> Overview</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h11l3 3v13H5z M16 4v3h3 M8 11h8 M8 14h8 M8 17h5"/></svg> Project Background <span class="count">17</span></a>
+              <a href="#" class="locked" aria-disabled="true" title="Confirm project context first"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3h7v7 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> Requirements <span class="count">14</span></a>
+              <a href="#" class="locked" aria-disabled="true" title="Confirm project context first"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Sprint <span class="count">14</span></a>
+              <a href="#" class="locked" aria-disabled="true" title="Confirm project context first"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z M4 9h16 M9 4v16"/></svg> Design</a>
+              <a href="#" class="locked" aria-disabled="true" title="Confirm project context first"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Build <span class="count">14</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="9" r="3"/><path d="M3 19c0-3 2.7-5 6-5s6 2 6 5 M14 19c0-3 2.7-5 6-5"/></svg> Agents</a>
+              <a href="#qa" class="active"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 12l2 2 4-4 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg> QA <span class="count">2</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> Activity</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 8H3 M21 16H3 M5 4h14v16H5z"/></svg> Artifacts</a>
+            </nav>
+          </div>
+          <div class="side-promo">
+            <h4>QA rules</h4>
+            <p>Edits to testing framework, test rules, accessibility checks, and feature-fidelity rules write back to <code style="font-family: var(--font-mono); font-size: 11px;">testing/</code>. The QA Agent picks them up on the next run.</p>
+            <button>View testing/ →</button>
+          </div>
+          <div class="side-foot">
+            <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 3h6v6 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> ← All projects</a>
+          </div>
+        </aside>
+
+        <main class="main">
+          <div class="topbar">
+            <a href="#" style="font-size:13px; color: var(--ink-2);">← Projects</a>
+            <div class="search">
+              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+              <input placeholder="Search this project…" />
+            </div>
+            <button class="btn btn-soft btn-pill">Filter</button>
+            <button class="btn btn-soft btn-pill">Export</button>
+          </div>
+
+          <!-- Project header with cog -->
+          <div class="card">
+            <div class="proj-head">
+              <div class="ico-lg"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2b2547" stroke-width="1.8"><path d="M9 12l2 2 4-4 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg></div>
+              <div>
+                <h1>Tenant Maintenance Portal</h1>
+                <div class="one">Maintenance request app for property managers</div>
+                <div class="path">~/Code/tenant-maintenance · QA stage · 14 stories in flight</div>
+              </div>
+              <div class="actions">
+                <span class="pill inprog"><span class="dot"></span> QA</span>
+                <span class="stage-pt">TM-12 … TM-25</span>
+                <a href="#qar" class="hdr-cog" aria-label="Open QA rules">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h.1a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v.1a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+                  <span>Rules</span>
+                </a>
+              </div>
+            </div>
+
+            <!-- 7-stage stepper (QA active) -->
+            <div class="stepper" style="padding: 0 22px 22px;">
+              <div class="step done"><div class="num"><b>1</b></div><div class="lbl">Intake</div><div class="bar"></div></div>
+              <div class="step done"><div class="num"><b>2</b></div><div class="lbl">Requirements</div><div class="bar"></div></div>
+              <div class="step done"><div class="num"><b>3</b></div><div class="lbl">Design</div><div class="bar"></div></div>
+              <div class="step done"><div class="num"><b>4</b></div><div class="lbl">Build</div><div class="bar"></div></div>
+              <div class="step done"><div class="num"><b>5</b></div><div class="lbl">Review</div><div class="bar"></div></div>
+              <div class="step active"><div class="num"><b>6</b></div><div class="lbl">QA</div><div class="bar"></div></div>
+              <div class="step"><div class="num"><b>7</b></div><div class="lbl">Deployed</div></div>
+            </div>
+          </div>
+
+          <!-- Verdict banner (B.14) — fires from stats; mint when all pass -->
+          <div class="card" style="margin-top: 14px;">
+            <div class="qa-verdict">
+              <div class="ico">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8v4 M12 16h.01"/></svg>
+              </div>
+              <div class="body">
+                <div class="headline">9/12 stories <span>Passed</span> · 2 Failed (in rework) · 1 In QA — not ready for deploy</div>
+                <div class="sub">Resolve the 2 failed stories in Build, then re-run QA to deploy to QA env.</div>
+              </div>
+              <div class="actions">
+                <button class="btn btn-ghost btn-pill" disabled>Sign off & deploy →</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Environment panel (B.7) — read-only; Build owns the data -->
+          <div class="card" style="margin-top: 14px;">
+            <div class="qa-env">
+              <div class="h">
+                <svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="color: var(--blue);"><circle cx="12" cy="12" r="3"/><path d="M3 12h6 M15 12h6 M12 3v6 M12 15v6"/></svg>
+                <h4>QA environment</h4>
+                <span class="badge">deployed from Build</span>
+              </div>
+              <div class="row"><div class="k">QA env URL</div><div class="v">qa-env-3d1a.fly.dev</div></div>
+              <div class="row"><div class="k">Build / commit</div><div class="v">build/HEAD · 7a3d2e1 · main</div></div>
+              <div class="row"><div class="k">Deployed at</div><div class="v">2026-09-01 14:22 UTC (38m ago)</div></div>
+              <div class="row"><div class="k">Seeded data</div><div class="v">reset on every run · 12 properties · 3 users</div></div>
+              <div class="caption">deployed from Build · QA pass required to advance to Deployed</div>
+            </div>
+          </div>
+
+          <!-- QA summary stats (now 6 tiles) -->
+          <div class="card" style="margin-top: 14px;">
+            <div class="qa-stats">
+              <div class="qa-stat">
+                <div class="n">3</div>
+                <div class="lbl">Ready for QA</div>
+                <div class="sub">From Build's "Ready for QA" queue</div>
+                <span class="rate">3 stories</span>
+              </div>
+              <div class="qa-stat">
+                <div class="n">2</div>
+                <div class="lbl">In QA</div>
+                <div class="sub">Playwright running now</div>
+                <span class="rate">2 stories</span>
+              </div>
+              <div class="qa-stat">
+                <div class="n">8</div>
+                <div class="lbl">Passed</div>
+                <div class="sub ok">Deployed to QA env · 0 failed steps</div>
+                <span class="rate">8/12 = 67%</span>
+              </div>
+              <div class="qa-stat">
+                <div class="n">2</div>
+                <div class="lbl">Failed</div>
+                <div class="sub warn">→ Build rework queue · evidence linked</div>
+                <span class="rate">2/12 = 17%</span>
+              </div>
+              <div class="qa-stat">
+                <div class="n">1</div>
+                <div class="lbl">Flaky</div>
+                <div class="sub warn">excluded from pass rate · review for quarantine</div>
+                <span class="rate">1/12 = 8%</span>
+              </div>
+              <div class="qa-stat">
+                <div class="n">0</div>
+                <div class="lbl">Blocked / Skipped</div>
+                <div class="sub">awaiting data fix · not blocking deploy</div>
+                <span class="rate">0/12 = 0%</span>
+              </div>
+            </div>
+            <div class="qa-footnote">Pass rate = Passed / (Passed + Failed + Blocked). Flaky runs are excluded from the numerator; tracked separately for quarantine.</div>
+          </div>
+
+          <!-- Coverage strip (B.8) -->
+          <div class="card" style="margin-top: 14px;">
+            <div class="qa-coverage">
+              <div>
+                <div class="n">12 / 15</div>
+                <div class="lbl">acceptance criteria covered <span class="muted">· 3 untested</span></div>
+              </div>
+              <div class="bar"><div class="fill" style="width: 80%;"></div></div>
+              <div class="actions">
+                <button class="btn btn-soft btn-pill">View untested (3)</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Per-story QA test list -->
+          <div class="card" style="margin-top: 14px;">
+            <div class="stories-head">
+              <h3>Story test results</h3>
+              <span class="pill todo"><span class="dot"></span> 12 tested · 2 failed · 1 flaky</span>
+              <span class="qa-scope">Full suite</span>
+              <button class="btn btn-primary btn-pill">Re-run all tests</button>
+              <div class="filter">
+                <button class="on">All</button>
+                <button>Ready for QA</button>
+                <button>In QA</button>
+                <button>Passed</button>
+                <button>Failed</button>
+                <button>Flaky</button>
+                <button>Blocked</button>
+              </div>
+            </div>
+
+            <!-- Story 1: Failed (round-trip + re-run history) -->
+            <div class="qa-row">
+              <div>
+                <div class="id">TM-17</div>
+                <span class="pill blocked"><span class="dot"></span> Failed</span>
+              </div>
+              <div>
+                <div class="title">Property list — filter chips<span class="sub">From DSGN-06 · 3 pts · failed at step 3 (chip focus)</span><span class="roundtrip">Failed round 1 → in Build rework → fixed → Ready for QA (round 2)</span></div>
+              </div>
+              <div class="tests-strip">
+                <div class="t pass"><span class="dot"></span></div>
+                <div class="t pass"><span class="dot"></span></div>
+                <div class="t fail"><span class="dot"></span></div>
+                <div class="t skip">—</div>
+                <div class="count">2/4</div>
+              </div>
+              <div class="shots">
+                <div class="thumb ok"></div>
+                <div class="thumb ok"></div>
+                <div class="thumb fail"></div>
+                <span class="more">+1</span>
+              </div>
+              <div><a href="#qasd" class="btn btn-soft btn-pill">Open →</a></div>
+            </div>
+
+            <!-- Story 2: Flaky -->
+            <div class="qa-row">
+              <div>
+                <div class="id">TM-21</div>
+                <span class="pill flaky"><span class="dot"></span> Flaky</span>
+              </div>
+              <div>
+                <div class="title">Photo upload for maintenance requests<span class="sub">From DSGN-12 · 5 pts · 3 runs · 1 pass / 1 fail / 1 pass</span><span class="roundtrip">Run 1 pass · run 2 fail (timeout) · run 3 pass · consider quarantine</span></div>
+              </div>
+              <div class="tests-strip">
+                <div class="t pass"><span class="dot"></span></div>
+                <div class="t pass"><span class="dot"></span></div>
+                <div class="t flaky"><span class="dot"></span></div>
+                <div class="t skip">—</div>
+                <div class="count">2/4</div>
+              </div>
+              <div class="shots">
+                <div class="thumb ok"></div>
+                <div class="thumb ok"></div>
+                <div class="thumb fail"></div>
+                <span class="more">+1</span>
+              </div>
+              <div><a href="#qasd" class="btn btn-soft btn-pill">Open →</a></div>
+            </div>
+
+            <!-- Story 3: In QA -->
+            <div class="qa-row">
+              <div>
+                <div class="id">TM-19</div>
+                <span class="pill inprog"><span class="dot"></span> In QA</span>
+              </div>
+              <div>
+                <div class="title">Request detail screen + status updates<span class="sub">From DSGN-08 · 5 pts · running · 2/6 tests</span></div>
+              </div>
+              <div class="tests-strip">
+                <div class="t pass"><span class="dot"></span></div>
+                <div class="t pass"><span class="dot"></span></div>
+                <div class="t skip">—</div>
+                <div class="t skip">—</div>
+                <div class="t skip">—</div>
+                <div class="t skip">—</div>
+                <div class="count">2/6</div>
+              </div>
+              <div class="shots">
+                <div class="thumb ok"></div>
+                <div class="thumb ok"></div>
+                <span class="more">+ 4 pending</span>
+              </div>
+              <div><a href="#qasd" class="btn btn-soft btn-pill">Open →</a></div>
+            </div>
+
+            <!-- Story 4: Passed -->
+            <div class="qa-row">
+              <div>
+                <div class="id">TM-12</div>
+                <span class="pill done"><span class="dot"></span> Passed</span>
+              </div>
+              <div>
+                <div class="title">Vite + React + TS scaffold (CI green)<span class="sub">From DSGN-02 · 2 pts · deployed to QA env 2h ago</span></div>
+              </div>
+              <div class="tests-strip">
+                <div class="t pass"><span class="dot"></span></div>
+                <div class="t pass"><span class="dot"></span></div>
+                <div class="t pass"><span class="dot"></span></div>
+                <div class="t pass"><span class="dot"></span></div>
+                <div class="count">4/4</div>
+              </div>
+              <div class="shots">
+                <div class="thumb ok"></div>
+                <div class="thumb ok"></div>
+                <div class="thumb ok"></div>
+                <div class="thumb ok"></div>
+                <span class="more">+1</span>
+              </div>
+              <div><a href="#qasd" class="btn btn-soft btn-pill">Open →</a></div>
+            </div>
+
+            <!-- Story 5: Ready for QA -->
+            <div class="qa-row">
+              <div>
+                <div class="id">TM-25</div>
+                <span class="pill todo"><span class="dot"></span> Ready for QA</span>
+              </div>
+              <div>
+                <div class="title">Manager dashboard — filters and saved views<span class="sub">From DSGN-11 · 3 pts · Build PR #221 merged 12m ago</span></div>
+              </div>
+              <div class="tests-strip">
+                <div class="t skip">—</div>
+                <div class="t skip">—</div>
+                <div class="t skip">—</div>
+                <div class="t skip">—</div>
+                <div class="count">0/4</div>
+              </div>
+              <div class="shots">
+                <span class="more">queued</span>
+              </div>
+              <div><button class="btn btn-primary btn-pill">Run tests</button></div>
+            </div>
+
+            <!-- Story 6: Passed -->
+            <div class="qa-row">
+              <div>
+                <div class="id">TM-18</div>
+                <span class="pill done"><span class="dot"></span> Passed</span>
+              </div>
+              <div>
+                <div class="title">Auth flow — tenant sign in / sign out<span class="sub">From DSGN-04 · 8 pts · a11y pass · deployed 1h ago</span></div>
+              </div>
+              <div class="tests-strip">
+                <div class="t pass"><span class="dot"></span></div>
+                <div class="t pass"><span class="dot"></span></div>
+                <div class="t pass"><span class="dot"></span></div>
+                <div class="t pass"><span class="dot"></span></div>
+                <div class="t pass"><span class="dot"></span></div>
+                <div class="t pass"><span class="dot"></span></div>
+                <div class="count">6/6</div>
+              </div>
+              <div class="shots">
+                <div class="thumb ok"></div>
+                <div class="thumb ok"></div>
+                <div class="thumb ok"></div>
+                <div class="thumb ok"></div>
+                <div class="thumb ok"></div>
+                <div class="thumb ok"></div>
+              </div>
+              <div><a href="#qasd" class="btn btn-soft btn-pill">Open →</a></div>
+            </div>
+          </div>
+
+          <!-- QA agent panel (B.13) -->
+          <div class="card" style="margin-top: 14px;">
+            <div style="padding: 18px 22px;">
+              <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                <h3 style="margin: 0; font-size: 14px; font-weight: 700;">QA agent panel</h3>
+                <span class="pill inprog" style="font-size: 10.5px;"><span class="dot"></span> 1 active · 1 idle</span>
+              </div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div class="qa-agent-card">
+                  <div class="avatar qa">QA</div>
+                  <div>
+                    <div class="name">QA Agent</div>
+                    <div class="activity">Re-running TM-21 (photo upload) · 2/6 tests</div>
+                    <div class="queue">Queue: TM-19 (in QA) → TM-25 (ready)</div>
+                  </div>
+                  <div class="right"><span class="pass-chip"><span class="dot"></span> live</span></div>
+                </div>
+                <div class="qa-agent-card">
+                  <div class="avatar rev">R</div>
+                  <div>
+                    <div class="name">Reviewer Agent</div>
+                    <div class="activity">Idle · last run 18m ago · confirmed TM-17 a11y regression</div>
+                    <div class="queue">Awaiting: TM-19 (next review trigger)</div>
+                  </div>
+                  <div class="right"><span class="pass-chip skip"><span class="dot"></span> idle</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- QA tools panel (Playwright only) — unchanged from v5.2 -->
+          <div class="card" style="margin-top: 14px;">
+            <div style="padding: 18px 22px;">
+              <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                <h3 style="margin: 0; font-size: 14px; font-weight: 700;">QA tools</h3>
+                <span class="pill inprog" style="font-size: 10.5px;"><span class="dot"></span> Playwright only</span>
+                <span style="margin-left: auto; font-size: 11.5px; color: var(--ink-2);">Screenshots are first-class · stored under <code style="font-family: var(--font-mono); font-size: 11px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">qa-evidence/</code></span>
+              </div>
+
+              <div style="display: grid; grid-template-columns: 1.4fr 1fr; gap: 12px;">
+                <div class="tools-card">
+                  <div class="h">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="color: var(--purple);"><path d="M3 12l9-9 9 9 M5 10v10h14V10"/></svg>
+                    <h4>Playwright config</h4>
+                    <span class="badge">testing/playwright.config.ts</span>
+                  </div>
+                  <div class="tools-row">
+                    <div class="k">Browser</div>
+                    <div class="v"><code>chromium</code> <code>firefox</code> <code>webkit</code></div>
+                  </div>
+                  <div class="tools-row">
+                    <div class="k">Headed</div>
+                    <div class="v"><code>--headed=false</code> · headless in CI, headed on demand</div>
+                  </div>
+                  <div class="tools-row">
+                    <div class="k">Trace</div>
+                    <div class="v"><code>trace=on-first-retry</code> · full trace on flake</div>
+                  </div>
+                  <div class="tools-row">
+                    <div class="k">Retries</div>
+                    <div class="v">2 in CI · 0 locally</div>
+                  </div>
+                  <div class="tools-row">
+                    <div class="k">Base URL</div>
+                    <div class="v"><code>qa-env-3d1a.fly.dev</code> · QA env (after Build deploy)</div>
+                  </div>
+                </div>
+
+                <div class="tools-card">
+                  <div class="h">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="color: var(--purple);"><path d="M5 4h11l3 3v13H5z M16 4v3h3 M8 11h8 M8 14h8 M8 17h5"/></svg>
+                    <h4>Test rules in force</h4>
+                    <span class="badge">testing/</span>
+                  </div>
+                  <div class="tools-row">
+                    <div class="k">A11y</div>
+                    <div class="v">WCAG 2.1 AA · axe-core on every page</div>
+                  </div>
+                  <div class="tools-row">
+                    <div class="k">Fidelity</div>
+                    <div class="v">Pixel-snap critical screens · feature-fidelity.md</div>
+                  </div>
+                  <div class="tools-row">
+                    <div class="k">Coverage</div>
+                    <div class="v">Every story → ≥1 happy + 1 error test</div>
+                  </div>
+                  <div class="tools-row">
+                    <div class="k">Screens</div>
+                    <div class="v">Per-step · 3 most-recent kept (deferred to impl)</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Results by dimension (B.15) — compact 3-lane summary -->
+          <div class="card" style="margin-top: 14px;">
+            <div style="padding: 18px 22px;">
+              <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                <h3 style="margin: 0; font-size: 14px; font-weight: 700;">Results by dimension</h3>
+                <span style="margin-left: auto; font-size: 11.5px; color: var(--ink-2);">a11y uses axe-core · WCAG 2.1 AA</span>
+              </div>
+              <div class="qa-dim-summary">
+                <div class="lane">
+                  <div class="h"><span class="qa-dim func"><span class="dot"></span> Functional</span><span class="tag">9 stories</span></div>
+                  <div class="row pass"><span class="n">8</span><span class="lbl">passed</span></div>
+                  <div class="row fail"><span class="n">1</span><span class="lbl">failed (TM-17)</span></div>
+                </div>
+                <div class="lane">
+                  <div class="h"><span class="qa-dim a11y"><span class="dot"></span> A11y</span><span class="tag">WCAG 2.1 AA</span></div>
+                  <div class="row pass"><span class="n">7</span><span class="lbl">passed (axe clean)</span></div>
+                  <div class="row fail"><span class="n">1</span><span class="lbl">failed (TM-17 keyboard focus)</span></div>
+                  <div class="row"><span class="n">1</span><span class="lbl">flaky (TM-21 contrast check)</span></div>
+                </div>
+                <div class="lane">
+                  <div class="h"><span class="qa-dim fidelity"><span class="dot"></span> Feature-fidelity</span><span class="tag">pixel-snap</span></div>
+                  <div class="row pass"><span class="n">9</span><span class="lbl">passed</span></div>
+                  <div class="row fail"><span class="n">0</span><span class="lbl">failed</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </main>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════════ QSD · Story QA detail ═════════════ -->
+  <section class="screen" id="qasd">
+    <div class="screen-label">
+      <span class="num">QSD</span>
+      <span class="name">QA — Story detail</span>
+      <span class="route">/projects/tenant-maintenance · QA · TM-17</span>
+    </div>
+    <div class="screen-body">
+      <div class="app">
+        <aside class="side">
+          <div class="brand"><div class="brand-mark">IH</div><div class="brand-name">Idea Hub</div></div>
+          <div>
+            <div class="menu-label">Menu</div>
+            <nav class="nav">
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12l9-9 9 9 M5 10v10h14V10"/></svg> Overview</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h11l3 3v13H5z M16 4v3h3 M8 11h8 M8 14h8 M8 17h5"/></svg> Project Background <span class="count">17</span></a>
+              <a href="#" class="locked" aria-disabled="true" title="Confirm project context first"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3h7v7 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> Requirements <span class="count">14</span></a>
+              <a href="#" class="locked" aria-disabled="true" title="Confirm project context first"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Sprint <span class="count">14</span></a>
+              <a href="#" class="locked" aria-disabled="true" title="Confirm project context first"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z M4 9h16 M9 4v16"/></svg> Design</a>
+              <a href="#" class="locked" aria-disabled="true" title="Confirm project context first"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Build <span class="count">14</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="9" r="3"/><path d="M3 19c0-3 2.7-5 6-5s6 2 6 5 M14 19c0-3 2.7-5 6-5"/></svg> Agents</a>
+              <a href="#qa" class="active"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 12l2 2 4-4 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg> QA <span class="count">2</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> Activity</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 8H3 M21 16H3 M5 4h14v16H5z"/></svg> Artifacts</a>
+            </nav>
+          </div>
+          <div class="side-promo">
+            <h4>TM-17 · Property list — filter chips</h4>
+            <p>Failed at step 3 (keyboard focus). Round 1 routed to Build; fixed; round 2 re-running.</p>
+            <button>Open in Sprint →</button>
+          </div>
+          <div class="side-foot">
+            <a href="#qa"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 3h6v6 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> ← Back to QA list</a>
+          </div>
+        </aside>
+
+        <main class="main">
+          <div class="topbar">
+            <a href="#qa" aria-label="Back to QA list" class="back-arrow">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+              <span>Back to QA list</span>
+            </a>
+          </div>
+
+          <!-- Story header -->
+          <div class="card">
+            <div class="story-head">
+              <div class="ico-lg">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2b2547" stroke-width="1.8"><path d="M9 12l2 2 4-4 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg>
+              </div>
+              <div class="title-stack">
+                <h1>Property list — filter chips</h1>
+                <div class="one">TM-17 · From DSGN-06 · 3 pts · Med priority</div>
+              </div>
+              <div class="actions">
+                <span class="pill blocked"><span class="dot"></span> Failed</span>
+                <button class="btn btn-soft btn-pill">Re-run</button>
+                <button class="btn btn-ghost btn-pill">Open in Sprint →</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Linked requirement + dimension card -->
+          <div class="req-surface-row">
+            <div class="req-card">
+              <div class="h">
+                <svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="color: var(--purple);"><path d="M5 4h11l3 3v13H5z M16 4v3h3 M8 11h8 M8 14h8 M8 17h5"/></svg>
+                <h4>Linked requirement</h4>
+                <span class="id">DSGN-06</span>
+                <a class="open" href="#">Open in Requirements →</a>
+              </div>
+              <p class="desc">Tenants land on the property list, see 12 cards, and filter by status (All / Active / Inactive) using the chip row. The "Active" chip must be reachable by keyboard in DOM order. <b>Out of scope:</b> filter persistence across sessions, search box.</p>
+              <div class="users-row">
+                <span class="lbl">Intended users</span>
+                <span class="user-chip"><span class="dot"></span> Tenant</span>
+              </div>
+            </div>
+
+            <div class="req-card">
+              <div class="h">
+                <svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="color: var(--blue);"><path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                <h4>Test dimensions</h4>
+                <span class="id" style="font-family: var(--font-sans); font-size: 11px; color: var(--ink-2);">2 of 3 passing</span>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 4px;">
+                <div style="display: flex; align-items: center; gap: 8px;"><span class="qa-dim func"><span class="dot"></span> Functional</span><span style="font-size: 11.5px; color: var(--ink-2);">2/4</span><span class="pass-chip warn" style="margin-left: auto;"><span class="dot"></span> 1 fail</span></div>
+                <div style="display: flex; align-items: center; gap: 8px;"><span class="qa-dim a11y"><span class="dot"></span> A11y</span><span style="font-size: 11.5px; color: var(--ink-2);">0/1</span><span class="pass-chip warn" style="margin-left: auto;"><span class="dot"></span> 1 fail</span></div>
+                <div style="display: flex; align-items: center; gap: 8px;"><span class="qa-dim fidelity"><span class="dot"></span> Feature-fidelity</span><span style="font-size: 11.5px; color: var(--ink-2);">pixel-snap skipped</span><span class="pass-chip skip" style="margin-left: auto;"><span class="dot"></span> n/a</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Rework round-trip banner (B.11) — round 2 in progress -->
+          <div class="card" style="margin-top: 14px;">
+            <div class="rework-banner" style="margin: 14px 16px;">
+              <div class="ico">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 0 1 15-6.7L21 8 M21 3v5h-5 M21 12a9 9 0 0 1-15 6.7L3 16 M3 21v-5h5"/></svg>
+              </div>
+              <div class="body">
+                <div class="round">Round 2 · in progress</div>
+                <div class="story">Failed round 1 → in Build rework → fixed → Ready for QA (round 2)</div>
+                <div class="detail">Round 1 failed at step 3 (chip focus). Reviewer confirmed a11y regression. Code Agent 2 pushed the fix at 14:08; QA Agent re-running now.</div>
+              </div>
+              <button class="btn btn-soft btn-pill">View Build fix →</button>
+            </div>
+          </div>
+
+          <!-- Run history (B.9) -->
+          <div class="card" style="margin-top: 14px;">
+            <div class="qa-history">
+              <div class="h">
+                <h4>Run history · TM-17</h4>
+                <span class="right">3 runs · last 38m ago</span>
+              </div>
+              <table>
+                <thead><tr><th>Run</th><th>Trigger</th><th>Started</th><th>Duration</th><th>Result</th></tr></thead>
+                <tbody>
+                  <tr>
+                    <td class="mono">#3</td>
+                    <td>QA agent · autonomous</td>
+                    <td class="mono">14:22 · 38m ago</td>
+                    <td class="mono">1m 12s</td>
+                    <td><span class="pass-chip warn"><span class="dot"></span> In QA (round 2)</span></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">#2</td>
+                    <td>QA agent · autonomous</td>
+                    <td class="mono">12:48 · 2h ago</td>
+                    <td class="mono">1m 04s</td>
+                    <td><span class="pass-chip warn"><span class="dot"></span> Failed · 1 fail (a11y)</span></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">#1</td>
+                    <td>Manual · Re-run tests</td>
+                    <td class="mono">12:30 · 2h ago</td>
+                    <td class="mono">0m 58s</td>
+                    <td><span class="pass-chip warn"><span class="dot"></span> Failed · 1 fail (a11y)</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Annotated screenshot viewer (relocated from v5.2 inline) -->
+          <div class="card" style="margin-top: 14px;">
+            <div style="padding: 18px 22px;">
+              <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                <h3 style="margin: 0; font-size: 14px; font-weight: 700;">Test 3 · Filter chip keyboard focus</h3>
+                <span class="pill blocked" style="font-size: 10.5px;"><span class="dot"></span> Failed</span>
+                <span class="qa-dim a11y" style="margin-left: auto;"><span class="dot"></span> a11y · WCAG 2.1 AA 2.4.3</span>
+                <span style="font-size: 11.5px; color: var(--ink-2); font-family: var(--font-mono);">step 3 / 4 · 4.1s</span>
+              </div>
+
+              <div class="shot-stage">
+                <div class="stage-img">
+                  <div class="frame"></div>
+                  <div class="annot">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4 M12 16h.01"/></svg>
+                    Tab order skips "Active" chip — focus jumps from "All" to "Inactive".
+                  </div>
+                </div>
+                <div class="shot-toolbar">
+                  <button class="nav-btn">← Prev</button>
+                  <span class="meta">qa-evidence/tm-17/03-chip-focus.png</span>
+                  <div class="right">
+                    <button class="nav-btn">Download</button>
+                    <button class="nav-btn">Open in viewer →</button>
+                  </div>
+                  <button class="nav-btn" style="margin-left: 8px;">Next →</button>
+                </div>
+              </div>
+
+              <!-- Visual diff (B.16) — gated, rendered -->
+              <div class="qa-diff">
+                <div class="pane expected">
+                  <h5>Expected</h5>
+                  <div class="img"></div>
+                </div>
+                <div class="pane actual">
+                  <h5>Actual</h5>
+                  <div class="img"></div>
+                </div>
+                <div class="pane diff">
+                  <h5>Diff</h5>
+                  <div class="img"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Per-test rows (B.6) with expected vs actual + trace + console/network -->
+          <div class="card" style="margin-top: 14px;">
+            <div class="test-list" style="padding: 18px 22px;">
+              <div class="t-row" style="grid-template-columns: 22px 1fr 70px 90px;">
+                <div class="ico pass">✓</div>
+                <div class="name">1 · Filter list renders all 12 properties <span class="expected">expected: 12 cards · actual: 12 cards</span></div>
+                <div class="dur">0.8s</div>
+                <span class="pass-chip"><span class="dot"></span> Pass</span>
+              </div>
+              <div class="t-row" style="grid-template-columns: 22px 1fr 70px 90px;">
+                <div class="ico pass">✓</div>
+                <div class="name">2 · "All" chip applies filter <span class="expected">expected: all rows visible · actual: all rows visible</span></div>
+                <div class="dur">0.4s</div>
+                <span class="pass-chip"><span class="dot"></span> Pass</span>
+              </div>
+              <div class="t-row" style="grid-template-columns: 22px 1fr 70px 90px; border-color: var(--rose);">
+                <div class="ico fail">✕</div>
+                <div class="name">3 · Keyboard focus order on filter chips <span class="expected">expected: Tab cycles All → Active → Inactive · actual: Tab cycles All → Inactive (Active skipped)</span></div>
+                <div class="dur">4.1s</div>
+                <span class="pass-chip warn"><span class="dot"></span> Fail</span>
+              </div>
+              <div class="t-row" style="grid-template-columns: 22px 1fr 70px 90px;">
+                <div class="ico skip">—</div>
+                <div class="name">4 · Empty-state shows when zero matches <span class="expected">skipped — test 3 failed upstream</span></div>
+                <div class="dur">skipped</div>
+                <span class="pass-chip skip"><span class="dot"></span> Skip</span>
+              </div>
+
+              <div style="margin-top: 8px; padding: 10px 12px; background: rgba(50,42,92,0.02); border-radius: 8px; font-size: 11.5px; color: var(--ink-2); display: flex; gap: 14px; flex-wrap: wrap;">
+                <span><b style="color: var(--ink);">Playwright trace:</b> <a href="#" style="color: var(--navy); font-weight: 600;">trace.zip</a></span>
+                <span><b style="color: var(--ink);">Console:</b> 0 errors · 2 warnings</span>
+                <span><b style="color: var(--ink);">Network:</b> 0 failed · 3 slow (>1s)</span>
+                <span><b style="color: var(--ink);">AC verified:</b> AC-1 ✓ · AC-2 ✓ · AC-3 ✕ · AC-4 skipped</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Per-dimension results (B.15, full per-story) -->
+          <div class="card" style="margin-top: 14px;">
+            <div style="padding: 18px 22px;">
+              <h3 style="margin: 0 0 12px; font-size: 14px; font-weight: 700;">Results by dimension</h3>
+              <div class="qa-dim-summary" style="margin: 0;">
+                <div class="lane">
+                  <div class="h"><span class="qa-dim func"><span class="dot"></span> Functional</span><span class="tag">2/4</span></div>
+                  <div class="row pass"><span class="n">2</span><span class="lbl">passed</span></div>
+                  <div class="row fail"><span class="n">1</span><span class="lbl">failed</span></div>
+                </div>
+                <div class="lane">
+                  <div class="h"><span class="qa-dim a11y"><span class="dot"></span> A11y</span><span class="tag">WCAG 2.1 AA</span></div>
+                  <div class="row fail"><span class="n">0</span><span class="lbl">passed</span></div>
+                  <div class="row fail"><span class="n">1</span><span class="lbl">failed (focus order)</span></div>
+                </div>
+                <div class="lane">
+                  <div class="h"><span class="qa-dim fidelity"><span class="dot"></span> Feature-fidelity</span><span class="tag">pixel-snap</span></div>
+                  <div class="row"><span class="n">0</span><span class="lbl">not exercised (visual test deferred)</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Notes thread (relocated from v5.2 inline) -->
+          <div class="card" style="margin-top: 14px;">
+            <div class="thread" style="padding: 18px 22px 22px;">
+              <div class="thread-head">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                Notes · TM-17
+                <span class="who">3 comments · 1 fail · routed to Build</span>
+              </div>
+
+              <div class="comment qa">
+                <div class="body">
+                  <div class="who">QA Agent <span>· 2h ago (round 1)</span></div>
+                  <p>Test 3 failed: keyboard focus skips the "Active" chip on <code style="font-family: var(--font-mono); font-size: 11px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">PropertyListFilters</code>. Screenshot + step log saved. Routing to Build rework queue.</p>
+                </div>
+                <div class="meta">
+                  <code>qa-evidence/tm-17/03-chip-focus.png</code>
+                  <span class="fail">✗ 1 fail · 1 skip</span>
+                </div>
+              </div>
+
+              <div class="comment rev">
+                <div class="body">
+                  <div class="who">Reviewer Agent <span>· 1h ago</span></div>
+                  <p>Confirmed the a11y regression — tab-index set on "Inactive" but missed on "Active". Quick fix, re-PR, re-QA.</p>
+                </div>
+                <div class="meta">
+                  <code>src/components/PropertyListFilters.tsx</code>
+                  <span class="pass">✓ Failure confirmed</span>
+                </div>
+              </div>
+
+              <div class="comment qa">
+                <div class="body">
+                  <div class="who">QA Agent <span>· 38m ago (round 2 in progress)</span></div>
+                  <p>Round 2 re-running. Code Agent 2 pushed the focus-order fix at 14:08. Test 1, 2 already passing. Waiting on test 3 + test 4.</p>
+                </div>
+                <div class="meta">
+                  <code>qa-evidence/tm-17/round-2/in-progress</code>
+                  <span style="color: var(--blue); font-weight: 600;">● Running</span>
+                </div>
+              </div>
+
+              <div class="compose">
+                <textarea placeholder="Reply as the user, or @-mention QA / Reviewer…"></textarea>
+                <span class="who">Posting as <b>Will</b></span>
+                <button class="btn btn-primary btn-pill">Post</button>
+              </div>
+            </div>
+          </div>
+
+        </main>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════════ QR · QA tab — Rules ═════════════ -->
+  <section class="screen" id="qar">
+    <div class="screen-label">
+      <span class="num">QR</span>
+      <span class="name">QA tab — Rules</span>
+      <span class="route">/projects/tenant-maintenance · QA · Rules</span>
+    </div>
+    <div class="screen-body">
+      <div class="app">
+        <aside class="side">
+          <div class="brand"><div class="brand-mark">IH</div><div class="brand-name">Idea Hub</div></div>
+          <div>
+            <div class="menu-label">Menu</div>
+            <nav class="nav">
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12l9-9 9 9 M5 10v10h14V10"/></svg> Overview</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h11l3 3v13H5z M16 4v3h3 M8 11h8 M8 14h8 M8 17h5"/></svg> Project Background <span class="count">17</span></a>
+              <a href="#" class="locked" aria-disabled="true" title="Confirm project context first"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3h7v7 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> Requirements <span class="count">14</span></a>
+              <a href="#" class="locked" aria-disabled="true" title="Confirm project context first"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Sprint <span class="count">14</span></a>
+              <a href="#" class="locked" aria-disabled="true" title="Confirm project context first"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z M4 9h16 M9 4v16"/></svg> Design</a>
+              <a href="#" class="locked" aria-disabled="true" title="Confirm project context first"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Build <span class="count">14</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="9" r="3"/><path d="M3 19c0-3 2.7-5 6-5s6 2 6 5 M14 19c0-3 2.7-5 6-5"/></svg> Agents</a>
+              <a href="#qa" class="active"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 12l2 2 4-4 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg> QA <span class="count">2</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> Activity</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 8H3 M21 16H3 M5 4h14v16H5z"/></svg> Artifacts</a>
+            </nav>
+          </div>
+          <div class="side-promo">
+            <h4>QA rules</h4>
+            <p>Edits to testing framework, test rules, accessibility checks, and feature-fidelity rules write back to <code style="font-family: var(--font-mono); font-size: 11px;">testing/</code>. The QA Agent picks them up on the next run.</p>
+            <button>View testing/ →</button>
+          </div>
+          <div class="side-foot">
+            <a href="#qa"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 3h6v6 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> ← Back to QA list</a>
+          </div>
+        </aside>
+
+        <main class="main">
+          <div class="topbar">
+            <a href="#qa" style="font-size:13px; color: var(--ink-2);">← QA list</a>
+          </div>
+
+          <!-- Project header (no cog on Rules screen) -->
+          <div class="card">
+            <div class="proj-head">
+              <div class="ico-lg"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2b2547" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h.1a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v.1a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></div>
+              <div>
+                <h1>QA rules</h1>
+                <div class="one">Testing framework, test rules, accessibility rules, and feature-fidelity rules.</div>
+                <div class="path">~/Code/tenant-maintenance · QA · Rules · writes to <code style="font-family: var(--font-mono); font-size: 11px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">testing/</code> + <code style="font-family: var(--font-mono); font-size: 11px; background: rgba(50,42,92,0.06); padding: 1px 5px; border-radius: 4px;">../skills/</code></div>
+              </div>
+              <div class="actions">
+                <span class="pill inprog"><span class="dot"></span> QA · Rules</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Rules section — mirrors build-tab .rules-section -->
+          <div class="rules-section">
+            <div class="arch-card">
+              <div class="arch-h">
+                <div class="ico"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12l9-9 9 9 M5 10v10h14V10"/></svg></div>
+                <h4>Test framework config</h4>
+                <span style="font-size: 10.5px; color: var(--ink-2); background: rgba(50,42,92,0.06); padding: 1px 6px; border-radius: 4px;">testing/playwright.config.ts</span>
+                <span class="edit">Edit →</span>
+              </div>
+              <div class="arch-row">
+                <div class="k">Browser</div>
+                <div class="v"><code>chromium</code> <code>firefox</code> <code>webkit</code></div>
+                <div class="edit">Edit</div>
+              </div>
+              <div class="arch-row">
+                <div class="k">Headed</div>
+                <div class="v"><code>--headed=false</code> · headless in CI, headed on demand</div>
+                <div class="edit">Edit</div>
+              </div>
+              <div class="arch-row">
+                <div class="k">Trace</div>
+                <div class="v"><code>trace=on-first-retry</code> · full trace on flake</div>
+                <div class="edit">Edit</div>
+              </div>
+              <div class="arch-row">
+                <div class="k">Retries</div>
+                <div class="v">2 in CI · 0 locally</div>
+                <div class="edit">Edit</div>
+              </div>
+              <div class="arch-row">
+                <div class="k">Base URL</div>
+                <div class="v"><code>qa-env-3d1a.fly.dev</code> · QA env (after Build deploy)</div>
+                <div class="edit">Edit</div>
+              </div>
+            </div>
+
+            <div class="arch-card">
+              <div class="arch-h">
+                <div class="ico"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h11l3 3v13H5z M16 4v3h3 M8 11h8 M8 14h8 M8 17h5"/></svg></div>
+                <h4>Test rules in force</h4>
+                <span style="font-size: 10.5px; color: var(--ink-2); background: rgba(50,42,92,0.06); padding: 1px 6px; border-radius: 4px;">testing/</span>
+                <span class="edit">Edit →</span>
+              </div>
+              <div class="arch-row">
+                <div class="k">A11y</div>
+                <div class="v">WCAG 2.1 AA · axe-core on every page</div>
+                <div class="edit">Edit</div>
+              </div>
+              <div class="arch-row">
+                <div class="k">Fidelity</div>
+                <div class="v">Pixel-snap critical screens · feature-fidelity.md</div>
+                <div class="edit">Edit</div>
+              </div>
+              <div class="arch-row">
+                <div class="k">Coverage</div>
+                <div class="v">Every story → ≥1 happy + 1 error test</div>
+                <div class="edit">Edit</div>
+              </div>
+              <div class="arch-row">
+                <div class="k">Screens</div>
+                <div class="v">Per-step · 3 most-recent kept (storage/retention — implementation deferred)</div>
+                <div class="edit">Edit</div>
+              </div>
+            </div>
+
+            <div class="md-card">
+              <div class="h">
+                <svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="color: var(--blue);"><path d="M5 4h14v16H5z M9 8h6 M9 12h6 M9 16h4"/></svg>
+                <h4>QA rules · markdown</h4>
+                <span class="right">writes to <code>testing/qa-rules.md</code></span>
+              </div>
+              <textarea># QA rules
+- Every story must run on chromium, firefox, and webkit.
+- WCAG 2.1 AA — axe-core must pass on every page.
+- Pixel-snap critical screens; the diff >0.5% is a fail.
+- One happy + one error path per story minimum.
+- Screenshots: 3 most-recent per step (retention — implementation deferred).
+
+# Flaky policy
+- 3 runs · 1 pass / 1 fail / 1 pass → Flaky, excluded from pass rate.
+- 5 runs · any fail → Quarantine, route to Build for stability fix.
+- 3 consecutive pass → remove Flaky flag, restore to Passed.
+</textarea>
+              <div class="foot">
+                <span>Last edited by <b>Will</b> · 2h ago</span>
+                <div class="right">
+                  <button class="btn btn-soft btn-pill">Discard</button>
+                  <button class="btn btn-primary btn-pill">Save to testing/</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="agent-md-card open">
+              <div class="h">
+                <div class="avatar qa">QA</div>
+                <h4>QA Agent</h4>
+                <span class="sub">QA-AGENT.md</span>
+                <div class="right">
+                  <code>QA-AGENT.md</code>
+                  <button class="btn btn-soft btn-pill">Edit</button>
+                </div>
+              </div>
+              <div class="body">
+                <p><b>Role.</b> Run the test suite against the QA env after every Build PR merges. Capture screenshots, evidence, and per-test results. Mark Flaky when a test's pass/fail outcome is non-deterministic across runs. Never silently pass on a timeout — surface to the Reviewer for triage.</p>
+                <p style="margin-top: 6px;"><b>On fail.</b> Save the trace, the failing step, the screenshot, and the AC reference. Post a comment to the per-story thread. Route to the Build rework queue (Build tab).</p>
+                <p style="margin-top: 6px;"><b>On pass.</b> Mark the story Passed. Update the Sprint board and the per-dimension summary. Defer to Reviewer for any non-deterministic outcome.</p>
+              </div>
+            </div>
+
+            <div class="agent-md-card">
+              <div class="h">
+                <div class="avatar rev">R</div>
+                <h4>Reviewer Agent</h4>
+                <span class="sub">REVIEWER-AGENT.md</span>
+                <div class="right">
+                  <code>REVIEWER-AGENT.md</code>
+                  <button class="btn btn-soft btn-pill">Read</button>
+                </div>
+              </div>
+              <div class="body">
+                <p><b>Role.</b> Review the QA Agent's evidence on a failed test. Confirm the regression; if confirmed, hand off to Build with a fix hint. If the failure is environmental (e.g. seeded data), mark Blocked/Skipped with reason.</p>
+              </div>
+            </div>
+          </div>
+
+        </main>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+  // ─── Per-agent guideline card — toggle expand/collapse. Mirrors build-tab v5.5.
+  document.querySelectorAll('.agent-md-card').forEach(function (card) {
+    var head = card.querySelector('.h');
+    head.addEventListener('click', function (e) {
+      // Don't toggle when clicking the explicit Edit / Read button.
+      if (e.target.closest('button')) return;
+      card.classList.toggle('open');
+    });
+    card.querySelectorAll('button').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (btn.textContent.trim() === 'Read') btn.textContent = 'Close';
+        else if (btn.textContent.trim() === 'Close') btn.textContent = 'Read';
+      });
+    });
+  });
+
+  // ─── QA verdict sign-off button — placeholder; fires only when all-pass.
+  // The endpoint contract is documented in sitemap.md § QA State (B.14).
+  document.querySelectorAll('.qa-verdict.all-pass .actions .btn').forEach(function (btn) {
+    btn.addEventListener('click', function () { /* POST /api/projects/:id/qa/signoff — TODO */ });
+  });
+</script>
+</body>
+</html>

@@ -12,6 +12,8 @@ Interaction states that define how every element behaves across all conditions. 
 | `empty.md` | Empty content states, illustrations, CTAs | Yes — every list/table/dashboard needs empty state |
 | `validation.md` | Form validation patterns, password strength, error messages | Yes — all forms need validation states |
 | `interaction.md` | Hover, focus, active, disabled, read-only, dropdowns, autocomplete | Yes — defines ALL interactive element behaviors |
+| `consent.md` | Cookie/analytics banners, marketing opt-in, age-gate interstitials | Yes — whenever PRD §6c lists a consent surface |
+| `forbidden.md` | Permission-denied / 403, disabled-by-role controls, feature-locked | Yes — every route/action in `rbac-matrix.md` needs a forbidden state |
 
 ## Rules for Design Agents
 
@@ -46,6 +48,8 @@ Test every feature against these state categories:
 - [ ] Empty states (no data, filtered results, fresh start) → neutral-600/400 from `tokens/color.md` §Neutral Palette
 - [ ] Validation states (blur, submit, real-time) → semantic error/warning/success colors; links to `components/form-input.md` validation rules
 - [ ] Interaction states (hover, focus, active, disabled, read-only) → brand-primary and neutral palette from `tokens/color.md`; accessibility guidelines §Interactive Elements Required States
+- [ ] Consent states (cookie banner, marketing opt-in, age-gate) → surface-elevated + warning-500 (opt-out stripe) from `tokens/color.md`; opt-in/out model from PRD §6c; copy from §6d; flow ids from `data-flow.md` §2
+- [ ] Forbidden states (403, disabled-by-role, feature-locked) → warning-500 stripe (intentional, not an error) + neutral palette from `tokens/color.md`; access rules from PRD §9c `rbac-matrix.md`; copy from §6d; IDOR-safe per `skills/security.md`
 - [ ] Business rule states (user context differences) → PRD Section 6 UX Principles + Section 12 Assumptions; maps to component index via `components/README.md`
 
 ## Cross-references for each state file
