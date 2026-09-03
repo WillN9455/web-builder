@@ -14,22 +14,36 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-// One promise-chain slot per absolute path. The tail never rejects (errors
-// are swallowed for chaining only — every caller still sees its own result),
-// so one failed write cannot poison the next queued one.
+// One promise-chain slot per PRD file path. The two load-bearing invariants a
+// future reader must not break:
+//
+// 1. FIFO without head-of-line blocking — `prev.then(fn, fn)` runs `fn` on
+//    BOTH arms, so a prior writer's failure does not block the next caller;
+//    every queued caller still sees its own error (the swallowed-rejection
+//    tail is only what keeps the chain itself from turning rejected).
+// 2. The map stores `tail`, never `run` — a third writer calling while two
+//    are queued enqueues behind the settled tail slot, not behind the first
+//    writer's body. The chain stays finite and the queue stays correct under
+//    bursty writes, and the cleanup below can drop the slot once this call
+//    is the last in the chain.
+//
+// `path.resolve(filePath)` is the canonicalization boundary: relative and
+// absolute spellings of the same file (`./PRD/prd.md` vs an absolute path)
+// collapse to one key, so callers can't race across spellings.
 const prdLocks = new Map<string, Promise<unknown>>();
 
 export function withPrdLock<T>(filePath: string, fn: () => T | Promise<T>): Promise<T> {
   const key = path.resolve(filePath);
   const prev = prdLocks.get(key) ?? Promise.resolve();
+  // Invariant 1 — both arms run fn: a failed write never blocks the queue.
   const run = prev.then(fn, fn);
   const tail = run.then(
     () => undefined,
     () => undefined,
   );
+  // Invariant 2 — store tail, not run, so later callers enqueue behind the
+  // settled slot instead of the first writer's body.
   prdLocks.set(key, tail);
-  // Drop the map entry once this call is the last in the chain — the map
-  // never grows with idle locks.
   void tail.then(() => {
     if (prdLocks.get(key) === tail) prdLocks.delete(key);
   });
