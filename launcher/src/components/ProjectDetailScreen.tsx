@@ -3,12 +3,22 @@ import { Navigate, Outlet, useNavigate, useOutletContext, useParams } from 'reac
 import { fetchProject, type ProjectDetailResponse } from '../lib/api';
 import { CONTEXT_CONFIRMED } from '../lib/projectGate';
 import { PROJECT_TABS, ProjectSidebar } from './ProjectSidebar';
+import { ProjectOverview } from './ProjectOverview';
 
 type ProjectInfo = ProjectDetailResponse['project'];
 
 // Shared with ProjectTabScreen (the Outlet child) so the tab panel can render
-// the shell's loading / error states in place of its own content.
-type ProjectOutletContext = { project: ProjectInfo | null; error: string | null };
+// the shell's loading / error states in place of its own content. The Overview
+// tab also reads the stage rows, activity feed, artifacts, and derived
+// outstanding questions returned by GET /api/projects/:id.
+type ProjectOutletContext = {
+  project: ProjectInfo | null;
+  stages: ProjectDetailResponse['stages'];
+  activity: ProjectDetailResponse['activity'];
+  artifacts: ProjectDetailResponse['artifacts'];
+  outstandingQuestions: ProjectDetailResponse['outstandingQuestions'];
+  error: string | null;
+};
 
 // Project shell — the open-project layout: per-project sidebar + main column
 // (topbar + the active tab's panel via <Outlet/>). Routes live in App.tsx:
@@ -19,17 +29,17 @@ type ProjectOutletContext = { project: ProjectInfo | null; error: string | null 
 export function ProjectDetailScreen() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [project, setProject] = useState<ProjectInfo | null>(null);
+  const [detail, setDetail] = useState<ProjectDetailResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    setProject(null);
+    setDetail(null);
     setError(null);
     (async () => {
       try {
         const data = await fetchProject(id ?? '');
-        if (!cancelled) setProject(data.project);
+        if (!cancelled) setDetail(data);
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Could not load project');
       }
@@ -42,31 +52,42 @@ export function ProjectDetailScreen() {
   return (
     <div className="app">
       <ProjectSidebar projectId={id ?? ''} confirmed={CONTEXT_CONFIRMED} />
-      <main className="main" aria-busy={project === null && error === null}>
+      <main className="main" aria-busy={detail === null && error === null}>
         <header className="topbar">
           <button type="button" className="btn-link" onClick={() => navigate('/projects')}>
             ← All projects
           </button>
-          <h1 style={{ marginLeft: 12 }}>{project?.name ?? id}</h1>
+          <h1 style={{ marginLeft: 12 }}>{detail?.project.name ?? id}</h1>
         </header>
 
-        <Outlet context={{ project, error } satisfies ProjectOutletContext} />
+        <Outlet
+          context={
+            {
+              project: detail?.project ?? null,
+              stages: detail?.stages ?? [],
+              activity: detail?.activity ?? [],
+              artifacts: detail?.artifacts ?? [],
+              outstandingQuestions: detail?.outstandingQuestions ?? [],
+              error,
+            } satisfies ProjectOutletContext
+          }
+        />
       </main>
     </div>
   );
 }
 
-// The active tab's panel. Tab contents (Overview dashboard, Project
-// Background workspace, Sprint board, …) each ship in their own Stage-2 task
-// — this PR renders the menu + navigation only, so every tab gets a
-// placeholder panel naming the tab. Unknown or still-locked tab routes snap
-// back to Overview rather than rendering a dead URL; while the project is
-// loading, or if it failed to load, the shell's loading / error state shows
-// here instead of a panel.
+// The active tab's panel. The Overview tab is live (the status dashboard per
+// design/mockups.html #s3/#s4/#s5); every other tab still gets a placeholder
+// panel naming the tab — each ships in its own Stage-2 task. Unknown or
+// still-locked tab routes snap back to Overview rather than rendering a dead
+// URL; while the project is loading, or if it failed to load, the shell's
+// loading / error state shows here instead of a panel.
 export function ProjectTabScreen() {
   const { id, tab } = useParams();
   const navigate = useNavigate();
-  const { project, error } = useOutletContext<ProjectOutletContext>();
+  const ctx = useOutletContext<ProjectOutletContext>();
+  const { project, error } = ctx;
   const current = PROJECT_TABS.find((t) => t.key === tab);
   if (!id || !current) {
     return <Navigate to={id ? `/projects/${id}/overview` : '/projects'} replace />;
@@ -102,6 +123,17 @@ export function ProjectTabScreen() {
           <h1>Loading…</h1>
         </div>
       </div>
+    );
+  }
+  if (current.key === 'overview') {
+    return (
+      <ProjectOverview
+        project={project}
+        stages={ctx.stages}
+        activity={ctx.activity}
+        artifacts={ctx.artifacts}
+        outstandingQuestions={ctx.outstandingQuestions}
+      />
     );
   }
   return (

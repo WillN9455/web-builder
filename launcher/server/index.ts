@@ -1026,8 +1026,56 @@ app.get('/api/projects/:id', (req, res) => {
   const stages = db
     .prepare('SELECT stage_key, status, started_at, completed_at FROM stage WHERE project_id = ? ORDER BY id')
     .all(row.id);
-  res.json({ project: row, stages });
+  const activity = db
+    .prepare('SELECT agent, message, kind, ts FROM activity WHERE project_id = ? ORDER BY ts DESC, id DESC')
+    .all(row.id);
+  const artifacts = db
+    .prepare('SELECT stage_key, label, path, kind, created_at FROM artifact WHERE project_id = ? ORDER BY id')
+    .all(row.id);
+  res.json({
+    project: row,
+    stages,
+    activity,
+    artifacts,
+    outstandingQuestions: deriveOverviewOutstandingQuestions(row),
+  });
 });
+
+// Derive the outstanding questions for the Overview blocked state from the
+// project's persisted intake transcript (read-only). Follows the /resume
+// call-site recipe — parse conversation.jsonl, keep per-entry timestamps so
+// markers that predate askedAt stamping still fall back to a sensible ask
+// time — then hands the messages to the existing deriveOutstandingQuestions
+// parser (which applies its own MAX_OQ_LIST cap). Missing folder, missing
+// transcript, or any parse failure yields [] — never a 500.
+function deriveOverviewOutstandingQuestions(row: ProjectRow): OutstandingQuestion[] {
+  try {
+    const jsonlPath = path.join(row.folder_path, '.idea-memory', 'conversation.jsonl');
+    if (!fs.existsSync(jsonlPath)) return [];
+    const raw = fs.readFileSync(jsonlPath, 'utf-8');
+    const messages: ChatMessage[] = [];
+    const timestamps: Array<string | undefined> = [];
+    for (const line of raw.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      try {
+        const entry = JSON.parse(trimmed) as { kind?: string; role?: string; content?: unknown; ts?: unknown };
+        if (entry.kind !== 'message') continue;
+        if (entry.role !== 'user' && entry.role !== 'assistant') continue;
+        if (typeof entry.content !== 'string' || !entry.content.trim()) continue;
+        messages.push({ role: entry.role, content: entry.content });
+        timestamps.push(typeof entry.ts === 'string' ? entry.ts : undefined);
+      } catch {
+        // skip malformed lines — the transcript is best-effort
+      }
+    }
+    return deriveOutstandingQuestions(messages, (i) => timestamps[i]);
+  } catch {
+    // Read failure (unreadable folder/file) — the Overview renders with an
+    // empty questions panel rather than a 500.
+    return [];
+  }
+}
 
 // Delete a project row. Resolves by numeric id or slug — mirrors the GET above
 // so the table/tile menus can pass whichever they have on hand. The folder

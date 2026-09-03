@@ -13,6 +13,7 @@
 // server's oq_add / oq_resolve NDJSON events and seeded on resume.
 import { useMemo, type MouseEvent } from 'react';
 import type { OutstandingQuestion } from '../../lib/api';
+import { formatRelative } from '../../lib/formatRelative';
 
 type Props = {
   questions: OutstandingQuestion[];
@@ -22,24 +23,26 @@ type Props = {
   // Disabled while the BA is streaming or the conversation is at its cap —
   // the chat can't accept the re-ask request then.
   disabled: boolean;
+  // Overview (blocked-state) variant — sitemap decision 5: questions are
+  // read-only there, `Open chat →` is the sole way to answer. Items render as
+  // plain list rows (no re-ask button) and the chat-specific hint is hidden.
+  readOnly?: boolean;
+  // The chat side renders the panel's own h4 heading; the Overview card
+  // supplies its own h3 + count pill instead.
+  withHeading?: boolean;
+  // Cap the list height with the mockup's .q-scroll treatment (Overview
+  // blocked card, mockups.html #s4: `.oq-list.q-scroll` max-height 260px).
+  scroll?: boolean;
 };
 
-// Relative ask time for the meta line ("Asked 2h ago · …"). Client-side on
-// purpose — the server stamps a UTC ISO instant; presentation stays local.
-function formatRelative(iso: string, now: number): string {
-  const ts = Date.parse(iso);
-  if (Number.isNaN(ts)) return 'just now';
-  const secs = Math.max(0, Math.round((now - ts) / 1000));
-  if (secs < 60) return 'just now';
-  const mins = Math.round(secs / 60);
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.round(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.round(hours / 24);
-  return `${days}d ago`;
-}
-
-export function OutstandingQuestions({ questions, onPick, disabled }: Props) {
+export function OutstandingQuestions({
+  questions,
+  onPick,
+  disabled,
+  readOnly = false,
+  withHeading = true,
+  scroll = false,
+}: Props) {
   // `now` is fixed per render so every item shows the same relative age for
   // a given snapshot (and re-renders naturally as the chat streams).
   const now = useMemo(() => Date.now(), [questions]);
@@ -57,7 +60,7 @@ export function OutstandingQuestions({ questions, onPick, disabled }: Props) {
 
   return (
     <>
-      <h4 className="oq-head">Outstanding questions</h4>
+      {withHeading && <h4 className="oq-head">Outstanding questions</h4>}
       {questions.length === 0 ? (
         <div className="oq-empty">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden>
@@ -68,8 +71,10 @@ export function OutstandingQuestions({ questions, onPick, disabled }: Props) {
         </div>
       ) : (
         <>
-          <div className="oq-hint">Click a question and the BA Agent will ask it again — answer in chat to clear it.</div>
-          <div className="oq-list">
+          {!readOnly && (
+            <div className="oq-hint">Click a question and the BA Agent will ask it again — answer in chat to clear it.</div>
+          )}
+          <div className={`oq-list${scroll ? ' q-scroll ov-scroll-260' : ''}`}>
             {groups.map(([group, items], gi) => (
               // Index-keyed id: group labels are BA-supplied free text and may
               // contain characters illegal in an HTML id.
@@ -77,23 +82,35 @@ export function OutstandingQuestions({ questions, onPick, disabled }: Props) {
                 <div className="oq-group" id={`oq-group-${gi}`}>
                   Blocker for: {group}
                 </div>
-                {items.map((q) => (
-                  <button
-                    key={q.id}
-                    type="button"
-                    className="oq-item oq-btn"
-                    disabled={disabled}
-                    onClick={(e: MouseEvent<HTMLButtonElement>) => {
-                      e.preventDefault();
-                      onPick(q);
-                    }}
-                  >
-                    <div className="oq-q">{q.question}</div>
+                {items.map((q) => {
+                  const meta = (
                     <div className="oq-meta">
                       Asked {formatRelative(q.askedAt, now)} · Blocks story {q.blocksStory}
                     </div>
-                  </button>
-                ))}
+                  );
+                  return readOnly ? (
+                    // Read-only variant (Overview blocked state) — presentation
+                    // only, no re-ask affordance (sitemap decision 5).
+                    <div key={q.id} className="oq-item">
+                      <div className="oq-q">{q.question}</div>
+                      {meta}
+                    </div>
+                  ) : (
+                    <button
+                      key={q.id}
+                      type="button"
+                      className="oq-item oq-btn"
+                      disabled={disabled}
+                      onClick={(e: MouseEvent<HTMLButtonElement>) => {
+                        e.preventDefault();
+                        onPick(q);
+                      }}
+                    >
+                      <div className="oq-q">{q.question}</div>
+                      {meta}
+                    </button>
+                  );
+                })}
               </section>
             ))}
           </div>
