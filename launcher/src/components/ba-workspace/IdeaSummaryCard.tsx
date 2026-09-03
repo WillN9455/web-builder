@@ -80,7 +80,7 @@ export function IdeaSummaryCard({ projectId }: IdeaSummaryCardProps) {
             aria-controls="idea-summary-body"
             onClick={() => setOpen((o) => !o)}
           >
-            Project idea
+            Project idea summary
             <span className="ai-tag">AI-generated from idea.md</span>
             {/* §9.6 QA — end-of-row chevron, drawn in CSS (::after borders),
                 rotated with the open state. Decorative — aria-expanded carries
