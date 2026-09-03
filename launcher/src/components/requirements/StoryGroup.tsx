@@ -1,7 +1,8 @@
 // A user-story group — the mockup's `.story` block: head (ID, title, sentence,
 // story-level actions incl. status dropdown + Add requirement) followed by the
-// story's `.req-list`. The InlineForm slot (add req / edit story / edit req)
-// renders right under the head, per the mockup's "expanded below" pattern.
+// story's `.req-list`. The story-level InlineForm slot (edit story / add req)
+// renders right under the head. Per-row edit forms (refinement batch item
+// 2.8) render directly under their ReqRow — not at a shared group slot.
 
 import { statusLabel, type ReqStatus } from '../../../server/requirements-model';
 import type { RequirementItem, StoryItem } from '../../lib/api';
@@ -11,8 +12,11 @@ import type { FormState } from './storyModel';
 
 type Props = {
   story: StoryItem;
-  openForm: FormState | null; // form slot renders only when it targets this group
+  openForm: FormState | null; // story-level form slot renders only when it targets this group
   renderForm?: () => React.ReactNode;
+  // Per-row edit slot (edit-req). Maps reqId → form node; null/undefined
+  // means no form under that row.
+  editFormFor?: (reqId: string) => React.ReactNode | null;
   flash?: boolean; // scroll-and-flash target (delete-guard "Open referencing story")
   statusPendingStory?: boolean;
   statusPendingReqId?: string | null;
@@ -29,6 +33,7 @@ export function StoryGroup({
   story,
   openForm,
   renderForm,
+  editFormFor,
   flash,
   statusPendingStory,
   statusPendingReqId,
@@ -40,12 +45,12 @@ export function StoryGroup({
   onReqDelete,
   onReqStatus,
 }: Props) {
-  // Story groups host edit-story / add-req / edit-req forms. The add-story
-  // form lives at the top level of the screen (under the add bar).
+  // Story-level forms only: edit-story and add-req. Edit-req moved to per-row
+  // slots below. The add-story form lives at the top level of the screen.
   const showForm =
     openForm != null &&
     ((openForm.kind === 'story' && openForm.mode === 'edit' && openForm.usId === story.usId) ||
-      (openForm.kind === 'req' && openForm.usId === story.usId));
+      (openForm.kind === 'req' && openForm.mode === 'add' && openForm.usId === story.usId));
 
   return (
     <div className={`story ${flash ? 'story-flash' : ''}`} id={`story-${story.usId}`}>
@@ -94,6 +99,7 @@ export function StoryGroup({
               onEdit={() => onReqEdit(req)}
               onDelete={() => onReqDelete(req)}
               onStatusChange={(next) => onReqStatus(req, next)}
+              editFormNode={editFormFor?.(req.id) ?? null}
             />
           ))}
         </div>

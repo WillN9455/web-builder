@@ -1,8 +1,10 @@
 // The unified add/edit form (spec UI: Add and Edit share one component — the
 // only differences are the framing pill, the form-id line, the submit label,
-// the edit-mode delete strip, and the border tint). One form is open at a
-// time across the screen; Esc/Cancel collapses it and the screen returns
-// focus to the originating button (AC-5).
+// and the border tint). One form is open at a time across the screen;
+// Esc/Cancel collapses it and the screen returns focus to the originating
+// button (AC-5). Delete is no longer a form affordance — it lives in a
+// confirmation modal opened from the row trash icon (refinement batch
+// item 2.9).
 
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -50,11 +52,9 @@ export type InlineFormProps<V extends FormValues> = {
   onValuesChange?: (values: V) => void;
   onSubmit: (values: V) => void;
   onCancel: () => void;
-  // Edit mode's form-foot-delete strip. Blocked deletes (spec UX) replace it
-  // with the "Cannot delete" notice + scroll-and-flash escape hatch.
-  onDelete?: () => void;
-  deleteCopy?: React.ReactNode;
-  deleteBlocked?: { message: string; onOpenStory?: () => void } | null;
+  // Delete is no longer part of the form (refinement batch item 2.9): a
+  // confirmation modal owns it, opened directly from the row trash icon. The
+  // form's footer is now just help text + Cancel + Save.
 };
 
 const PRIORITY_LABELS: Record<ReqPriority, string> = {
@@ -95,9 +95,6 @@ export function InlineForm<V extends FormValues>(props: InlineFormProps<V>) {
     onValuesChange,
     onSubmit,
     onCancel,
-    onDelete,
-    deleteCopy,
-    deleteBlocked,
   } = props;
 
   const [values, setValues] = useState<FormValues>(initial);
@@ -374,28 +371,6 @@ export function InlineForm<V extends FormValues>(props: InlineFormProps<V>) {
           )}
         </button>
       </div>
-
-      {mode === 'edit' && onDelete && (
-        deleteBlocked ? (
-          <div className="form-foot-delete blocked" role="alert">
-            <span>
-              <b>Cannot delete.</b> {deleteBlocked.message}
-            </span>
-            {deleteBlocked.onOpenStory && (
-              <button type="button" className="btn btn-ghost" onClick={deleteBlocked.onOpenStory}>
-                Open referencing story
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className="form-foot-delete">
-            <span>{deleteCopy}</span>
-            <button type="button" className="btn btn-danger" onClick={onDelete} disabled={submitting}>
-              Delete
-            </button>
-          </div>
-        )
-      )}
     </form>
   );
 }
