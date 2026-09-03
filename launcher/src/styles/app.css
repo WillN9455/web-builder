@@ -1345,6 +1345,10 @@ button.oq-btn:focus-visible {
   flex-direction: column;
   gap: 14px;
 }
+/* Requirements tab only: a touch more breathing room between the summary
+   strip and the requirements card (refinement batch item 2.2). Scoped to
+   .req-screen so the BA workspace tab keeps its tighter rhythm. */
+.req-screen > .ba-workspace { gap: 20px; }
 
 /* Stage banner — a status counter, not a bulk action (sitemap zone 1). */
 .ba-stage {
@@ -2074,6 +2078,12 @@ button.oq-btn:focus-visible {
 .req-add-bar .label b { color: var(--ink); }
 .req-add-bar .btn-primary,
 .req-add-bar .btn-ghost { padding: 6px 12px; font-size: 12px; }
+/* Add-user-story / empty-state CTA icons: the SVG inside .btn-primary has no
+   intrinsic size rule, so the 24-viewBox path renders too large (refinement
+   batch item 2.3). Scoped here so form-title SVGs and .ba-stage .ico keep
+   their own sizes. */
+.req-add-bar .btn-primary svg,
+.req-empty .btn-primary svg { width: 24px; height: 24px; }
 
 /* Inline "Add requirement / Add user story" form — one component, mode =
    'add' | 'edit' (spec UI); edit gets the amber framing + delete strip. */
