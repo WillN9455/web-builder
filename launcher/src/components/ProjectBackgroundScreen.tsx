@@ -13,6 +13,7 @@ import {
   fetchBaFile,
   fetchBaFiles,
   fetchBaOpenQuestions,
+  retryBaGeneration,
   saveBaFile,
   transitionBaFile,
   type BaComment,
@@ -26,6 +27,7 @@ import { ReviewThread } from './ba-workspace/ReviewThread';
 import { StageBanner } from './ba-workspace/StageBanner';
 import { OpenQuestionsBanner } from './ba-workspace/OpenQuestionsBanner';
 import { ContextReadyView } from './ba-workspace/ContextReadyView';
+import { GenerationPanel } from './ba-workspace/GenerationPanel';
 import type { ProjectOutletContext } from './ProjectDetailScreen';
 
 type Notice = { kind: 'success' | 'error'; text: string };
@@ -41,18 +43,23 @@ export function ProjectBackgroundScreen() {
   const [loadingFiles, setLoadingFiles] = useState(true);
   const [filesError, setFilesError] = useState<string | null>(null);
 
-  const loadFiles = useCallback(async () => {
-    setLoadingFiles(true);
-    setFilesError(null);
-    try {
-      const data = await fetchBaFiles(id ?? '');
-      setFilesData(data);
-    } catch (err) {
-      setFilesError(err instanceof Error ? err.message : 'Could not load the PRD artifacts');
-    } finally {
-      setLoadingFiles(false);
-    }
-  }, [id]);
+  const loadFiles = useCallback(
+    // silent: poll-refresh without the skeleton flicker (the 2s generation
+    // poll — AC-19 — would re-trigger it every tick otherwise).
+    async (opts?: { silent?: boolean }) => {
+      if (!opts?.silent) setLoadingFiles(true);
+      setFilesError(null);
+      try {
+        const data = await fetchBaFiles(id ?? '');
+        setFilesData(data);
+      } catch (err) {
+        setFilesError(err instanceof Error ? err.message : 'Could not load the PRD artifacts');
+      } finally {
+        setLoadingFiles(false);
+      }
+    },
+    [id],
+  );
 
   useEffect(() => {
     void loadFiles();
@@ -62,6 +69,44 @@ export function ProjectBackgroundScreen() {
       .catch(() => setBlockers(0));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // ── BA auto-draft generation (plan addendum AC-17…AC-19) ────────────────
+  const generation = filesData?.generation ?? null;
+  const generationActive = generation?.state === 'pending' || generation?.state === 'generating';
+
+  // Poll GET /files while the BA agent drafts; stops on unmount and as soon
+  // as the run lands done/failed. Navigating away and back mid-generation is
+  // safe — the panel state is server-side, so a remount re-derives it.
+  useEffect(() => {
+    if (!generationActive) return;
+    const t = window.setInterval(() => {
+      void loadFiles({ silent: true });
+    }, 2000);
+    return () => window.clearInterval(t);
+  }, [generationActive, loadFiles]);
+
+  // Manual trigger / failed-run retry (AC-18) — same endpoint; the retry
+  // re-runs only missing files (skip-if-exists).
+  const [triggering, setTriggering] = useState(false);
+  const handleRetryGeneration = useCallback(async () => {
+    setTriggering(true);
+    try {
+      await retryBaGeneration(id ?? '');
+      await loadFiles();
+      showNotice({
+        kind: 'success',
+        text: 'BA Agent started drafting the Project Background documents.',
+      });
+    } catch (err) {
+      showNotice({
+        kind: 'error',
+        text: err instanceof Error ? err.message : 'Could not start the document generation',
+      });
+    } finally {
+      setTriggering(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, loadFiles]);
 
   // ── Open file ────────────────────────────────────────────────────────────
   const [selected, setSelected] = useState<string | null>(null);
@@ -303,6 +348,13 @@ export function ProjectBackgroundScreen() {
     label: b.label,
     files: filesData?.files.filter((f) => f.band === b.key) ?? [],
   }));
+  // Band progress for the generation panel — done counts come from the files
+  // already on disk; totals from the server's bands payload (one source).
+  const genBands = (filesData?.bands ?? []).map((b) => ({
+    label: b.label,
+    done: filesData?.files.filter((f) => f.band === b.key).length ?? 0,
+    total: b.total,
+  }));
 
   // State D — the gate card replaces the workspace when every artifact is
   // approved. After confirmation it stays up in its confirmed variant until
@@ -335,6 +387,21 @@ export function ProjectBackgroundScreen() {
         </div>
       )}
 
+      {generation?.state === 'failed' && (
+        // AC-19 — failed run: error banner + Retry (re-drafts only the gaps).
+        <div className="ba-warn" role="alert">
+          <b>BA document generation failed</b> — {generation.error ?? 'some documents are missing.'}{' '}
+          <button
+            type="button"
+            className="btn btn-soft"
+            disabled={triggering}
+            onClick={() => void handleRetryGeneration()}
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       <StageBanner
         counts={
           filesData?.counts ?? { draft: 0, in_review: 0, returned: 0, approved: 0, total: 0 }
@@ -363,15 +430,33 @@ export function ProjectBackgroundScreen() {
             </button>
           </div>
         </div>
+      ) : generationActive ? (
+        // AC-19 — the BA agent is drafting: the panel replaces the tree/editor.
+        <GenerationPanel
+          count={generation?.count ?? 0}
+          current={generation?.current ?? null}
+          bands={genBands}
+        />
       ) : filesData && filesData.files.length === 0 ? (
         // Empty tree — the project has no PRD/ folder yet (pre-intake-
         // completion projects land here post-#17). Friendly, no crash (AC-3).
+        // The button is the manual trigger for pre-feature projects (AC-18).
         <div className="center-card ba-error-card">
           <h3>No PRD artifacts yet</h3>
           <p className="sub">
             This project&rsquo;s folder has no <code>PRD/</code> directory yet. The 17 source
             documents appear here once the BA Agent drafts them.
           </p>
+          <div className="actions-row">
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={triggering}
+              onClick={() => void handleRetryGeneration()}
+            >
+              Draft the documents now
+            </button>
+          </div>
         </div>
       ) : (
         filesData && (

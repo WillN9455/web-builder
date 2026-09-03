@@ -371,7 +371,8 @@ export type BaCounts = {
 export type BaFilesResponse = {
   files: BaFile[];
   // Band keys + labels in sitemap order — the client groups the tree by this.
-  bands: { key: string; label: string }[];
+  // total = the band's artifact count (generation panel band progress).
+  bands: { key: string; label: string; total: number }[];
   counts: BaCounts;
   // State D gate: contextReady = all 17 artifacts exist on disk and are
   // approved. contextConfirmed = the one-shot confirm has fired. A confirmed
@@ -380,6 +381,9 @@ export type BaFilesResponse = {
   contextReady: boolean;
   contextConfirmed: boolean;
   contextChangedSinceConfirm: boolean;
+  // BA auto-draft generation state (AC-17/AC-18) — null when the project never
+  // had a run; the screen's empty state + manual trigger own that case.
+  generation: BaGeneration | null;
 };
 
 export type BaComment = {
@@ -387,6 +391,16 @@ export type BaComment = {
   author: 'BA' | 'SA';
   body: string;
   created_at: string;
+};
+
+// BA auto-draft generation state (plan addendum AC-17). count = how many of
+// the 17 artifacts exist on disk; current = the artifact being drafted.
+// Null on the response when the project never had a generation run.
+export type BaGeneration = {
+  state: 'pending' | 'generating' | 'done' | 'failed';
+  count: number;
+  current: string | null;
+  error: string | null;
 };
 
 // Offline-detection + error extraction shared by the ba-workspace fetchers —
@@ -483,6 +497,21 @@ export async function fetchBaOpenQuestions(
   idOrSlug: string,
 ): Promise<{ blockerCount: number }> {
   return baFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/ba-workspace/open-questions`);
+}
+
+// BA auto-draft generation — manual trigger / retry (AC-18). Re-runs only
+// missing files (skip-if-exists); 409 while a run is already in flight.
+export type BaGenerationRetryResponse = { ok: true };
+
+export async function retryBaGeneration(idOrSlug: string): Promise<BaGenerationRetryResponse> {
+  return baFetch(
+    `/api/projects/${encodeURIComponent(idOrSlug)}/ba-workspace/generation/retry`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    },
+  );
 }
 
 // State D — the one-shot gate confirmation. Idempotent on re-POST.
