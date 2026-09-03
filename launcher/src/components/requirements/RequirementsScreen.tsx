@@ -621,18 +621,23 @@ export function RequirementsScreen() {
             )}
 
             {emptyProject ? (
-              /* Zero-stories empty state (AC-8): one CTA, story-first. */
-              <div className="req-empty">
-                <h2>No requirements yet</h2>
-                <p>
-                  Start with a <b>user story</b> — once one exists you can add BR / TR
-                  requirements to it from inside that story's header.
-                </p>
-                <button type="button" className="btn btn-primary" aria-label="Add your first user story" onClick={() => openForm({ mode: 'add', kind: 'story' })}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" aria-hidden="true"><path d="M12 5v14 M5 12h14"/></svg>
-                  Add your first user story
-                </button>
-              </div>
+              /* Zero-stories empty state (AC-8): one CTA, story-first. The form
+                 slot rides along — without it the CTA sets form state nothing
+                 ever mounts, and the click is a silent no-op. */
+              <>
+                <div className="req-empty">
+                  <h2>No requirements yet</h2>
+                  <p>
+                    Start with a <b>user story</b> — once one exists you can add BR / TR
+                    requirements to it from inside that story's header.
+                  </p>
+                  <button type="button" className="btn btn-primary" aria-label="Add your first user story" onClick={() => openForm({ mode: 'add', kind: 'story' })}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" aria-hidden="true"><path d="M12 5v14 M5 12h14"/></svg>
+                    Add your first user story
+                  </button>
+                </div>
+                {renderForm('top')}
+              </>
             ) : (
               <>
                 {/* Add bar — story-first: only "Add user story" lives here (spec UI). */}
