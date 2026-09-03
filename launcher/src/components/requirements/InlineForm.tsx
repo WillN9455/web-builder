@@ -100,6 +100,12 @@ export function InlineForm<V extends FormValues>(props: InlineFormProps<V>) {
   } = props;
 
   const [values, setValues] = useState<FormValues>(initial);
+  // Touched tracking (refinement batch item 2.4): client-side length errors
+  // only render after the user has interacted with the field (or after a
+  // submit attempt). The server is still the backstop — it always
+  // re-validates and the merged {errors} payload bypasses touched.
+  const [touched, setTouched] = useState<Set<string>>(new Set());
+  const [submitAttempted, setSubmitAttempted] = useState(false);
   // First field gets focus on mount (spec UX). The kind of element differs
   // per kind (input vs select), so a callback ref keeps the type honest.
   const firstFieldRef = useRef<HTMLElement | null>(null);
@@ -137,27 +143,44 @@ export function InlineForm<V extends FormValues>(props: InlineFormProps<V>) {
   } else {
     checkLength('text', rv.text, LIMITS.reqText.min, LIMITS.reqText.max, clientErrors);
   }
+  // Server errors always render (they came back from a real submit and the
+  // user needs the feedback); client errors only show on touched fields or
+  // after a submit attempt — the spec UX is "errors after the user has
+  // tried the field, not before they typed a thing".
+  const showError = (name: string): string | null => {
+    if (errors[name]) return errors[name];
+    if (clientErrors[name] && (touched.has(name) || submitAttempted)) {
+      return clientErrors[name];
+    }
+    return null;
+  };
   const fieldErrors = { ...clientErrors, ...errors };
   const hasErrors = Object.keys(fieldErrors).length > 0;
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitAttempted(true);
     if (hasErrors || submitting) return;
     onSubmit(values as V);
   };
 
-  const fieldErr = (name: string) =>
-    fieldErrors[name] ? (
+  const markTouched = (name: string) =>
+    setTouched((prev) => (prev.has(name) ? prev : new Set(prev).add(name)));
+
+  const fieldErr = (name: string) => {
+    const msg = showError(name);
+    return msg ? (
       <div className="field-error" id={`err-${name}`} role="alert">
-        {fieldErrors[name]}
+        {msg}
       </div>
     ) : (
       <div className="field-error" id={`err-${name}`}>
         {' '}
       </div>
     );
+  };
 
-  const invalid = (name: string) => (fieldErrors[name] ? true : undefined);
+  const invalid = (name: string) => (showError(name) ? true : undefined);
 
   return (
     <form
@@ -201,6 +224,7 @@ export function InlineForm<V extends FormValues>(props: InlineFormProps<V>) {
                 aria-invalid={invalid('title')}
                 aria-describedby="err-title"
                 onChange={(e) => set({ title: e.target.value })}
+                onBlur={() => markTouched('title')}
               />
               {fieldErr('title')}
             </div>
@@ -219,6 +243,7 @@ export function InlineForm<V extends FormValues>(props: InlineFormProps<V>) {
                 aria-invalid={invalid('asA')}
                 aria-describedby="err-asA"
                 onChange={(e) => set({ asA: e.target.value })}
+                onBlur={() => markTouched('asA')}
               />
               {fieldErr('asA')}
             </div>
@@ -232,6 +257,7 @@ export function InlineForm<V extends FormValues>(props: InlineFormProps<V>) {
                 aria-invalid={invalid('iWantTo')}
                 aria-describedby="err-iWantTo"
                 onChange={(e) => set({ iWantTo: e.target.value })}
+                onBlur={() => markTouched('iWantTo')}
               />
               {fieldErr('iWantTo')}
             </div>
@@ -247,6 +273,7 @@ export function InlineForm<V extends FormValues>(props: InlineFormProps<V>) {
                 aria-invalid={invalid('soThat')}
                 aria-describedby="err-soThat"
                 onChange={(e) => set({ soThat: e.target.value })}
+                onBlur={() => markTouched('soThat')}
               />
               {fieldErr('soThat')}
             </div>
@@ -287,6 +314,7 @@ export function InlineForm<V extends FormValues>(props: InlineFormProps<V>) {
                 aria-invalid={invalid('text')}
                 aria-describedby="err-text"
                 onChange={(e) => set({ text: e.target.value })}
+                onBlur={() => markTouched('text')}
               />
               {fieldErr('text')}
             </div>
@@ -333,7 +361,7 @@ export function InlineForm<V extends FormValues>(props: InlineFormProps<V>) {
         <button type="button" className="btn btn-ghost" onClick={onCancel} disabled={submitting}>
           Cancel
         </button>
-        <button type="submit" className="btn btn-primary" disabled={submitting || hasErrors}>
+        <button type="submit" className="btn btn-primary" disabled={submitting}>
           {submitting ? (
             <>
               <span className="spinner" aria-hidden="true" /> Saving…
