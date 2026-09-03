@@ -17,6 +17,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { db } from './db.js';
+import { readGenerationState, retryBaGeneration, type BaGeneration } from './ba-draft.js';
 
 // ── The 17 artifacts across 5 bands (sitemap § Project Background tab) ────
 // The sitemap list is canonical — the s12 mockup tree omits personas.md, and
@@ -125,8 +126,9 @@ export type BaFile = {
 export type BaFilesResponse = {
   files: BaFile[];
   // Band keys + labels in sitemap order — the client groups the tree by this
-  // (one source for the 5-band structure, no client-side copy).
-  bands: { key: string; label: string }[];
+  // (one source for the 5-band structure, no client-side copy). total = the
+  // band's artifact count (the generation panel's band progress).
+  bands: { key: string; label: string; total: number }[];
   counts: { draft: number; in_review: number; returned: number; approved: number; total: number };
   // State D gate data. contextReady = all 17 allowlisted artifacts exist on
   // disk and are approved. contextConfirmed = the one-shot has fired.
@@ -135,6 +137,10 @@ export type BaFilesResponse = {
   contextReady: boolean;
   contextConfirmed: boolean;
   contextChangedSinceConfirm: boolean;
+  // BA auto-draft generation state (plan addendum AC-17/AC-18) — null when
+  // the project never had a generation run (the screen's empty state and its
+  // manual-trigger button own that case). The screen polls this one endpoint.
+  generation: BaGeneration | null;
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -252,11 +258,14 @@ export function registerBaWorkspaceRoutes(app: express.Express): void {
 
     res.json({
       files,
-      bands: BA_BANDS.map((b) => ({ key: b.key, label: b.label })),
+      // `total` = the band's artifact count — the generation panel's band
+      // progress derives from it (no client-side copy of the band sizes).
+      bands: BA_BANDS.map((b) => ({ key: b.key, label: b.label, total: b.files.length })),
       counts,
       contextReady,
       contextConfirmed: confirmed,
       contextChangedSinceConfirm: confirmed && !contextReady,
+      generation: readGenerationState(row.id),
     } satisfies BaFilesResponse);
   });
 
@@ -439,6 +448,24 @@ export function registerBaWorkspaceRoutes(app: express.Express): void {
       return;
     }
     res.json({ blockerCount: countPrdApprovalBlockers(prdDir(row)) });
+  });
+
+  // POST /generation/retry — re-run BA auto-drafting, only missing files
+  // (skip-if-exists). Doubles as the manual trigger for pre-feature projects
+  // that finished intake before this feature shipped (AC-18). Refused while a
+  // run is already in flight (409) — the reconciled read decides.
+  app.post('/api/projects/:id/ba-workspace/generation/retry', (req, res) => {
+    const row = getProjectRow(req.params.id);
+    if (!row) {
+      res.status(404).json({ error: 'Not found' });
+      return;
+    }
+    const result = retryBaGeneration(row.id);
+    if (!result.ok) {
+      res.status(409).json({ error: result.error ?? 'Generation already running' });
+      return;
+    }
+    res.json({ ok: true });
   });
 
   // POST /background/confirm-context — State D's one-shot gate. Only fires

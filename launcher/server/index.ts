@@ -9,6 +9,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { migrate, db } from './db.js';
 import { registerBaWorkspaceRoutes, countBaArtifacts } from './ba-workspace.js';
+import { enqueueBaDraftJob } from './ba-draft.js';
 import {
   validateProjectDir,
   scaffoldProjectDir,
@@ -957,6 +958,20 @@ app.post('/api/chat', async (req, res) => {
       // Re-surface the slug/id now that we may have renamed it.
       doneEvent.projectId = session.earlyProjectId ?? doneEvent.projectId;
       doneEvent.projectSlug = session.earlyProjectSlug ?? doneEvent.projectSlug;
+
+      // AC-15 — intake completion enqueues BA auto-drafting of the 17 Project
+      // Background documents, fully async: the done event above never waits on
+      // it (a local model can take minutes — R8). Idempotent: a done job never
+      // re-triggers; a failed job waits for the manual retry on the Project
+      // Background screen. A failed enqueue must not fail the capture — the
+      // screen's empty state ("Draft the documents now") is the fallback.
+      if (session.earlyProjectId !== null) {
+        try {
+          enqueueBaDraftJob(session.earlyProjectId);
+        } catch (err) {
+          console.error('[ba-draft] enqueue failed:', err);
+        }
+      }
     } catch (err) {
       doneEvent.ideaWritten = false;
       doneEvent.ideaWriteError =
