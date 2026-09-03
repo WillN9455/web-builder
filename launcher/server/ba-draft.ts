@@ -379,7 +379,9 @@ function draftPrompt(filename: string, seed: Seed): { system: string; user: stri
   return { system, user: sections.join('\n') };
 }
 
-async function callOllama(prompt: { system: string; user: string }): Promise<string> {
+// Exported for idea-summary.ts (plan §9.4 AC-21) — same Ollama seam, same
+// streaming pattern. Do not copy this function for new LLM seams; import it.
+export async function callOllama(prompt: { system: string; user: string }): Promise<string> {
   // Streaming, not stream:false: a full-document generation can take longer
   // than undici's default 300s headersTimeout before the response even starts
   // (caught live in the AC-20 walk — prd.md failed on a 5-min call), and

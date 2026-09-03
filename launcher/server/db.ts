@@ -149,6 +149,22 @@ CREATE TABLE IF NOT EXISTS ba_generation (
   updated_at   TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 
+-- BA idea summary (plan §9.4 AC-21): the LLM-written summary of idea.md shown
+-- on the Project Background tab. Sibling of ba_generation for the same reason
+-- — a separate table keeps the project/stage CHECK-rebuild helper in
+-- migrateSchema untouched. idea_hash = the sha256 of idea.md at generation
+-- time: a read whose hash no longer matches the file re-generates on the spot,
+-- so the summary follows idea edits without a manual trigger.
+CREATE TABLE IF NOT EXISTS ba_idea_summary (
+  project_id  INTEGER PRIMARY KEY REFERENCES project(id) ON DELETE CASCADE,
+  state       TEXT    NOT NULL DEFAULT 'pending'
+              CHECK (state IN ('pending','generating','done','failed')),
+  summary     TEXT,
+  idea_hash   TEXT,
+  error       TEXT,
+  updated_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE INDEX IF NOT EXISTS idx_project_updated  ON project(updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_stage_project    ON stage(project_id);
 CREATE INDEX IF NOT EXISTS idx_kanban_project   ON kanban_card(project_id);
