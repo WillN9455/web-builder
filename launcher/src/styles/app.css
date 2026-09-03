@@ -1493,8 +1493,64 @@ button.oq-btn:focus-visible {
 .ba-doc-col > .review-thread {
   background: #fff;
   border: 1px solid rgba(50, 42, 92, 0.06);
-  border-top: 0;
-  border-radius: 0 0 var(--r-xl) var(--r-xl);
+  border-radius: var(--r-xl);
+  /* AC-25 — breathing room between the editor and the thread (the thread now
+     also shows for Returned files, AC-24, so it reads as its own card). */
+  margin-top: 14px;
+}
+
+/* Idea summary card (plan §9.4 AC-21) — the LLM-written summary of idea.md,
+   shown above the tree/editor grid. Reference aid only. */
+.idea-summary {
+  background: #fff;
+  border: 1px solid rgba(50, 42, 92, 0.06);
+  border-radius: var(--r-xl);
+  padding: 16px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.idea-summary-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.idea-summary-head h3 {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-2);
+}
+.idea-summary-head .ai-tag {
+  font-size: 11px;
+  background: var(--lavender);
+  color: var(--purple);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-weight: 600;
+}
+.idea-summary-body.view {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ink);
+}
+.idea-summary-body.view p { margin: 4px 0; }
+.idea-summary-body.view p:first-child { margin-top: 0; }
+.idea-summary-body.view ul { margin: 4px 0; padding-left: 18px; }
+.idea-summary-pending {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+.idea-summary-pending .ba-gen-spinner { width: 18px; height: 18px; border-width: 2.5px; }
+.idea-summary-error p {
+  margin: 0 0 8px;
+  font-size: 12.5px;
+  color: var(--rose);
 }
 
 /* File tree (left rail). */
@@ -1558,6 +1614,9 @@ button.oq-btn:focus-visible {
 .file-ico.returned  { background: var(--blush);    color: var(--rose); }
 .file-ico.approved  { background: var(--mint);     color: var(--green); }
 .file-ico.in_review { background: var(--butter);   color: var(--amber); }
+/* idea.md (AC-22) — read-only reference material, neutral chip (no review
+   state color). */
+.file-ico.idea { background: rgba(50, 42, 92, 0.08); color: var(--ink-2); }
 .file.active .file-ico { background: rgba(255,255,255,0.15); color: #fff; }
 
 .file-status {
@@ -1679,6 +1738,10 @@ button.oq-btn:focus-visible {
 .ba-doc-foot .left { font-size: 12px; color: var(--ink-2); }
 .ba-doc-foot .left b { color: var(--ink); font-weight: 600; }
 .ba-doc-foot .right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+/* AC-28 — the clean draft footer stacks: text on top, buttons underneath.
+   The dirty footer keeps its side-by-side layout. */
+.ba-doc-foot.clean { flex-direction: column; align-items: flex-start; gap: 10px; }
+.ba-doc-foot.clean .right { margin-left: 0; }
 
 /* Inline review thread (State C). */
 .review-thread {

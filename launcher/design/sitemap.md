@@ -451,6 +451,8 @@ Draft ──Send for SA review──▶ In Review (SA)
 ```
 One file at a time; one API call per transition; activity logged; **no destructive deletes** (per smoke-test-safety memory). Terminal state = `Approved` (renamed from "Completed").
 
+> **Updated 2026-09-03 (plan §9.4, AC-27 — product owner's call):** `Approved` is **no longer terminal**. The BA can set an approved file back to `Draft` (a `Set back to Draft` action with confirmation); the body stays locked (PUT 409s on Approved) until the file is back in Draft. The #18 security review's "approved is terminal" ruling was reversed deliberately by the product owner. The State D gate math is unchanged (all 17 must be Approved to confirm), and un-approving after confirm still trips the existing "context changed" warning (decision 7).
+
 ### 17 artifacts across 5 bands
 Core PRD (`prd.md`, `user-journeys.md`, `personas.md`) · Scope & rules (`glossary.md`, `stakeholder-map.md`, `business-rules.md`, `assumptions.md`, `open-questions.md`) · Data & access (`data-model.md`, `data-flow.md`, `rbac-matrix.md`, `nfr-catalog.md`) · Planning & risk (`phasing-plan.md`, `traffic-profile.md`, `cost-model.md`, `risks.md`) · SA handoff (`tech-decision-brief.md`). Full table in Appendix § BA artifacts.
 
@@ -473,6 +475,9 @@ Edits persist to the project's on-disk `PRD/`. 7 API endpoints in `PROJECT-BACKG
 8. **Open-questions banner links to Overview** — the banner's sole action is `View questions →`, navigating to the Overview tab where the Outstanding-questions panel shows the `Blocker-for: PRD-approval` items. It no longer deep-links into the intake BA chat (Screen 8). *(Revises the earlier decision that linked the banner to the intake chat.)*
 9. **No View/Edit mode toggle** — the right pane is always an editable textarea (BA monospace) for `Draft` / `Returned` / clean files; the user edits inline and clicks `Save changes` separately. `In Review (SA)` is read-only by virtue of state, not via a View tab. *(Revises the earlier View/Edit tab decision.)*
 10. **State D uses the standard per-project shell** — the same 10-tab sidebar + topbar as screens 12–14, with the State D confirmation card in the main column. No alternate/stripped chrome.
+11. *(2026-09-03, plan §9.4)* **Idea material is reference-only** — an AI-generated summary card of `idea.md` sits above the grid (async, cached on the idea hash; labelled AI-generated; never gate input), and `idea.md` shows as a read-only row in the tree's top "Idea" band — outside the 17-artifact count, gate, statuses, and write allowlist.
+12. *(2026-09-03, plan §9.4, AC-27 — product owner's call)* **Approved is no longer terminal** — see the dated note under "Per-file state machine". *(Revises the #18 review ruling; decision 6's rename history is unchanged.)*
+13. *(2026-09-03, plan §9.4, AC-24/28)* **The review thread stays visible for `Returned` files** (BA reads SA feedback and replies while reworking), and the clean draft footer stacks text above its buttons.
 
 ### Open / deferred
 - Markdown renderer choice (`react-markdown` + `remark-gfm`) — implementation detail.

@@ -12,6 +12,7 @@ import {
   fetchBaComments,
   fetchBaFile,
   fetchBaFiles,
+  fetchBaIdea,
   fetchBaOpenQuestions,
   retryBaGeneration,
   saveBaFile,
@@ -28,6 +29,13 @@ import { StageBanner } from './ba-workspace/StageBanner';
 import { OpenQuestionsBanner } from './ba-workspace/OpenQuestionsBanner';
 import { ContextReadyView } from './ba-workspace/ContextReadyView';
 import { GenerationPanel } from './ba-workspace/GenerationPanel';
+import { IdeaSummaryCard } from './ba-workspace/IdeaSummaryCard';
+
+// The tree's top "Idea" band (plan §9.4 AC-22) — client-synthesized from the
+// server's idea.available flag. idea.md is reference material: read-only,
+// outside the 17-count/gate/status lifecycle (the server's allowlist never
+// accepts it for PUT/transition/comments either).
+const IDEA_FILE = 'idea.md';
 import type { ProjectOutletContext } from './ProjectDetailScreen';
 
 type Notice = { kind: 'success' | 'error'; text: string };
@@ -129,10 +137,22 @@ export function ProjectBackgroundScreen() {
       setSelected(filename);
       setBodyLoading(true);
       try {
-        const data = await fetchBaFile(id ?? '', filename);
+        const data =
+          filename === IDEA_FILE
+            ? await fetchBaIdea(id ?? '')
+            : await fetchBaFile(id ?? '', filename);
         setSavedBody(data.content);
         setDraft(data.content);
-        setComments([]);
+        // The review thread carries over from the last selection only for
+        // files that can have one — in_review or returned (AC-24 widens it
+        // past in_review so the BA sees SA feedback after a return).
+        const status = filesData?.files.find((f) => f.filename === filename)?.status;
+        if (status === 'in_review' || status === 'returned') {
+          const c = await fetchBaComments(id ?? '', filename).catch(() => ({ comments: [] }));
+          setComments(c.comments);
+        } else {
+          setComments([]);
+        }
       } catch (err) {
         setNotice({
           kind: 'error',
@@ -144,7 +164,10 @@ export function ProjectBackgroundScreen() {
         setBodyLoading(false);
       }
     },
-    [id],
+    // filesData is read for the status lookup — it is loaded before any file
+    // can be opened (the tree renders from it), so it is never stale here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [id, filesData],
   );
 
   // Auto-select the first artifact once the tree loads.
@@ -167,7 +190,7 @@ export function ProjectBackgroundScreen() {
       } catch {
         /* tree still refreshed — keep the in-memory body */
       }
-      if (status === 'in_review') {
+      if (status === 'in_review' || status === 'returned') {
         const c = await fetchBaComments(id ?? '', filename).catch(() => ({ comments: [] }));
         setComments(c.comments);
       }
@@ -294,6 +317,32 @@ export function ProjectBackgroundScreen() {
     [id, selectedFile, showNotice],
   );
 
+  // AC-27 — approved → draft. Reverses the SA approval (confirmed first via
+  // the dialog below); the BA can then edit and re-send. The State D gate
+  // reacts through the server's contextChangedSinceConfirm warning — no new
+  // gate logic here.
+  const [pendingSetBack, setPendingSetBack] = useState(false);
+  const docTriggerRef = useRef<HTMLDivElement>(null);
+  const handleSetBack = useCallback(async () => {
+    if (!selectedFile) return;
+    setBusy(true);
+    try {
+      await transitionBaFile(id ?? '', selectedFile.filename, 'draft');
+      await refreshAfterMutation(selectedFile.filename, 'draft');
+      showNotice({
+        kind: 'success',
+        text: `Set back to Draft — ${selectedFile.filename} is open for editing again.`,
+      });
+    } catch (err) {
+      showNotice({
+        kind: 'error',
+        text: err instanceof Error ? err.message : 'Could not set the file back to Draft',
+      });
+    } finally {
+      setBusy(false);
+    }
+  }, [id, refreshAfterMutation, selectedFile, showNotice]);
+
   const handleConfirmContext = useCallback(async () => {
     setBusy(true);
     try {
@@ -343,11 +392,34 @@ export function ProjectBackgroundScreen() {
     );
   }
 
-  const bands = (filesData?.bands ?? []).map((b) => ({
-    key: b.key,
-    label: b.label,
-    files: filesData?.files.filter((f) => f.band === b.key) ?? [],
-  }));
+  // The tree's bands: the client-synthesized "Idea" band on top (AC-22) when
+  // idea.md exists, then the 5 artifact bands from the server payload. The
+  // idea row is readOnly — the tree omits its status dot and the count chip
+  // stays on the 17.
+  const bands = [
+    ...(filesData?.idea.available
+      ? [
+          {
+            key: 'idea',
+            label: 'Idea',
+            files: [
+              {
+                filename: IDEA_FILE,
+                band: 'idea',
+                title: 'Project idea',
+                status: 'draft',
+                readOnly: true,
+              } as const,
+            ],
+          },
+        ]
+      : []),
+    ...(filesData?.bands ?? []).map((b) => ({
+      key: b.key,
+      label: b.label,
+      files: filesData?.files.filter((f) => f.band === b.key) ?? [],
+    })),
+  ];
   // Band progress for the generation panel — done counts come from the files
   // already on disk; totals from the server's bands payload (one source).
   const genBands = (filesData?.bands ?? []).map((b) => ({
@@ -415,6 +487,11 @@ export function ProjectBackgroundScreen() {
 
       <OpenQuestionsBanner projectId={id ?? ''} blockerCount={blockers} />
 
+      {/* AC-21 (revised) — the LLM-written idea summary: async + cached
+          server-side, the card owns its own polling/retry. Reference aid
+          only — never gate input. */}
+      <IdeaSummaryCard projectId={id ?? ''} />
+
       {loadingFiles ? (
         <div className="ba-grid">
           <FileTreeSkeleton />
@@ -469,7 +546,7 @@ export function ProjectBackgroundScreen() {
                 onSelect={handleSelect}
               />
             </div>
-            <div className="ba-doc-col">
+            <div className="ba-doc-col" ref={docTriggerRef}>
               <ArtifactEditor
                 file={selectedFile}
                 bodyLoading={bodyLoading}
@@ -483,8 +560,11 @@ export function ProjectBackgroundScreen() {
                 onSend={() => void handleSend()}
                 onReturn={() => void handleTransition('returned')}
                 onApprove={() => void handleTransition('approved')}
+                onSetBack={() => setPendingSetBack(true)}
               />
-              {selectedFile?.status === 'in_review' && (
+              {/* AC-24 — the thread stays visible after a return, so the BA
+                  can read the SA feedback and reply while reworking. */}
+              {(selectedFile?.status === 'in_review' || selectedFile?.status === 'returned') && (
                 <ReviewThread
                   filename={selectedFile.filename}
                   comments={comments}
@@ -510,6 +590,22 @@ export function ProjectBackgroundScreen() {
           setPendingSelect(null);
           setDraft(savedBody);
           if (target) void openFile(target);
+        }}
+      />
+
+      {/* AC-27 — setting an approved artifact back to Draft reverses an SA
+          approval, so it confirms first. */}
+      <ConfirmDialog
+        open={pendingSetBack}
+        title="Set back to Draft?"
+        description={`"${selectedFile?.title ?? 'This artifact'}" is Approved. Setting it back to Draft re-opens it for editing and un-approves it — you will need to send it for SA review and get it approved again.`}
+        confirmLabel="Set back to Draft"
+        cancelLabel="Keep approved"
+        triggerRef={docTriggerRef}
+        onClose={() => setPendingSetBack(false)}
+        onConfirm={() => {
+          setPendingSetBack(false);
+          void handleSetBack();
         }}
       />
     </div>

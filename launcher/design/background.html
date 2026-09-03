@@ -1629,6 +1629,12 @@
   </nav>
 
   <section class="screen" id="s12">
+    <!-- 2026-09-03 (plan §9.4, AC-27): Approved is no longer terminal — the
+         shipped UI adds a "Set back to Draft" action on the approved read
+         view (confirmed, then approved → draft; PUT stays locked on Approved).
+         This mockup's s13 Approved state predates the change and shows the
+         approved file as locked-terminal; sitemap.md's dated note under
+         "Per-file state machine" is the canonical record. -->
     <div class="screen-label">
       <span class="num">12</span>
       <span class="name">BA Workspace — draft (Requirements stage)</span>

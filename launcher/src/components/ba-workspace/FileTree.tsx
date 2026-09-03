@@ -1,8 +1,10 @@
 // Five-band file tree (left rail) — ported from background.html #s12's
 // `.file-tree` block. 17 artifacts in the sitemap's canonical 5 bands (the
-// s12 mockup omits personas.md; sitemap wins — plan §0/R3). Each row: MD chip
-// colored by status, status dot with an aria-label, and a coral dirty inset
-// when that file has unsaved edits (screen 13's `.file.flag`).
+// s12 mockup omits personas.md; sitemap wins — plan §0/R3), plus the
+// client-synthesized "Idea" band on top (plan §9.4 AC-22 — read-only
+// reference material, excluded from the count chip and status dots). Each
+// row: MD chip colored by status, status dot with an aria-label, and a coral
+// dirty inset when that file has unsaved edits (screen 13's `.file.flag`).
 //
 // A11y per AC-12: role="tree"/"treeitem", aria-current on the selected row,
 // keyboard nav (↑/↓/Home/End move, Enter/Space open).
@@ -20,6 +22,12 @@ type FileTreeProps = {
 // Keyboard movement order = DOM order across all bands.
 function flattenRows(bands: FileTreeProps['bands']): BaFile[] {
   return bands.flatMap((b) => b.files);
+}
+
+// The head count covers the reviewable artifacts only — idea.md is reference
+// material and must not read as part of the 17-artifact set (AC-22).
+function countReviewable(bands: FileTreeProps['bands']): number {
+  return flattenRows(bands).filter((f) => !f.readOnly).length;
 }
 
 export function FileTree({ bands, selected, dirtyFilename, onSelect }: FileTreeProps) {
@@ -51,7 +59,7 @@ export function FileTree({ bands, selected, dirtyFilename, onSelect }: FileTreeP
     <div className="file-tree">
       <div className="file-tree-head">
         <h3>PRD artifacts</h3>
-        <span className="count">{flattenRows(bands).length} files</span>
+        <span className="count">{countReviewable(bands)} files</span>
       </div>
       <div
         ref={treeRef}
@@ -79,15 +87,17 @@ export function FileTree({ bands, selected, dirtyFilename, onSelect }: FileTreeP
                     className={`file${isSelected ? ' active' : ''}${isDirty ? ' flag' : ''}`}
                     onClick={() => onSelect(file.filename)}
                   >
-                    <span className={`file-ico ${file.status}`} aria-hidden="true">
+                    <span className={`file-ico ${file.readOnly ? 'idea' : file.status}`} aria-hidden="true">
                       MD
                     </span>
                     <span className="file-name">{file.filename}</span>
-                    <span
-                      className={`file-status ${file.status}`}
-                      role="img"
-                      aria-label={`Status: ${statusLabel(file.status)}`}
-                    />
+                    {file.readOnly ? null : (
+                      <span
+                        className={`file-status ${file.status}`}
+                        role="img"
+                        aria-label={`Status: ${statusLabel(file.status)}`}
+                      />
+                    )}
                   </div>
                 );
               })}

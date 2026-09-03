@@ -1,8 +1,10 @@
 // Document editor (right pane) — ported from background.html #s12/#s13/#s14's
 // `.ba-doc` block. Sitemap locked decision 9: always a BA monospace textarea,
-// no View/Edit mode toggle. The body is read-only only when the file is
-// In Review (SA) (implied by state) — and stays read-only once Approved.
-// The footer is status-aware per AC-5.
+// no View/Edit mode toggle for Draft/Returned (AC-23 deferred — plan §9.4).
+// Read-only rendered views: In Review (SA, s14), Approved (AC-27 — plus the
+// Set back to Draft action), and idea.md (AC-22, reference material).
+// The footer is status-aware per AC-5; the clean footer stacks its buttons
+// below the text per AC-28.
 import { useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -22,6 +24,8 @@ type ArtifactEditorProps = {
   onSend: () => void;
   onReturn: () => void;
   onApprove: () => void;
+  // Approved → Draft (AC-27). The screen owns the ConfirmDialog.
+  onSetBack: () => void;
 };
 
 const PILL_CLASS: Record<BaFile['status'], string> = {
@@ -51,15 +55,16 @@ export function ArtifactEditor({
   onSend,
   onReturn,
   onApprove,
+  onSetBack,
 }: ArtifactEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Screen 13→12 handoff: when a file opens (and its body has loaded), focus
   // moves into the editor — unless the file is read-only (In Review /
-  // Approved), where focusing a read-only field would be noise.
+  // Approved / idea.md), where focusing a read-only field would be noise.
   useEffect(() => {
     if (!file || bodyLoading) return;
-    if (file.status === 'in_review' || file.status === 'approved') return;
+    if (file.readOnly || file.status === 'in_review' || file.status === 'approved') return;
     textareaRef.current?.focus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [file?.filename, bodyLoading]);
@@ -75,7 +80,11 @@ export function ArtifactEditor({
     );
   }
 
-  const readOnly = file.status === 'in_review' || file.status === 'approved';
+  const isIdea = file.readOnly === true;
+  const readOnly = file.status === 'in_review' || file.status === 'approved' || isIdea;
+  // AC-28 — the clean (not-dirty) draft footer stacks: text on top, buttons
+  // underneath. The dirty footer keeps Discard/Save/Send side-by-side.
+  const footClean = !readOnly && !dirty;
 
   return (
     <div className="ba-doc">
@@ -108,30 +117,31 @@ export function ArtifactEditor({
           <div className="skeleton" style={{ height: 14, width: '78%' }} />
           <div className="skeleton" style={{ height: 14, width: '85%' }} />
         </div>
-      ) : readOnly && file.status === 'in_review' ? (
-        // State C — rendered markdown (screen 14 shows headings/tables/
-        // blockquote SA markup, not monospace). No View/Edit toggle: this is
-        // the review state's read-only body, not a separate tab.
+      ) : readOnly ? (
+        // Rendered markdown — In Review (s14: headings/tables/blockquote SA
+        // markup, not monospace), Approved (AC-27), and idea.md (AC-22
+        // reference). No View/Edit toggle for Draft/Returned (locked
+        // decision 9 — AC-23 deferred, plan §9.4): this is the read-only
+        // body of a locked state, not a separate tab.
         <div className="ba-doc-body view" role="document" aria-label={`${file.title} (read-only)`}>
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{value}</ReactMarkdown>
         </div>
       ) : (
         // States A/B — always the editable BA monospace textarea (locked
-        // decision 9). Approved files render read-only in the same textarea.
-        <div className={`ba-doc-body edit${readOnly ? ' view' : ''}`}>
+        // decision 9).
+        <div className="ba-doc-body edit">
           <textarea
             ref={textareaRef}
             className="ba-edit"
             spellCheck={false}
             aria-label={`${file.title} contents`}
             value={value}
-            readOnly={readOnly}
             onChange={(e) => onChange(e.target.value)}
           />
         </div>
       )}
 
-      <div className="ba-doc-foot">
+      <div className={`ba-doc-foot${footClean ? ' clean' : ''}`}>
         {file.status === 'in_review' ? (
           <>
             <div className="left">
@@ -158,8 +168,30 @@ export function ArtifactEditor({
             </div>
           </>
         ) : file.status === 'approved' ? (
+          // AC-27 — approved is no longer terminal: the read view keeps the
+          // file locked for edits (PUT 409s), but the BA can set it back to
+          // Draft to re-open it (the screen confirms first). Un-approving
+          // after the State D confirm trips the existing warning banner.
+          <>
+            <div className="left">
+              <b>Approved</b> — this artifact is locked for editing until it is set back to Draft.
+            </div>
+            <div className="right">
+              <button
+                type="button"
+                className="btn btn-soft btn-pill"
+                style={{ background: 'var(--blush)', color: 'var(--ink)' }}
+                onClick={onSetBack}
+              >
+                Set back to Draft
+              </button>
+            </div>
+          </>
+        ) : isIdea ? (
+          // AC-22 — reference material from intake; outside the review loop.
           <div className="left">
-            <b>Approved</b> — this artifact is locked. Re-review starts by returning it from the SA.
+            <b>Project idea</b> — reference material from intake. It is not one of the 17 artifacts
+            and has no review lifecycle.
           </div>
         ) : dirty ? (
           <>
