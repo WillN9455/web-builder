@@ -94,12 +94,56 @@ export async function deleteProject(id: number | string): Promise<DeleteProjectR
   return data as DeleteProjectResponse;
 }
 
-// ── /api/projects/:id (project shell) ──────────────────────────────────────
+// ── /api/projects/:id (project shell + Overview data) ──────────────────────
 
-// The server returns the full project row plus its stage rows; the shell
-// (ProjectDetailScreen) only consumes these fields today.
+// The server returns the full project row; the shell (ProjectDetailScreen)
+// consumes these fields, and the Overview tab reads the wider set.
+export type ProjectDetailProject = Pick<
+  Project,
+  | 'id'
+  | 'name'
+  | 'slug'
+  | 'one_liner'
+  | 'folder_path'
+  | 'current_stage'
+  | 'status'
+  | 'tile_color'
+  | 'updated_relative'
+>;
+
+// One `stage` table row (stage history for the stepper + journey timeline).
+export type StageRow = {
+  stage_key: string;
+  status: string;
+  started_at: string | null;
+  completed_at: string | null;
+};
+
+// One `activity` table row (feed entries, newest first from the server).
+export type ActivityRow = {
+  agent: string;
+  message: string;
+  kind: string;
+  ts: string;
+};
+
+// One `artifact` table row.
+export type ArtifactRow = {
+  stage_key: string;
+  label: string;
+  path: string;
+  kind: string;
+  created_at: string;
+};
+
 export type ProjectDetailResponse = {
-  project: Pick<Project, 'id' | 'name' | 'slug' | 'current_stage' | 'folder_path'>;
+  project: ProjectDetailProject;
+  stages: StageRow[];
+  activity: ActivityRow[];
+  artifacts: ArtifactRow[];
+  // Derived from the project's persisted intake transcript server-side;
+  // [] when there is no transcript or the parse failed.
+  outstandingQuestions: OutstandingQuestion[];
 };
 
 export async function fetchProject(idOrSlug: string): Promise<ProjectDetailResponse> {

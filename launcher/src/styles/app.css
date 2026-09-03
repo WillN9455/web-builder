@@ -1334,3 +1334,299 @@ button.oq-btn:focus-visible {
 
 .nav a.locked:hover::after,
 .nav a.locked:focus-within::after { opacity: 1; }
+
+/* ─── Overview tab (mockups.html #s3/#s4/#s5) ──────────────────────────── */
+/* Ported from mockups.html lines 319–330 (.q-scroll) and 601–771 (Overview
+   body). Token values come from tokens.css — no new color literals; the
+   rgba(50,42,92,…) neutrals follow the rgba() idiom already used throughout
+   app.css. The bare .step/.stepper rules below do not collide with the chat
+   rail (all existing .step rules are scoped .chat-side .step). */
+
+.ov-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 26px 30px;
+}
+
+.ov-col {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+
+.ov-sub {
+  font-size: 12px;
+  color: var(--ink-2);
+  opacity: 0.75;
+  margin: 0 0 14px;
+}
+
+.ov-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+/* Honest empty states (seams — plan §2): no invented checklist items,
+   journey entries, activity rows, or artifacts. */
+.ov-empty {
+  font-size: 12px;
+  color: var(--ink-2);
+  padding: 10px 12px;
+  background: rgba(50, 42, 92, 0.04);
+  border-radius: 10px;
+}
+
+/* Mockup inline head row (h3 + status pill). */
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.card-head.tight { margin-bottom: 4px; }
+
+/* Checklist heading is a second h3 inside the current-stage card. */
+.ov-check-head { margin-top: 22px; }
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 22px;
+}
+
+.card {
+  background: #fff;
+  border-radius: var(--r-xl);
+  padding: 22px;
+}
+.card h3 {
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-2);
+  margin-bottom: 14px;
+}
+.proj-head {
+  display: flex;
+  align-items: start;
+  gap: 18px;
+  padding: 8px 4px 4px;
+}
+.proj-head .ico-lg {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+.proj-head h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.01em; margin: 0; }
+.proj-head .one { color: var(--ink-2); font-size: 13.5px; margin-top: 2px; }
+.proj-head .path {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--ink-2);
+  margin-top: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.proj-head .actions { margin-left: auto; display: flex; gap: 8px; }
+
+/* Pastel tile backgrounds — token values only (tiles.css equivalents). */
+.proj-head .ico-lg.tile-peach   { background: var(--peach); }
+.proj-head .ico-lg.tile-sky     { background: var(--sky); }
+.proj-head .ico-lg.tile-mint    { background: var(--mint); }
+.proj-head .ico-lg.tile-lavender { background: var(--lavender); }
+.proj-head .ico-lg.tile-butter  { background: var(--butter); }
+.proj-head .ico-lg.tile-blush   { background: var(--blush); }
+
+/* 7-stage stepper */
+.stepper {
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border-radius: var(--r-xl);
+  padding: 14px 18px;
+  gap: 0;
+  overflow-x: auto;
+  margin-top: 18px;
+}
+.step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+.step .num {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(50, 42, 92, 0.08);
+  color: var(--ink-2);
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex: none;
+}
+.step .lbl { font-size: 12.5px; color: var(--ink-2); font-weight: 500; white-space: nowrap; }
+.step.done .num { background: var(--mint); color: var(--ink); }
+.stepper .step.done .num::after { content: "✓"; }
+.step.done .num b { display: none; }
+.step.active .num { background: var(--navy); color: #fff; }
+.step.active .lbl { color: var(--ink); font-weight: 600; }
+.step.blocked .num { background: var(--blush); color: var(--rose); }
+.step.shipped .num { background: var(--navy); color: #fff; }
+.step.shipped .num::after { content: "★"; }
+.step.shipped .num b { display: none; }
+.step .bar {
+  flex: 1;
+  height: 2px;
+  background: rgba(50, 42, 92, 0.1);
+  margin: 0 8px;
+}
+.step.done + .step .bar { background: var(--green); }
+.step.blocked + .step .bar { background: var(--rose); }
+
+/* Checklist rows (journey timeline in the done state) */
+.check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px dashed rgba(50, 42, 92, 0.08);
+}
+.check:last-child { border-bottom: 0; }
+.check .box {
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  border: 1.5px solid rgba(50, 42, 92, 0.2);
+  background: #fff;
+  display: grid;
+  place-items: center;
+  flex: none;
+  color: #fff;
+  font-size: 11px;
+}
+.check.done .box { background: var(--green); border-color: var(--green); }
+.check.done .lbl { color: var(--ink-2); text-decoration: line-through; }
+.check .lbl { font-size: 13.5px; }
+.check .meta { margin-left: auto; font-size: 11.5px; color: var(--ink-2); }
+
+/* Activity timeline */
+.tl { display: flex; flex-direction: column; gap: 14px; }
+.tl-item { display: flex; gap: 12px; }
+.tl-item .av-lg {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink);
+  flex: none;
+}
+.tl-item .av-lg.ba   { background: var(--peach); }
+.tl-item .av-lg.da   { background: var(--sky); }
+.tl-item .av-lg.code { background: var(--mint); }
+.tl-item .av-lg.rev  { background: var(--butter); }
+.tl-item .av-lg.qa   { background: var(--lavender); }
+.tl-item .av-lg.orch { background: var(--navy); color: #fff; }
+.tl-item .av-lg.neutral { background: rgba(50, 42, 92, 0.08); }
+.tl-item .body { flex: 1; }
+.tl-item .body .who { font-size: 13px; font-weight: 600; }
+.tl-item .body .who span { color: var(--ink-2); font-weight: 400; }
+.tl-item .body .msg { font-size: 12.5px; color: var(--ink); opacity: 0.85; line-height: 1.5; }
+
+/* Artifact list */
+.art { display: flex; flex-direction: column; gap: 8px; }
+.art-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(50, 42, 92, 0.06);
+  border-radius: 12px;
+  font-size: 13px;
+}
+.art-item .ftag {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  background: var(--lavender);
+  color: var(--purple);
+  padding: 2px 6px;
+  border-radius: 5px;
+}
+.art-item .lbl { font-weight: 500; }
+.art-item .path {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-2);
+  margin-left: auto;
+}
+
+/* Working-on-this-stage callout */
+.callout {
+  background: linear-gradient(160deg, var(--lavender) 0%, var(--sky) 100%);
+  border-radius: var(--r-lg);
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+}
+.callout .pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--coral);
+  box-shadow: 0 0 0 0 rgba(239, 127, 87, 0.5);
+  animation: pulse 1.6s infinite;
+  flex: none;
+}
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(239, 127, 87, 0.5); }
+  70% { box-shadow: 0 0 0 8px rgba(239, 127, 87, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 127, 87, 0); }
+}
+.callout .lbl { font-size: 12.5px; color: var(--ink); }
+.callout .lbl b { font-weight: 700; }
+.callout .who { margin-left: auto; font-size: 12px; color: var(--ink); opacity: 0.7; white-space: nowrap; }
+
+/* Ship summary (done state) — values are "—" until a features API exists. */
+.ship-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 4px;
+}
+.ship-tile { border-radius: 12px; padding: 12px; }
+.ship-tile.mint { background: var(--mint); }
+.ship-tile.peach { background: var(--peach); }
+.ship-tile .k { font-size: 11px; color: var(--ink); opacity: 0.7; }
+.ship-tile .v { font-size: 20px; font-weight: 700; }
+
+/* Scrollable list — mockups.html .q-scroll. Note the flex-column/gap base
+   from the mockup is dropped here: .oq-list/.tl/.art already set their own
+   display+gap, and .q-scroll only carries the scroll behaviour. */
+.q-scroll {
+  overflow-y: auto;
+  padding-right: 4px;
+  margin-right: -4px;
+}
+.q-scroll::-webkit-scrollbar { width: 6px; }
+.q-scroll::-webkit-scrollbar-thumb { background: rgba(50, 42, 92, 0.18); border-radius: 999px; }
+.q-scroll::-webkit-scrollbar-track { background: transparent; }
+
+/* Per-card max-heights from the mockup's inline styles. */
+.ov-scroll-220 { max-height: 220px; }
+.ov-scroll-260 { max-height: 260px; }
