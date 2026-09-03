@@ -1,8 +1,13 @@
 // Document editor (right pane) — ported from background.html #s12/#s13/#s14's
-// `.ba-doc` block. Sitemap locked decision 9: always a BA monospace textarea,
-// no View/Edit mode toggle for Draft/Returned (AC-23 deferred — plan §9.4).
-// Read-only rendered views: In Review (SA, s14), Approved (AC-27 — plus the
-// Set back to Draft action), and idea.md (AC-22, reference material).
+// `.ba-doc` block.
+//
+// View/edit toggle (plan §9.5 AC-30 — reverses the §9.4 deferral of locked
+// decision 9): Draft/Returned open on the rendered markdown read view; Edit
+// switches to the BA monospace textarea (Discard / Save changes). Send for SA
+// review appears only in the read view AND only once an edit has been saved
+// (`editedSinceSend` — server-tracked on ba_artifacts_status, so it survives a
+// reload; the transition endpoint enforces the same rule). In Review (s14),
+// Approved (AC-27 + Set back to Draft), and idea.md (AC-22) stay read-only.
 // The footer is status-aware per AC-5; the clean footer stacks its buttons
 // below the text per AC-28.
 import { useEffect, useRef } from 'react';
@@ -17,9 +22,14 @@ type ArtifactEditorProps = {
   value: string;
   dirty: boolean;
   saving: boolean;
+  // AC-30 — the screen's view/edit mode. Only meaningful for Draft/Returned;
+  // every other state renders the read view regardless.
+  editing: boolean;
   commentCount: number;
   onChange: (value: string) => void;
   onDiscard: () => void;
+  // Enter the edit view from the read view (Draft/Returned only).
+  onEdit: () => void;
   onSave: () => void;
   onSend: () => void;
   onReturn: () => void;
@@ -48,9 +58,11 @@ export function ArtifactEditor({
   value,
   dirty,
   saving,
+  editing,
   commentCount,
   onChange,
   onDiscard,
+  onEdit,
   onSave,
   onSend,
   onReturn,
@@ -59,15 +71,16 @@ export function ArtifactEditor({
 }: ArtifactEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Screen 13→12 handoff: when a file opens (and its body has loaded), focus
-  // moves into the editor — unless the file is read-only (In Review /
-  // Approved / idea.md), where focusing a read-only field would be noise.
+  // Screen 13→12 handoff: focus moves into the textarea when the edit view
+  // opens — never on the initial file open (that lands on the read view) and
+  // never for locked files, where focusing a read-only field would be noise.
+  // (Declared before the early return below — hooks cannot be conditional.)
+  const isEditingCalc = !file?.readOnly && (editing || dirty) && (file?.status === 'draft' || file?.status === 'returned');
   useEffect(() => {
-    if (!file || bodyLoading) return;
-    if (file.readOnly || file.status === 'in_review' || file.status === 'approved') return;
+    if (!file || bodyLoading || !isEditingCalc) return;
     textareaRef.current?.focus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [file?.filename, bodyLoading]);
+  }, [isEditingCalc, file?.filename, bodyLoading]);
 
   if (!file) {
     return (
@@ -81,10 +94,16 @@ export function ArtifactEditor({
   }
 
   const isIdea = file.readOnly === true;
-  const readOnly = file.status === 'in_review' || file.status === 'approved' || isIdea;
-  // AC-28 — the clean (not-dirty) draft footer stacks: text on top, buttons
-  // underneath. The dirty footer keeps Discard/Save/Send side-by-side.
-  const footClean = !readOnly && !dirty;
+  const locked = file.status === 'in_review' || file.status === 'approved' || isIdea;
+  // AC-30 — only Draft/Returned have an edit view, and only while the screen
+  // is in edit mode. dirty implies the textarea already ran (edits exist), so
+  // it keeps the editor open even if the mode flag were stale.
+  const isEditing = isEditingCalc;
+  // AC-28 — the clean (not-dirty) Draft/Returned footer stacks: text on top,
+  // buttons underneath. The dirty footer keeps Discard/Save side-by-side.
+  // The locked-state footers keep their row layout (they read as status bars,
+  // not action rows).
+  const footClean = !locked && !isEditing && !dirty;
 
   return (
     <div className="ba-doc">
@@ -117,27 +136,26 @@ export function ArtifactEditor({
           <div className="skeleton" style={{ height: 14, width: '78%' }} />
           <div className="skeleton" style={{ height: 14, width: '85%' }} />
         </div>
-      ) : readOnly ? (
-        // Rendered markdown — In Review (s14: headings/tables/blockquote SA
-        // markup, not monospace), Approved (AC-27), and idea.md (AC-22
-        // reference). No View/Edit toggle for Draft/Returned (locked
-        // decision 9 — AC-23 deferred, plan §9.4): this is the read-only
-        // body of a locked state, not a separate tab.
-        <div className="ba-doc-body view" role="document" aria-label={`${file.title} (read-only)`}>
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{value}</ReactMarkdown>
-        </div>
-      ) : (
-        // States A/B — always the editable BA monospace textarea (locked
-        // decision 9).
+      ) : isEditing ? (
+        // AC-30 edit view — the BA monospace textarea. Entered via Edit;
+        // Discard/Save exit back to the read view (where Send lives).
         <div className="ba-doc-body edit">
           <textarea
             ref={textareaRef}
             className="ba-edit"
             spellCheck={false}
-            aria-label={`${file.title} contents`}
+            aria-label={`${file.title} contents (editing)`}
             value={value}
             onChange={(e) => onChange(e.target.value)}
           />
+        </div>
+      ) : (
+        // Rendered markdown read view — the default for every state: Draft/
+        // Returned preview (AC-30), In Review (s14: headings/tables/blockquote
+        // SA markup, not monospace), Approved (AC-27), and idea.md (AC-22
+        // reference).
+        <div className="ba-doc-body view" role="document" aria-label={`${file.title} (read-only)`}>
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{value}</ReactMarkdown>
         </div>
       )}
 
@@ -193,9 +211,13 @@ export function ArtifactEditor({
             <b>Project idea</b> — reference material from intake. It is not one of the 17 artifacts
             and has no review lifecycle.
           </div>
-        ) : dirty ? (
+        ) : isEditing ? (
+          // AC-30 edit view — Discard / Save only. Send lives in the read
+          // view so a half-typed draft can't be shipped to review.
           <>
-            <div className="left">Save keeps the edits on disk; sending reviews only this file.</div>
+            <div className="left">
+              <b>Editing</b> — save to keep the changes on disk; Send reappears on the read view.
+            </div>
             <div className="right">
               <button type="button" className="btn btn-ghost btn-pill" onClick={onDiscard}>
                 Discard
@@ -203,25 +225,48 @@ export function ArtifactEditor({
               <button type="button" className="btn btn-soft btn-pill" disabled={saving} onClick={onSave}>
                 Save changes
               </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                disabled={saving}
-                onClick={onSend}
-              >
+            </div>
+          </>
+        ) : file.status === 'returned' ? (
+          // AC-30 — Returned read view: edit to rework; the save itself moves
+          // the file back to Draft (the state machine's Returned ──▶ Draft
+          // edge) and unlocks Send there.
+          <>
+            <div className="left">
+              <b>Returned</b> by the SA — <b>Edit</b> to rework it; saving moves it back to Draft
+              and unlocks Send.
+            </div>
+            <div className="right">
+              <button type="button" className="btn btn-soft btn-pill" onClick={onEdit}>
+                Edit
+              </button>
+            </div>
+          </>
+        ) : file.editedSinceSend ? (
+          // AC-30 — the edit-complete gate has fired: Send is available (read
+          // view only, per the plan).
+          <>
+            <div className="left">Not yet sent for SA review — sending only this file.</div>
+            <div className="right">
+              <button type="button" className="btn btn-soft btn-pill" onClick={onEdit}>
+                Edit
+              </button>
+              <button type="button" className="btn btn-primary" onClick={onSend}>
                 Send for SA review →
               </button>
             </div>
           </>
         ) : (
+          // AC-30 — never-edited draft: no Send. Every document gets at least
+          // one BA edit-save before it can go to review (the on-record
+          // consequence Will confirmed via the plan).
           <>
-            <div className="left">Not yet sent for SA review — sending only this file.</div>
+            <div className="left">
+              <b>Preview</b> — send unlocks after you edit and save this document once.
+            </div>
             <div className="right">
-              <button type="button" className="btn btn-soft btn-pill" disabled={saving} onClick={onSave}>
-                Save changes
-              </button>
-              <button type="button" className="btn btn-primary" onClick={onSend}>
-                Send for review →
+              <button type="button" className="btn btn-soft btn-pill" onClick={onEdit}>
+                Edit
               </button>
             </div>
           </>

@@ -18,6 +18,7 @@ import {
   saveBaFile,
   transitionBaFile,
   type BaComment,
+  type BaFile,
   type BaFilesResponse,
 } from '../lib/api';
 import { ConfirmDialog } from './ConfirmDialog';
@@ -36,6 +37,19 @@ import { IdeaSummaryCard } from './ba-workspace/IdeaSummaryCard';
 // outside the 17-count/gate/status lifecycle (the server's allowlist never
 // accepts it for PUT/transition/comments either).
 const IDEA_FILE = 'idea.md';
+// AC-29 (plan §9.5) — the Idea band is client-synthesized, so idea.md is never
+// in filesData.files; resolving the open file from the server payload alone
+// made the editor see `null` and render "No artifact selected" even though the
+// body was fetched. This entry gives the editor the same file identity the
+// tree band shows (read-only, outside the review lifecycle).
+const IDEA_FILE_ENTRY: BaFile = {
+  filename: IDEA_FILE,
+  band: 'idea',
+  title: 'Project idea',
+  status: 'draft',
+  readOnly: true,
+  editedSinceSend: false,
+};
 import type { ProjectOutletContext } from './ProjectDetailScreen';
 
 type Notice = { kind: 'success' | 'error'; text: string };
@@ -129,12 +143,22 @@ export function ProjectBackgroundScreen() {
   const [pendingSelect, setPendingSelect] = useState<string | null>(null);
   const treeTriggerRef = useRef<HTMLDivElement>(null);
 
-  const selectedFile = filesData?.files.find((f) => f.filename === selected) ?? null;
+  // AC-29 — resolve the open file from the tree's full identity, not just the
+  // server payload: the synthesized Idea band never appears in filesData.files,
+  // so idea.md needs its own entry or the editor renders its empty branch.
+  const selectedFile =
+    filesData?.files.find((f) => f.filename === selected) ??
+    (selected === IDEA_FILE && filesData?.idea.available ? IDEA_FILE_ENTRY : null);
   const dirty = !bodyLoading && selectedFile !== null && draft !== savedBody;
+  // AC-30 (plan §9.5) — the editor's view/edit mode. Draft/Returned open on
+  // the rendered read view; Edit switches to the textarea. Reset on every
+  // open; Save exits back to the read view (where Send now lives).
+  const [editing, setEditing] = useState(false);
 
   const openFile = useCallback(
     async (filename: string) => {
       setSelected(filename);
+      setEditing(false); // AC-30 — every open lands on the read view.
       setBodyLoading(true);
       try {
         const data =
@@ -235,6 +259,7 @@ export function ProjectBackgroundScreen() {
     try {
       await saveBaFile(id ?? '', selectedFile.filename, draft);
       setSavedBody(draft);
+      setEditing(false); // AC-30 — a completed save returns to the read view.
       void loadFiles();
       showNotice({ kind: 'success', text: `Saved changes to ${selectedFile.filename}.` });
       return true;
@@ -402,15 +427,9 @@ export function ProjectBackgroundScreen() {
           {
             key: 'idea',
             label: 'Idea',
-            files: [
-              {
-                filename: IDEA_FILE,
-                band: 'idea',
-                title: 'Project idea',
-                status: 'draft',
-                readOnly: true,
-              } as const,
-            ],
+            // AC-29 — one entry shared with selectedFile's fallback, so the
+            // tree row and the editor describe the same file.
+            files: [IDEA_FILE_ENTRY],
           },
         ]
       : []),
@@ -553,9 +572,14 @@ export function ProjectBackgroundScreen() {
                 value={draft}
                 dirty={dirty}
                 saving={saving}
+                editing={editing}
                 commentCount={comments.length}
                 onChange={setDraft}
-                onDiscard={() => setDraft(savedBody)}
+                onDiscard={() => {
+                  setDraft(savedBody);
+                  setEditing(false);
+                }}
+                onEdit={() => setEditing(true)}
                 onSave={() => void handleSave()}
                 onSend={() => void handleSend()}
                 onReturn={() => void handleTransition('returned')}

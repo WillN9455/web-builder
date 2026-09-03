@@ -128,6 +128,11 @@ export type BaFile = {
   band: string;
   title: string;
   status: BaStatus;
+  // Plan §9.5 AC-30 — the Send gate: true once the BA has saved an edit since
+  // the last send (set on PUT, cleared on the transition to in_review). The
+  // read view only offers Send when this is true, so every document gets at
+  // least one human edit before it can go to review.
+  editedSinceSend: boolean;
 };
 
 export type BaFilesResponse = {
@@ -186,6 +191,17 @@ function readStatuses(projectId: number): Map<string, BaStatus> {
   return map;
 }
 
+// AC-30 — the filenames whose edited_since_send flag is set (BA saved an edit
+// since the last send). A file with no row has no edit either → not in the set.
+function readEditedSinceSend(projectId: number): Set<string> {
+  const rows = db
+    .prepare(
+      'SELECT filename FROM ba_artifacts_status WHERE project_id = ? AND edited_since_send = 1',
+    )
+    .all(projectId) as { filename: string }[];
+  return new Set(rows.map((r) => r.filename));
+}
+
 function isBaStatus(v: string): v is BaStatus {
   return v === 'draft' || v === 'in_review' || v === 'returned' || v === 'approved';
 }
@@ -195,6 +211,7 @@ function isBaStatus(v: string): v is BaStatus {
 function listFiles(row: ProjectRow): BaFile[] {
   const dir = prdDir(row);
   const statuses = readStatuses(row.id);
+  const edited = readEditedSinceSend(row.id);
   const files: BaFile[] = [];
   for (const band of BA_BANDS) {
     for (const filename of band.files) {
@@ -204,6 +221,7 @@ function listFiles(row: ProjectRow): BaFile[] {
         band: band.key,
         title: baTitle(filename),
         status: statuses.get(filename) ?? 'draft',
+        editedSinceSend: edited.has(filename),
       });
     }
   }
@@ -311,6 +329,8 @@ export function registerBaWorkspaceRoutes(app: express.Express): void {
   // without the state change; the BA sets it back to Draft first.
   // Saving a Returned file implicitly moves it back to Draft (the BA edited
   // it after the return — sitemap state machine's Returned ──▶ Draft edge).
+  // Every save sets edited_since_send = 1 (plan §9.5 AC-30): a save is the
+  // edit that unlocks Send for SA review — cleared again on the send itself.
   app.put('/api/projects/:id/ba-workspace/files/:filename', (req, res) => {
     const row = getProjectRow(req.params.id);
     if (!row) {
@@ -350,14 +370,16 @@ export function registerBaWorkspaceRoutes(app: express.Express): void {
     }
     if (status === 'returned') {
       db.prepare(
-        `UPDATE ba_artifacts_status SET status = 'draft', updated_at = datetime('now')
+        `UPDATE ba_artifacts_status
+         SET status = 'draft', edited_since_send = 1, updated_at = datetime('now')
          WHERE project_id = ? AND filename = ?`,
       ).run(row.id, filename);
     } else {
       db.prepare(
-        `INSERT INTO ba_artifacts_status (project_id, filename, status, updated_at)
-         VALUES (?, ?, ?, datetime('now'))
-         ON CONFLICT(project_id, filename) DO UPDATE SET updated_at = datetime('now')`,
+        `INSERT INTO ba_artifacts_status (project_id, filename, status, edited_since_send, updated_at)
+         VALUES (?, ?, ?, 1, datetime('now'))
+         ON CONFLICT(project_id, filename) DO UPDATE SET
+           edited_since_send = 1, updated_at = datetime('now')`,
       ).run(row.id, filename, status);
     }
     logActivity(row.id, 'BA', `Saved edits to ${filename}`, 'edit');
@@ -388,11 +410,24 @@ export function registerBaWorkspaceRoutes(app: express.Express): void {
       });
       return;
     }
+    // AC-30 — Send gating is server-enforced, not just UI: a document can
+    // only go to review after the BA has saved an edit to it (the PUT sets
+    // the flag). Keeps the state machine and the read view's Send button in
+    // agreement even for a direct API call.
+    if (to === 'in_review' && !readEditedSinceSend(row.id).has(filename)) {
+      res.status(409).json({
+        error:
+          'This document has not been edited yet — open Edit, save a change, then send it for review',
+      });
+      return;
+    }
     db.prepare(
       `INSERT INTO ba_artifacts_status (project_id, filename, status, updated_at)
        VALUES (?, ?, ?, datetime('now'))
        ON CONFLICT(project_id, filename) DO UPDATE SET status = excluded.status,
-         updated_at = datetime('now')`,
+         updated_at = datetime('now'),
+         edited_since_send = CASE WHEN excluded.status = 'in_review' THEN 0
+                                  ELSE ba_artifacts_status.edited_since_send END`,
     ).run(row.id, filename, to);
 
     const who: 'BA' | 'SA' = to === 'in_review' || to === 'draft' ? 'BA' : 'SA';

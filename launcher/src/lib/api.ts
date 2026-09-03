@@ -362,6 +362,11 @@ export type BaFile = {
   // rendered read-only, no status dot, no footer actions, never a PUT/POST
   // target (the server's 17-artifact allowlist enforces it too).
   readOnly?: boolean;
+  // AC-30 (plan §9.5) — the Send gate: true once the BA has saved an edit
+  // since the last send (server state — survives a reload). The read view
+  // only offers Send when this is set; the server's transition endpoint
+  // enforces the same rule for direct API calls.
+  editedSinceSend?: boolean;
 };
 
 export type BaCounts = {
