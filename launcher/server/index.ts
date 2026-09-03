@@ -8,6 +8,7 @@ import cors from 'cors';
 import fs from 'node:fs';
 import path from 'node:path';
 import { migrate, db } from './db.js';
+import { registerBaWorkspaceRoutes, countBaArtifacts } from './ba-workspace.js';
 import {
   validateProjectDir,
   scaffoldProjectDir,
@@ -40,6 +41,9 @@ migrate();
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
+
+// BA Workspace — Project Background tab (screens 12–14 + State D gate).
+registerBaWorkspaceRoutes(app);
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -1026,7 +1030,24 @@ app.get('/api/projects/:id', (req, res) => {
   const stages = db
     .prepare('SELECT stage_key, status, started_at, completed_at FROM stage WHERE project_id = ? ORDER BY id')
     .all(row.id);
-  res.json({ project: row, stages });
+  // Gate + badge data for the per-project shell (AC-8): context_confirmed
+  // feeds ProjectSidebar's locked rows (was the CONTEXT_CONFIRMED constant in
+  // src/lib/projectGate.ts); ba_artifact_count is the Project Background
+  // count chip (null → chip omitted when the PRD dir can't be read).
+  const context = db
+    .prepare('SELECT confirmed FROM ba_context WHERE project_id = ?')
+    .get(row.id) as { confirmed: number } | undefined;
+  const project = {
+    ...row,
+    context_confirmed: !!context?.confirmed,
+    ba_artifact_count: countBaArtifacts({
+      id: row.id,
+      name: row.name,
+      slug: row.slug,
+      folder_path: row.folder_path,
+    }),
+  };
+  res.json({ project, stages });
 });
 
 // Delete a project row. Resolves by numeric id or slug — mirrors the GET above
