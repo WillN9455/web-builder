@@ -2,6 +2,7 @@ import { Navigate, Outlet, Route, Routes } from 'react-router-dom';
 import { ProjectsScreen } from './components/ProjectsScreen';
 import { NewIdeaScreen } from './components/NewIdeaScreen';
 import { ProjectDetailScreen, ProjectTabScreen } from './components/ProjectDetailScreen';
+import { ProjectBackgroundScreen } from './components/ProjectBackgroundScreen';
 
 // Single-column frame for the screens without the per-project menu. The
 // two-column `.app` grid (sidebar + main) only applies inside an open
@@ -29,6 +30,10 @@ export default function App() {
       </Route>
       <Route path="/projects/:id" element={<ProjectDetailScreen />}>
         <Route index element={<Navigate to="overview" replace />} />
+        {/* Project Background has its own screen (BA Workspace, screens
+            12–14 + State D); the remaining tabs stay placeholders until
+            their Stage-2 tasks. Declared before `:tab` so it wins the match. */}
+        <Route path="background" element={<ProjectBackgroundScreen />} />
         <Route path=":tab" element={<ProjectTabScreen />} />
       </Route>
       <Route path="*" element={<Navigate to="/projects" replace />} />

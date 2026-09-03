@@ -1334,3 +1334,494 @@ button.oq-btn:focus-visible {
 
 .nav a.locked:hover::after,
 .nav a.locked:focus-within::after { opacity: 1; }
+
+/* ─── BA Workspace — Project Background (background.html s12/s13/s14) ───
+ * Ported from design/background.html's .ba-stage / .oqa / .ba-grid /
+ * .file-tree / .ba-doc / .review-thread blocks. No new tokens (plan: values
+ * come from tokens.css). State D's .state-d* block is at the bottom. */
+
+.ba-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Stage banner — a status counter, not a bulk action (sitemap zone 1). */
+.ba-stage {
+  display: flex; align-items: center; gap: 14px;
+  background: #fff;
+  border-radius: var(--r-xl);
+  padding: 16px 22px;
+  border: 1px solid rgba(50, 42, 92, 0.04);
+}
+.ba-stage .ico {
+  width: 40px; height: 40px;
+  border-radius: 12px;
+  background: var(--peach);
+  color: var(--coral);
+  display: grid; place-items: center;
+  flex: none;
+}
+.ba-stage .body { flex: 1; }
+.ba-stage .body .lbl {
+  font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--ink-2);
+}
+.ba-stage .body .ttl { font-size: 15px; font-weight: 700; color: var(--ink); }
+.ba-stage .body .sub { font-size: 12.5px; color: var(--ink-2); margin-top: 2px; }
+/* Status pills stack vertically (AC-14 — owner request) and right-align
+ * against the banner's edge; the banner grows taller, the pills keep their
+ * own styling. */
+.ba-stage .counts {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex: none;
+}
+.ba-stage .count-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  font-size: 11.5px; font-weight: 600;
+  color: var(--ink);
+  background: rgba(50, 42, 92, 0.04);
+}
+.ba-stage .count-pill b { font-family: var(--font-mono); }
+.ba-stage .count-pill .file-status { box-shadow: none; margin: 0; }
+
+/* Generation panel — the "BA Agent is drafting…" loading screen (addendum
+ * AC-19). Same card voice as the State D block; no new tokens. */
+.ba-gen {
+  background: #fff;
+  border-radius: var(--r-xl);
+  padding: 22px;
+  border: 1px solid rgba(50, 42, 92, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.ba-gen-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.ba-gen-head > div:nth-child(2) { flex: 1; }
+.ba-gen h3 { margin: 0 0 4px; font-size: 16px; color: var(--ink); }
+.ba-gen-head p { margin: 0; font-size: 12.5px; color: var(--ink-2); }
+.ba-gen-spinner {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  border: 3px solid var(--peach);
+  border-top-color: var(--coral);
+  animation: ba-gen-spin 0.9s linear infinite;
+  flex: none;
+}
+@keyframes ba-gen-spin { to { transform: rotate(360deg); } }
+.ba-gen-progress {
+  text-align: right;
+  flex: none;
+}
+.ba-gen-progress .n {
+  font-family: var(--font-mono);
+  font-size: 20px; font-weight: 700; color: var(--ink);
+}
+.ba-gen-progress .lbl {
+  font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--ink-2);
+}
+.ba-gen-current {
+  font-size: 13px; color: var(--ink-2);
+  padding: 10px 14px;
+  border-radius: var(--r-lg);
+  background: rgba(50, 42, 92, 0.04);
+}
+.ba-gen-current b { color: var(--ink); font-family: var(--font-mono); font-size: 12.5px; }
+.ba-gen-bands {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ba-gen-band {
+  display: flex; align-items: baseline; gap: 10px;
+  padding: 9px 14px;
+  border-radius: var(--r-lg);
+  border: 1px solid rgba(50, 42, 92, 0.06);
+}
+.ba-gen-band .n { font-family: var(--font-mono); font-size: 13px; font-weight: 700; color: var(--ink); min-width: 44px; }
+.ba-gen-band .lbl { font-size: 12.5px; color: var(--ink-2); }
+.ba-gen-foot { font-size: 12px; color: var(--ink-2); }
+.ba-gen-foot b { color: var(--ink); }
+
+/* Open-questions banner — butter yellow; sole action links to Overview. */
+.oqa {
+  background: var(--butter);
+  color: var(--ink);
+  border-radius: var(--r-lg);
+  padding: 12px 14px;
+  display: flex; align-items: center; gap: 10px;
+  font-size: 12.5px;
+}
+.oqa .ico { color: var(--amber); flex: none; }
+.oqa .body b { font-weight: 700; }
+.oqa a {
+  margin-left: auto;
+  color: var(--ink); font-weight: 600;
+  text-decoration: underline;
+}
+
+/* Post-confirm warning (locked decision 7 — keep unlocked, warn only). */
+.ba-warn {
+  background: var(--blush);
+  border-radius: var(--r-lg);
+  padding: 12px 14px;
+  font-size: 12.5px;
+  color: var(--ink);
+}
+
+/* Two-column workspace: 5-band tree + document editor. */
+.ba-grid {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 22px;
+  min-height: 640px;
+  align-items: start;
+}
+.ba-doc-col { display: flex; flex-direction: column; }
+.ba-doc-col > .review-thread {
+  background: #fff;
+  border: 1px solid rgba(50, 42, 92, 0.06);
+  border-top: 0;
+  border-radius: 0 0 var(--r-xl) var(--r-xl);
+}
+
+/* File tree (left rail). */
+.file-tree {
+  background: #fff;
+  border-radius: var(--r-xl);
+  padding: 16px 14px;
+  display: flex; flex-direction: column;
+  gap: 14px;
+}
+.file-tree-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 4px;
+}
+.file-tree-head h3 {
+  font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--ink-2);
+  margin: 0;
+}
+.file-tree-head .count {
+  font-family: var(--font-mono); font-size: 11px;
+  color: var(--ink-2);
+  background: rgba(50, 42, 92, 0.06);
+  padding: 2px 7px; border-radius: 999px;
+}
+.file-group { display: flex; flex-direction: column; gap: 2px; }
+.file-group-label {
+  font-size: 10.5px; font-weight: 700;
+  color: var(--ink-2);
+  text-transform: uppercase; letter-spacing: 0.08em;
+  padding: 6px 8px 4px;
+}
+.file {
+  display: flex; align-items: center; gap: 9px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 13px;
+  color: var(--ink);
+  cursor: pointer;
+  transition: background 100ms ease;
+}
+.file:hover { background: rgba(50, 42, 92, 0.05); }
+.file.active { background: var(--navy); color: #fff; }
+.file.active .file-ico { background: rgba(255, 255, 255, 0.15); color: #fff; }
+.file-name { font-weight: 500; }
+.file-ico {
+  width: 22px; height: 22px;
+  border-radius: 6px;
+  display: grid; place-items: center;
+  flex: none;
+  font-family: var(--font-mono); font-size: 9.5px;
+  font-weight: 700; letter-spacing: 0.04em;
+}
+/* Unsaved-edits inset — the coral bar on the open-but-dirty row (s13). */
+.file.flag { box-shadow: inset 3px 0 0 var(--coral); }
+
+/* Per-file review status — MD chip color + the trailing status dot. */
+.file-ico.draft     { background: var(--lavender); color: var(--purple); }
+.file-ico.review    { background: var(--butter);   color: var(--amber); }
+.file-ico.returned  { background: var(--blush);    color: var(--rose); }
+.file-ico.approved  { background: var(--mint);     color: var(--green); }
+.file-ico.in_review { background: var(--butter);   color: var(--amber); }
+.file.active .file-ico { background: rgba(255,255,255,0.15); color: #fff; }
+
+.file-status {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  margin-left: auto;
+  flex: none;
+}
+.file-status.draft     { background: var(--purple); }
+.file-status.in_review,
+.file-status.review    { background: var(--amber); box-shadow: 0 0 0 3px rgba(232, 185, 74, 0.18); }
+.file-status.returned  { background: var(--rose); box-shadow: 0 0 0 3px rgba(217, 122, 142, 0.18); }
+.file-status.approved  { background: var(--green); }
+
+/* Keyboard focus ring on tree rows (AC-12). */
+.file:focus-visible {
+  outline: 2px solid var(--navy);
+  outline-offset: 2px;
+}
+.file.active:focus-visible { outline-color: #fff; }
+
+/* Viewer / editor card (right pane). */
+.ba-doc {
+  background: #fff;
+  border-radius: var(--r-xl);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  min-height: 640px;
+}
+.ba-doc-head {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(50, 42, 92, 0.06);
+}
+.ba-doc-head .crumbs {
+  font-family: var(--font-mono); font-size: 11.5px;
+  color: var(--ink-2);
+  display: flex; align-items: center; gap: 8px;
+}
+.ba-doc-head .crumbs b { color: var(--ink); font-weight: 600; }
+.ba-doc-head .title { font-size: 14px; font-weight: 700; }
+.ba-doc-head .meta {
+  margin-left: auto;
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11.5px; color: var(--ink-2);
+}
+.ba-doc-empty {
+  flex: 1;
+  display: grid; place-content: center;
+  text-align: center;
+  gap: 4px;
+  padding: 40px;
+}
+.ba-doc-empty h3 { margin: 0; font-size: 15px; }
+.ba-doc-empty p { margin: 0; font-size: 12.5px; color: var(--ink-2); }
+
+/* Rendered-markdown review body (s14 — In Review (SA) read-only state). */
+.ba-doc-body {
+  flex: 1;
+  padding: 22px 26px;
+  overflow-y: auto;
+  display: flex; flex-direction: column; gap: 18px;
+}
+.ba-doc-body.view { font-size: 13.5px; line-height: 1.65; color: var(--ink); display: block; }
+.ba-doc-body.view h1, .ba-doc-body.view h2, .ba-doc-body.view h3 { letter-spacing: -0.01em; margin: 14px 0 4px; }
+.ba-doc-body.view h1:first-child { margin-top: 0; }
+.ba-doc-body.view h1 { font-size: 22px; }
+.ba-doc-body.view h2 { font-size: 17px; }
+.ba-doc-body.view h3 { font-size: 14px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-2); }
+.ba-doc-body.view p { margin: 6px 0; }
+.ba-doc-body.view code {
+  font-family: var(--font-mono); font-size: 12.5px;
+  background: rgba(50, 42, 92, 0.06);
+  padding: 1px 5px; border-radius: 4px;
+}
+.ba-doc-body.view pre {
+  background: rgba(50, 42, 92, 0.04);
+  border-radius: 12px;
+  padding: 14px 16px;
+  font-family: var(--font-mono); font-size: 12px;
+  overflow-x: auto;
+}
+.ba-doc-body.view blockquote {
+  border-left: 3px solid var(--purple);
+  background: var(--lavender);
+  padding: 10px 14px;
+  border-radius: 0 10px 10px 0;
+  margin: 10px 0;
+}
+.ba-doc-body.view table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.ba-doc-body.view th, .ba-doc-body.view td {
+  padding: 9px 12px; text-align: left;
+  border-bottom: 1px solid rgba(50, 42, 92, 0.06);
+}
+.ba-doc-body.view th { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-2); }
+
+/* Editor textarea — always the BA monospace field (locked decision 9). */
+.ba-doc-body.edit { padding: 0; }
+.ba-edit {
+  flex: 1;
+  width: 100%;
+  border: 0; outline: 0; resize: none;
+  background: transparent;
+  font-family: var(--font-mono); font-size: 12.5px;
+  line-height: 1.65;
+  color: var(--ink);
+  padding: 22px 26px;
+  min-height: 560px;
+}
+.ba-edit:focus-visible { outline: none; }
+
+/* Status-aware footer (Save / Send / Return / Approve). */
+.ba-doc-foot {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 18px;
+  border-top: 1px solid rgba(50, 42, 92, 0.06);
+  background: rgba(50, 42, 92, 0.02);
+}
+.ba-doc-foot .left { font-size: 12px; color: var(--ink-2); }
+.ba-doc-foot .left b { color: var(--ink); font-weight: 600; }
+.ba-doc-foot .right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+
+/* Inline review thread (State C). */
+.review-thread {
+  background: rgba(50, 42, 92, 0.02);
+  padding: 16px 22px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.review-thread .thread-head {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 12px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--ink-2);
+}
+.review-thread .thread-head .who {
+  margin-left: auto; font-size: 11.5px;
+  color: var(--ink-2); font-weight: 500;
+  text-transform: none; letter-spacing: 0;
+}
+.review-thread .comment {
+  display: flex; gap: 10px;
+  background: #fff;
+  border: 1px solid rgba(50, 42, 92, 0.06);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+.review-thread .comment.sa { border-left: 3px solid var(--amber); }
+.review-thread .comment.ba { border-left: 3px solid var(--peach); }
+.review-thread .comment .av-sm {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 11px; font-weight: 700;
+  color: var(--ink); flex: none;
+}
+.review-thread .comment.sa .av-sm { background: var(--butter); }
+.review-thread .comment.ba .av-sm { background: var(--peach); }
+.review-thread .comment .body { flex: 1; font-size: 13px; line-height: 1.55; }
+.review-thread .comment .body .who { font-size: 12px; font-weight: 600; color: var(--ink); }
+.review-thread .comment .body .who span { color: var(--ink-2); font-weight: 400; margin-left: 6px; }
+.review-thread .comment .body p { margin: 4px 0 0; color: var(--ink); }
+.review-thread .compose {
+  display: flex; gap: 10px; align-items: end;
+  background: #fff;
+  border: 1px solid rgba(50, 42, 92, 0.06);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+.review-thread .compose textarea {
+  flex: 1; border: 0; outline: 0; resize: none;
+  font: inherit; font-size: 13px;
+  color: var(--ink);
+  background: transparent;
+  min-height: 38px;
+}
+.review-thread .compose .ba-compose-av {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 11px; font-weight: 700;
+  background: var(--peach); color: var(--ink);
+  flex: none;
+}
+
+/* Error / empty cards for the workspace (API down, no PRD dir). */
+.ba-error-card {
+  background: #fff;
+  border-radius: var(--r-xl);
+  padding: 28px 32px;
+  max-width: 620px;
+}
+.ba-error-card h3 { margin: 0 0 6px; font-size: 16px; }
+.ba-error-card .sub { margin: 0 0 14px; }
+.ba-error-card .actions-row { display: flex; gap: 8px; }
+
+/* ─── State D — context-ready confirmation view (background.html #sD) ─── */
+.state-d {
+  background: #fff;
+  border: 1px solid rgba(50,42,92,0.08);
+  border-radius: 16px;
+  padding: 28px 32px;
+  max-width: 760px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.state-d-head { display: flex; align-items: center; gap: 12px; }
+.state-d-check {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: var(--mint);
+  display: grid; place-items: center;
+  color: var(--green); flex: none;
+}
+.state-d-head h3 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
+.state-d-head p { margin: 2px 0 0; font-size: 13px; color: var(--ink-2); }
+.state-d-summary { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.state-d-band {
+  background: var(--mint);
+  border-radius: 10px;
+  padding: 12px;
+  text-align: center;
+}
+.state-d-band .n { font-size: 22px; font-weight: 700; color: var(--ink); }
+.state-d-band .lbl { font-size: 11px; color: var(--ink-2); margin-top: 2px; }
+.state-d-explainer {
+  background: var(--lavender);
+  border-radius: 12px;
+  padding: 14px 16px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+.state-d-list {
+  border: 1px solid rgba(50,42,92,0.08);
+  border-radius: 12px;
+  overflow: hidden;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.state-d-list-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  padding: 10px 14px;
+  font-size: 13px;
+  border-bottom: 1px solid rgba(50,42,92,0.06);
+}
+.state-d-list-row:last-child { border-bottom: 0; }
+.state-d-list-row .path { font-family: var(--font-mono); font-size: 12px; color: var(--ink-2); }
+.state-d-list-row .ok {
+  color: var(--green); font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  display: flex; align-items: center; gap: 4px;
+}
+.state-d-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.state-d-foot {
+  font-size: 11px; color: var(--ink-2);
+  display: flex; align-items: center; gap: 6px;
+}
+
+/* Narrow screens: collapse the workspace grid to one column (the shell's
+ * `.side { display: none }` breakpoint at 980px). */
+@media (max-width: 980px) {
+  .ba-grid { grid-template-columns: 1fr; min-height: 0; }
+  .ba-stage { flex-direction: column; align-items: flex-start; }
+  .ba-stage .counts { flex-wrap: wrap; }
+}

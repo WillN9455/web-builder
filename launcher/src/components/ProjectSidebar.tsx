@@ -3,13 +3,15 @@ import type { ReactElement } from 'react';
 
 // The 10 per-project menu tabs, in mockup #s3 order (`design/mockups.html`,
 // screen 3 sidebar). `gated` tabs are locked behind project-context
-// confirmation (mockup N11b locked-row pattern) until src/lib/projectGate.ts
+// confirmation (mockup N11b locked-row pattern) until the project's
+// context_confirmed flag (State D one-shot, served on GET /api/projects/:id)
 // flips.
-// TODO(count): the mockup shows count chips on Project Background (7),
+// TODO(count): Project Background's chip is live (badge = artifact count from
+// the project detail payload, AC-1). The mockup also shows count chips on
 // Requirements (14), Build (12) and QA (3), but the API has no source for
-// those counts — chips are omitted this PR rather than rendering invented
-// numbers (plan AC-6). Sprint's badge is "—" in design/sitemap.md; the
-// mockup's "12" is sample data, so Sprint never gets one.
+// those counts — chips stay omitted rather than rendering invented numbers.
+// Sprint's badge is "—" in design/sitemap.md; the mockup's "12" is sample
+// data, so Sprint never gets one.
 export type ProjectTabKey =
   | 'overview'
   | 'background'
@@ -143,8 +145,12 @@ export const PROJECT_TABS: readonly ProjectTab[] = [
 
 type ProjectSidebarProps = {
   projectId: string;
-  // Gate state — src/lib/projectGate.ts until the confirmation API exists.
+  // Gate state — context_confirmed from the project detail payload (State D's
+  // one-shot confirm; was the src/lib/projectGate.ts compile-time constant).
   confirmed: boolean;
+  // Project Background's count chip (total artifacts, 17 max). Null/0 → chip
+  // omitted (no PRD/ folder yet, or the folder can't be read).
+  backgroundCount?: number | null;
 };
 
 // Per-project sidebar, ported from mockup #s3: brand block, "Menu" label, the
@@ -152,7 +158,7 @@ type ProjectSidebarProps = {
 // are still locked render the N11b locked-row pattern: a keyboard-focusable
 // anchor with aria-disabled, full readable label, a "Confirm project context
 // first" tooltip on hover/focus, and no navigation on click.
-export function ProjectSidebar({ projectId, confirmed }: ProjectSidebarProps) {
+export function ProjectSidebar({ projectId, confirmed, backgroundCount }: ProjectSidebarProps) {
   return (
     <aside className="side">
       <div className="brand">
@@ -189,6 +195,9 @@ export function ProjectSidebar({ projectId, confirmed }: ProjectSidebarProps) {
               >
                 {tab.icon}
                 <span className="lbl">{tab.label}</span>
+                {tab.key === 'background' && !!backgroundCount && (
+                  <span className="count">{backgroundCount}</span>
+                )}
               </NavLink>
             );
           })}

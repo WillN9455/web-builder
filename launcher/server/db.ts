@@ -101,9 +101,59 @@ CREATE TABLE IF NOT EXISTS kanban_card (
   updated_at      TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 
+-- BA Workspace (Project Background tab): per-file review state for the 17
+-- PRD artifacts. Rows are created lazily — a file with no row is 'draft'.
+CREATE TABLE IF NOT EXISTS ba_artifacts_status (
+  project_id  INTEGER NOT NULL REFERENCES project(id) ON DELETE CASCADE,
+  filename    TEXT    NOT NULL,
+  status      TEXT    NOT NULL CHECK (status IN ('draft','in_review','returned','approved')),
+  updated_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (project_id, filename)
+);
+
+-- BA Workspace inline review comments (screens 14's thread).
+CREATE TABLE IF NOT EXISTS ba_file_comment (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id  INTEGER NOT NULL REFERENCES project(id) ON DELETE CASCADE,
+  filename    TEXT    NOT NULL,
+  author      TEXT    NOT NULL CHECK (author IN ('BA','SA')),
+  body        TEXT    NOT NULL,
+  created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+);
+
+-- State D's one-shot context confirmation (the gate). A separate table —
+-- not a column on 'project' — so the project-table CHECK-rebuild helper in
+-- migrateSchema stays untouched and confirming never needs a project-table
+-- migration. 'confirmed' never resets to 0: the unlock does not re-arm.
+CREATE TABLE IF NOT EXISTS ba_context (
+  project_id   INTEGER PRIMARY KEY REFERENCES project(id) ON DELETE CASCADE,
+  confirmed    INTEGER NOT NULL DEFAULT 0 CHECK (confirmed IN (0,1)),
+  confirmed_at TEXT
+);
+
+-- BA generation state (plan addendum AC-17): the BA agent auto-drafts the 17
+-- PRD artifacts after intake. Sibling of ba_context for the same reason — a
+-- separate table keeps the project/stage CHECK-rebuild helper in migrateSchema
+-- untouched. state = pending|generating|done|failed; count = how many of the
+-- 17 exist on disk right now (skip-if-exists makes this monotonic within a
+-- run). updated_at doubles as the heartbeat: readGenerationState() resolves a
+-- pending/generating row with a stale heartbeat to failed + retry (an in-flight
+-- job does not survive a server restart).
+CREATE TABLE IF NOT EXISTS ba_generation (
+  project_id   INTEGER PRIMARY KEY REFERENCES project(id) ON DELETE CASCADE,
+  state        TEXT    NOT NULL DEFAULT 'pending'
+               CHECK (state IN ('pending','generating','done','failed')),
+  current_file TEXT,
+  count        INTEGER NOT NULL DEFAULT 0,
+  error        TEXT,
+  updated_at   TEXT    NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE INDEX IF NOT EXISTS idx_project_updated  ON project(updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_stage_project    ON stage(project_id);
 CREATE INDEX IF NOT EXISTS idx_kanban_project   ON kanban_card(project_id);
+CREATE INDEX IF NOT EXISTS idx_ba_status_project ON ba_artifacts_status(project_id);
+CREATE INDEX IF NOT EXISTS idx_ba_generation_project ON ba_generation(project_id);
 `;
 
 export function migrate(): void {

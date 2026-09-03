@@ -1,14 +1,20 @@
 import { useEffect, useState } from 'react';
 import { Navigate, Outlet, useNavigate, useOutletContext, useParams } from 'react-router-dom';
 import { fetchProject, type ProjectDetailResponse } from '../lib/api';
-import { CONTEXT_CONFIRMED } from '../lib/projectGate';
 import { PROJECT_TABS, ProjectSidebar } from './ProjectSidebar';
 
 type ProjectInfo = ProjectDetailResponse['project'];
 
-// Shared with ProjectTabScreen (the Outlet child) so the tab panel can render
-// the shell's loading / error states in place of its own content.
-type ProjectOutletContext = { project: ProjectInfo | null; error: string | null };
+// Shared with the Outlet children (ProjectTabScreen, ProjectBackgroundScreen)
+// so a tab panel can render the shell's loading / error states in place of
+// its own content. onContextConfirmed lets ProjectBackgroundScreen flip the
+// gate in the shell's state after a successful State D confirm — the sidebar
+// unlocks immediately, no reload (AC-7).
+export type ProjectOutletContext = {
+  project: ProjectInfo | null;
+  error: string | null;
+  onContextConfirmed: () => void;
+};
 
 // Project shell — the open-project layout: per-project sidebar + main column
 // (topbar + the active tab's panel via <Outlet/>). Routes live in App.tsx:
@@ -41,7 +47,11 @@ export function ProjectDetailScreen() {
 
   return (
     <div className="app">
-      <ProjectSidebar projectId={id ?? ''} confirmed={CONTEXT_CONFIRMED} />
+      <ProjectSidebar
+        projectId={id ?? ''}
+        confirmed={project?.context_confirmed ?? false}
+        backgroundCount={project?.ba_artifact_count ?? null}
+      />
       <main className="main" aria-busy={project === null && error === null}>
         <header className="topbar">
           <button type="button" className="btn-link" onClick={() => navigate('/projects')}>
@@ -50,19 +60,28 @@ export function ProjectDetailScreen() {
           <h1 style={{ marginLeft: 12 }}>{project?.name ?? id}</h1>
         </header>
 
-        <Outlet context={{ project, error } satisfies ProjectOutletContext} />
+        <Outlet
+          context={
+            {
+              project,
+              error,
+              onContextConfirmed: () =>
+                setProject((p) => (p ? { ...p, context_confirmed: true } : p)),
+            } satisfies ProjectOutletContext
+          }
+        />
       </main>
     </div>
   );
 }
 
-// The active tab's panel. Tab contents (Overview dashboard, Project
-// Background workspace, Sprint board, …) each ship in their own Stage-2 task
-// — this PR renders the menu + navigation only, so every tab gets a
-// placeholder panel naming the tab. Unknown or still-locked tab routes snap
-// back to Overview rather than rendering a dead URL; while the project is
-// loading, or if it failed to load, the shell's loading / error state shows
-// here instead of a panel.
+// The active tab's panel. Tab contents (Overview dashboard, Sprint board, …)
+// each ship in their own Stage-2 task — this PR renders the menu + navigation
+// only, so every tab except Project Background gets a placeholder panel
+// naming the tab. Unknown or still-locked tab routes snap back to Overview
+// rather than rendering a dead URL; while the project is loading, or if it
+// failed to load, the shell's loading / error state shows here instead of a
+// panel.
 export function ProjectTabScreen() {
   const { id, tab } = useParams();
   const navigate = useNavigate();
@@ -70,11 +89,6 @@ export function ProjectTabScreen() {
   const current = PROJECT_TABS.find((t) => t.key === tab);
   if (!id || !current) {
     return <Navigate to={id ? `/projects/${id}/overview` : '/projects'} replace />;
-  }
-  if (current.gated && !CONTEXT_CONFIRMED) {
-    // Deep link to a gated tab while the gate is closed — Overview is the
-    // only reachable landing (sitemap: the gate blocks Sprint/Design/Build/QA).
-    return <Navigate to={`/projects/${id}/overview`} replace />;
   }
   if (error) {
     return (
@@ -103,6 +117,13 @@ export function ProjectTabScreen() {
         </div>
       </div>
     );
+  }
+  if (current.gated && !project.context_confirmed) {
+    // Deep link to a gated tab while the gate is closed — Overview is the
+    // only reachable landing (sitemap: the gate blocks Sprint/Design/Build/QA).
+    // Checked after the load resolves so a confirmed project deep-linked to a
+    // gated tab isn't bounced while its row is still loading.
+    return <Navigate to={`/projects/${id}/overview`} replace />;
   }
   return (
     <div className="center-stage" style={{ minHeight: 400 }}>
