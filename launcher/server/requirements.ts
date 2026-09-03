@@ -74,6 +74,9 @@ function serializeReq(r: ReqRow) {
     // the parse step). The UI uses this to label the row in the right
     // group without re-parsing the file.
     storyUsId: r.storyUsId,
+    // 'manual' = BA wrote it via the UI; 'generated' = an agent wrote it;
+    // null = legacy row, predates the marker.
+    origin: r.origin,
   };
 }
 
@@ -441,11 +444,12 @@ export function registerRequirementsRoutes(app: express.Express): void {
       }
       const id = nextFreeId(liveReqIds(parseRequirements(text, '')).filter((x) => x.startsWith('BR-')), 'BR');
       // Always link a BR to its creating story — refinement batch item 2.7.
-      // The link lives as `<!-- BR-NNN: story=US-NN -->` directly after the
-      // row so the next parse reads it. The UI's "unassigned" group
-      // therefore renders only legacy BRs and BRs whose story id is gone.
+      // The link lives as `<!-- BR-NNN: story=US-NN, origin=manual -->` directly
+      // after the row so the next parse reads it. origin=manual is the BA's
+      // stamp today; the future BA auto-draft job will write origin=generated
+      // (item 2.6 — this commit only ships the marker plumbing).
       const row1 = renderReqRow(id, value.priority, value.status, value.owner, value.text);
-      const meta = `<!-- ${id}: story=${req.params.usId} -->`;
+      const meta = `<!-- ${id}: story=${req.params.usId}, origin=manual -->`;
       const lines = insertAfter(prdLines, idx, [row1, meta]);
       try {
         await atomicWritePrd(prdPath, lines.join('\n'));
@@ -463,6 +467,7 @@ export function registerRequirementsRoutes(app: express.Express): void {
           owner: value.owner,
           text: value.text,
           storyUsId: req.params.usId,
+          origin: 'manual',
         },
       });
       return;

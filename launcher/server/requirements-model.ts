@@ -127,6 +127,13 @@ export type ReqRow = {
   // When null the BR is "unassigned" and lives in its own standalone group
   // in the UI until the BA attaches it.
   storyUsId: string | null;
+  // Where this requirement came from (refinement batch item 2.6):
+  //   manual    — written by the BA via the UI
+  //   generated — written by a code/design agent (the future BA auto-draft
+  //               job, plan §6); the BA can promote / edit / delete them
+  //               like any other row
+  // null on legacy rows that pre-date the marker.
+  origin: 'manual' | 'generated' | null;
   lineIndex: number;
   raw: string;
 };
@@ -230,21 +237,27 @@ function parseStoryBody(raw: string): { asA: string; iWantTo: string; soThat: st
 const BR_META_RE = /^<!--\s*(BR-\d{3}):\s*(.*?)\s*-->$/;
 
 // Split a `<!-- BR-NNN: k=v, k=v -->` body into key/value pairs. Unknown keys
-// are ignored silently so this stays forward-compatible with new markers
-// (e.g. `origin=` from item 2.6 will land in the next batch).
-function parseBrMeta(body: string): { storyUsId: string | null; other: Record<string, string> } {
+// are ignored silently so this stays forward-compatible with new markers.
+function parseBrMeta(body: string): {
+  storyUsId: string | null;
+  origin: 'manual' | 'generated' | null;
+  other: Record<string, string>;
+} {
   const other: Record<string, string> = {};
   let storyUsId: string | null = null;
+  let origin: 'manual' | 'generated' | null = null;
   for (const m of body.matchAll(/(\w+)\s*=\s*([^,\s]+)(?:,|$)/g)) {
     const key = m[1].toLowerCase();
     const val = m[2];
     if (key === 'story' && /^US-\d{2,}$/.test(val)) {
       storyUsId = val;
+    } else if (key === 'origin' && (val === 'manual' || val === 'generated')) {
+      origin = val;
     } else if (/^[a-z][a-z0-9_]*$/i.test(key)) {
       other[key] = val;
     }
   }
-  return { storyUsId, other };
+  return { storyUsId, origin, other };
 }
 
 // Parse the BR- rows out of prd.md. Tolerant: scans every list item in the
@@ -262,13 +275,18 @@ export function parseBusinessReqs(prd: string): { rows: ReqRow[]; parseError: st
     if (!fields.text) continue; // a bare ID with no text isn't a row
 
     // Look one line ahead for the row's metadata comment. Comments are
-    // tolerated as missing — unlinked BRs default to storyUsId=null.
+    // tolerated as missing — unlinked BRs default to storyUsId=null and
+    // origin-less BRs default to null (legacy rows; new writes stamp
+    // origin=manual, the future BA auto-draft will stamp origin=generated).
     let storyUsId: string | null = null;
+    let origin: 'manual' | 'generated' | null = null;
     const nextRaw = lines[i + 1];
     if (nextRaw) {
       const cm = nextRaw.trim().match(BR_META_RE);
       if (cm && cm[1] === m[1]) {
-        storyUsId = parseBrMeta(cm[2]).storyUsId;
+        const meta = parseBrMeta(cm[2]);
+        storyUsId = meta.storyUsId;
+        origin = meta.origin;
       }
     }
 
@@ -277,6 +295,7 @@ export function parseBusinessReqs(prd: string): { rows: ReqRow[]; parseError: st
       type: 'BR',
       ...fields,
       storyUsId,
+      origin,
       lineIndex: i,
       raw,
     });
@@ -355,7 +374,10 @@ export function parseStories(journeys: string): { stories: StoryRow[]; parseErro
             ...fields,
             // TRs implicitly live in their story block; the storyUsId is the
             // block's heading id, set after parseStories collects them.
+            // TR origin is null in v1 — only the BR auto-draft job writes
+            // origin=generated today; the BA never synthesizes TRs.
             storyUsId: null,
+            origin: null,
             lineIndex: i,
             raw: line,
           });

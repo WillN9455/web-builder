@@ -557,6 +557,13 @@ export type RequirementItem = {
   status: ReqStatus | null;
   owner: ReqOwner | null;
   text: string;
+  // Story link (item 2.7): BRs can be linked to a story via a meta comment;
+  // TRs always carry their block's usId. null = unassigned (BR) / null (TR
+  // before the parse stamp) — see RequirementItem.storyUsId.
+  storyUsId: string | null;
+  // Origin tag (item 2.6): manual = BA wrote it via the UI; generated = an
+  // agent wrote it; null = legacy row predating the marker.
+  origin: 'manual' | 'generated' | null;
 };
 
 export type StoryItem = {

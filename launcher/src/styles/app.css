@@ -1938,7 +1938,15 @@ button.oq-btn:focus-visible {
 }
 .req:first-child { border-top: 0; }
 .req:hover { background: rgba(50,42,92,0.02); }
-.req-id { font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--ink-2); }
+.req-id { font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--ink-2); display: inline-flex; align-items: center; gap: 6px; }
+.req-origin-dot {
+  display: inline-block;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  vertical-align: middle;
+}
+.req-origin-dot.req-origin-manual    { background: var(--blue); }
+.req-origin-dot.req-origin-generated { background: var(--coral); box-shadow: 0 0 0 2px rgba(255,140,140,0.18); }
 .req-text { color: var(--ink); line-height: 1.5; }
 .req-type {
   display: inline-flex; align-items: center; justify-content: center;

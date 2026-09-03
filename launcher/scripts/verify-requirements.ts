@@ -241,7 +241,7 @@ async function main(): Promise<void> {
       {
         added: [
           brAfter.split('\n').find((l) => l.startsWith('- BR-003 |')) ?? '',
-          '<!-- BR-003: story=US-03 -->',
+          '<!-- BR-003: story=US-03, origin=manual -->',
         ],
         removed: [],
       },
@@ -262,6 +262,15 @@ async function main(): Promise<void> {
       'legacy BRs (no link) stay in businessReqs (item 2.7)',
       afterBrGet.body?.businessReqs?.map((b: any) => b.id).sort().join(','),
       ['BR-001', 'BR-002', 'BR-004'].sort().join(','),
+    );
+    eq(
+      'BR-003 carries origin=manual (item 2.6)',
+      storyForUs03?.reqs?.find((r: any) => r.id === 'BR-003')?.origin,
+      'manual',
+    );
+    check(
+      'legacy BR-001 carries origin=null (item 2.6)',
+      afterBrGet.body?.businessReqs?.find((b: any) => b.id === 'BR-001')?.origin === null,
     );
 
     // ── POST TR → the story block ──

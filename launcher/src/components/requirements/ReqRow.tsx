@@ -33,7 +33,20 @@ export function ReqRow({ req, statusPending, onEdit, onDelete, onStatusChange, e
   return (
     <>
       <div className={`req ${statusPending ? 'req-pending' : ''}`} role="listitem">
-        <span className="req-id">{req.id}</span>
+        <span className="req-id">
+          {req.id}
+          {req.origin ? (
+            <span
+              className={`req-origin-dot req-origin-${req.origin}`}
+              title={
+                req.origin === 'generated'
+                  ? `${req.id} was written by a code/design agent`
+                  : `${req.id} was written by the BA`
+              }
+              aria-label={req.origin === 'generated' ? 'Auto-generated' : 'Manually written'}
+            />
+          ) : null}
+        </span>
         <span className="req-text">{req.text}</span>
         <span className={`req-type ${req.type === 'BR' ? 'type-br' : 'type-tr'}`}>
           {req.type === 'BR' ? 'Business' : 'Technical'}
