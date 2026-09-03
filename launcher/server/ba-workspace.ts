@@ -18,6 +18,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { db } from './db.js';
 import { readGenerationState, retryBaGeneration, type BaGeneration } from './ba-draft.js';
+import { readIdeaSummary, retryIdeaSummary } from './idea-summary.js';
 
 // ── The 17 artifacts across 5 bands (sitemap § Project Background tab) ────
 // The sitemap list is canonical — the s12 mockup tree omits personas.md, and
@@ -85,10 +86,16 @@ export function baTitle(filename: string): string {
 
 // ── Per-file review state machine ──────────────────────────────────────────
 // Draft ──Send──▶ In Review ──┬─Return──▶ Returned ──(BA saves)──▶ Draft
-//                             └─Approve─▶ Approved (terminal)
+//                             └─Approve─▶ Approved ──Set back──▶ Draft
 // Sitemap locked decision 6: the terminal state is `approved` ("Completed"
 // renamed). The Returned → Draft edge is implicit: saving a returned file
 // (PUT) puts it back to draft — the BA edited it after the return.
+// NOTE (plan §9.4, AC-27): approved is no longer terminal — the SA-approved
+// ruling from the #18 review was deliberately reversed by the product owner
+// (Will, 2026-09-03). The edge is BA-initiated via the card's "Set back to
+// Draft" and re-opens the file for editing; the State D gate still requires
+// all 17 approved, so un-approving after confirm trips the existing
+// contextChangedSinceConfirm warning (locked decision 7).
 
 export type BaStatus = 'draft' | 'in_review' | 'returned' | 'approved';
 
@@ -96,7 +103,7 @@ export const BA_TRANSITIONS: Readonly<Record<BaStatus, readonly BaStatus[]>> = {
   draft: ['in_review'],
   in_review: ['returned', 'approved'],
   returned: ['in_review'],
-  approved: [],
+  approved: ['draft'],
 };
 
 export function baStatusLabel(status: BaStatus): string {
@@ -141,6 +148,10 @@ export type BaFilesResponse = {
   // the project never had a generation run (the screen's empty state and its
   // manual-trigger button own that case). The screen polls this one endpoint.
   generation: BaGeneration | null;
+  // idea.md availability (plan §9.4 AC-22): the client synthesizes the tree's
+  // top "Idea" band from it; the body comes from GET .../idea. Availability
+  // only — idea.md is reference material, never in the 17-count/gate/status.
+  idea: { available: boolean };
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -266,6 +277,7 @@ export function registerBaWorkspaceRoutes(app: express.Express): void {
       contextConfirmed: confirmed,
       contextChangedSinceConfirm: confirmed && !contextReady,
       generation: readGenerationState(row.id),
+      idea: { available: fs.existsSync(path.join(resolveProjectFolder(row), 'idea.md')) },
     } satisfies BaFilesResponse);
   });
 
@@ -294,7 +306,9 @@ export function registerBaWorkspaceRoutes(app: express.Express): void {
   });
 
   // PUT /files/:filename — save body (write-back to the on-disk PRD/).
-  // 409 while the file is In Review (SA) — the body is locked during review.
+  // 409 while the file is In Review (SA) — the body is locked during review —
+  // or Approved (R12, plan §9.4/AC-27 note): an approved body can never change
+  // without the state change; the BA sets it back to Draft first.
   // Saving a Returned file implicitly moves it back to Draft (the BA edited
   // it after the return — sitemap state machine's Returned ──▶ Draft edge).
   app.put('/api/projects/:id/ba-workspace/files/:filename', (req, res) => {
@@ -322,6 +336,10 @@ export function registerBaWorkspaceRoutes(app: express.Express): void {
     const status = readStatuses(row.id).get(filename) ?? 'draft';
     if (status === 'in_review') {
       res.status(409).json({ error: 'File is In Review (SA) — return it to the BA before editing' });
+      return;
+    }
+    if (status === 'approved') {
+      res.status(409).json({ error: 'File is Approved — set it back to Draft before editing' });
       return;
     }
     try {
@@ -377,13 +395,15 @@ export function registerBaWorkspaceRoutes(app: express.Express): void {
          updated_at = datetime('now')`,
     ).run(row.id, filename, to);
 
-    const who: 'BA' | 'SA' = to === 'in_review' ? 'BA' : 'SA';
+    const who: 'BA' | 'SA' = to === 'in_review' || to === 'draft' ? 'BA' : 'SA';
     const verb =
       to === 'in_review'
         ? 'Sent for SA review'
         : to === 'returned'
           ? 'Returned to BA'
-          : 'Approved';
+          : to === 'draft'
+            ? 'Set back to Draft'
+            : 'Approved';
     logActivity(row.id, who, `${verb}: ${filename}`, 'milestone');
     res.json({ ok: true, filename, status: to });
   });
@@ -448,6 +468,61 @@ export function registerBaWorkspaceRoutes(app: express.Express): void {
       return;
     }
     res.json({ blockerCount: countPrdApprovalBlockers(prdDir(row)) });
+  });
+
+  // GET /idea — the raw idea.md body (plan §9.4 AC-22). Read-only reference
+  // material: it is deliberately NOT behind allowedFilename (the 17-artifact
+  // allowlist), so PUT/transition/comments can never touch it. Read from the
+  // project folder root — the file intake wrote — never a request path.
+  app.get('/api/projects/:id/ba-workspace/idea', (req, res) => {
+    const row = getProjectRow(req.params.id);
+    if (!row) {
+      res.status(404).json({ error: 'Not found' });
+      return;
+    }
+    const ideaPath = path.join(resolveProjectFolder(row), 'idea.md');
+    if (!fs.existsSync(ideaPath)) {
+      res.status(404).json({ error: 'idea.md not on disk' });
+      return;
+    }
+    try {
+      res.json({
+        filename: 'idea.md',
+        title: 'Project idea',
+        content: fs.readFileSync(ideaPath, 'utf-8'),
+      });
+    } catch {
+      res.status(500).json({ error: 'Could not read idea.md' });
+    }
+  });
+
+  // GET /idea-summary — the cached LLM summary of idea.md (plan §9.4 AC-21).
+  // The read reconciles + enqueues (cache-miss or stale idea hash); the
+  // response returns immediately — the card polls this endpoint while the
+  // background job runs. null when the project has no idea.md (card hidden).
+  app.get('/api/projects/:id/ba-workspace/idea-summary', (req, res) => {
+    const row = getProjectRow(req.params.id);
+    if (!row) {
+      res.status(404).json({ error: 'Not found' });
+      return;
+    }
+    res.json({ summary: readIdeaSummary({ id: row.id, folder_path: row.folder_path }) });
+  });
+
+  // POST /idea-summary/retry — manual retry for a failed summary run. 409
+  // while one is already in flight (the reconciled read decides).
+  app.post('/api/projects/:id/ba-workspace/idea-summary/retry', (req, res) => {
+    const row = getProjectRow(req.params.id);
+    if (!row) {
+      res.status(404).json({ error: 'Not found' });
+      return;
+    }
+    const result = retryIdeaSummary({ id: row.id, folder_path: row.folder_path });
+    if (!result.ok) {
+      res.status(409).json({ error: result.error ?? 'Summary already generating' });
+      return;
+    }
+    res.json({ ok: true });
   });
 
   // POST /generation/retry — re-run BA auto-drafting, only missing files
