@@ -1888,3 +1888,387 @@ button.oq-btn:focus-visible {
   .ba-stage { flex-direction: column; align-items: flex-start; }
   .ba-stage .counts { flex-wrap: wrap; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Requirements tab (screen 15, requirements.html v5.3)
+   Ported from design/requirements.html — the `#spec` block there is binding
+   for behavior; these selectors match the mockup's own CSS with two declared
+   divergences: (1) the mockup's `.ba-tabs` type filter is re-issued as
+   `.req-type-tabs` (app.css has no .ba-tabs — PR #19 owns that namespace);
+   (2) the status menu is presence-rendered by React (no `.open` class gate).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Filter bar (type segments + status chips + search) */
+.req-filter {
+  display: flex; align-items: center; gap: 14px;
+  padding: 4px 0 2px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.req-filter-left { display: flex; align-items: center; gap: 14px; flex: 1; flex-wrap: wrap; }
+.req-filter-right { display: flex; align-items: center; gap: 10px; }
+.req-filter-sep { width: 1px; height: 22px; background: rgba(50,42,92,0.08); }
+.req-type-tabs {
+  display: inline-flex;
+  background: rgba(50, 42, 92, 0.05);
+  border-radius: 999px;
+  padding: 3px;
+}
+.req-type-tabs button {
+  padding: 4px 11px;
+  font-size: 11.5px; font-weight: 600;
+  color: var(--ink-2);
+  border-radius: 999px;
+}
+.req-type-tabs button.active { background: #fff; color: var(--ink); box-shadow: 0 1px 4px rgba(50, 42, 92, 0.08); }
+.req-filter .filter-count {
+  margin-left: 4px; font-family: var(--font-mono); font-size: 10.5px;
+  color: var(--ink-2); font-weight: 600;
+}
+.req-filter .req-type-tabs button.active .filter-count { color: var(--ink); }
+.req-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.req-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 10px; border-radius: 999px;
+  font-size: 11.5px; font-weight: 600;
+  color: var(--ink-2);
+  background: rgba(50,42,92,0.04);
+  cursor: pointer;
+  border: 0;
+}
+.req-chip b { font-family: var(--font-mono); font-weight: 700; }
+.req-chip.active { background: var(--navy); color: #fff; }
+.req-chip:focus-visible { outline: 2px solid var(--navy-2); outline-offset: 2px; }
+.req-search {
+  display: flex; align-items: center; gap: 6px;
+  background: #fff; border: 1px solid rgba(50,42,92,0.08);
+  border-radius: 999px; padding: 5px 12px;
+  color: var(--ink-2);
+}
+.req-search input { border: 0; outline: 0; background: transparent; font: inherit; font-size: 12px; color: var(--ink); width: 180px; }
+.req-search:focus-within { border-color: var(--navy-2); }
+
+/* Story group */
+.story {
+  border: 1px solid rgba(50,42,92,0.06);
+  border-radius: 14px;
+  background: #fff;
+  overflow: hidden;
+}
+.story + .story { margin-top: 10px; }
+.story-head {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 12px 14px;
+  background: linear-gradient(180deg, rgba(50,42,92,0.02), transparent);
+}
+.story-id {
+  font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+  color: var(--ink-2);
+  background: rgba(50,42,92,0.06);
+  padding: 4px 8px; border-radius: 6px;
+  flex: none; align-self: flex-start;
+}
+.story-body { flex: 1; }
+.story-title { font-size: 14px; font-weight: 700; color: var(--ink); }
+.story-as { font-size: 12px; color: var(--ink-2); margin-top: 2px; line-height: 1.5; }
+.story-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: none; }
+.story-count { font-size: 11px; color: var(--ink-2); font-family: var(--font-mono); }
+
+/* Scroll-and-flash target (delete-guard "Open referencing story", spec UX) */
+.story.story-flash {
+  animation: story-flash 1.6s ease-out 1;
+  border-color: var(--navy-2);
+}
+@keyframes story-flash {
+  0%   { box-shadow: 0 0 0 3px rgba(74, 64, 128, 0.35); }
+  70%  { box-shadow: 0 0 0 3px rgba(74, 64, 128, 0.35); }
+  100% { box-shadow: 0 0 0 0 rgba(74, 64, 128, 0); }
+}
+
+/* Requirement rows */
+.req-list { border-top: 1px solid rgba(50,42,92,0.06); }
+.req {
+  display: grid;
+  grid-template-columns: 64px 1fr 86px 64px 130px 50px;
+  gap: 12px; align-items: center;
+  padding: 10px 14px;
+  font-size: 12.5px;
+  border-top: 1px solid rgba(50,42,92,0.04);
+}
+.req:first-child { border-top: 0; }
+.req:hover { background: rgba(50,42,92,0.02); }
+.req-id { font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--ink-2); }
+.req-text { color: var(--ink); line-height: 1.5; }
+.req-type {
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 10.5px; font-weight: 700;
+  padding: 2px 8px; border-radius: 999px;
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.req-type.type-br { background: var(--peach); color: var(--coral); }
+.req-type.type-tr { background: var(--sky); color: var(--blue); }
+.req-prio {
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 10.5px; font-weight: 700;
+  padding: 2px 0; border-radius: 4px;
+  text-align: center;
+}
+.req-prio.prio-must { color: var(--coral); }
+.req-prio.prio-should { color: var(--amber); }
+.req-prio.prio-could { color: var(--ink-2); }
+.req-owner {
+  text-align: center;
+  font-size: 10.5px; font-weight: 700; color: var(--ink-2);
+  background: rgba(50,42,92,0.06);
+  padding: 2px 0; border-radius: 4px;
+}
+
+/* Row actions — hover-revealed, always reachable by keyboard (focus-within) */
+.req-actions {
+  display: flex; align-items: center; justify-content: flex-end; gap: 4px;
+  opacity: 0.55;
+  transition: opacity 0.15s ease;
+}
+.req:hover .req-actions,
+.req:focus-within .req-actions { opacity: 1; }
+.req-action {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px;
+  border-radius: 6px;
+  color: var(--ink-2);
+  background: transparent;
+  transition: background 0.12s ease, color 0.12s ease;
+  cursor: pointer;
+  border: 0;
+}
+.req-action:hover { background: rgba(50,42,92,0.06); color: var(--ink); }
+.req-action.danger:hover { background: rgba(217, 122, 142, 0.16); color: var(--rose); }
+.req-action svg { width: 14px; height: 14px; }
+.req-action:focus-visible {
+  outline: 2px solid var(--navy-2);
+  outline-offset: 2px;
+}
+/* Optimistic status flip in flight */
+.req.req-pending { opacity: 0.6; }
+
+/* Status dropdown — the mockup's listbox pattern; React presence-renders the
+   menu (no `.open` class gate like the static mockup). */
+.req-status-dd {
+  position: relative;
+  display: inline-block;
+}
+.req-status-dd .req-status-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 8px 3px 6px;
+  border-radius: 999px;
+  font-size: 11.5px; font-weight: 600;
+  background: rgba(50,42,92,0.04);
+  color: var(--ink-2);
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.req-status-dd .req-status-btn:hover { background: rgba(50,42,92,0.08); }
+.req-status-dd .req-status-btn:focus-visible { outline: 2px solid var(--navy-2); outline-offset: 2px; }
+.req-status-dd .req-status-btn[disabled] { opacity: 0.6; cursor: default; }
+.req-status-dd .req-status-btn .file-status { box-shadow: none; flex: none; }
+.req-status-dd .req-status-btn .caret {
+  width: 10px; height: 10px; opacity: 0.5; flex: none;
+}
+.req-status-dd.status-draft    .req-status-btn { color: var(--ink-2); }
+.req-status-dd.status-review   .req-status-btn { color: var(--amber); }
+.req-status-dd.status-approved .req-status-btn { color: var(--green); }
+.req-status-dd.status-done     .req-status-btn { color: var(--green); }
+.req-status-dd.status-blocked  .req-status-btn { color: var(--rose); }
+.req-status-dd.status-returned .req-status-btn { color: var(--rose); }
+.req-status-dd.status-on_hold  .req-status-btn { color: var(--purple); }
+.req-status-dd.status-cancelled .req-status-btn { color: var(--ink-3); text-decoration: line-through; }
+.status-menu {
+  position: absolute; top: calc(100% + 6px); right: 0;
+  min-width: 180px;
+  background: #fff;
+  border: 1px solid rgba(50,42,92,0.1);
+  border-radius: 10px;
+  box-shadow: 0 16px 40px -16px rgba(50,42,92,0.25);
+  padding: 4px;
+  z-index: 20;
+  list-style: none;
+  margin: 0;
+}
+.status-menu button {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; text-align: left;
+  padding: 7px 10px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  color: var(--ink);
+  border: 0; background: transparent; cursor: pointer;
+}
+.status-menu button:hover,
+.status-menu button:focus-visible { background: rgba(50,42,92,0.05); outline: none; }
+.status-menu button .file-status { flex: none; box-shadow: none; }
+.status-menu button.current { background: rgba(50,42,92,0.04); font-weight: 600; }
+.status-menu .menu-sep { height: 1px; background: rgba(50,42,92,0.08); margin: 4px 6px; }
+.status-menu .menu-help { padding: 6px 10px; font-size: 11px; color: var(--ink-2); line-height: 1.4; }
+
+/* Story header actions */
+.story-actions {
+  display: flex; align-items: center; gap: 6px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+.story-actions .btn { padding: 4px 10px; font-size: 11.5px; }
+.story-actions .btn svg { width: 12px; height: 12px; }
+.story-actions .story-delete { color: var(--rose); }
+
+/* Manual add affordance — bar at top of the list, inline form below */
+.req-add-bar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px;
+  background: rgba(50,42,92,0.03);
+  border: 1px dashed rgba(50,42,92,0.16);
+  border-radius: 12px;
+  margin-bottom: 12px;
+}
+.req-add-bar .label {
+  font-size: 12.5px; color: var(--ink-2);
+  display: flex; align-items: center; gap: 8px; flex: 1;
+}
+.req-add-bar .label b { color: var(--ink); }
+.req-add-bar .btn-primary,
+.req-add-bar .btn-ghost { padding: 6px 12px; font-size: 12px; }
+
+/* Inline "Add requirement / Add user story" form — one component, mode =
+   'add' | 'edit' (spec UI); edit gets the amber framing + delete strip. */
+.add-form {
+  border: 1px solid var(--navy-2);
+  background: linear-gradient(180deg, rgba(74,64,128,0.04), transparent);
+  border-radius: 14px;
+  padding: 16px;
+  margin: 10px 0;
+}
+.add-form.mode-edit {
+  border-color: var(--amber);
+  background: linear-gradient(180deg, rgba(232,185,74,0.08), transparent);
+}
+.add-form .form-title {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12.5px; font-weight: 700; color: var(--ink);
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.add-form .form-title svg { width: 16px; height: 16px; color: var(--navy-2); }
+.add-form .form-title .form-mode {
+  font-size: 10.5px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  padding: 2px 8px; border-radius: 999px;
+}
+.add-form.mode-add  .form-mode { background: var(--peach);  color: var(--coral); }
+.add-form.mode-edit .form-mode { background: var(--butter); color: var(--ink); }
+.add-form .form-title .form-id {
+  font-family: var(--font-mono); font-size: 11px;
+  color: var(--ink-2); font-weight: 600;
+  background: rgba(50,42,92,0.06);
+  padding: 2px 6px; border-radius: 4px;
+}
+.add-form.mode-edit .form-id { background: var(--butter); color: var(--ink); }
+.add-form .form-error-summary {
+  font-size: 12px; font-weight: 600;
+  color: var(--rose);
+  background: rgba(217, 122, 142, 0.08);
+  border: 1px solid rgba(217, 122, 142, 0.3);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 12px;
+}
+.add-form .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.add-form .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.add-form .field { display: flex; flex-direction: column; gap: 5px; }
+.add-form .field.span-2 { grid-column: span 2; }
+.add-form label {
+  font-size: 11px; font-weight: 700; color: var(--ink-2);
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+.add-form label .req-mark { color: var(--rose); margin-left: 2px; }
+.add-form input[type="text"],
+.add-form input[type="search"],
+.add-form textarea,
+.add-form select {
+  width: 100%;
+  border: 1px solid rgba(50,42,92,0.12);
+  background: #fff;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--ink);
+}
+.add-form textarea { min-height: 64px; resize: vertical; line-height: 1.5; }
+.add-form input:focus,
+.add-form textarea:focus,
+.add-form select:focus {
+  outline: 2px solid var(--navy-2);
+  outline-offset: 0;
+  border-color: var(--navy-2);
+}
+.add-form input[aria-invalid="true"],
+.add-form textarea[aria-invalid="true"],
+.add-form select[aria-invalid="true"] { border-color: var(--rose); }
+.add-form .field-row {
+  display: flex; align-items: center; gap: 12px;
+  margin-top: 12px;
+}
+.add-form .field-row .help {
+  font-size: 11.5px; color: var(--ink-2); flex: 1;
+}
+.add-form .field-row .help code { font-family: var(--font-mono); font-size: 11px; }
+.add-form .field-row .btn { padding: 6px 14px; font-size: 12.5px; }
+.add-form .field-error {
+  font-size: 11.5px; color: var(--rose); margin-top: 2px; min-height: 14px;
+}
+.add-form .form-foot-delete {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px;
+  margin: 12px -16px -16px;
+  border-top: 1px dashed rgba(217, 122, 142, 0.3);
+  background: rgba(217, 122, 142, 0.05);
+  border-radius: 0 0 13px 13px;
+  font-size: 11.5px; color: var(--ink-2);
+}
+.add-form .form-foot-delete b { color: var(--rose); }
+.add-form .form-foot-delete .btn { padding: 5px 12px; font-size: 12px; }
+.add-form .form-foot-delete .btn-danger { background: var(--rose); color: #fff; }
+.add-form .form-foot-delete .btn-danger:hover:not(:disabled) { background: #c4677a; }
+.add-form .form-foot-delete.blocked {
+  background: rgba(232, 185, 74, 0.1);
+  border-top-color: rgba(232, 185, 74, 0.4);
+}
+
+/* Zero-stories empty state + filtered-empty notice (AC-3/AC-8) */
+.req-empty {
+  border: 1px dashed rgba(50,42,92,0.16);
+  border-radius: 14px;
+  padding: 40px 24px;
+  text-align: center;
+  background: rgba(50,42,92,0.02);
+}
+.req-empty h2 { font-size: 16px; font-weight: 700; color: var(--ink); }
+.req-empty p { font-size: 12.5px; color: var(--ink-2); margin: 6px auto 14px; max-width: 460px; }
+.req-empty.slim { padding: 20px 24px; }
+.req-empty.slim p { margin: 0 0 10px; }
+
+/* Screen-local submit spinner (Saving… state, spec UX) */
+.spinner {
+  width: 11px; height: 11px;
+  border: 2px solid rgba(255,255,255,0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  display: inline-block;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Status dots the mockup vocabulary lacked (on_hold / cancelled are real
+   machine states — statusDotClass emits them; plan §3.6) */
+.file-status.on_hold   { background: var(--purple); }
+.file-status.cancelled { background: rgba(50,42,92,0.25); }

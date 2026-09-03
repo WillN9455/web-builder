@@ -151,6 +151,10 @@ type ProjectSidebarProps = {
   // Project Background's count chip (total artifacts, 17 max). Null/0 → chip
   // omitted (no PRD/ folder yet, or the folder can't be read).
   backgroundCount?: number | null;
+  // Requirements' count chip (live BR+TR parse from the Requirements tab).
+  // Null/0 → chip omitted — the tab publishes it via the outlet context, so
+  // the chip only shows when that screen is its data source (AC-12).
+  requirementsCount?: number | null;
 };
 
 // Per-project sidebar, ported from mockup #s3: brand block, "Menu" label, the
@@ -158,7 +162,7 @@ type ProjectSidebarProps = {
 // are still locked render the N11b locked-row pattern: a keyboard-focusable
 // anchor with aria-disabled, full readable label, a "Confirm project context
 // first" tooltip on hover/focus, and no navigation on click.
-export function ProjectSidebar({ projectId, confirmed, backgroundCount }: ProjectSidebarProps) {
+export function ProjectSidebar({ projectId, confirmed, backgroundCount, requirementsCount }: ProjectSidebarProps) {
   return (
     <aside className="side">
       <div className="brand">
@@ -197,6 +201,9 @@ export function ProjectSidebar({ projectId, confirmed, backgroundCount }: Projec
                 <span className="lbl">{tab.label}</span>
                 {tab.key === 'background' && !!backgroundCount && (
                   <span className="count">{backgroundCount}</span>
+                )}
+                {tab.key === 'requirements' && !!requirementsCount && (
+                  <span className="count">{requirementsCount}</span>
                 )}
               </NavLink>
             );

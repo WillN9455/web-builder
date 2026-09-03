@@ -19,6 +19,7 @@ import path from 'node:path';
 import { db } from './db.js';
 import { readGenerationState, retryBaGeneration, type BaGeneration } from './ba-draft.js';
 import { readIdeaSummary, retryIdeaSummary } from './idea-summary.js';
+import { atomicWritePrd } from './prd-fs.js';
 
 // ── The 17 artifacts across 5 bands (sitemap § Project Background tab) ────
 // The sitemap list is canonical — the s12 mockup tree omits personas.md, and
@@ -161,7 +162,9 @@ export type BaFilesResponse = {
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-function getProjectRow(idOrSlug: string): ProjectRow | undefined {
+// Shared with the Requirements routes (server/requirements.ts) — the same
+// id-or-slug resolution and PRD/ containment, one implementation (plan §3.2).
+export function getProjectRow(idOrSlug: string): ProjectRow | undefined {
   return db
     .prepare('SELECT id, name, slug, folder_path FROM project WHERE id = ? OR slug = ?')
     .get(idOrSlug, idOrSlug) as ProjectRow | undefined;
@@ -176,7 +179,7 @@ export function resolveProjectFolder(row: ProjectRow): string {
 }
 
 // The project's PRD/ dir — the only folder these routes may ever touch.
-function prdDir(row: ProjectRow): string {
+export function prdDir(row: ProjectRow): string {
   return path.join(resolveProjectFolder(row), 'PRD');
 }
 
@@ -331,7 +334,7 @@ export function registerBaWorkspaceRoutes(app: express.Express): void {
   // it after the return — sitemap state machine's Returned ──▶ Draft edge).
   // Every save sets edited_since_send = 1 (plan §9.5 AC-30): a save is the
   // edit that unlocks Send for SA review — cleared again on the send itself.
-  app.put('/api/projects/:id/ba-workspace/files/:filename', (req, res) => {
+  app.put('/api/projects/:id/ba-workspace/files/:filename', async (req, res) => {
     const row = getProjectRow(req.params.id);
     if (!row) {
       res.status(404).json({ error: 'Not found' });
@@ -363,7 +366,7 @@ export function registerBaWorkspaceRoutes(app: express.Express): void {
       return;
     }
     try {
-      fs.writeFileSync(filePath, content, 'utf-8');
+      await atomicWritePrd(filePath, content);
     } catch {
       res.status(500).json({ error: 'Could not write artifact' });
       return;
