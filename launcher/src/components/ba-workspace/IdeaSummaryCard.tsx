@@ -67,10 +67,12 @@ export function IdeaSummaryCard({ projectId }: IdeaSummaryCardProps) {
 
   return (
     <div className="idea-summary" aria-live="polite">
+      {/* §9.6 QA — the whole header row is the accordion control (not just the
+          title button): one button spans the head, wrapping the title, the
+          AI tag and the collapsed-only hint, so any click in the card's top
+          area toggles. aria-expanded/controls keep it a disclosed region. */}
       <div className="idea-summary-head">
         <h3>
-          {/* §9.6 QA — the header toggles the card. aria-expanded/controls keep
-              it a disclosed region for screen readers; the chevron is decor. */}
           <button
             type="button"
             className="idea-summary-toggle"
@@ -82,12 +84,12 @@ export function IdeaSummaryCard({ projectId }: IdeaSummaryCardProps) {
               ▸
             </span>
             Project idea
+            <span className="ai-tag">AI-generated from idea.md</span>
+            {/* affordance note while collapsed; the open summary makes it
+                redundant, so it only renders shut. */}
+            {!open && <span className="idea-summary-hint">Expand to view the project idea summary</span>}
           </button>
         </h3>
-        <span className="ai-tag">AI-generated from idea.md</span>
-        {/* §9.6 QA — affordance note while collapsed; the open summary makes
-            it redundant, so it only renders shut. */}
-        {!open && <span className="idea-summary-hint">Expand to view the project idea summary</span>}
       </div>
       {open && (
         <div id="idea-summary-body">

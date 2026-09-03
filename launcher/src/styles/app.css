@@ -1522,24 +1522,30 @@ button.oq-btn:focus-visible {
 }
 .idea-summary-head h3 {
   margin: 0;
+  flex: 1; /* the toggle button inside fills the whole card width */
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--ink-2);
 }
-/* §9.6 QA — the header row toggles the card: a bare button styled back into
-   the h3 (uppercase small caps), chevron rotating with the open state. */
+/* §9.6 QA — the whole header row toggles the card: one bare-styled button
+   stretches edge to edge (title + AI tag + hint inside it), chevron rotating
+   with the open state. */
 .idea-summary-toggle {
   all: unset;
   cursor: pointer;
-  display: inline-flex;
-  align-items: baseline;
+  display: flex;
+  width: 100%;
+  align-items: center;
   gap: 6px;
+  text-align: left;
   font: inherit;
   color: inherit;
+  border-radius: 4px;
 }
-.idea-summary-toggle:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; border-radius: 4px; }
+.idea-summary-toggle:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; }
+.idea-summary-toggle:hover .idea-summary-chev { opacity: 0.8; }
 .idea-summary-chev {
   /* §9.6 QA — the arrow is the collapse affordance: a lavender chip with the
      purple arrow inside, prominent next to the title (▸ closed, ▾ open). */
