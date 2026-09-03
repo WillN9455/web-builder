@@ -1530,8 +1530,8 @@ button.oq-btn:focus-visible {
   color: var(--ink-2);
 }
 /* §9.6 QA — the whole header row toggles the card: one bare-styled button
-   stretches edge to edge (title + AI tag + hint inside it), chevron rotating
-   with the open state. */
+   stretches edge to edge (title + AI tag inside it), CSS-drawn chevron at
+   the end rotating with the open state. */
 .idea-summary-toggle {
   all: unset;
   cursor: pointer;
@@ -1545,46 +1545,28 @@ button.oq-btn:focus-visible {
   border-radius: 4px;
 }
 .idea-summary-toggle:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; }
-.idea-summary-toggle:hover .idea-summary-chev { opacity: 0.8; }
-.idea-summary-chev {
-  /* §9.6 QA — the arrow is the collapse affordance: a lavender chip with the
-     purple arrow inside, prominent next to the title (▸ closed, ▾ open). */
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  align-self: center;
-  width: 18px;
-  height: 18px;
-  border-radius: 999px;
-  background: var(--lavender);
-  color: var(--purple);
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1;
-  transition: transform 0.15s ease;
-}
-.idea-summary-chev.open { transform: rotate(90deg); }
-.idea-summary-hint {
-  /* the end chevron owns the auto margin; the hint sits just inside it */
-  font-size: 11px;
-  color: var(--ink-2);
-}
+.idea-summary-toggle:hover .idea-summary-chev-end::after { opacity: 0.65; }
 .idea-summary-chev-end {
-  /* §9.6 QA — large end-of-row chevron (24×24): ▾ collapsed → ▴ open
-     (rotated), far right of the header row. */
+  /* §9.6 QA — large end-of-row chevron drawn in CSS (no text glyph): the
+     ::after box's right+bottom borders rotated 45° point down when collapsed
+     and -135° when open. Scales cleanly and stays crisp at any DPI. */
   display: inline-flex;
   align-items: center;
   justify-content: center;
   margin-left: auto;
-  width: 24px;
-  height: 24px;
-  color: var(--purple);
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 1;
+  width: 28px;
+  height: 28px;
+}
+.idea-summary-chev-end::after {
+  content: '';
+  width: 13px;
+  height: 13px;
+  border-right: 3px solid var(--purple);
+  border-bottom: 3px solid var(--purple);
+  transform: rotate(45deg); /* ▾ collapsed */
   transition: transform 0.15s ease;
 }
-.idea-summary-chev-end.open { transform: rotate(180deg); }
+.idea-summary-chev-end.open::after { transform: rotate(-135deg); } /* ▴ open */
 .idea-summary-head .ai-tag {
   font-size: 11px;
   background: var(--lavender);

@@ -3,11 +3,11 @@
 // polls GET .../idea-summary while the background job runs ("Writing
 // summary…"), renders the summary when done, and offers Retry on failed.
 // A reference aid only — labelled AI-generated, never gate input.
-// §9.6 QA (Will): the card is collapsible — the header toggles the body —
-// and starts collapsed on first load (the summary is reference material,
-// not the first thing the BA should read); the poll keeps running while
-// collapsed so a background summary still lands. The chevron arrow shows
-// the state: ▸ collapsed, ▾ open (rotated from the same glyph).
+// §9.6 QA (Will): the card is collapsible — the whole header row is the
+// control — and starts collapsed on first load (the summary is reference
+// material, not the first thing the BA should read); the poll keeps running
+// while collapsed so a background summary still lands. A CSS-drawn chevron
+// at the row's end shows the state (▾ collapsed, ▴ open).
 import { useCallback, useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -67,10 +67,10 @@ export function IdeaSummaryCard({ projectId }: IdeaSummaryCardProps) {
 
   return (
     <div className="idea-summary" aria-live="polite">
-      {/* §9.6 QA — the whole header row is the accordion control (not just the
-          title button): one button spans the head, wrapping the title, the
-          AI tag and the collapsed-only hint, so any click in the card's top
-          area toggles. aria-expanded/controls keep it a disclosed region. */}
+      {/* §9.6 QA — the whole header row is the accordion control: one button
+          spans the head, wrapping the title and the AI tag, so any click in
+          the card's top area toggles. aria-expanded/controls keep it a
+          disclosed region. */}
       <div className="idea-summary-head">
         <h3>
           <button
@@ -80,20 +80,12 @@ export function IdeaSummaryCard({ projectId }: IdeaSummaryCardProps) {
             aria-controls="idea-summary-body"
             onClick={() => setOpen((o) => !o)}
           >
-            <span className={`idea-summary-chev${open ? ' open' : ''}`} aria-hidden="true">
-              ▸
-            </span>
             Project idea
             <span className="ai-tag">AI-generated from idea.md</span>
-            {/* affordance note while collapsed; the open summary makes it
-                redundant, so it only renders shut. */}
-            {!open && <span className="idea-summary-hint">Expand to view the project idea summary</span>}
-            {/* §9.6 QA — large end-of-row chevron: ▾ collapsed, ▴ open (the
-                small chip stays next to the title). Decorative — aria-expanded
-                carries the state. */}
-            <span className={`idea-summary-chev-end${open ? ' open' : ''}`} aria-hidden="true">
-              ▾
-            </span>
+            {/* §9.6 QA — end-of-row chevron, drawn in CSS (::after borders),
+                rotated with the open state. Decorative — aria-expanded carries
+                the state. */}
+            <span className={`idea-summary-chev-end${open ? ' open' : ''}`} aria-hidden="true" />
           </button>
         </h3>
       </div>
