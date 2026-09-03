@@ -125,6 +125,30 @@ export function ArtifactEditor({
               {commentCount} {commentCount === 1 ? 'comment' : 'comments'}
             </span>
           ) : null}
+          {/* §9.6 QA — the same Edit/Save action up top, so a long document
+              doesn't force a scroll to the footer. Edit opens the edit view;
+              while editing it becomes Save (the footer keeps both too). */}
+          {!locked && !dirty && !isEditing && (
+            <button
+              type="button"
+              className="btn btn-soft btn-pill"
+              style={{ padding: '4px 12px', fontSize: '11px' }}
+              onClick={onEdit}
+            >
+              Edit
+            </button>
+          )}
+          {isEditing && (
+            <button
+              type="button"
+              className="btn btn-primary"
+              style={{ padding: '4px 12px', fontSize: '11px' }}
+              disabled={saving}
+              onClick={onSave}
+            >
+              {saving ? 'Saving…' : 'Save changes'}
+            </button>
+          )}
         </div>
       </div>
 

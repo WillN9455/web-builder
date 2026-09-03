@@ -1489,6 +1489,11 @@ button.oq-btn:focus-visible {
   min-height: 640px;
   align-items: start;
 }
+/* §9.6 QA — a grid column defaults to min-width:auto, so one wide child
+   (an unbreakable table row, a long token) forced the 1fr editor column
+   past the viewport and the preview ran off the page. min-width:0 lets
+   both columns shrink; the body's own scroll/overflow rules take over. */
+.ba-grid > * { min-width: 0; }
 .ba-doc-col { display: flex; flex-direction: column; }
 .ba-doc-col > .review-thread {
   background: #fff;
@@ -1535,6 +1540,7 @@ button.oq-btn:focus-visible {
   font-size: 13px;
   line-height: 1.6;
   color: var(--ink);
+  overflow-wrap: anywhere;
 }
 .idea-summary-body.view p { margin: 4px 0; }
 .idea-summary-body.view p:first-child { margin-top: 0; }
@@ -1680,7 +1686,7 @@ button.oq-btn:focus-visible {
   overflow-y: auto;
   display: flex; flex-direction: column; gap: 18px;
 }
-.ba-doc-body.view { font-size: 13.5px; line-height: 1.65; color: var(--ink); display: block; }
+.ba-doc-body.view { font-size: 13.5px; line-height: 1.65; color: var(--ink); display: block; overflow-wrap: anywhere; }
 .ba-doc-body.view h1, .ba-doc-body.view h2, .ba-doc-body.view h3 { letter-spacing: -0.01em; margin: 14px 0 4px; }
 .ba-doc-body.view h1:first-child { margin-top: 0; }
 .ba-doc-body.view h1 { font-size: 22px; }
@@ -1706,7 +1712,16 @@ button.oq-btn:focus-visible {
   border-radius: 0 10px 10px 0;
   margin: 10px 0;
 }
-.ba-doc-body.view table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+/* §9.6 QA — markdown tables scroll inside the card instead of stretching it:
+   block + max-content caps the table at the card width; wide ones scroll. */
+.ba-doc-body.view table {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  overflow-x: auto;
+}
 .ba-doc-body.view th, .ba-doc-body.view td {
   padding: 9px 12px; text-align: left;
   border-bottom: 1px solid rgba(50, 42, 92, 0.06);

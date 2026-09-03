@@ -493,6 +493,12 @@ export function ProjectBackgroundScreen() {
         </div>
       )}
 
+      {/* AC-21 (revised, §9.6 QA) — the LLM-written idea summary sits at the
+          very top of the tab (above the stage counts): async + cached
+          server-side, the card owns its own polling/retry. Reference aid
+          only — never gate input. */}
+      <IdeaSummaryCard projectId={id ?? ''} />
+
       <StageBanner
         counts={
           filesData?.counts ?? { draft: 0, in_review: 0, returned: 0, approved: 0, total: 0 }
@@ -505,11 +511,6 @@ export function ProjectBackgroundScreen() {
       />
 
       <OpenQuestionsBanner projectId={id ?? ''} blockerCount={blockers} />
-
-      {/* AC-21 (revised) — the LLM-written idea summary: async + cached
-          server-side, the card owns its own polling/retry. Reference aid
-          only — never gate input. */}
-      <IdeaSummaryCard projectId={id ?? ''} />
 
       {loadingFiles ? (
         <div className="ba-grid">
