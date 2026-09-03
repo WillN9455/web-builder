@@ -88,6 +88,12 @@ export function IdeaSummaryCard({ projectId }: IdeaSummaryCardProps) {
             {/* affordance note while collapsed; the open summary makes it
                 redundant, so it only renders shut. */}
             {!open && <span className="idea-summary-hint">Expand to view the project idea summary</span>}
+            {/* §9.6 QA — large end-of-row chevron: ▾ collapsed, ▴ open (the
+                small chip stays next to the title). Decorative — aria-expanded
+                carries the state. */}
+            <span className={`idea-summary-chev-end${open ? ' open' : ''}`} aria-hidden="true">
+              ▾
+            </span>
           </button>
         </h3>
       </div>

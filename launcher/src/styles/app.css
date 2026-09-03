@@ -1565,10 +1565,26 @@ button.oq-btn:focus-visible {
 }
 .idea-summary-chev.open { transform: rotate(90deg); }
 .idea-summary-hint {
-  margin-left: auto;
+  /* the end chevron owns the auto margin; the hint sits just inside it */
   font-size: 11px;
   color: var(--ink-2);
 }
+.idea-summary-chev-end {
+  /* §9.6 QA — large end-of-row chevron (24×24): ▾ collapsed → ▴ open
+     (rotated), far right of the header row. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  width: 24px;
+  height: 24px;
+  color: var(--purple);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  transition: transform 0.15s ease;
+}
+.idea-summary-chev-end.open { transform: rotate(180deg); }
 .idea-summary-head .ai-tag {
   font-size: 11px;
   background: var(--lavender);
