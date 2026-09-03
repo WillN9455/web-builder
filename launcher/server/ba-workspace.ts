@@ -18,6 +18,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { db } from './db.js';
 import { readGenerationState, retryBaGeneration, type BaGeneration } from './ba-draft.js';
+import { readIdeaSummary, retryIdeaSummary } from './idea-summary.js';
 import { atomicWritePrd } from './prd-fs.js';
 
 // ── The 17 artifacts across 5 bands (sitemap § Project Background tab) ────
@@ -86,10 +87,16 @@ export function baTitle(filename: string): string {
 
 // ── Per-file review state machine ──────────────────────────────────────────
 // Draft ──Send──▶ In Review ──┬─Return──▶ Returned ──(BA saves)──▶ Draft
-//                             └─Approve─▶ Approved (terminal)
+//                             └─Approve─▶ Approved ──Set back──▶ Draft
 // Sitemap locked decision 6: the terminal state is `approved` ("Completed"
 // renamed). The Returned → Draft edge is implicit: saving a returned file
 // (PUT) puts it back to draft — the BA edited it after the return.
+// NOTE (plan §9.4, AC-27): approved is no longer terminal — the SA-approved
+// ruling from the #18 review was deliberately reversed by the product owner
+// (Will, 2026-09-03). The edge is BA-initiated via the card's "Set back to
+// Draft" and re-opens the file for editing; the State D gate still requires
+// all 17 approved, so un-approving after confirm trips the existing
+// contextChangedSinceConfirm warning (locked decision 7).
 
 export type BaStatus = 'draft' | 'in_review' | 'returned' | 'approved';
 
@@ -97,7 +104,7 @@ export const BA_TRANSITIONS: Readonly<Record<BaStatus, readonly BaStatus[]>> = {
   draft: ['in_review'],
   in_review: ['returned', 'approved'],
   returned: ['in_review'],
-  approved: [],
+  approved: ['draft'],
 };
 
 export function baStatusLabel(status: BaStatus): string {
@@ -122,6 +129,11 @@ export type BaFile = {
   band: string;
   title: string;
   status: BaStatus;
+  // Plan §9.5 AC-30 — the Send gate: true once the BA has saved an edit since
+  // the last send (set on PUT, cleared on the transition to in_review). The
+  // read view only offers Send when this is true, so every document gets at
+  // least one human edit before it can go to review.
+  editedSinceSend: boolean;
 };
 
 export type BaFilesResponse = {
@@ -142,6 +154,10 @@ export type BaFilesResponse = {
   // the project never had a generation run (the screen's empty state and its
   // manual-trigger button own that case). The screen polls this one endpoint.
   generation: BaGeneration | null;
+  // idea.md availability (plan §9.4 AC-22): the client synthesizes the tree's
+  // top "Idea" band from it; the body comes from GET .../idea. Availability
+  // only — idea.md is reference material, never in the 17-count/gate/status.
+  idea: { available: boolean };
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -178,6 +194,17 @@ function readStatuses(projectId: number): Map<string, BaStatus> {
   return map;
 }
 
+// AC-30 — the filenames whose edited_since_send flag is set (BA saved an edit
+// since the last send). A file with no row has no edit either → not in the set.
+function readEditedSinceSend(projectId: number): Set<string> {
+  const rows = db
+    .prepare(
+      'SELECT filename FROM ba_artifacts_status WHERE project_id = ? AND edited_since_send = 1',
+    )
+    .all(projectId) as { filename: string }[];
+  return new Set(rows.map((r) => r.filename));
+}
+
 function isBaStatus(v: string): v is BaStatus {
   return v === 'draft' || v === 'in_review' || v === 'returned' || v === 'approved';
 }
@@ -187,6 +214,7 @@ function isBaStatus(v: string): v is BaStatus {
 function listFiles(row: ProjectRow): BaFile[] {
   const dir = prdDir(row);
   const statuses = readStatuses(row.id);
+  const edited = readEditedSinceSend(row.id);
   const files: BaFile[] = [];
   for (const band of BA_BANDS) {
     for (const filename of band.files) {
@@ -196,6 +224,7 @@ function listFiles(row: ProjectRow): BaFile[] {
         band: band.key,
         title: baTitle(filename),
         status: statuses.get(filename) ?? 'draft',
+        editedSinceSend: edited.has(filename),
       });
     }
   }
@@ -269,6 +298,7 @@ export function registerBaWorkspaceRoutes(app: express.Express): void {
       contextConfirmed: confirmed,
       contextChangedSinceConfirm: confirmed && !contextReady,
       generation: readGenerationState(row.id),
+      idea: { available: fs.existsSync(path.join(resolveProjectFolder(row), 'idea.md')) },
     } satisfies BaFilesResponse);
   });
 
@@ -297,9 +327,13 @@ export function registerBaWorkspaceRoutes(app: express.Express): void {
   });
 
   // PUT /files/:filename — save body (write-back to the on-disk PRD/).
-  // 409 while the file is In Review (SA) — the body is locked during review.
+  // 409 while the file is In Review (SA) — the body is locked during review —
+  // or Approved (R12, plan §9.4/AC-27 note): an approved body can never change
+  // without the state change; the BA sets it back to Draft first.
   // Saving a Returned file implicitly moves it back to Draft (the BA edited
   // it after the return — sitemap state machine's Returned ──▶ Draft edge).
+  // Every save sets edited_since_send = 1 (plan §9.5 AC-30): a save is the
+  // edit that unlocks Send for SA review — cleared again on the send itself.
   app.put('/api/projects/:id/ba-workspace/files/:filename', async (req, res) => {
     const row = getProjectRow(req.params.id);
     if (!row) {
@@ -327,6 +361,10 @@ export function registerBaWorkspaceRoutes(app: express.Express): void {
       res.status(409).json({ error: 'File is In Review (SA) — return it to the BA before editing' });
       return;
     }
+    if (status === 'approved') {
+      res.status(409).json({ error: 'File is Approved — set it back to Draft before editing' });
+      return;
+    }
     try {
       await atomicWritePrd(filePath, content);
     } catch {
@@ -335,14 +373,16 @@ export function registerBaWorkspaceRoutes(app: express.Express): void {
     }
     if (status === 'returned') {
       db.prepare(
-        `UPDATE ba_artifacts_status SET status = 'draft', updated_at = datetime('now')
+        `UPDATE ba_artifacts_status
+         SET status = 'draft', edited_since_send = 1, updated_at = datetime('now')
          WHERE project_id = ? AND filename = ?`,
       ).run(row.id, filename);
     } else {
       db.prepare(
-        `INSERT INTO ba_artifacts_status (project_id, filename, status, updated_at)
-         VALUES (?, ?, ?, datetime('now'))
-         ON CONFLICT(project_id, filename) DO UPDATE SET updated_at = datetime('now')`,
+        `INSERT INTO ba_artifacts_status (project_id, filename, status, edited_since_send, updated_at)
+         VALUES (?, ?, ?, 1, datetime('now'))
+         ON CONFLICT(project_id, filename) DO UPDATE SET
+           edited_since_send = 1, updated_at = datetime('now')`,
       ).run(row.id, filename, status);
     }
     logActivity(row.id, 'BA', `Saved edits to ${filename}`, 'edit');
@@ -373,20 +413,35 @@ export function registerBaWorkspaceRoutes(app: express.Express): void {
       });
       return;
     }
+    // AC-30 — Send gating is server-enforced, not just UI: a document can
+    // only go to review after the BA has saved an edit to it (the PUT sets
+    // the flag). Keeps the state machine and the read view's Send button in
+    // agreement even for a direct API call.
+    if (to === 'in_review' && !readEditedSinceSend(row.id).has(filename)) {
+      res.status(409).json({
+        error:
+          'This document has not been edited yet — open Edit, save a change, then send it for review',
+      });
+      return;
+    }
     db.prepare(
       `INSERT INTO ba_artifacts_status (project_id, filename, status, updated_at)
        VALUES (?, ?, ?, datetime('now'))
        ON CONFLICT(project_id, filename) DO UPDATE SET status = excluded.status,
-         updated_at = datetime('now')`,
+         updated_at = datetime('now'),
+         edited_since_send = CASE WHEN excluded.status = 'in_review' THEN 0
+                                  ELSE ba_artifacts_status.edited_since_send END`,
     ).run(row.id, filename, to);
 
-    const who: 'BA' | 'SA' = to === 'in_review' ? 'BA' : 'SA';
+    const who: 'BA' | 'SA' = to === 'in_review' || to === 'draft' ? 'BA' : 'SA';
     const verb =
       to === 'in_review'
         ? 'Sent for SA review'
         : to === 'returned'
           ? 'Returned to BA'
-          : 'Approved';
+          : to === 'draft'
+            ? 'Set back to Draft'
+            : 'Approved';
     logActivity(row.id, who, `${verb}: ${filename}`, 'milestone');
     res.json({ ok: true, filename, status: to });
   });
@@ -451,6 +506,61 @@ export function registerBaWorkspaceRoutes(app: express.Express): void {
       return;
     }
     res.json({ blockerCount: countPrdApprovalBlockers(prdDir(row)) });
+  });
+
+  // GET /idea — the raw idea.md body (plan §9.4 AC-22). Read-only reference
+  // material: it is deliberately NOT behind allowedFilename (the 17-artifact
+  // allowlist), so PUT/transition/comments can never touch it. Read from the
+  // project folder root — the file intake wrote — never a request path.
+  app.get('/api/projects/:id/ba-workspace/idea', (req, res) => {
+    const row = getProjectRow(req.params.id);
+    if (!row) {
+      res.status(404).json({ error: 'Not found' });
+      return;
+    }
+    const ideaPath = path.join(resolveProjectFolder(row), 'idea.md');
+    if (!fs.existsSync(ideaPath)) {
+      res.status(404).json({ error: 'idea.md not on disk' });
+      return;
+    }
+    try {
+      res.json({
+        filename: 'idea.md',
+        title: 'Project idea',
+        content: fs.readFileSync(ideaPath, 'utf-8'),
+      });
+    } catch {
+      res.status(500).json({ error: 'Could not read idea.md' });
+    }
+  });
+
+  // GET /idea-summary — the cached LLM summary of idea.md (plan §9.4 AC-21).
+  // The read reconciles + enqueues (cache-miss or stale idea hash); the
+  // response returns immediately — the card polls this endpoint while the
+  // background job runs. null when the project has no idea.md (card hidden).
+  app.get('/api/projects/:id/ba-workspace/idea-summary', (req, res) => {
+    const row = getProjectRow(req.params.id);
+    if (!row) {
+      res.status(404).json({ error: 'Not found' });
+      return;
+    }
+    res.json({ summary: readIdeaSummary({ id: row.id, folder_path: row.folder_path }) });
+  });
+
+  // POST /idea-summary/retry — manual retry for a failed summary run. 409
+  // while one is already in flight (the reconciled read decides).
+  app.post('/api/projects/:id/ba-workspace/idea-summary/retry', (req, res) => {
+    const row = getProjectRow(req.params.id);
+    if (!row) {
+      res.status(404).json({ error: 'Not found' });
+      return;
+    }
+    const result = retryIdeaSummary({ id: row.id, folder_path: row.folder_path });
+    if (!result.ok) {
+      res.status(409).json({ error: result.error ?? 'Summary already generating' });
+      return;
+    }
+    res.json({ ok: true });
   });
 
   // POST /generation/retry — re-run BA auto-drafting, only missing files

@@ -354,10 +354,19 @@ export type BaStatus = 'draft' | 'in_review' | 'returned' | 'approved';
 export type BaFile = {
   filename: string;
   // Band key: 'core-prd' | 'scope-rules' | 'data-access' | 'planning-risk' |
-  // 'sa-handoff'.
+  // 'sa-handoff' — plus the client-synthesized 'idea' band (AC-22).
   band: string;
   title: string;
   status: BaStatus;
+  // True for reference material outside the review lifecycle (idea.md) —
+  // rendered read-only, no status dot, no footer actions, never a PUT/POST
+  // target (the server's 17-artifact allowlist enforces it too).
+  readOnly?: boolean;
+  // AC-30 (plan §9.5) — the Send gate: true once the BA has saved an edit
+  // since the last send (server state — survives a reload). The read view
+  // only offers Send when this is set; the server's transition endpoint
+  // enforces the same rule for direct API calls.
+  editedSinceSend?: boolean;
 };
 
 export type BaCounts = {
@@ -384,6 +393,9 @@ export type BaFilesResponse = {
   // BA auto-draft generation state (AC-17/AC-18) — null when the project never
   // had a run; the screen's empty state + manual trigger own that case.
   generation: BaGeneration | null;
+  // idea.md availability (AC-22) — the screen synthesizes the tree's top
+  // "Idea" band from it; the body loads via fetchBaIdea.
+  idea: { available: boolean };
 };
 
 export type BaComment = {
@@ -497,6 +509,38 @@ export async function fetchBaOpenQuestions(
   idOrSlug: string,
 ): Promise<{ blockerCount: number }> {
   return baFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/ba-workspace/open-questions`);
+}
+
+// idea.md body (AC-22) — read-only reference material. The screen checks
+// filesData.idea.available first; a 404 here means the file vanished between
+// the two calls (treated as an open error by the caller).
+export async function fetchBaIdea(idOrSlug: string): Promise<BaFileBodyResponse> {
+  return baFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/ba-workspace/idea`);
+}
+
+// LLM-written idea summary (AC-21 revised) — async + cached server-side,
+// keyed on the idea.md content hash. state is pending/generating while the
+// background job runs; the card polls until done. null = no idea.md.
+export type BaIdeaSummary = {
+  state: 'pending' | 'generating' | 'done' | 'failed';
+  summary: string | null;
+  error: string | null;
+};
+
+export async function fetchBaIdeaSummary(
+  idOrSlug: string,
+): Promise<{ summary: BaIdeaSummary | null }> {
+  return baFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/ba-workspace/idea-summary`);
+}
+
+export async function retryBaIdeaSummary(
+  idOrSlug: string,
+): Promise<{ ok: true }> {
+  return baFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/ba-workspace/idea-summary/retry`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  });
 }
 
 // BA auto-draft generation — manual trigger / retry (AC-18). Re-runs only

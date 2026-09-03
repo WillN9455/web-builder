@@ -103,10 +103,16 @@ CREATE TABLE IF NOT EXISTS kanban_card (
 
 -- BA Workspace (Project Background tab): per-file review state for the 17
 -- PRD artifacts. Rows are created lazily — a file with no row is 'draft'.
+-- edited_since_send (plan §9.5 AC-30): 1 once the BA has saved an edit since
+-- the last send — the Send-for-SA-review gate. Set by PUT, cleared when the
+-- file transitions to in_review, so the signal survives a reload (it is
+-- server state, not component state). Default 0: a never-edited draft cannot
+-- be sent — every document gets at least one BA edit before review.
 CREATE TABLE IF NOT EXISTS ba_artifacts_status (
   project_id  INTEGER NOT NULL REFERENCES project(id) ON DELETE CASCADE,
   filename    TEXT    NOT NULL,
   status      TEXT    NOT NULL CHECK (status IN ('draft','in_review','returned','approved')),
+  edited_since_send INTEGER NOT NULL DEFAULT 0 CHECK (edited_since_send IN (0,1)),
   updated_at  TEXT    NOT NULL DEFAULT (datetime('now')),
   PRIMARY KEY (project_id, filename)
 );
@@ -149,6 +155,22 @@ CREATE TABLE IF NOT EXISTS ba_generation (
   updated_at   TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 
+-- BA idea summary (plan §9.4 AC-21): the LLM-written summary of idea.md shown
+-- on the Project Background tab. Sibling of ba_generation for the same reason
+-- — a separate table keeps the project/stage CHECK-rebuild helper in
+-- migrateSchema untouched. idea_hash = the sha256 of idea.md at generation
+-- time: a read whose hash no longer matches the file re-generates on the spot,
+-- so the summary follows idea edits without a manual trigger.
+CREATE TABLE IF NOT EXISTS ba_idea_summary (
+  project_id  INTEGER PRIMARY KEY REFERENCES project(id) ON DELETE CASCADE,
+  state       TEXT    NOT NULL DEFAULT 'pending'
+              CHECK (state IN ('pending','generating','done','failed')),
+  summary     TEXT,
+  idea_hash   TEXT,
+  error       TEXT,
+  updated_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE INDEX IF NOT EXISTS idx_project_updated  ON project(updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_stage_project    ON stage(project_id);
 CREATE INDEX IF NOT EXISTS idx_kanban_project   ON kanban_card(project_id);
@@ -175,6 +197,21 @@ export function migrate(): void {
  */
 export function migrateSchema(target: Database.Database): void {
   target.exec(SCHEMA);
+  // Plan §9.5 AC-30 — edited_since_send on ba_artifacts_status. CREATE TABLE
+  // IF NOT EXISTS is a no-op on an existing table, so a launcher.db created
+  // before this column needs a plain ALTER (idempotent: skipped when the
+  // column is already there). NOT NULL + constant DEFAULT is legal for
+  // ALTER TABLE ADD COLUMN — existing rows read 0 (never-edited), which is
+  // exactly the gate's meaning for files saved before the flag existed.
+  const cols = target.pragma('table_info(ba_artifacts_status)') as { name: string }[];
+  if (!cols.some((c) => c.name === 'edited_since_send')) {
+    target.exec(
+      'ALTER TABLE ba_artifacts_status ADD COLUMN edited_since_send INTEGER NOT NULL DEFAULT 0',
+    );
+    console.warn(
+      '[db] added ba_artifacts_status.edited_since_send: Send gating needs the edit-complete flag (plan §9.5 AC-30)',
+    );
+  }
   for (const [name, ddl] of [
     ['project', PROJECT_TABLE_DDL],
     ['stage', STAGE_TABLE_DDL],

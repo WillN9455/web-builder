@@ -1487,14 +1487,122 @@ button.oq-btn:focus-visible {
   grid-template-columns: 280px 1fr;
   gap: 22px;
   min-height: 640px;
-  align-items: start;
 }
-.ba-doc-col { display: flex; flex-direction: column; }
+/* §9.6 QA — a grid column defaults to min-width:auto, so one wide child
+   (an unbreakable table row, a long token) forced the 1fr editor column
+   past the viewport and the preview ran off the page. min-width:0 lets
+   both columns shrink; the body's own scroll/overflow rules take over. */
+.ba-grid > * { min-width: 0; }
+/* §9.6g — the editor column spans the tree column's height: height:0 keeps
+   its content from growing the grid row (the tree sizes the row), then
+   min-height:100% stretches it to match. The doc body scrolls inside. */
+.ba-doc-col {
+  display: flex;
+  flex-direction: column;
+  height: 0;
+  min-height: 100%;
+}
 .ba-doc-col > .review-thread {
   background: #fff;
   border: 1px solid rgba(50, 42, 92, 0.06);
-  border-top: 0;
-  border-radius: 0 0 var(--r-xl) var(--r-xl);
+  border-radius: var(--r-xl);
+  /* AC-25 — breathing room between the editor and the thread (the thread now
+     also shows for Returned files, AC-24, so it reads as its own card). */
+  margin-top: 14px;
+}
+
+/* Idea summary card (plan §9.4 AC-21) — the LLM-written summary of idea.md,
+   shown above the tree/editor grid. Reference aid only. */
+.idea-summary {
+  background: #fff;
+  border: 1px solid rgba(50, 42, 92, 0.06);
+  border-radius: var(--r-xl);
+  padding: 16px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.idea-summary-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.idea-summary-head h3 {
+  margin: 0;
+  flex: 1; /* the toggle button inside fills the whole card width */
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-2);
+}
+/* §9.6 QA — the whole header row toggles the card: one bare-styled button
+   stretches edge to edge (title + AI tag inside it), CSS-drawn chevron at
+   the end rotating with the open state. */
+.idea-summary-toggle {
+  all: unset;
+  cursor: pointer;
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 6px;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  border-radius: 4px;
+}
+.idea-summary-toggle:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; }
+.idea-summary-toggle:hover .idea-summary-chev-end::after { opacity: 0.65; }
+.idea-summary-chev-end {
+  /* §9.6 QA — large end-of-row chevron drawn in CSS (no text glyph): the
+     ::after box's right+bottom borders rotated 45° point down when collapsed
+     and -135° when open. Scales cleanly and stays crisp at any DPI. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  width: 28px;
+  height: 28px;
+}
+.idea-summary-chev-end::after {
+  content: '';
+  width: 13px;
+  height: 13px;
+  border-right: 3px solid var(--purple);
+  border-bottom: 3px solid var(--purple);
+  transform: rotate(45deg); /* ▾ collapsed */
+  transition: transform 0.15s ease;
+}
+.idea-summary-chev-end.open::after { transform: rotate(-135deg); } /* ▴ open */
+.idea-summary-head .ai-tag {
+  font-size: 11px;
+  background: var(--lavender);
+  color: var(--purple);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-weight: 600;
+}
+.idea-summary-body.view {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.idea-summary-body.view p { margin: 4px 0; }
+.idea-summary-body.view p:first-child { margin-top: 0; }
+.idea-summary-body.view ul { margin: 4px 0; padding-left: 18px; }
+.idea-summary-pending {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+.idea-summary-pending .ba-gen-spinner { width: 18px; height: 18px; border-width: 2.5px; }
+.idea-summary-error p {
+  margin: 0 0 8px;
+  font-size: 12.5px;
+  color: var(--rose);
 }
 
 /* File tree (left rail). */
@@ -1558,6 +1666,9 @@ button.oq-btn:focus-visible {
 .file-ico.returned  { background: var(--blush);    color: var(--rose); }
 .file-ico.approved  { background: var(--mint);     color: var(--green); }
 .file-ico.in_review { background: var(--butter);   color: var(--amber); }
+/* idea.md (AC-22) — read-only reference material, neutral chip (no review
+   state color). */
+.file-ico.idea { background: rgba(50, 42, 92, 0.08); color: var(--ink-2); }
 .file.active .file-ico { background: rgba(255,255,255,0.15); color: #fff; }
 
 .file-status {
@@ -1579,13 +1690,16 @@ button.oq-btn:focus-visible {
 }
 .file.active:focus-visible { outline-color: #fff; }
 
-/* Viewer / editor card (right pane). */
+/* Viewer / editor card (right pane). §9.6g — flex:1 + min-height:0 so the
+   card fills the tree-matched column and the body scrolls inside it; the
+   card no longer grows past the sidebar. */
 .ba-doc {
   background: #fff;
   border-radius: var(--r-xl);
   display: flex; flex-direction: column;
   overflow: hidden;
-  min-height: 640px;
+  flex: 1;
+  min-height: 0;
 }
 .ba-doc-head {
   display: flex; align-items: center; gap: 12px;
@@ -1614,14 +1728,23 @@ button.oq-btn:focus-visible {
 .ba-doc-empty h3 { margin: 0; font-size: 15px; }
 .ba-doc-empty p { margin: 0; font-size: 12.5px; color: var(--ink-2); }
 
-/* Rendered-markdown review body (s14 — In Review (SA) read-only state). */
+/* Rendered-markdown review body (s14 — In Review (SA) read-only state).
+   §9.6g — the body owns the scroll: the card is capped at the tree column's
+   height, so long documents scroll inside the card. A slim visible
+   scrollbar (macOS hides overlay bars until scroll). */
 .ba-doc-body {
   flex: 1;
   padding: 22px 26px;
   overflow-y: auto;
   display: flex; flex-direction: column; gap: 18px;
 }
-.ba-doc-body.view { font-size: 13.5px; line-height: 1.65; color: var(--ink); display: block; }
+.ba-doc-body::-webkit-scrollbar { width: 8px; }
+.ba-doc-body::-webkit-scrollbar-thumb {
+  background: rgba(50, 42, 92, 0.18);
+  border-radius: 999px;
+}
+.ba-doc-body::-webkit-scrollbar-track { background: transparent; }
+.ba-doc-body.view { font-size: 13.5px; line-height: 1.65; color: var(--ink); display: block; overflow-wrap: anywhere; }
 .ba-doc-body.view h1, .ba-doc-body.view h2, .ba-doc-body.view h3 { letter-spacing: -0.01em; margin: 14px 0 4px; }
 .ba-doc-body.view h1:first-child { margin-top: 0; }
 .ba-doc-body.view h1 { font-size: 22px; }
@@ -1647,7 +1770,16 @@ button.oq-btn:focus-visible {
   border-radius: 0 10px 10px 0;
   margin: 10px 0;
 }
-.ba-doc-body.view table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+/* §9.6 QA — markdown tables scroll inside the card instead of stretching it:
+   block + max-content caps the table at the card width; wide ones scroll. */
+.ba-doc-body.view table {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  overflow-x: auto;
+}
 .ba-doc-body.view th, .ba-doc-body.view td {
   padding: 9px 12px; text-align: left;
   border-bottom: 1px solid rgba(50, 42, 92, 0.06);
@@ -1665,7 +1797,7 @@ button.oq-btn:focus-visible {
   line-height: 1.65;
   color: var(--ink);
   padding: 22px 26px;
-  min-height: 560px;
+  min-height: 0; /* §9.6g — the card's column caps the height now */
 }
 .ba-edit:focus-visible { outline: none; }
 
@@ -1679,6 +1811,10 @@ button.oq-btn:focus-visible {
 .ba-doc-foot .left { font-size: 12px; color: var(--ink-2); }
 .ba-doc-foot .left b { color: var(--ink); font-weight: 600; }
 .ba-doc-foot .right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+/* AC-28 — the clean draft footer stacks: text on top, buttons underneath.
+   The dirty footer keeps its side-by-side layout. */
+.ba-doc-foot.clean { flex-direction: column; align-items: flex-start; gap: 10px; }
+.ba-doc-foot.clean .right { margin-left: 0; }
 
 /* Inline review thread (State C). */
 .review-thread {
@@ -1822,6 +1958,10 @@ button.oq-btn:focus-visible {
  * `.side { display: none }` breakpoint at 980px). */
 @media (max-width: 980px) {
   .ba-grid { grid-template-columns: 1fr; min-height: 0; }
+  /* §9.6g — the tree-matched column trick is desktop-only: in the stacked
+     layout the doc column sizes to its content again. */
+  .ba-doc-col { height: auto; min-height: 0; }
+  .ba-doc { min-height: 480px; }
   .ba-stage { flex-direction: column; align-items: flex-start; }
   .ba-stage .counts { flex-wrap: wrap; }
 }
