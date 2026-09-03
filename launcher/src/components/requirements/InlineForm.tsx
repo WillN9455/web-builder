@@ -68,6 +68,7 @@ const OWNER_LABELS: Record<ReqOwner, string> = {
   BA: 'BA',
   SA: 'SA',
   DEV: 'Dev',
+  DES: 'Design',
   QA: 'QA',
 };
 

@@ -282,6 +282,24 @@ async function main(): Promise<void> {
     check('PATCH req meta → 200', r.status === 200);
     check('row re-rendered in place', read(journeysPath).includes('- TR-002 | must | draft | BA |'));
 
+    // ── DES owner round-trip (refinement batch item 2.5) ──
+    r = await json(`/api/projects/${slug}/requirements/TR-002`, 'PATCH', { owner: 'DES' });
+    check('PATCH req owner=DES → 200', r.status === 200);
+    check('DES owner re-rendered in place', read(journeysPath).includes('- TR-002 | must | draft | DES |'));
+    r = await reqFetch(`/api/projects/${slug}/requirements`);
+    const tr002 = r.body.stories.flatMap((s: any) => s.reqs).find((x: any) => x.id === 'TR-002');
+    check('GET TR-002 owner = DES', tr002?.owner === 'DES');
+    // Reset to BA so later assertions still match the fixture
+    r = await json(`/api/projects/${slug}/requirements/TR-002`, 'PATCH', { owner: 'BA' });
+    check('PATCH req owner=BA reset → 200', r.status === 200);
+
+    // Story comment owner also accepts DES
+    r = await json(`/api/projects/${slug}/stories/US-02`, 'PATCH', { owner: 'DES' });
+    check('PATCH story owner=DES → 200', r.status === 200);
+    check('DES story owner re-rendered in place', read(journeysPath).includes('<!-- story: priority=should status=draft owner=DES -->'));
+    r = await json(`/api/projects/${slug}/stories/US-02`, 'PATCH', { owner: 'SA' });
+    check('PATCH story owner=SA reset → 200', r.status === 200);
+
     // ── Validation (AC-10): 422 with field errors ──
     r = await json(`/api/projects/${slug}/stories`, 'POST', { title: 'no', asA: '', iWantTo: '', soThat: '', priority: 'must', status: 'draft', owner: 'BA' });
     check('invalid story → 422 {errors}', r.status === 422 && typeof r.body?.errors === 'object');

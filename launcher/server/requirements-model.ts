@@ -45,7 +45,7 @@ export type ReqStatus = (typeof REQ_STATUSES)[number];
 export const REQ_PRIORITIES = ['must', 'should', 'could', 'wont'] as const;
 export type ReqPriority = (typeof REQ_PRIORITIES)[number];
 
-export const REQ_OWNERS = ['BA', 'SA', 'DEV', 'QA'] as const;
+export const REQ_OWNERS = ['BA', 'SA', 'DEV', 'DES', 'QA'] as const;
 export type ReqOwner = (typeof REQ_OWNERS)[number];
 
 export type ReqType = 'BR' | 'TR';
