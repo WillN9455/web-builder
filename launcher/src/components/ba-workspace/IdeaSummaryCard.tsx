@@ -3,9 +3,11 @@
 // polls GET .../idea-summary while the background job runs ("Writing
 // summary…"), renders the summary when done, and offers Retry on failed.
 // A reference aid only — labelled AI-generated, never gate input.
-// §9.6 QA (Will): the card is collapsible — the header toggles the body;
-// open by default, and the poll keeps running while collapsed so a
-// background summary still lands.
+// §9.6 QA (Will): the card is collapsible — the header toggles the body —
+// and starts collapsed on first load (the summary is reference material,
+// not the first thing the BA should read); the poll keeps running while
+// collapsed so a background summary still lands. The chevron arrow shows
+// the state: ▸ collapsed, ▾ open (rotated from the same glyph).
 import { useCallback, useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -22,7 +24,7 @@ export function IdeaSummaryCard({ projectId }: IdeaSummaryCardProps) {
   const [available, setAvailable] = useState(true);
   const [retrying, setRetrying] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false); // §9.6 QA — collapsed on first load
 
   // Silent poll — no skeleton flicker on refresh; stops once done/failed
   // (failed keeps the card up with its error + Retry, no polling).

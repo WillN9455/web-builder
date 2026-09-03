@@ -1540,7 +1540,16 @@ button.oq-btn:focus-visible {
   color: inherit;
 }
 .idea-summary-toggle:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; border-radius: 4px; }
-.idea-summary-chev { display: inline-block; transition: transform 0.15s ease; font-size: 9px; }
+.idea-summary-chev {
+  display: inline-block;
+  align-self: center;
+  transition: transform 0.15s ease;
+  /* §9.6 QA — the arrow is the collapse affordance: sized to the title and
+     ink-colored so the collapsed state reads at a glance (▸ closed, ▾ open). */
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+}
 .idea-summary-chev.open { transform: rotate(90deg); }
 .idea-summary-head .ai-tag {
   font-size: 11px;
