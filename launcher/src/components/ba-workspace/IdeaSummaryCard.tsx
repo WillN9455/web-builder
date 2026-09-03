@@ -1,8 +1,11 @@
 // Idea summary card (plan §9.4, AC-21 revised) — the LLM-written summary of
-// idea.md, shown above the file-tree/editor grid. Async + cached server-side:
-// the card polls GET .../idea-summary while the background job runs ("Writing
+// idea.md, shown at the top of the tab. Async + cached server-side: the card
+// polls GET .../idea-summary while the background job runs ("Writing
 // summary…"), renders the summary when done, and offers Retry on failed.
 // A reference aid only — labelled AI-generated, never gate input.
+// §9.6 QA (Will): the card is collapsible — the header toggles the body;
+// open by default, and the poll keeps running while collapsed so a
+// background summary still lands.
 import { useCallback, useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -19,6 +22,7 @@ export function IdeaSummaryCard({ projectId }: IdeaSummaryCardProps) {
   const [available, setAvailable] = useState(true);
   const [retrying, setRetrying] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [open, setOpen] = useState(true);
 
   // Silent poll — no skeleton flicker on refresh; stops once done/failed
   // (failed keeps the card up with its error + Retry, no polling).
@@ -62,30 +66,49 @@ export function IdeaSummaryCard({ projectId }: IdeaSummaryCardProps) {
   return (
     <div className="idea-summary" aria-live="polite">
       <div className="idea-summary-head">
-        <h3>Project idea</h3>
-        <span className="ai-tag">AI-generated from idea.md</span>
-      </div>
-      {summary?.state === 'done' && summary.summary ? (
-        <div className="idea-summary-body view">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{summary.summary}</ReactMarkdown>
-        </div>
-      ) : summary?.state === 'failed' ? (
-        <div className="idea-summary-error">
-          <p role="alert">{summary.error ?? 'The summary generation failed.'}</p>
-          {actionError && <p role="alert">{actionError}</p>}
+        <h3>
+          {/* §9.6 QA — the header toggles the card. aria-expanded/controls keep
+              it a disclosed region for screen readers; the chevron is decor. */}
           <button
             type="button"
-            className="btn btn-soft btn-pill"
-            disabled={retrying}
-            onClick={() => void handleRetry()}
+            className="idea-summary-toggle"
+            aria-expanded={open}
+            aria-controls="idea-summary-body"
+            onClick={() => setOpen((o) => !o)}
           >
-            Retry
+            <span className={`idea-summary-chev${open ? ' open' : ''}`} aria-hidden="true">
+              ▸
+            </span>
+            Project idea
           </button>
-        </div>
-      ) : (
-        <div className="idea-summary-pending" aria-busy="true">
-          {/* Reuses the generation panel's spinner (code-quality: no duplicate) */}
-          <span className="ba-gen-spinner" aria-hidden="true" /> Writing summary…
+        </h3>
+        <span className="ai-tag">AI-generated from idea.md</span>
+      </div>
+      {open && (
+        <div id="idea-summary-body">
+          {summary?.state === 'done' && summary.summary ? (
+            <div className="idea-summary-body view">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{summary.summary}</ReactMarkdown>
+            </div>
+          ) : summary?.state === 'failed' ? (
+            <div className="idea-summary-error">
+              <p role="alert">{summary.error ?? 'The summary generation failed.'}</p>
+              {actionError && <p role="alert">{actionError}</p>}
+              <button
+                type="button"
+                className="btn btn-soft btn-pill"
+                disabled={retrying}
+                onClick={() => void handleRetry()}
+              >
+                Retry
+              </button>
+            </div>
+          ) : (
+            <div className="idea-summary-pending" aria-busy="true">
+              {/* Reuses the generation panel's spinner (code-quality: no duplicate) */}
+              <span className="ba-gen-spinner" aria-hidden="true" /> Writing summary…
+            </div>
+          )}
         </div>
       )}
     </div>

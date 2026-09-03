@@ -1528,6 +1528,20 @@ button.oq-btn:focus-visible {
   letter-spacing: 0.06em;
   color: var(--ink-2);
 }
+/* §9.6 QA — the header row toggles the card: a bare button styled back into
+   the h3 (uppercase small caps), chevron rotating with the open state. */
+.idea-summary-toggle {
+  all: unset;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font: inherit;
+  color: inherit;
+}
+.idea-summary-toggle:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; border-radius: 4px; }
+.idea-summary-chev { display: inline-block; transition: transform 0.15s ease; font-size: 9px; }
+.idea-summary-chev.open { transform: rotate(90deg); }
 .idea-summary-head .ai-tag {
   font-size: 11px;
   background: var(--lavender);
