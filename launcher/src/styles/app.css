@@ -1487,14 +1487,21 @@ button.oq-btn:focus-visible {
   grid-template-columns: 280px 1fr;
   gap: 22px;
   min-height: 640px;
-  align-items: start;
 }
 /* §9.6 QA — a grid column defaults to min-width:auto, so one wide child
    (an unbreakable table row, a long token) forced the 1fr editor column
    past the viewport and the preview ran off the page. min-width:0 lets
    both columns shrink; the body's own scroll/overflow rules take over. */
 .ba-grid > * { min-width: 0; }
-.ba-doc-col { display: flex; flex-direction: column; }
+/* §9.6g — the editor column spans the tree column's height: height:0 keeps
+   its content from growing the grid row (the tree sizes the row), then
+   min-height:100% stretches it to match. The doc body scrolls inside. */
+.ba-doc-col {
+  display: flex;
+  flex-direction: column;
+  height: 0;
+  min-height: 100%;
+}
 .ba-doc-col > .review-thread {
   background: #fff;
   border: 1px solid rgba(50, 42, 92, 0.06);
@@ -1683,13 +1690,16 @@ button.oq-btn:focus-visible {
 }
 .file.active:focus-visible { outline-color: #fff; }
 
-/* Viewer / editor card (right pane). */
+/* Viewer / editor card (right pane). §9.6g — flex:1 + min-height:0 so the
+   card fills the tree-matched column and the body scrolls inside it; the
+   card no longer grows past the sidebar. */
 .ba-doc {
   background: #fff;
   border-radius: var(--r-xl);
   display: flex; flex-direction: column;
   overflow: hidden;
-  min-height: 640px;
+  flex: 1;
+  min-height: 0;
 }
 .ba-doc-head {
   display: flex; align-items: center; gap: 12px;
@@ -1718,13 +1728,22 @@ button.oq-btn:focus-visible {
 .ba-doc-empty h3 { margin: 0; font-size: 15px; }
 .ba-doc-empty p { margin: 0; font-size: 12.5px; color: var(--ink-2); }
 
-/* Rendered-markdown review body (s14 — In Review (SA) read-only state). */
+/* Rendered-markdown review body (s14 — In Review (SA) read-only state).
+   §9.6g — the body owns the scroll: the card is capped at the tree column's
+   height, so long documents scroll inside the card. A slim visible
+   scrollbar (macOS hides overlay bars until scroll). */
 .ba-doc-body {
   flex: 1;
   padding: 22px 26px;
   overflow-y: auto;
   display: flex; flex-direction: column; gap: 18px;
 }
+.ba-doc-body::-webkit-scrollbar { width: 8px; }
+.ba-doc-body::-webkit-scrollbar-thumb {
+  background: rgba(50, 42, 92, 0.18);
+  border-radius: 999px;
+}
+.ba-doc-body::-webkit-scrollbar-track { background: transparent; }
 .ba-doc-body.view { font-size: 13.5px; line-height: 1.65; color: var(--ink); display: block; overflow-wrap: anywhere; }
 .ba-doc-body.view h1, .ba-doc-body.view h2, .ba-doc-body.view h3 { letter-spacing: -0.01em; margin: 14px 0 4px; }
 .ba-doc-body.view h1:first-child { margin-top: 0; }
@@ -1778,7 +1797,7 @@ button.oq-btn:focus-visible {
   line-height: 1.65;
   color: var(--ink);
   padding: 22px 26px;
-  min-height: 560px;
+  min-height: 0; /* §9.6g — the card's column caps the height now */
 }
 .ba-edit:focus-visible { outline: none; }
 
@@ -1939,6 +1958,10 @@ button.oq-btn:focus-visible {
  * `.side { display: none }` breakpoint at 980px). */
 @media (max-width: 980px) {
   .ba-grid { grid-template-columns: 1fr; min-height: 0; }
+  /* §9.6g — the tree-matched column trick is desktop-only: in the stacked
+     layout the doc column sizes to its content again. */
+  .ba-doc-col { height: auto; min-height: 0; }
+  .ba-doc { min-height: 480px; }
   .ba-stage { flex-direction: column; align-items: flex-start; }
   .ba-stage .counts { flex-wrap: wrap; }
 }
