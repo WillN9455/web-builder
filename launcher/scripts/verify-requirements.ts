@@ -379,6 +379,37 @@ async function main(): Promise<void> {
       r.body?.stories?.find((s: any) => s.usId === 'US-01')?.reqs?.some((x: any) => x.id === 'TR-001') === true,
     );
 
+    // ── B2 regression (review item B2): the parser used to flip
+    //    story.deleted when a TR's row-delete marker appeared after a struck
+    //    TR in a body-less story (heading → meta → ~~struck TR~~ → marker).
+    //    The fix scopes story-delete markers to "before the first content
+    //    line" — a committed body sentence OR any TR row (struck or not)
+    //    freezes the position. Repro: append a body-less US-05 block with a
+    //    single struck TR + the row-delete marker, then assert the story
+    //    still surfaces. ──
+    fs.writeFileSync(
+      journeysPath,
+      read(journeysPath) +
+        '\n' +
+        [
+          '### US-05 — Body-less edge case for the parser',
+          '<!-- story: priority=wont status=draft owner=BA -->',
+          '- ~~TR-004 | wont | draft | DEV | A throwaway TR in a body-less story.~~',
+          '<!-- deleted ' + new Date().toISOString().slice(0, 10) + ' by BA -->',
+        ].join('\n') +
+        '\n',
+    );
+    r = await reqFetch(`/api/projects/${slug}/requirements`);
+    check(
+      'B2 regression: body-less + all-struck US-05 still surfaces (item B2)',
+      Array.isArray(r.body?.stories) && r.body.stories.some((s: any) => s.usId === 'US-05'),
+    );
+    check(
+      'B2 regression: struck TR-004 absent from US-05.reqs but the row is still in the block on disk (item B2)',
+      r.body?.stories?.find((s: any) => s.usId === 'US-05')?.reqs?.some((x: any) => x.id === 'TR-004') !== true &&
+        read(journeysPath).includes('~~TR-004'),
+    );
+
     // ── DELETE requirement (AC-8/9): strike + marker, freed id reusable ──
     const beforeDel = read(prdPath);
     r = await reqFetch(`/api/projects/${slug}/requirements/BR-002`, { method: 'DELETE' });

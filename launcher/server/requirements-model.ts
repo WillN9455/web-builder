@@ -327,6 +327,14 @@ export function parseStories(journeys: string): { stories: StoryRow[]; parseErro
       blockEnd: lines.length,
       deleted: false,
     };
+    // Tracks whether any committed-content line has appeared yet (body
+    // sentence OR a TR row, struck or not). A `<!-- deleted … -->` marker
+    // is a story-level delete iff it appears *before* that content — the
+    // DELETE-stories endpoint writes it on its own line directly after the
+    // heading; the DELETE-requirements endpoint writes its marker directly
+    // after a struck row, which is NOT a story delete (review item B2:
+    // body-less + all-struck stories used to flip story-deleted).
+    let seenFirstContent = false;
     for (let i = start + 1; i < lines.length; i++) {
       const line = lines[i];
       if (/^###\s+US-/.test(line.trim())) {
@@ -339,13 +347,9 @@ export function parseStories(journeys: string): { stories: StoryRow[]; parseErro
         Object.assign(story, parseStoryMeta(trimmed.match(STORY_META_RE)![1]));
         continue;
       }
-      if (STORY_DELETED_RE.test(trimmed) && story.reqs.length === 0 && story.bodyLine === null) {
-        // A delete marker *before any requirement rows* (and before the body
-        // sentence) marks the whole story soft-deleted. The DELETE-stories
-        // endpoint writes the marker on its own line directly after the
-        // heading; the DELETE-requirements endpoint writes its marker
-        // directly after a struck row, which is *not* a story delete and
-        // must not be misinterpreted as one (review item 2.7).
+      // A delete marker is a story-level delete iff it is the first content
+      // line in the block (see `seenFirstContent` above).
+      if (STORY_DELETED_RE.test(trimmed) && !seenFirstContent) {
         story.deleted = true;
         continue;
       }
@@ -358,12 +362,18 @@ export function parseStories(journeys: string): { stories: StoryRow[]; parseErro
             story.asA = parts.asA || null;
             story.iWantTo = parts.iWantTo || null;
             story.soThat = parts.soThat || null;
+            seenFirstContent = true;
             continue;
           }
         }
       }
-      // Requirement row (TR-) — struck rows are skipped.
-      if (DELETED_ROW_RE.test(trimmed)) continue;
+      // Requirement row (TR-) — struck rows are skipped but still count as
+      // "first content" (B2: a struck row's delete marker is a row-level
+      // delete, not a story-level delete).
+      if (DELETED_ROW_RE.test(trimmed)) {
+        seenFirstContent = true;
+        continue;
+      }
       const rm = trimmed.match(REQ_ROW_RE);
       if (rm && rm[1].startsWith('TR-')) {
         const fields = parseRowSegments(rm[2] ? rm[2].split('|').map((s) => s.trim()) : []);
@@ -381,6 +391,7 @@ export function parseStories(journeys: string): { stories: StoryRow[]; parseErro
             lineIndex: i,
             raw: line,
           });
+          seenFirstContent = true;
         }
       }
       // Anything else: unknown content — passes through untouched (we never
