@@ -1370,7 +1370,16 @@ button.oq-btn:focus-visible {
 }
 .ba-stage .body .ttl { font-size: 15px; font-weight: 700; color: var(--ink); }
 .ba-stage .body .sub { font-size: 12.5px; color: var(--ink-2); margin-top: 2px; }
-.ba-stage .counts { display: flex; gap: 8px; flex: none; }
+/* Status pills stack vertically (AC-14 — owner request) and right-align
+ * against the banner's edge; the banner grows taller, the pills keep their
+ * own styling. */
+.ba-stage .counts {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex: none;
+}
 .ba-stage .count-pill {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 5px 11px;
