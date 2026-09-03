@@ -231,7 +231,7 @@ function startJob(projectId: number): void {
 export function enqueueBaDraftJob(projectId: number): void {
   if (running.has(projectId)) return;
   const row = getGenRow(projectId);
-  if (row && row.state !== 'failed') return;
+  if (row) return;
   setGenRow(projectId, { state: 'pending' });
   startJob(projectId);
 }
