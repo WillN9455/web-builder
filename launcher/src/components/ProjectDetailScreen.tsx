@@ -9,11 +9,14 @@ type ProjectInfo = ProjectDetailResponse['project'];
 // so a tab panel can render the shell's loading / error states in place of
 // its own content. onContextConfirmed lets ProjectBackgroundScreen flip the
 // gate in the shell's state after a successful State D confirm — the sidebar
-// unlocks immediately, no reload (AC-7).
+// unlocks immediately, no reload (AC-7). onRequirementsCount lets
+// RequirementsScreen publish its live BR+TR parse count for the sidebar chip
+// (nulled on tab unmount so the chip never outlives its source).
 export type ProjectOutletContext = {
   project: ProjectInfo | null;
   error: string | null;
   onContextConfirmed: () => void;
+  onRequirementsCount?: (count: number | null) => void;
 };
 
 // Project shell — the open-project layout: per-project sidebar + main column
@@ -27,6 +30,7 @@ export function ProjectDetailScreen() {
   const navigate = useNavigate();
   const [project, setProject] = useState<ProjectInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [requirementsCount, setRequirementsCount] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -51,6 +55,7 @@ export function ProjectDetailScreen() {
         projectId={id ?? ''}
         confirmed={project?.context_confirmed ?? false}
         backgroundCount={project?.ba_artifact_count ?? null}
+        requirementsCount={requirementsCount}
       />
       <main className="main" aria-busy={project === null && error === null}>
         <header className="topbar">
@@ -67,6 +72,7 @@ export function ProjectDetailScreen() {
               error,
               onContextConfirmed: () =>
                 setProject((p) => (p ? { ...p, context_confirmed: true } : p)),
+              onRequirementsCount: setRequirementsCount,
             } satisfies ProjectOutletContext
           }
         />

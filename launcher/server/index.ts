@@ -10,6 +10,7 @@ import path from 'node:path';
 import { migrate, db } from './db.js';
 import { registerBaWorkspaceRoutes, countBaArtifacts } from './ba-workspace.js';
 import { enqueueBaDraftJob } from './ba-draft.js';
+import { registerRequirementsRoutes } from './requirements.js';
 import {
   validateProjectDir,
   scaffoldProjectDir,
@@ -45,6 +46,13 @@ app.use(express.json({ limit: '1mb' }));
 
 // BA Workspace — Project Background tab (screens 12–14 + State D gate).
 registerBaWorkspaceRoutes(app);
+
+// Requirements tab — story-grouped BR/TR CRUD with write-back (screen 15,
+// requirements.html v5.3 `#spec`).
+// TODO(auth): the spec wants BA-only writes (403 for other roles); no auth
+// middleware exists in the launcher, so the seam is documented at the
+// registration site (plan §0c) — see server/requirements.ts for the full note.
+registerRequirementsRoutes(app);
 
 // ── Types ──────────────────────────────────────────────────────────────────
 

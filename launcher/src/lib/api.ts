@@ -528,3 +528,220 @@ export async function confirmProjectContext(idOrSlug: string): Promise<ConfirmCo
     body: JSON.stringify({}),
   });
 }
+
+// ── /api/projects/:id/requirements (Requirements tab, screen 15) ───────────
+
+import type {
+  ReqOwner,
+  ReqPriority,
+  ReqStatus,
+  ReqType,
+} from '../../server/requirements-model';
+
+// The grammar's single source of truth is server/requirements-model.ts —
+// pure, no I/O, imported directly so the client's status dropdown can never
+// drift from the server's state machine. Only the vocabulary + machine are
+// consumed here; the serialized response shapes are re-declared below (the
+// wire format strips the parser's internal geometry).
+export type {
+  ReqOwner,
+  ReqPriority,
+  ReqStatus,
+  ReqType,
+} from '../../server/requirements-model';
+
+export type RequirementItem = {
+  id: string; // BR-001 / TR-001
+  type: 'BR' | 'TR';
+  priority: ReqPriority | null;
+  status: ReqStatus | null;
+  owner: ReqOwner | null;
+  text: string;
+};
+
+export type StoryItem = {
+  usId: string; // US-01
+  title: string;
+  asA: string | null;
+  iWantTo: string | null;
+  soThat: string | null;
+  priority: ReqPriority | null;
+  status: ReqStatus | null;
+  owner: ReqOwner | null;
+  reqs: RequirementItem[];
+};
+
+export type RequirementsResponse = {
+  stories: StoryItem[];
+  businessReqs: RequirementItem[];
+  // 'no-prd' → the project has no PRD/ folder yet; the tab renders its
+  // friendly empty state and no add affordances (AC-4).
+  source: 'ok' | 'no-prd';
+  // Set when a file exists but couldn't be read/parsed — that file's rows are
+  // hidden but the tab still renders (AC-10: never a 500).
+  parseError?: string;
+};
+
+export type StoryInput = {
+  title: string;
+  asA: string;
+  iWantTo: string;
+  soThat: string;
+  priority: ReqPriority;
+  status: ReqStatus;
+  owner: ReqOwner;
+};
+
+export type StoryPatch = Partial<StoryInput>;
+
+export type RequirementInput = {
+  type: ReqType;
+  text: string;
+  priority: ReqPriority;
+  status: ReqStatus;
+  owner: ReqOwner;
+};
+
+export type RequirementPatch = Partial<Omit<RequirementInput, 'type'>> & { type?: ReqType };
+
+export class RequirementsValidationError extends Error {
+  errors: Record<string, string>;
+  constructor(errors: Record<string, string>) {
+    super('Validation failed');
+    this.name = 'RequirementsValidationError';
+    this.errors = errors;
+  }
+}
+
+// The delete guard (spec VALID): an approved/done requirement referenced by
+// another story keeps its row — the server answers 409 with the referencing
+// story ids so the UI can offer scroll-and-flash.
+export class RequirementsDeleteGuardError extends Error {
+  referencedBy: string[];
+  constructor(message: string, referencedBy: string[]) {
+    super(message);
+    this.name = 'RequirementsDeleteGuardError';
+    this.referencedBy = referencedBy;
+  }
+}
+
+// Same offline-detection + error-extraction contract as baFetch, plus the
+// Requirements-specific error shapes: {errors} → validation, {referencedBy} →
+// delete guard.
+async function reqFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(path, init);
+  const contentType = res.headers.get('content-type') ?? '';
+  if (!contentType.includes('application/json')) {
+    throw new Error(
+      'API server is not running. Start it with `npm run dev` (or `npm run dev:api` in another terminal).',
+    );
+  }
+  const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  if (!res.ok) {
+    if (data.errors && typeof data.errors === 'object' && !Array.isArray(data.errors)) {
+      throw new RequirementsValidationError(data.errors as Record<string, string>);
+    }
+    if (Array.isArray(data.referencedBy)) {
+      throw new RequirementsDeleteGuardError(
+        typeof data.error === 'string' ? data.error : `Delete failed (HTTP ${res.status})`,
+        data.referencedBy as string[],
+      );
+    }
+    throw new Error(typeof data.error === 'string' ? data.error : `Request failed (HTTP ${res.status})`);
+  }
+  return data as T;
+}
+
+export async function fetchRequirements(idOrSlug: string): Promise<RequirementsResponse> {
+  return reqFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/requirements`);
+}
+
+export type CreateStoryResponse = { ok: true; story: StoryItem };
+
+export async function createStory(idOrSlug: string, input: StoryInput): Promise<CreateStoryResponse> {
+  return reqFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/stories`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+}
+
+export type UpdateStoryResponse = { ok: true; story: StoryItem };
+
+export async function updateStory(
+  idOrSlug: string,
+  usId: string,
+  patch: Partial<StoryInput>,
+): Promise<UpdateStoryResponse> {
+  return reqFetch(
+    `/api/projects/${encodeURIComponent(idOrSlug)}/stories/${encodeURIComponent(usId)}`,
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch),
+    },
+  );
+}
+
+export async function deleteStory(idOrSlug: string, usId: string): Promise<{ ok: true; usId: string }> {
+  return reqFetch(
+    `/api/projects/${encodeURIComponent(idOrSlug)}/stories/${encodeURIComponent(usId)}`,
+    { method: 'DELETE' },
+  );
+}
+
+export type CreateRequirementResponse = { ok: true; requirement: RequirementItem };
+
+export async function createRequirement(
+  idOrSlug: string,
+  usId: string,
+  input: RequirementInput,
+): Promise<CreateRequirementResponse> {
+  return reqFetch(
+    `/api/projects/${encodeURIComponent(idOrSlug)}/stories/${encodeURIComponent(usId)}/requirements`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    },
+  );
+}
+
+export type UpdateRequirementResponse = { ok: true; requirement: RequirementItem };
+
+export async function updateRequirement(
+  idOrSlug: string,
+  reqId: string,
+  patch: RequirementPatch,
+): Promise<UpdateRequirementResponse> {
+  return reqFetch(
+    `/api/projects/${encodeURIComponent(idOrSlug)}/requirements/${encodeURIComponent(reqId)}`,
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch),
+    },
+  );
+}
+
+export async function updateRequirementStatus(
+  idOrSlug: string,
+  reqId: string,
+  status: ReqStatus,
+): Promise<UpdateRequirementResponse> {
+  return reqFetch(
+    `/api/projects/${encodeURIComponent(idOrSlug)}/requirements/${encodeURIComponent(reqId)}/status`,
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    },
+  );
+}
+
+export async function deleteRequirement(idOrSlug: string, reqId: string): Promise<{ ok: true; id: string }> {
+  return reqFetch(
+    `/api/projects/${encodeURIComponent(idOrSlug)}/requirements/${encodeURIComponent(reqId)}`,
+    { method: 'DELETE' },
+  );
+}
