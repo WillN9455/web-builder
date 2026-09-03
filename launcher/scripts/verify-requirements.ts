@@ -98,6 +98,7 @@ const PRD_MD = `# PRD — Neighborhood Library
 
 - BR-001 | must | approved | BA | The list form must require title, photo, condition, and a pickup window before save.
 - BR-002 | should | draft | BA | Saved items must be visible to all approved members in the same neighborhood within 5 seconds.
+- BR-004 | Legacy requirement row without meta segments, kept for the conversion flow.
 
 ## 9. Non-functional requirements
 
@@ -191,7 +192,7 @@ async function main(): Promise<void> {
     // ── GET (AC-10: populated + no-prd, never 500) ──
     let r = await reqFetch(`/api/projects/${slug}/requirements`);
     check('GET populated → 200 source ok', r.status === 200 && r.body.source === 'ok');
-    eq('businessReqs = 2', r.body.businessReqs?.length, 2);
+    eq('businessReqs = 3 (incl. the legacy BR-004)', r.body.businessReqs?.length, 3);
     eq('stories = 2', r.body.stories?.length, 2);
     eq('US-01 carries TR-001', r.body.stories?.[0]?.reqs?.map((x: any) => x.id), ['TR-001']);
 
@@ -360,11 +361,68 @@ async function main(): Promise<void> {
     });
     eq('deleted US id never reused (AC-8)', r.body?.story?.usId, 'US-04');
 
+    // ── Legacy-row status-only PATCH (review N1): the server never invents ──
+    // grammar values. BR-004 is a metadata-less legacy row (no priority or
+    // owner); the thin status route must refuse instead of writing defaults.
+    r = await json(`/api/projects/${slug}/requirements/BR-004/status`, 'PATCH', {
+      status: 'in_review',
+    });
+    check('legacy row status-only PATCH → 422 (N1)', r.status === 422 && typeof r.body?.errors?._ === 'string');
+    check('legacy row untouched on disk (N1)', read(prdPath).includes('- BR-004 | Legacy requirement row without meta segments, kept for the conversion flow.'));
+
     // ── Parse-error resilience (AC-10): unreadable file → 200, hidden rows ──
     fs.chmodSync(prdPath, 0o000);
     r = await reqFetch(`/api/projects/${slug}/requirements`);
     check('unreadable prd.md → 200, not 500 (AC-10)', r.status === 200);
     fs.chmodSync(prdPath, 0o644);
+
+    // ── Interleaved-writer serialization (review B1: the prd-fs mutex) ──────
+    // Two writers to one PRD file must queue FIFO through withPrdLock instead
+    // of racing: an in-flight mutation holding the lock across an await (the
+    // auto-draft write moment shape) cannot have a second write land under
+    // it, and the queued write lands whole after it. Exercised in-process
+    // against the same prd-fs module the routes and the job call (the
+    // isolated server copy is byte-identical).
+    const { withPrdLock, atomicWritePrd: atomicWrite } = await import('../server/prd-fs.js');
+    const lockPath = path.join(tmp, 'mutex-prd.md');
+    fs.writeFileSync(lockPath, 'v1\n', 'utf-8');
+    let release!: () => void;
+    const gate = new Promise<void>((res) => (release = res));
+    let holderLanded = false;
+    const holder = withPrdLock(lockPath, async () => {
+      await gate;
+      fs.writeFileSync(lockPath, 'in-flight mutation result\n', 'utf-8');
+      holderLanded = true;
+    });
+    await new Promise((res) => setTimeout(res, 20));
+    const queued = atomicWrite(lockPath, '- TR-001 | must | in_review | DEV | spliced row\n');
+    await new Promise((res) => setTimeout(res, 20));
+    check(
+      'interleaved: queued write did not land mid-flight, holder intact (B1)',
+      read(lockPath) === 'v1\n' && !holderLanded,
+    );
+    release();
+    await Promise.all([holder, queued]);
+    check(
+      'interleaved: file holds the queued write, FIFO order preserved (B1)',
+      read(lockPath) === '- TR-001 | must | in_review | DEV | spliced row\n',
+    );
+    // A different file never queues behind a held lock.
+    const otherPath = path.join(tmp, 'mutex-other.md');
+    fs.writeFileSync(otherPath, 'o1\n', 'utf-8');
+    let release2!: () => void;
+    const gate2 = new Promise<void>((res) => (release2 = res));
+    const holder2 = withPrdLock(lockPath, async () => {
+      await gate2;
+    });
+    await new Promise((res) => setTimeout(res, 20));
+    const independent = Promise.race([
+      atomicWrite(otherPath, 'o2\n').then(() => true),
+      new Promise<boolean>((res) => setTimeout(() => res(false), 500)),
+    ]);
+    check('different file: write lands while another path is locked', await independent);
+    release2();
+    await holder2;
   } finally {
     child.kill('SIGTERM');
     await new Promise((res) => setTimeout(res, 300));

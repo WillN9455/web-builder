@@ -11,10 +11,12 @@
 // - Only prd.md / user-journeys.md inside the resolved PRD/ dir are ever
 //   touched (R1 containment). Route-param IDs are validated against the
 //   grammar and used for lookup only — never for path construction.
-// - Every mutation re-reads the target file immediately before splicing;
-//   the single-process sync I/O serializes interleaved requests.
+// - Every mutation re-reads the target file immediately before splicing.
 // - Writes land atomically (.tmp + rename) via prd-fs.atomicWritePrd, so a
-//   crash never leaves a PRD half-updated (spec SEC).
+//   crash never leaves a PRD half-updated (spec SEC), and every write
+//   serializes through prd-fs's path-keyed mutex (review B1): an async
+//   writer holding the PRD lock (the BA auto-draft job's write moment)
+//   queues behind, or is queued behind, rather than interleaving.
 // TODO(auth): the spec's SEC section wants BA-only writes with 403 for other
 // roles, but the launcher has no auth middleware (single-user local app —
 // the current user is effectively the BA). Role enforcement is not
@@ -200,7 +202,7 @@ export function registerRequirementsRoutes(app: express.Express): void {
   });
 
   // POST /stories — append a new US-NN block (story-first add flow, AC-4).
-  app.post('/api/projects/:id/stories', (req, res) => {
+  app.post('/api/projects/:id/stories', async (req, res) => {
     const row = getProjectRow(req.params.id);
     if (!row) {
       res.status(404).json({ error: 'Not found' });
@@ -225,7 +227,12 @@ export function registerRequirementsRoutes(app: express.Express): void {
     let lines = text.split('\n');
     if (lines.length === 0 || lines[lines.length - 1].trim() !== '') lines.push('');
     lines.push(...renderStoryBlock({ usId, ...validation.value }).split('\n'));
-    atomicWritePrd(journeysPath, lines.join('\n'));
+    try {
+      await atomicWritePrd(journeysPath, lines.join('\n'));
+    } catch {
+      res.status(500).json({ error: 'Could not write PRD file' });
+      return;
+    }
     res.status(201).json({
       ok: true,
       story: serializeStory({
@@ -248,7 +255,7 @@ export function registerRequirementsRoutes(app: express.Express): void {
   });
 
   // PATCH /stories/:usId — title / As-a / I-want-to / So-that / story-status.
-  app.patch('/api/projects/:id/stories/:usId', (req, res) => {
+  app.patch('/api/projects/:id/stories/:usId', async (req, res) => {
     const row = getProjectRow(req.params.id);
     if (!row) {
       res.status(404).json({ error: 'Not found' });
@@ -318,7 +325,12 @@ export function registerRequirementsRoutes(app: express.Express): void {
       }
     }
     lines = applyInsertions(lines, insertions);
-    atomicWritePrd(journeysPath, lines.join('\n'));
+    try {
+      await atomicWritePrd(journeysPath, lines.join('\n'));
+    } catch {
+      res.status(500).json({ error: 'Could not write PRD file' });
+      return;
+    }
     res.json({
       ok: true,
       story: serializeStory({
@@ -336,7 +348,7 @@ export function registerRequirementsRoutes(app: express.Express): void {
 
   // DELETE /stories/:usId — soft-delete the block: strike its requirement
   // rows, add the delete marker, leave everything recoverable on disk.
-  app.delete('/api/projects/:id/stories/:usId', (req, res) => {
+  app.delete('/api/projects/:id/stories/:usId', async (req, res) => {
     const row = getProjectRow(req.params.id);
     if (!row) {
       res.status(404).json({ error: 'Not found' });
@@ -369,13 +381,18 @@ export function registerRequirementsRoutes(app: express.Express): void {
     }
     // Insertions descending so the strike replacements' indexes stay valid.
     lines = applyInsertions(lines, ops);
-    atomicWritePrd(journeysPath, lines.join('\n'));
+    try {
+      await atomicWritePrd(journeysPath, lines.join('\n'));
+    } catch {
+      res.status(500).json({ error: 'Could not write PRD file' });
+      return;
+    }
     res.json({ ok: true, usId: story.usId });
   });
 
   // POST /stories/:usId/requirements — story-first add (spec VALID: the story
   // is in the path; a body `story` field is rejected, not silently honored).
-  app.post('/api/projects/:id/stories/:usId/requirements', (req, res) => {
+  app.post('/api/projects/:id/stories/:usId/requirements', async (req, res) => {
     const row = getProjectRow(req.params.id);
     if (!row) {
       res.status(404).json({ error: 'Not found' });
@@ -413,7 +430,12 @@ export function registerRequirementsRoutes(app: express.Express): void {
       }
       const id = nextFreeId(liveReqIds(parseRequirements(text, '')).filter((x) => x.startsWith('BR-')), 'BR');
       const lines = insertAfter(prdLines, idx, [renderReqRow(id, value.priority, value.status, value.owner, value.text)]);
-      atomicWritePrd(prdPath, lines.join('\n'));
+      try {
+        await atomicWritePrd(prdPath, lines.join('\n'));
+      } catch {
+        res.status(500).json({ error: 'Could not write PRD file' });
+        return;
+      }
       res.status(201).json({
         ok: true,
         requirement: { id, type: 'BR', priority: value.priority, status: value.status, owner: value.owner, text: value.text },
@@ -436,7 +458,12 @@ export function registerRequirementsRoutes(app: express.Express): void {
     const lines = insertAfter(text.split('\n'), storyReqInsertIndex(story), [
       renderReqRow(id, value.priority, value.status, value.owner, value.text),
     ]);
-    atomicWritePrd(journeysPath, lines.join('\n'));
+    try {
+      await atomicWritePrd(journeysPath, lines.join('\n'));
+    } catch {
+      res.status(500).json({ error: 'Could not write PRD file' });
+      return;
+    }
     res.status(201).json({
       ok: true,
       requirement: { id, type: 'TR', priority: value.priority, status: value.status, owner: value.owner, text: value.text },
@@ -448,7 +475,7 @@ export function registerRequirementsRoutes(app: express.Express): void {
   // change strikes the old row and lands a new one in the other file under a
   // freshly allocated ID of the new prefix — the old ID is never edited in
   // place into a vocabulary it doesn't carry).
-  app.patch('/api/projects/:id/requirements/:reqId', (req, res) => {
+  app.patch('/api/projects/:id/requirements/:reqId', async (req, res) => {
     const row = getProjectRow(req.params.id);
     if (!row) {
       res.status(404).json({ error: 'Not found' });
@@ -543,7 +570,12 @@ export function registerRequirementsRoutes(app: express.Express): void {
 
     for (const f of Object.values(files)) {
       if (f.ops.length === 0 && f.lines === (f === files['prd.md'] ? prdLines : journeyLines)) continue;
-      atomicWritePrd(f.path, applyInsertions(f.lines, f.ops).join('\n'));
+      try {
+        await atomicWritePrd(f.path, applyInsertions(f.lines, f.ops).join('\n'));
+      } catch {
+        res.status(500).json({ error: 'Could not write PRD file' });
+        return;
+      }
     }
     res.json({
       ok: true,
@@ -559,7 +591,7 @@ export function registerRequirementsRoutes(app: express.Express): void {
   });
 
   // PATCH /requirements/:reqId/status — the dropdown's thin wrapper.
-  app.patch('/api/projects/:id/requirements/:reqId/status', (req, res) => {
+  app.patch('/api/projects/:id/requirements/:reqId/status', async (req, res) => {
     const row = getProjectRow(req.params.id);
     if (!row) {
       res.status(404).json({ error: 'Not found' });
@@ -592,17 +624,36 @@ export function registerRequirementsRoutes(app: express.Express): void {
       });
       return;
     }
+    // A legacy row missing priority/owner cannot be re-rendered without the
+    // server inventing values — refuse and point at the full PATCH, exactly
+    // like mergedReqValues (review N1; errors._ is the established key).
+    if (reqRow.priority === null || reqRow.owner === null) {
+      res.status(422).json({
+        errors: { _: 'Set priority + owner on this legacy row before changing status' },
+      });
+      return;
+    }
     const updated = renderReqRow(
       reqRow.id,
-      (reqRow.priority ?? 'should') as ReqPriority,
+      reqRow.priority as ReqPriority,
       next,
-      reqRow.owner ?? 'BA',
+      reqRow.owner as ReqOwner,
       reqRow.text,
     );
     if (reqRow.type === 'BR') {
-      atomicWritePrd(prdPath, spliceLine(prd.text.split('\n'), reqRow.lineIndex, updated).join('\n'));
+      try {
+        await atomicWritePrd(prdPath, spliceLine(prd.text.split('\n'), reqRow.lineIndex, updated).join('\n'));
+      } catch {
+        res.status(500).json({ error: 'Could not write PRD file' });
+        return;
+      }
     } else {
-      atomicWritePrd(journeysPath, spliceLine(journeys.text.split('\n'), reqRow.lineIndex, updated).join('\n'));
+      try {
+        await atomicWritePrd(journeysPath, spliceLine(journeys.text.split('\n'), reqRow.lineIndex, updated).join('\n'));
+      } catch {
+        res.status(500).json({ error: 'Could not write PRD file' });
+        return;
+      }
     }
     res.json({
       ok: true,
@@ -620,7 +671,7 @@ export function registerRequirementsRoutes(app: express.Express): void {
   // DELETE /requirements/:reqId — soft-delete with the spec's guard: an
   // approved/done requirement that another story references is kept with a
   // 409 explaining the dependency (AC-11).
-  app.delete('/api/projects/:id/requirements/:reqId', (req, res) => {
+  app.delete('/api/projects/:id/requirements/:reqId', async (req, res) => {
     const row = getProjectRow(req.params.id);
     if (!row) {
       res.status(404).json({ error: 'Not found' });
@@ -656,7 +707,12 @@ export function registerRequirementsRoutes(app: express.Express): void {
     const lines = (file === 'prd.md' ? prd : journeys).text.split('\n');
     const struck = strikeRow(lines, reqRow);
     const out = insertAfter(struck.lines, struck.markerAfter, [deleteMarker()]);
-    atomicWritePrd(filePath, out.join('\n'));
+    try {
+      await atomicWritePrd(filePath, out.join('\n'));
+    } catch {
+      res.status(500).json({ error: 'Could not write PRD file' });
+      return;
+    }
     res.json({ ok: true, id: reqRow.id });
   });
 }

@@ -26,6 +26,7 @@ import path from 'node:path';
 import { db } from './db.js';
 import { BA_ARTIFACTS, resolveProjectFolder } from './ba-workspace.js';
 import { MODEL, OLLAMA } from './intake.js';
+import { atomicWritePrd } from './prd-fs.js';
 
 export type BaGenerationState = 'pending' | 'generating' | 'done' | 'failed';
 
@@ -303,12 +304,14 @@ async function runJob(projectId: number): Promise<void> {
       try {
         const content = await callOllama(draftPrompt(filename, seed));
         // Re-check at the write moment (R9): a user PUT that landed while the
-        // call was in flight wins — the job never clobbers it.
+        // call was in flight wins — the job never clobbers it. The write
+        // itself serializes through the prd-fs mutex, so it cannot interleave
+        // with a Requirements splice on the same file (review B1).
         if (fs.existsSync(filePath)) continue;
         if (!content.trim()) {
           throw new Error('The model returned an empty draft');
         }
-        fs.writeFileSync(filePath, content, 'utf-8');
+        await atomicWritePrd(filePath, content);
       } catch (err) {
         // Per-file failure → job continues → retry fills gaps (R8).
         lastError = `Could not draft ${filename}: ${

@@ -300,7 +300,7 @@ export function registerBaWorkspaceRoutes(app: express.Express): void {
   // 409 while the file is In Review (SA) — the body is locked during review.
   // Saving a Returned file implicitly moves it back to Draft (the BA edited
   // it after the return — sitemap state machine's Returned ──▶ Draft edge).
-  app.put('/api/projects/:id/ba-workspace/files/:filename', (req, res) => {
+  app.put('/api/projects/:id/ba-workspace/files/:filename', async (req, res) => {
     const row = getProjectRow(req.params.id);
     if (!row) {
       res.status(404).json({ error: 'Not found' });
@@ -328,7 +328,7 @@ export function registerBaWorkspaceRoutes(app: express.Express): void {
       return;
     }
     try {
-      atomicWritePrd(filePath, content);
+      await atomicWritePrd(filePath, content);
     } catch {
       res.status(500).json({ error: 'Could not write artifact' });
       return;
