@@ -119,6 +119,14 @@ export type ReqRow = {
   status: ReqStatus | null;
   owner: ReqOwner | null;
   text: string;
+  // Link to a story (refinement batch item 2.7). For TRs this is implicit —
+  // they live inside a story block in user-journeys.md. For BRs it's read
+  // from an optional comment line that follows the row:
+  //   - BR-001 | must | approved | BA | The list form…
+  //   <!-- BR-001: story=US-01 -->
+  // When null the BR is "unassigned" and lives in its own standalone group
+  // in the UI until the BA attaches it.
+  storyUsId: string | null;
   lineIndex: number;
   raw: string;
 };
@@ -216,6 +224,29 @@ function parseStoryBody(raw: string): { asA: string; iWantTo: string; soThat: st
 
 // ── Parsers ────────────────────────────────────────────────────────────────
 
+// Match the comment line that follows a BR row to associate it with a story
+// (or capture the origin marker — batch item 2.6, future batch).
+//   <!-- BR-001: story=US-01, origin=generated -->
+const BR_META_RE = /^<!--\s*(BR-\d{3}):\s*(.*?)\s*-->$/;
+
+// Split a `<!-- BR-NNN: k=v, k=v -->` body into key/value pairs. Unknown keys
+// are ignored silently so this stays forward-compatible with new markers
+// (e.g. `origin=` from item 2.6 will land in the next batch).
+function parseBrMeta(body: string): { storyUsId: string | null; other: Record<string, string> } {
+  const other: Record<string, string> = {};
+  let storyUsId: string | null = null;
+  for (const m of body.matchAll(/(\w+)\s*=\s*([^,\s]+)(?:,|$)/g)) {
+    const key = m[1].toLowerCase();
+    const val = m[2];
+    if (key === 'story' && /^US-\d{2,}$/.test(val)) {
+      storyUsId = val;
+    } else if (/^[a-z][a-z0-9_]*$/i.test(key)) {
+      other[key] = val;
+    }
+  }
+  return { storyUsId, other };
+}
+
 // Parse the BR- rows out of prd.md. Tolerant: scans every list item in the
 // file whose first token matches the ID grammar — §8 is the contract's home
 // but legacy files that scattered rows elsewhere still surface.
@@ -229,10 +260,23 @@ export function parseBusinessReqs(prd: string): { rows: ReqRow[]; parseError: st
     if (!m || !m[1].startsWith('BR-')) continue;
     const fields = parseRowSegments(m[2] ? m[2].split('|').map((s) => s.trim()) : []);
     if (!fields.text) continue; // a bare ID with no text isn't a row
+
+    // Look one line ahead for the row's metadata comment. Comments are
+    // tolerated as missing — unlinked BRs default to storyUsId=null.
+    let storyUsId: string | null = null;
+    const nextRaw = lines[i + 1];
+    if (nextRaw) {
+      const cm = nextRaw.trim().match(BR_META_RE);
+      if (cm && cm[1] === m[1]) {
+        storyUsId = parseBrMeta(cm[2]).storyUsId;
+      }
+    }
+
     rows.push({
       id: m[1],
       type: 'BR',
       ...fields,
+      storyUsId,
       lineIndex: i,
       raw,
     });
@@ -276,8 +320,13 @@ export function parseStories(journeys: string): { stories: StoryRow[]; parseErro
         Object.assign(story, parseStoryMeta(trimmed.match(STORY_META_RE)![1]));
         continue;
       }
-      if (STORY_DELETED_RE.test(trimmed)) {
-        // A delete marker anywhere in the block soft-deletes the whole story.
+      if (STORY_DELETED_RE.test(trimmed) && story.reqs.length === 0 && story.bodyLine === null) {
+        // A delete marker *before any requirement rows* (and before the body
+        // sentence) marks the whole story soft-deleted. The DELETE-stories
+        // endpoint writes the marker on its own line directly after the
+        // heading; the DELETE-requirements endpoint writes its marker
+        // directly after a struck row, which is *not* a story delete and
+        // must not be misinterpreted as one (review item 2.7).
         story.deleted = true;
         continue;
       }
@@ -304,6 +353,9 @@ export function parseStories(journeys: string): { stories: StoryRow[]; parseErro
             id: rm[1],
             type: 'TR',
             ...fields,
+            // TRs implicitly live in their story block; the storyUsId is the
+            // block's heading id, set after parseStories collects them.
+            storyUsId: null,
             lineIndex: i,
             raw: line,
           });
@@ -328,9 +380,33 @@ export function parseStories(journeys: string): { stories: StoryRow[]; parseErro
 export function parseRequirements(prd: string, journeys: string): ParseResult {
   const b = parseBusinessReqs(prd);
   const s = parseStories(journeys);
+  // Stamp TR rows with their owning story's usId (block-based assignment;
+  // not a comment-line lookup) so the UI can group BRs + TRs under the
+  // right story.
+  for (const story of s.stories) {
+    for (const tr of story.reqs) tr.storyUsId = story.usId;
+  }
+  // Collect the set of valid story ids for the BR-link validation below.
+  const knownStoryIds = new Set(s.stories.map((st) => st.usId));
+  // Linked BRs move into their story's reqs list; unlinked stay in
+  // businessReqs so the UI can render an "Unassigned" group.
+  const linked: typeof b.rows = [];
+  const unlinked: typeof b.rows = [];
+  for (const br of b.rows) {
+    if (br.storyUsId && knownStoryIds.has(br.storyUsId)) {
+      const story = s.stories.find((st) => st.usId === br.storyUsId)!;
+      story.reqs.push(br);
+      linked.push(br);
+    } else {
+      // Story link is invalid (US id no longer exists) → treat as unassigned
+      // rather than orphan the row in a vanished block.
+      br.storyUsId = null;
+      unlinked.push(br);
+    }
+  }
   return {
     stories: s.stories,
-    businessReqs: b.rows,
+    businessReqs: unlinked,
     parseError: b.parseError ?? s.parseError,
   };
 }
@@ -503,7 +579,7 @@ export function validateReqInput(
   if (!isReqType(body?.type)) errors.type = 'Must be BR or TR';
   if (!isReqPriority(body?.priority)) errors.priority = 'Must be must | should | could | wont';
   if (!isReqStatus(body?.status)) errors.status = 'Must be one of the 8 canonical statuses';
-  if (!isReqOwner(body?.owner)) errors.owner = 'Must be BA | SA | DEV | QA';
+  if (!isReqOwner(body?.owner)) errors.owner = `Must be one of ${REQ_OWNERS.join(' | ')}`;
   if (Object.keys(errors).length > 0 || text === null || !isReqType(body?.type)) {
     return { ok: false, errors };
   }

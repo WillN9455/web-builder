@@ -710,20 +710,21 @@ export function RequirementsScreen() {
                   <FilterBar filter={filter} onChange={setFilter} counts={chipCounts} />
                 )}
 
-                {/* Business requirements group — prd.md §8 rows. Today they're
-                    not attached to any story (future batch item 2.7 will link
-                    them via `story=US-01`); for now they live in their own
-                    standalone group, and each row owns its own edit/delete
-                    affordance (item 2.8). */}
+                {/* Business requirements group — only the *unassigned* BRs
+                    (those without a `<!-- BR-NNN: story=US-NN -->` link, or
+                    whose story no longer exists) live here. Linked BRs are
+                    rendered inside their story's reqs list (refinement batch
+                    item 2.7). */}
                 {filtered && filtered.businessReqs.length > 0 && (
                   <div className="story brs-group">
                     <div className="story-head">
                       <div className="story-id">BRs</div>
                       <div className="story-body">
-                        <div className="story-title">Business requirements</div>
+                        <div className="story-title">Unassigned business requirements</div>
                         <div className="story-as">
-                          PRD §8 — the outcomes the product must deliver, not tied to a single
-                          user story. Story-first: requirements are added from a story's header.
+                          PRD §8 rows that aren't attached to a user story. New BRs are added
+                          from a story's header (story-first), so this list shrinks as stories
+                          are written. Legacy rows (from before story links existed) start here.
                         </div>
                       </div>
                       <div className="story-meta">

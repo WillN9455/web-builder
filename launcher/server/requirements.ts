@@ -63,7 +63,18 @@ const US_ID_RE = /^US-\d{2,}$/;
 // ── Serialization (internal geometry never leaves the server) ──────────────
 
 function serializeReq(r: ReqRow) {
-  return { id: r.id, type: r.type, priority: r.priority, status: r.status, owner: r.owner, text: r.text };
+  return {
+    id: r.id,
+    type: r.type,
+    priority: r.priority,
+    status: r.status,
+    owner: r.owner,
+    text: r.text,
+    // Only meaningful for BRs; TRs always carry their block's usId (set by
+    // the parse step). The UI uses this to label the row in the right
+    // group without re-parsing the file.
+    storyUsId: r.storyUsId,
+  };
 }
 
 function serializeStory(s: StoryRow) {
@@ -429,7 +440,13 @@ export function registerRequirementsRoutes(app: express.Express): void {
         return;
       }
       const id = nextFreeId(liveReqIds(parseRequirements(text, '')).filter((x) => x.startsWith('BR-')), 'BR');
-      const lines = insertAfter(prdLines, idx, [renderReqRow(id, value.priority, value.status, value.owner, value.text)]);
+      // Always link a BR to its creating story — refinement batch item 2.7.
+      // The link lives as `<!-- BR-NNN: story=US-NN -->` directly after the
+      // row so the next parse reads it. The UI's "unassigned" group
+      // therefore renders only legacy BRs and BRs whose story id is gone.
+      const row1 = renderReqRow(id, value.priority, value.status, value.owner, value.text);
+      const meta = `<!-- ${id}: story=${req.params.usId} -->`;
+      const lines = insertAfter(prdLines, idx, [row1, meta]);
       try {
         await atomicWritePrd(prdPath, lines.join('\n'));
       } catch {
@@ -438,7 +455,15 @@ export function registerRequirementsRoutes(app: express.Express): void {
       }
       res.status(201).json({
         ok: true,
-        requirement: { id, type: 'BR', priority: value.priority, status: value.status, owner: value.owner, text: value.text },
+        requirement: {
+          id,
+          type: 'BR',
+          priority: value.priority,
+          status: value.status,
+          owner: value.owner,
+          text: value.text,
+          storyUsId: req.params.usId,
+        },
       });
       return;
     }

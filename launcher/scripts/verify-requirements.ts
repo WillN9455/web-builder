@@ -236,11 +236,33 @@ async function main(): Promise<void> {
     const brAfter = read(prdPath);
     const brDiff = lcsDiff(beforeP, brAfter);
     eq(
-      'BR insert adds exactly 1 line, removes none (AC-9)',
+      'BR insert adds exactly 2 lines (row + story link), removes none (AC-9 / 2.7)',
       brDiff,
-      { added: [brAfter.split('\n').find((l) => l.startsWith('- BR-003 |')) ?? ''], removed: [] },
+      {
+        added: [
+          brAfter.split('\n').find((l) => l.startsWith('- BR-003 |')) ?? '',
+          '<!-- BR-003: story=US-03 -->',
+        ],
+        removed: [],
+      },
     );
     eq('user-journeys.md byte-identical after BR (AC-9)', read(journeysPath), afterJ);
+
+    // ── BR-under-story (item 2.7) — GET must move BR-003 into US-03's reqs,
+    //    and legacy BR-004 (no story link) stays in businessReqs.
+    const afterBrGet = await reqFetch(`/api/projects/${slug}/requirements`);
+    const storyForUs03 = afterBrGet.body?.stories?.find((s: any) => s.usId === 'US-03');
+    check('BR-003 lands inside US-03 (item 2.7)', !!storyForUs03 && storyForUs03.reqs.some((r: any) => r.id === 'BR-003'));
+    eq(
+      'BR-003 carries storyUsId=US-03 (item 2.7)',
+      storyForUs03?.reqs?.find((r: any) => r.id === 'BR-003')?.storyUsId,
+      'US-03',
+    );
+    eq(
+      'legacy BRs (no link) stay in businessReqs (item 2.7)',
+      afterBrGet.body?.businessReqs?.map((b: any) => b.id).sort().join(','),
+      ['BR-001', 'BR-002', 'BR-004'].sort().join(','),
+    );
 
     // ── POST TR → the story block ──
     r = await json(`/api/projects/${slug}/stories/US-02/requirements`, 'POST', {
