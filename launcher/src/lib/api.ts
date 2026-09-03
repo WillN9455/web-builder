@@ -97,9 +97,15 @@ export async function deleteProject(id: number | string): Promise<DeleteProjectR
 // ── /api/projects/:id (project shell) ──────────────────────────────────────
 
 // The server returns the full project row plus its stage rows; the shell
-// (ProjectDetailScreen) only consumes these fields today.
+// (ProjectDetailScreen) only consumes these fields today. context_confirmed
+// is the State D gate flag (was the CONTEXT_CONFIRMED constant in
+// src/lib/projectGate.ts); ba_artifact_count is the Project Background count
+// chip (null when the project's PRD/ dir can't be read → chip omitted).
 export type ProjectDetailResponse = {
-  project: Pick<Project, 'id' | 'name' | 'slug' | 'current_stage' | 'folder_path'>;
+  project: Pick<Project, 'id' | 'name' | 'slug' | 'current_stage' | 'folder_path'> & {
+    context_confirmed: boolean;
+    ba_artifact_count: number | null;
+  };
 };
 
 export async function fetchProject(idOrSlug: string): Promise<ProjectDetailResponse> {
@@ -337,4 +343,159 @@ export async function fetchResume(slug: string): Promise<ResumeResponse> {
     throw new ResumeUnavailableError(res.status, data.error ?? `Resume failed (HTTP ${res.status})`);
   }
   return data as ResumeResponse;
+}
+
+// ── /api/projects/:id/ba-workspace (Project Background tab) ────────────────
+
+// Per-file review status (sitemap locked decision 6: terminal state is
+// `approved` — the build plan's `completed` is stale).
+export type BaStatus = 'draft' | 'in_review' | 'returned' | 'approved';
+
+export type BaFile = {
+  filename: string;
+  // Band key: 'core-prd' | 'scope-rules' | 'data-access' | 'planning-risk' |
+  // 'sa-handoff'.
+  band: string;
+  title: string;
+  status: BaStatus;
+};
+
+export type BaCounts = {
+  draft: number;
+  in_review: number;
+  returned: number;
+  approved: number;
+  total: number;
+};
+
+export type BaFilesResponse = {
+  files: BaFile[];
+  // Band keys + labels in sitemap order — the client groups the tree by this.
+  bands: { key: string; label: string }[];
+  counts: BaCounts;
+  // State D gate: contextReady = all 17 artifacts exist on disk and are
+  // approved. contextConfirmed = the one-shot confirm has fired. A confirmed
+  // project whose files later drop out of Approved shows
+  // contextChangedSinceConfirm (keep unlocked, warn only — locked decision 7).
+  contextReady: boolean;
+  contextConfirmed: boolean;
+  contextChangedSinceConfirm: boolean;
+};
+
+export type BaComment = {
+  id: number;
+  author: 'BA' | 'SA';
+  body: string;
+  created_at: string;
+};
+
+// Offline-detection + error extraction shared by the ba-workspace fetchers —
+// same contract as fetchProjects: Vite's SPA fallback returns index.html
+// (text/html) when the dev API isn't running, and a JSON error body carries
+// {error} when the status isn't OK.
+async function baFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(path, init);
+  const contentType = res.headers.get('content-type') ?? '';
+  if (!contentType.includes('application/json')) {
+    throw new Error(
+      'API server is not running. Start it with `npm run dev` (or `npm run dev:api` in another terminal).',
+    );
+  }
+  const data = (await res.json().catch(() => ({}))) as Partial<T> & { error?: string };
+  if (!res.ok) throw new Error(data.error ?? `Request failed (HTTP ${res.status})`);
+  return data as T;
+}
+
+export async function fetchBaFiles(idOrSlug: string): Promise<BaFilesResponse> {
+  return baFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/ba-workspace/files`);
+}
+
+export type BaFileBodyResponse = { filename: string; title: string; content: string };
+
+export async function fetchBaFile(idOrSlug: string, filename: string): Promise<BaFileBodyResponse> {
+  return baFetch(
+    `/api/projects/${encodeURIComponent(idOrSlug)}/ba-workspace/files/${encodeURIComponent(filename)}`,
+  );
+}
+
+export type BaSaveResponse = { ok: true; filename: string; status: BaStatus };
+
+export async function saveBaFile(
+  idOrSlug: string,
+  filename: string,
+  content: string,
+): Promise<BaSaveResponse> {
+  return baFetch(
+    `/api/projects/${encodeURIComponent(idOrSlug)}/ba-workspace/files/${encodeURIComponent(filename)}`,
+    {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content }),
+    },
+  );
+}
+
+export type BaTransitionResponse = { ok: true; filename: string; status: BaStatus };
+
+export async function transitionBaFile(
+  idOrSlug: string,
+  filename: string,
+  to: BaStatus,
+): Promise<BaTransitionResponse> {
+  return baFetch(
+    `/api/projects/${encodeURIComponent(idOrSlug)}/ba-workspace/files/${encodeURIComponent(filename)}/transition`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to }),
+    },
+  );
+}
+
+export async function fetchBaComments(
+  idOrSlug: string,
+  filename: string,
+): Promise<{ comments: BaComment[] }> {
+  return baFetch(
+    `/api/projects/${encodeURIComponent(idOrSlug)}/ba-workspace/files/${encodeURIComponent(filename)}/comments`,
+  );
+}
+
+export async function addBaComment(
+  idOrSlug: string,
+  filename: string,
+  author: 'BA' | 'SA',
+  body: string,
+): Promise<{ ok: true; id: number }> {
+  return baFetch(
+    `/api/projects/${encodeURIComponent(idOrSlug)}/ba-workspace/files/${encodeURIComponent(filename)}/comments`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ author, body }),
+    },
+  );
+}
+
+// Open-questions banner data — the count of `Blocker-for: PRD-approval`
+// items parsed from open-questions.md. The banner stays hidden at 0.
+export async function fetchBaOpenQuestions(
+  idOrSlug: string,
+): Promise<{ blockerCount: number }> {
+  return baFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/ba-workspace/open-questions`);
+}
+
+// State D — the one-shot gate confirmation. Idempotent on re-POST.
+export type ConfirmContextResponse = {
+  ok: true;
+  contextConfirmed: true;
+  alreadyConfirmed: boolean;
+};
+
+export async function confirmProjectContext(idOrSlug: string): Promise<ConfirmContextResponse> {
+  return baFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/background/confirm-context`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  });
 }
