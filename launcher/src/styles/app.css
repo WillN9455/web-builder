@@ -1474,17 +1474,30 @@ button.oq-btn:focus-visible {
   font-size: 12px;
   font-weight: 700;
   flex: none;
+  position: relative;
 }
 .step .lbl { font-size: 12.5px; color: var(--ink-2); font-weight: 500; white-space: nowrap; }
 .step.done .num { background: var(--mint); color: var(--ink); }
 .stepper .step.done .num::after { content: "✓"; }
-.step.done .num b { display: none; }
+/* Visually hidden but kept in the a11y tree so screen readers still announce
+   the step digit (the ✓/★ ::after glyphs are decorative and not exposed to AT). */
+.step.done .num b,
+.step.shipped .num b {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 .step.active .num { background: var(--navy); color: #fff; }
 .step.active .lbl { color: var(--ink); font-weight: 600; }
 .step.blocked .num { background: var(--blush); color: var(--rose); }
 .step.shipped .num { background: var(--navy); color: #fff; }
 .step.shipped .num::after { content: "★"; }
-.step.shipped .num b { display: none; }
 .step .bar {
   flex: 1;
   height: 2px;

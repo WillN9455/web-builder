@@ -85,6 +85,7 @@ export function ProjectOverview({ project, stages, activity, artifacts, outstand
               key={s.label}
               className={`step ${s.cls}`.trim()}
               aria-current={s.cls === 'active' || s.cls === 'blocked' ? 'step' : undefined}
+              aria-label={`Step ${i + 1}: ${s.label} — ${s.cls || 'upcoming'}`}
             >
               <div className="num"><b>{i + 1}</b></div>
               <div className="lbl">{s.label}</div>
@@ -234,6 +235,9 @@ export function ProjectOverview({ project, stages, activity, artifacts, outstand
               <div className="ov-empty">No artifacts yet.</div>
             ) : (
               <div className="art q-scroll ov-scroll-220">
+                {/* Index key: artifacts are display rows fetched per load with
+                    no row identity — same read-only contract as the activity
+                    feed (see comment above the activity map). */}
                 {artifacts.map((a, i) => (
                   <div className="art-item" key={i}>
                     <span className="ftag">{artifactTag(a.kind)}</span>
