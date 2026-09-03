@@ -85,6 +85,9 @@ export function IdeaSummaryCard({ projectId }: IdeaSummaryCardProps) {
           </button>
         </h3>
         <span className="ai-tag">AI-generated from idea.md</span>
+        {/* §9.6 QA — affordance note while collapsed; the open summary makes
+            it redundant, so it only renders shut. */}
+        {!open && <span className="idea-summary-hint">Expand to view the project idea summary</span>}
       </div>
       {open && (
         <div id="idea-summary-body">

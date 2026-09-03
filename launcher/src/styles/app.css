@@ -1541,16 +1541,28 @@ button.oq-btn:focus-visible {
 }
 .idea-summary-toggle:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; border-radius: 4px; }
 .idea-summary-chev {
-  display: inline-block;
+  /* §9.6 QA — the arrow is the collapse affordance: a lavender chip with the
+     purple arrow inside, prominent next to the title (▸ closed, ▾ open). */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   align-self: center;
-  transition: transform 0.15s ease;
-  /* §9.6 QA — the arrow is the collapse affordance: sized to the title and
-     ink-colored so the collapsed state reads at a glance (▸ closed, ▾ open). */
-  font-size: 12px;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--lavender);
+  color: var(--purple);
+  font-size: 10px;
   font-weight: 700;
-  color: var(--ink);
+  line-height: 1;
+  transition: transform 0.15s ease;
 }
 .idea-summary-chev.open { transform: rotate(90deg); }
+.idea-summary-hint {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--ink-2);
+}
 .idea-summary-head .ai-tag {
   font-size: 11px;
   background: var(--lavender);
