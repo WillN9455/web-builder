@@ -344,6 +344,32 @@ async function main(): Promise<void> {
     check('delete guard → 409 with referencedBy US-02 (AC-11)', r.status === 409 && JSON.stringify(r.body?.referencedBy) === '["US-02"]');
     check('guarded row NOT struck on disk', read(journeysPath).includes('- TR-001 | must | approved | DEV |'));
 
+    // ── TR-delete regression (item 2.7) — the parser used to treat a
+    //    `<!-- deleted … -->` marker *anywhere* in a story block as a
+    //    story-level delete, which meant soft-deleting a TR also hid the
+    //    parent story. The fix scopes story-delete markers to "before any
+    //    requirement rows / body". Repro: add TR-003 to US-01, delete it
+    //    (unapproved, so no guard), then assert US-01 still surfaces. ──
+    r = await json(`/api/projects/${slug}/stories/US-01/requirements`, 'POST', {
+      type: 'TR',
+      text: 'A throwaway TR whose delete marker used to hide the whole story.',
+      priority: 'wont',
+      status: 'draft',
+      owner: 'DEV',
+    });
+    eq('regression seed: TR-003 added to US-01 (item 2.7)', r.body?.requirement?.id, 'TR-003');
+    r = await reqFetch(`/api/projects/${slug}/requirements/TR-003`, { method: 'DELETE' });
+    check('regression seed: TR-003 DELETE → 200 (item 2.7)', r.status === 200);
+    r = await reqFetch(`/api/projects/${slug}/requirements`);
+    check(
+      'regression: US-01 still listed after a TR was deleted in it (item 2.7)',
+      Array.isArray(r.body?.stories) && r.body.stories.some((s: any) => s.usId === 'US-01'),
+    );
+    check(
+      'regression: TR-001 still listed (struck) inside US-01 (item 2.7)',
+      r.body?.stories?.find((s: any) => s.usId === 'US-01')?.reqs?.some((x: any) => x.id === 'TR-001') === true,
+    );
+
     // ── DELETE requirement (AC-8/9): strike + marker, freed id reusable ──
     const beforeDel = read(prdPath);
     r = await reqFetch(`/api/projects/${slug}/requirements/BR-002`, { method: 'DELETE' });
