@@ -95,17 +95,17 @@
   padding: 18px;
   position: relative;
   overflow: hidden;
-}
 
-.side-promo::after {
-  content: "";
-  position: absolute;
-  right: -16px;
-  top: -16px;
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  background: rgba(tokens.$white, 0.35);
+  &::after {
+    content: "";
+    position: absolute;
+    right: -16px;
+    top: -16px;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: rgba(tokens.$white, 0.35);
+  }
 }
 
 /* v5 overrides — the project-menu variant of the promo card. */
@@ -138,9 +138,11 @@
   border-radius: 12px;
   font-size: 14px;
   color: var(--ink);
-}
 
-.side-foot a:hover { background: rgba(tokens.$white, 0.7); }
+  &:hover {
+    background: rgba(tokens.$white, 0.7);
+  }
+}
 .side-foot a .ico { width: 18px; height: 18px; }
 
 /* Locked gate tabs (Sprint / Design / Build / QA) — mockup N11b. Not
