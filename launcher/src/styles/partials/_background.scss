@@ -23,10 +23,10 @@
 /* Stage banner — a status counter, not a bulk action (sitemap zone 1). */
 .ba-stage {
   display: flex; align-items: center; gap: 14px;
-  background: #fff;
+  background: tokens.$white;
   border-radius: var(--r-xl);
   padding: 16px 22px;
-  border: 1px solid rgba(50, 42, 92, 0.04);
+  border: 1px solid rgba(tokens.$navy, 0.04);
 }
 .ba-stage .ico {
   width: 40px; height: 40px;
@@ -60,7 +60,7 @@
   border-radius: 999px;
   font-size: 11.5px; font-weight: 600;
   color: var(--ink);
-  background: rgba(50, 42, 92, 0.04);
+  background: rgba(tokens.$navy, 0.04);
 }
 .ba-stage .count-pill b { font-family: var(--font-mono); }
 .ba-stage .count-pill .file-status { box-shadow: none; margin: 0; }
@@ -68,10 +68,10 @@
 /* Generation panel — the "BA Agent is drafting…" loading screen (addendum
  * AC-19). Same card voice as the State D block; no new tokens. */
 .ba-gen {
-  background: #fff;
+  background: tokens.$white;
   border-radius: var(--r-xl);
   padding: 22px;
-  border: 1px solid rgba(50, 42, 92, 0.04);
+  border: 1px solid rgba(tokens.$navy, 0.04);
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -110,7 +110,7 @@
   font-size: 13px; color: var(--ink-2);
   padding: 10px 14px;
   border-radius: var(--r-lg);
-  background: rgba(50, 42, 92, 0.04);
+  background: rgba(tokens.$navy, 0.04);
 }
 .ba-gen-current b { color: var(--ink); font-family: var(--font-mono); font-size: 12.5px; }
 .ba-gen-bands {
@@ -122,7 +122,7 @@
   display: flex; align-items: baseline; gap: 10px;
   padding: 9px 14px;
   border-radius: var(--r-lg);
-  border: 1px solid rgba(50, 42, 92, 0.06);
+  border: 1px solid rgba(tokens.$navy, 0.06);
 }
 .ba-gen-band .n { font-family: var(--font-mono); font-size: 13px; font-weight: 700; color: var(--ink); min-width: 44px; }
 .ba-gen-band .lbl { font-size: 12.5px; color: var(--ink-2); }
@@ -177,8 +177,8 @@
   min-height: 100%;
 }
 .ba-doc-col > .review-thread {
-  background: #fff;
-  border: 1px solid rgba(50, 42, 92, 0.06);
+  background: tokens.$white;
+  border: 1px solid rgba(tokens.$navy, 0.06);
   border-radius: var(--r-xl);
   /* AC-25 — breathing room between the editor and the thread (the thread now
      also shows for Returned files, AC-24, so it reads as its own card). */
@@ -188,8 +188,8 @@
 /* Idea summary card (plan §9.4 AC-21) — the LLM-written summary of idea.md,
    shown above the tree/editor grid. Reference aid only. */
 .idea-summary {
-  background: #fff;
-  border: 1px solid rgba(50, 42, 92, 0.06);
+  background: tokens.$white;
+  border: 1px solid rgba(tokens.$navy, 0.06);
   border-radius: var(--r-xl);
   padding: 16px 22px;
   display: flex;
@@ -281,7 +281,7 @@
 
 /* File tree (left rail). */
 .file-tree {
-  background: #fff;
+  background: tokens.$white;
   border-radius: var(--r-xl);
   padding: 16px 14px;
   display: flex; flex-direction: column;
@@ -300,7 +300,7 @@
 .file-tree-head .count {
   font-family: var(--font-mono); font-size: 11px;
   color: var(--ink-2);
-  background: rgba(50, 42, 92, 0.06);
+  background: rgba(tokens.$navy, 0.06);
   padding: 2px 7px; border-radius: 999px;
 }
 .file-group { display: flex; flex-direction: column; gap: 2px; }
@@ -319,9 +319,9 @@
   cursor: pointer;
   transition: background 100ms ease;
 }
-.file:hover { background: rgba(50, 42, 92, 0.05); }
-.file.active { background: var(--navy); color: #fff; }
-.file.active .file-ico { background: rgba(255, 255, 255, 0.15); color: #fff; }
+.file:hover { background: rgba(tokens.$navy, 0.05); }
+.file.active { background: var(--navy); color: tokens.$white; }
+.file.active .file-ico { background: rgba(tokens.$white, 0.15); color: tokens.$white; }
 .file-name { font-weight: 500; }
 .file-ico {
   width: 22px; height: 22px;
@@ -342,8 +342,8 @@
 .file-ico.in_review { background: var(--butter);   color: var(--amber); }
 /* idea.md (AC-22) — read-only reference material, neutral chip (no review
    state color). */
-.file-ico.idea { background: rgba(50, 42, 92, 0.08); color: var(--ink-2); }
-.file.active .file-ico { background: rgba(255,255,255,0.15); color: #fff; }
+.file-ico.idea { background: rgba(tokens.$navy, 0.08); color: var(--ink-2); }
+.file.active .file-ico { background: rgba(tokens.$white, 0.15); color: tokens.$white; }
 
 .file-status {
   width: 8px; height: 8px;
@@ -353,8 +353,8 @@
 }
 .file-status.draft     { background: var(--purple); }
 .file-status.in_review,
-.file-status.review    { background: var(--amber); box-shadow: 0 0 0 3px rgba(232, 185, 74, 0.18); }
-.file-status.returned  { background: var(--rose); box-shadow: 0 0 0 3px rgba(217, 122, 142, 0.18); }
+.file-status.review    { background: var(--amber); box-shadow: 0 0 0 3px rgba(tokens.$amber, 0.18); }
+.file-status.returned  { background: var(--rose); box-shadow: 0 0 0 3px rgba(tokens.$rose, 0.18); }
 .file-status.approved  { background: var(--green); }
 
 /* Keyboard focus ring on tree rows (AC-12). */
@@ -362,13 +362,13 @@
   outline: 2px solid var(--navy);
   outline-offset: 2px;
 }
-.file.active:focus-visible { outline-color: #fff; }
+.file.active:focus-visible { outline-color: tokens.$white; }
 
 /* Viewer / editor card (right pane). §9.6g — flex:1 + min-height:0 so the
    card fills the tree-matched column and the body scrolls inside it; the
    card no longer grows past the sidebar. */
 .ba-doc {
-  background: #fff;
+  background: tokens.$white;
   border-radius: var(--r-xl);
   display: flex; flex-direction: column;
   overflow: hidden;
@@ -378,7 +378,7 @@
 .ba-doc-head {
   display: flex; align-items: center; gap: 12px;
   padding: 14px 18px;
-  border-bottom: 1px solid rgba(50, 42, 92, 0.06);
+  border-bottom: 1px solid rgba(tokens.$navy, 0.06);
 }
 .ba-doc-head .crumbs {
   font-family: var(--font-mono); font-size: 11.5px;
@@ -414,7 +414,7 @@
 }
 .ba-doc-body::-webkit-scrollbar { width: 8px; }
 .ba-doc-body::-webkit-scrollbar-thumb {
-  background: rgba(50, 42, 92, 0.18);
+  background: rgba(tokens.$navy, 0.18);
   border-radius: 999px;
 }
 .ba-doc-body::-webkit-scrollbar-track { background: transparent; }
@@ -427,11 +427,11 @@
 .ba-doc-body.view p { margin: 6px 0; }
 .ba-doc-body.view code {
   font-family: var(--font-mono); font-size: 12.5px;
-  background: rgba(50, 42, 92, 0.06);
+  background: rgba(tokens.$navy, 0.06);
   padding: 1px 5px; border-radius: 4px;
 }
 .ba-doc-body.view pre {
-  background: rgba(50, 42, 92, 0.04);
+  background: rgba(tokens.$navy, 0.04);
   border-radius: 12px;
   padding: 14px 16px;
   font-family: var(--font-mono); font-size: 12px;
@@ -456,7 +456,7 @@
 }
 .ba-doc-body.view th, .ba-doc-body.view td {
   padding: 9px 12px; text-align: left;
-  border-bottom: 1px solid rgba(50, 42, 92, 0.06);
+  border-bottom: 1px solid rgba(tokens.$navy, 0.06);
 }
 .ba-doc-body.view th { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-2); }
 
@@ -479,8 +479,8 @@
 .ba-doc-foot {
   display: flex; align-items: center; gap: 12px;
   padding: 12px 18px;
-  border-top: 1px solid rgba(50, 42, 92, 0.06);
-  background: rgba(50, 42, 92, 0.02);
+  border-top: 1px solid rgba(tokens.$navy, 0.06);
+  background: rgba(tokens.$navy, 0.02);
 }
 .ba-doc-foot .left { font-size: 12px; color: var(--ink-2); }
 .ba-doc-foot .left b { color: var(--ink); font-weight: 600; }
@@ -492,7 +492,7 @@
 
 /* Inline review thread (State C). */
 .review-thread {
-  background: rgba(50, 42, 92, 0.02);
+  background: rgba(tokens.$navy, 0.02);
   padding: 16px 22px;
   display: flex; flex-direction: column; gap: 12px;
 }
@@ -509,8 +509,8 @@
 }
 .review-thread .comment {
   display: flex; gap: 10px;
-  background: #fff;
-  border: 1px solid rgba(50, 42, 92, 0.06);
+  background: tokens.$white;
+  border: 1px solid rgba(tokens.$navy, 0.06);
   border-radius: 12px;
   padding: 12px 14px;
 }
@@ -531,8 +531,8 @@
 .review-thread .comment .body p { margin: 4px 0 0; color: var(--ink); }
 .review-thread .compose {
   display: flex; gap: 10px; align-items: end;
-  background: #fff;
-  border: 1px solid rgba(50, 42, 92, 0.06);
+  background: tokens.$white;
+  border: 1px solid rgba(tokens.$navy, 0.06);
   border-radius: 12px;
   padding: 10px 12px;
 }
@@ -554,7 +554,7 @@
 
 /* Error / empty cards for the workspace (API down, no PRD dir). */
 .ba-error-card {
-  background: #fff;
+  background: tokens.$white;
   border-radius: var(--r-xl);
   padding: 28px 32px;
   max-width: 620px;
@@ -565,8 +565,8 @@
 
 /* ─── State D — context-ready confirmation view (background.html #sD) ─── */
 .state-d {
-  background: #fff;
-  border: 1px solid rgba(50,42,92,0.08);
+  background: tokens.$white;
+  border: 1px solid rgba(tokens.$navy, 0.08);
   border-radius: 16px;
   padding: 28px 32px;
   max-width: 760px;
@@ -601,7 +601,7 @@
   color: var(--ink);
 }
 .state-d-list {
-  border: 1px solid rgba(50,42,92,0.08);
+  border: 1px solid rgba(tokens.$navy, 0.08);
   border-radius: 12px;
   overflow: hidden;
   max-height: 320px;
@@ -613,7 +613,7 @@
   gap: 12px;
   padding: 10px 14px;
   font-size: 13px;
-  border-bottom: 1px solid rgba(50,42,92,0.06);
+  border-bottom: 1px solid rgba(tokens.$navy, 0.06);
 }
 .state-d-list-row:last-child { border-bottom: 0; }
 .state-d-list-row .path { font-family: var(--font-mono); font-size: 12px; color: var(--ink-2); }
