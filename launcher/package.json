@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Idea Hub \u2014 the launcher app. Vite + React + TS UI for the framework, backed by SQLite.",
+  "description": "Idea Hub — the launcher app. Vite + React + TS UI for the framework, backed by SQLite.",
   "scripts": {
     "dev": "concurrently -k -n web,api -c cyan,magenta \"npm:dev:web\" \"npm:dev:api\"",
     "dev:web": "vite",
@@ -14,7 +14,8 @@
     "db:wipe": "tsx scripts/wipe-db.ts",
     "db:seed": "tsx scripts/seed-db.ts",
     "typecheck": "tsc -b --noEmit",
-    "verify:requirements": "tsx scripts/verify-requirements.ts"
+    "verify:requirements": "tsx scripts/verify-requirements.ts",
+    "verify:visual": "node scripts/verify-visual.mjs"
   },
   "dependencies": {
     "better-sqlite3": "^11.5.0",
@@ -35,6 +36,7 @@
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.3",
     "concurrently": "^9.1.0",
+    "puppeteer-core": "^25.10.0",
     "tsx": "^4.19.2",
     "typescript": "^5.6.3",
     "vite": "^5.4.10"
