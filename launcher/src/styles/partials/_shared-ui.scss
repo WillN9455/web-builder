@@ -10,14 +10,20 @@
 .btn-danger {
   background: var(--rose);
   color: tokens.$white;
+
+  &:hover:not(:disabled) {
+    background: tokens.$danger-hover;
+  }
 }
-.btn-danger:hover:not(:disabled) { background: tokens.$danger-hover; }
 .btn-secondary {
   background: tokens.$white;
   color: var(--ink);
   border: 1px solid rgba(tokens.$navy, 0.14);
+
+  &:hover:not(:disabled) {
+    background: rgba(tokens.$navy, 0.04);
+  }
 }
-.btn-secondary:hover:not(:disabled) { background: rgba(tokens.$navy, 0.04); }
 .btn:disabled { opacity: 0.55; cursor: not-allowed; }
 
 /* Tiny menu that pops out of a tile's ⋮ or table row's ⋯ trigger.
@@ -44,10 +50,17 @@
   color: var(--ink);
   font-weight: 500; font-size: 13px;
   text-align: left;
+
+  &:hover {
+    background: rgba(tokens.$navy, 0.06);
+  }
+  &.is-danger {
+    color: tokens.$danger-ink;
+  }
+  &.is-danger:hover {
+    background: rgba(tokens.$rose, 0.12);
+  }
 }
-.popover-item:hover { background: rgba(tokens.$navy, 0.06); }
-.popover-item.is-danger { color: tokens.$danger-ink; }
-.popover-item.is-danger:hover { background: rgba(tokens.$rose, 0.12); }
 .popover .kbd {
   margin-left: auto;
   font-family: var(--font-mono);
@@ -111,14 +124,15 @@
   font-size: 13px;
   background: tokens.$white;
   color: var(--ink);
-}
-.modal-body .confirm-input:focus {
-  outline: none;
-  border-color: var(--rose);
-  box-shadow: 0 0 0 3px rgba(tokens.$rose, 0.18);
-}
-.modal-body .confirm-input.invalid {
-  border-color: rgba(tokens.$rose, 0.6);
+
+  &:focus {
+    outline: none;
+    border-color: var(--rose);
+    box-shadow: 0 0 0 3px rgba(tokens.$rose, 0.18);
+  }
+  &.invalid {
+    border-color: rgba(tokens.$rose, 0.6);
+  }
 }
 .modal-actions {
   display: flex; justify-content: flex-end; gap: 10px;
