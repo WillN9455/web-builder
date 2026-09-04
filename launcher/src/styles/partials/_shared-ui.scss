@@ -2,6 +2,7 @@
 // app.scss IS the original rule order; do not reorder without running
 // scripts/verify-css-equivalence.mjs against a pre-split build.
 @use '../tokens';
+@use '../mixins';
 
 /* ─── Delete-project flows: extra button variants, popover menu, modal, toast */
 
@@ -34,11 +35,11 @@
   right: 0; top: calc(100% + 6px);
   z-index: 50;
   min-width: 180px;
-  background: tokens.$white;
-  border: 1px solid rgba(tokens.$navy, 0.12);
-  border-radius: var(--r-md);
-  box-shadow: 0 12px 30px -16px rgba(tokens.$navy, 0.28),
-              0 4px 10px -6px rgba(tokens.$navy, 0.16);
+  @include mixins.fe-panel(
+    $border: rgba(tokens.$navy, 0.12),
+    $radius: var(--r-md),
+    $shadow: (0 12px 30px -16px rgba(tokens.$navy, 0.28), 0 4px 10px -6px rgba(tokens.$navy, 0.16))
+  );
   padding: 6px;
   display: flex; flex-direction: column;
 }
