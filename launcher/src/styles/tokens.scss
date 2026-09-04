@@ -101,6 +101,12 @@ $tokens: (
   'r-2xl': 28px,
 );
 
+// Breakpoints — the single home for media-query values. Consume through the
+// fe-below mixin (../mixins), never as a bare px literal in a partial.
+$breakpoints: (
+  'md': 980px,
+);
+
 // ---------------------------------------------------------------------------
 // Scalar accessors — derived from the map above (single source of truth).
 // Partials reference these through their `tokens` namespace and never write

@@ -9,6 +9,9 @@
 // Expansion: stroke: currentColor; stroke-width: $width (default 1.8);
 // round linecap + join. CSS presentation rules win over SVG presentation
 // attributes in the JSX, so this mixin is the consistency authority.
+@use 'sass:map';
+@use 'tokens';
+
 @mixin fe-icon($width: 1.8) {
   stroke: currentColor;
   stroke-width: $width;
@@ -23,4 +26,13 @@
 @mixin fe-focus-ring($color) {
   outline: 2px solid $color;
   outline-offset: 2px;
+}
+
+// fe-below — max-width media query against the shared breakpoint map.
+// Expansion: @media (max-width: <map value>) { @content; } — the map in
+// tokens.scss is the single home for breakpoint values.
+@mixin fe-below($bp) {
+  @media (max-width: map.get(tokens.$breakpoints, $bp)) {
+    @content;
+  }
 }
