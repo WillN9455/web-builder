@@ -2,6 +2,7 @@
 // app.scss IS the original rule order; do not reorder without running
 // scripts/verify-css-equivalence.mjs against a pre-split build.
 @use '../tokens';
+@use '../mixins';
 
 /* ─── New idea flow (screens 7–9) ─────────────────────────────────────── */
 
@@ -519,8 +520,7 @@ button.oq-btn {
     transform: translateY(1px);
   }
   &:focus-visible {
-    outline: 2px solid var(--navy);
-    outline-offset: 2px;
+    @include mixins.fe-focus-ring(var(--navy));
   }
 }
 .oq-empty {
