@@ -36,3 +36,17 @@
     @content;
   }
 }
+
+// fe-panel — the shared white-surface card recipe (plan §5.1).
+// Expansion: background: tokens.$white; border: 1px solid $border;
+// border-radius: $radius; and box-shadow: $shadow — omitted when $shadow is
+// null. Adoption rule: include only where the site already emits these
+// declarations in exactly this order. The equivalence gate compares compiled
+// bytes, so reordering declarations inside a block is a gate delta even
+// when it would be behaviorally inert — order-matching sites only.
+@mixin fe-panel($border: rgba(tokens.$navy, 0.06), $radius: var(--r-xl), $shadow: null) {
+  background: tokens.$white;
+  border: 1px solid $border;
+  border-radius: $radius;
+  box-shadow: $shadow;
+}
