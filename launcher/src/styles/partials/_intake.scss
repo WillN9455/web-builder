@@ -571,7 +571,7 @@ button.oq-btn {
 
 /* ─── Responsive: collapse chat grid on narrow viewports ──────────────── */
 
-@media (max-width: 980px) {
+@include mixins.fe-below(md) {
   .chat-grid {
     grid-template-columns: 1fr;
   }
