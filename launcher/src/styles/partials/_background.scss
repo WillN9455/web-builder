@@ -224,30 +224,38 @@
   font: inherit;
   color: inherit;
   border-radius: 4px;
+
+  &:focus-visible {
+    outline: 2px solid var(--purple); outline-offset: 2px;
+  }
+  &:hover .idea-summary-chev-end::after {
+    opacity: 0.65;
+  }
 }
-.idea-summary-toggle:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; }
-.idea-summary-toggle:hover .idea-summary-chev-end::after { opacity: 0.65; }
 .idea-summary-chev-end {
   /* §9.6 QA — large end-of-row chevron drawn in CSS (no text glyph): the
-     ::after box's right+bottom borders rotated 45° point down when collapsed
-     and -135° when open. Scales cleanly and stays crisp at any DPI. */
+  ::after box's right+bottom borders rotated 45° point down when collapsed
+  and -135° when open. Scales cleanly and stays crisp at any DPI. */
   display: inline-flex;
   align-items: center;
   justify-content: center;
   margin-left: auto;
   width: 28px;
   height: 28px;
-}
-.idea-summary-chev-end::after {
-  content: '';
-  width: 13px;
-  height: 13px;
-  border-right: 3px solid var(--purple);
-  border-bottom: 3px solid var(--purple);
-  transform: rotate(45deg); /* ▾ collapsed */
-  transition: transform 0.15s ease;
-}
-.idea-summary-chev-end.open::after { transform: rotate(-135deg); } /* ▴ open */
+
+  &::after {
+    content: '';
+    width: 13px;
+    height: 13px;
+    border-right: 3px solid var(--purple);
+    border-bottom: 3px solid var(--purple);
+    transform: rotate(45deg); /* ▾ collapsed */
+    transition: transform 0.15s ease;
+  }
+  &.open::after {
+    transform: rotate(-135deg);
+  }
+} /* ▴ open */
 .idea-summary-head .ai-tag {
   font-size: 11px;
   background: var(--lavender);
@@ -262,8 +270,13 @@
   color: var(--ink);
   overflow-wrap: anywhere;
 }
-.idea-summary-body.view p { margin: 4px 0; }
-.idea-summary-body.view p:first-child { margin-top: 0; }
+.idea-summary-body.view p {
+  margin: 4px 0;
+
+  &:first-child {
+    margin-top: 0;
+  }
+}
 .idea-summary-body.view ul { margin: 4px 0; padding-left: 18px; }
 .idea-summary-pending {
   display: flex;
@@ -318,10 +331,17 @@
   color: var(--ink);
   cursor: pointer;
   transition: background 100ms ease;
+
+  &:hover {
+    background: rgba(tokens.$navy, 0.05);
+  }
+  &.active {
+    background: var(--navy); color: tokens.$white;
+  }
+  &.active .file-ico {
+    background: rgba(tokens.$white, 0.15); color: tokens.$white;
+  }
 }
-.file:hover { background: rgba(tokens.$navy, 0.05); }
-.file.active { background: var(--navy); color: tokens.$white; }
-.file.active .file-ico { background: rgba(tokens.$white, 0.15); color: tokens.$white; }
 .file-name { font-weight: 500; }
 .file-ico {
   width: 22px; height: 22px;
@@ -350,12 +370,20 @@
   border-radius: 50%;
   margin-left: auto;
   flex: none;
+
+  &.draft {
+    background: var(--purple);
+  }
+  &.in_review, &.review {
+    background: var(--amber); box-shadow: 0 0 0 3px rgba(tokens.$amber, 0.18);
+  }
+  &.returned {
+    background: var(--rose); box-shadow: 0 0 0 3px rgba(tokens.$rose, 0.18);
+  }
+  &.approved {
+    background: var(--green);
+  }
 }
-.file-status.draft     { background: var(--purple); }
-.file-status.in_review,
-.file-status.review    { background: var(--amber); box-shadow: 0 0 0 3px rgba(tokens.$amber, 0.18); }
-.file-status.returned  { background: var(--rose); box-shadow: 0 0 0 3px rgba(tokens.$rose, 0.18); }
-.file-status.approved  { background: var(--green); }
 
 /* Keyboard focus ring on tree rows (AC-12). */
 .file:focus-visible {
@@ -411,38 +439,57 @@
   padding: 22px 26px;
   overflow-y: auto;
   display: flex; flex-direction: column; gap: 18px;
-}
-.ba-doc-body::-webkit-scrollbar { width: 8px; }
-.ba-doc-body::-webkit-scrollbar-thumb {
-  background: rgba(tokens.$navy, 0.18);
-  border-radius: 999px;
-}
-.ba-doc-body::-webkit-scrollbar-track { background: transparent; }
-.ba-doc-body.view { font-size: 13.5px; line-height: 1.65; color: var(--ink); display: block; overflow-wrap: anywhere; }
-.ba-doc-body.view h1, .ba-doc-body.view h2, .ba-doc-body.view h3 { letter-spacing: -0.01em; margin: 14px 0 4px; }
-.ba-doc-body.view h1:first-child { margin-top: 0; }
-.ba-doc-body.view h1 { font-size: 22px; }
-.ba-doc-body.view h2 { font-size: 17px; }
-.ba-doc-body.view h3 { font-size: 14px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-2); }
-.ba-doc-body.view p { margin: 6px 0; }
-.ba-doc-body.view code {
-  font-family: var(--font-mono); font-size: 12.5px;
-  background: rgba(tokens.$navy, 0.06);
-  padding: 1px 5px; border-radius: 4px;
-}
-.ba-doc-body.view pre {
-  background: rgba(tokens.$navy, 0.04);
-  border-radius: 12px;
-  padding: 14px 16px;
-  font-family: var(--font-mono); font-size: 12px;
-  overflow-x: auto;
-}
-.ba-doc-body.view blockquote {
-  border-left: 3px solid var(--purple);
-  background: var(--lavender);
-  padding: 10px 14px;
-  border-radius: 0 10px 10px 0;
-  margin: 10px 0;
+
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: rgba(tokens.$navy, 0.18);
+    border-radius: 999px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &.view {
+    font-size: 13.5px; line-height: 1.65; color: var(--ink); display: block; overflow-wrap: anywhere;
+  }
+  &.view h1, &.view h2, &.view h3 {
+    letter-spacing: -0.01em; margin: 14px 0 4px;
+  }
+  &.view h1:first-child {
+    margin-top: 0;
+  }
+  &.view h1 {
+    font-size: 22px;
+  }
+  &.view h2 {
+    font-size: 17px;
+  }
+  &.view h3 {
+    font-size: 14px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-2);
+  }
+  &.view p {
+    margin: 6px 0;
+  }
+  &.view code {
+    font-family: var(--font-mono); font-size: 12.5px;
+    background: rgba(tokens.$navy, 0.06);
+    padding: 1px 5px; border-radius: 4px;
+  }
+  &.view pre {
+    background: rgba(tokens.$navy, 0.04);
+    border-radius: 12px;
+    padding: 14px 16px;
+    font-family: var(--font-mono); font-size: 12px;
+    overflow-x: auto;
+  }
+  &.view blockquote {
+    border-left: 3px solid var(--purple);
+    background: var(--lavender);
+    padding: 10px 14px;
+    border-radius: 0 10px 10px 0;
+    margin: 10px 0;
+  }
 }
 /* §9.6 QA — markdown tables scroll inside the card instead of stretching it:
    block + max-content caps the table at the card width; wide ones scroll. */
@@ -472,8 +519,11 @@
   color: var(--ink);
   padding: 22px 26px;
   min-height: 0; /* §9.6g — the card's column caps the height now */
+
+  &:focus-visible {
+    outline: none;
+  }
 }
-.ba-edit:focus-visible { outline: none; }
 
 /* Status-aware footer (Save / Send / Return / Approve). */
 .ba-doc-foot {
@@ -513,9 +563,14 @@
   border: 1px solid rgba(tokens.$navy, 0.06);
   border-radius: 12px;
   padding: 12px 14px;
+
+  &.sa {
+    border-left: 3px solid var(--amber);
+  }
+  &.ba {
+    border-left: 3px solid var(--peach);
+  }
 }
-.review-thread .comment.sa { border-left: 3px solid var(--amber); }
-.review-thread .comment.ba { border-left: 3px solid var(--peach); }
 .review-thread .comment .av-sm {
   width: 28px; height: 28px;
   border-radius: 50%;
@@ -614,8 +669,11 @@
   padding: 10px 14px;
   font-size: 13px;
   border-bottom: 1px solid rgba(tokens.$navy, 0.06);
+
+  &:last-child {
+    border-bottom: 0;
+  }
 }
-.state-d-list-row:last-child { border-bottom: 0; }
 .state-d-list-row .path { font-family: var(--font-mono); font-size: 12px; color: var(--ink-2); }
 .state-d-list-row .ok {
   color: var(--green); font-size: 11px; font-weight: 600;
