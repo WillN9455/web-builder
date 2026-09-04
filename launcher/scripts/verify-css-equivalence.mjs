@@ -1,8 +1,9 @@
 // Compiled-output equivalence gate (plan §4.6).
 //
 // Compiles launcher/src/styles/app.scss with Dart Sass and compares it,
-// normalized, against the original hand-written app.css from the last commit
-// that touched it (the pre-refactor baseline).
+// normalized, against the original hand-written stylesheet pair (tokens.css +
+// app.css, in the original main.tsx import order) from the pinned pre-split
+// baseline commit.
 //
 // Normalization strips block comments, @charset metadata, and whitespace —
 // the three artifacts of a Sass compile that carry no behavior. What must
@@ -33,7 +34,6 @@ const STRICT = process.argv.includes('--strict');
 const repoRoot = execSync('git rev-parse --show-toplevel', { encoding: 'utf8' }).trim();
 // git pathspecs resolve against cwd; git show needs a repo-root-relative path.
 const relAppCss = relative(repoRoot, resolve(stylesDir, 'app.css')).split('\\').join('/');
-const cwdAppCss = relative(process.cwd(), resolve(stylesDir, 'app.css')).split('\\').join('/');
 
 // Declared exception (plan §4.4): the fe-icon mixin expansion from
 // partials/_icons.scss, as compiled. Normalized form (comments/whitespace
@@ -75,18 +75,24 @@ try {
 }
 
 // Baseline: the original stylesheet pair, in the original main.tsx import
-// order (tokens.css, then app.css), from the last commit that contained them.
+// order (tokens.css, then app.css). The pre-split commit is PINNED rather
+// than discovered via `git log -- <old-path>`: the split renamed both files
+// in its own commit, so the rename lands as the last commit touching each
+// old path and the lookup points at a ref where the file no longer exists
+// (caught in the PR #24 review). Override with CSS_BASELINE=<sha> to run the
+// gate against an earlier baseline.
+const PINNED_BASELINE = process.env.CSS_BASELINE ?? '5c08322';
 const relTokensCss = relative(repoRoot, resolve(stylesDir, 'tokens.css')).split('\\').join('/');
-const cwdTokensCss = relative(process.cwd(), resolve(stylesDir, 'tokens.css')).split('\\').join('/');
-const lastTokensCommit = git(`log -1 --format=%H -- ${cwdTokensCss}`).trim();
-const lastAppCssCommit = git(`log -1 --format=%H -- ${cwdAppCss}`).trim();
-if (!lastAppCssCommit || !lastTokensCommit) {
-  console.error(`verify-css-equivalence: no baseline commit contains ${relAppCss} / ${relTokensCss}.`);
-  console.error('After phase A merges, this gate is run in --strict mode against a pinned baseline commit.');
+let baselineSha;
+try {
+  baselineSha = git(`rev-parse ${PINNED_BASELINE}^{commit}`).trim();
+} catch {
+  console.error(`verify-css-equivalence: pinned baseline ${PINNED_BASELINE} not found in this history.`);
+  console.error('Set CSS_BASELINE=<sha> to a commit containing src/styles/tokens.css + app.css.');
   process.exit(2);
 }
 const baseline =
-  git(`show ${lastTokensCommit}:${relTokensCss}`) + '\n' + git(`show ${lastAppCssCommit}:${relAppCss}`);
+  git(`show ${baselineSha}:${relTokensCss}`) + '\n' + git(`show ${baselineSha}:${relAppCss}`);
 
 const result = compile(APP_SCSS);
 const candidate = result.css;
@@ -107,7 +113,7 @@ if (!STRICT && candN.startsWith(baseN)) {
   }
   if (tail === N3_ICON_BLOCK) {
     console.log(`verify-css-equivalence: OK (N3 exception) — identical except the declared N3 icon block, appended at the end (${N3_ICON_BLOCK.length} chars).`);
-    console.log(`  baseline: ${lastAppCssCommit} (${baseN.length} chars), candidate: ${candN.length} chars.`);
+    console.log(`  baseline: ${baselineSha} (${baseN.length} chars), candidate: ${candN.length} chars.`);
     process.exit(0);
   }
 }
@@ -121,7 +127,7 @@ if (baseN === candN) {
 const strictFailure = STRICT && !candN.startsWith(baseN);
 const d = firstDivergence(baseN, candN);
 console.error(`verify-css-equivalence: FAILED (${strictFailure ? 'strict mode' : 'non-appended delta — a selector moved'}).`);
-console.error(`  baseline ${lastAppCssCommit} vs app.scss compile, first divergence at char ${d.at}:`);
+console.error(`  baseline ${baselineSha} vs app.scss compile, first divergence at char ${d.at}:`);
 console.error(`  baseline: ...${d.base}`);
 console.error(`  candidate: ...${d.cand}`);
 process.exit(1);
