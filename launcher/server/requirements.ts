@@ -505,7 +505,12 @@ export function registerRequirementsRoutes(app: express.Express): void {
     // marker, parser reads it via TR_META_RE one line look-ahead.
     const newRow = renderReqRow(id, value.priority, value.status, value.owner, value.text);
     const trMeta = `<!-- ${id}: origin=manual -->`;
-    const lines = insertAfter(text.split('\n'), storyReqInsertIndex(story), [newRow, trMeta]);
+    const journeyLines = text.split('\n');
+    // QA-5: pass the raw lines so the helper can skip past the previous
+    // row's trailing meta comment (otherwise a second POST inserts the
+    // new [row, marker] pair between the previous TR and its marker,
+    // detaching the previous TR's origin marker on re-parse).
+    const lines = insertAfter(journeyLines, storyReqInsertIndex(story, journeyLines), [newRow, trMeta]);
     try {
       await atomicWritePrd(journeysPath, lines.join('\n'));
     } catch {
@@ -605,7 +610,9 @@ export function registerRequirementsRoutes(app: express.Express): void {
         }
         files['prd.md'].ops.push({ after: idx, lines: [newRow, newMeta] });
       } else if (ownerStory) {
-        files['user-journeys.md'].ops.push({ after: storyReqInsertIndex(ownerStory), lines: [newRow, newMeta] });
+        // QA-5: pass the in-flight lines so the helper skips past the
+        // previous row's trailing meta comment when inserting the new pair.
+        files['user-journeys.md'].ops.push({ after: storyReqInsertIndex(ownerStory, files['user-journeys.md'].lines), lines: [newRow, newMeta] });
       } else {
         // A TR whose owning story is gone (soft-deleted mid-flight) — refuse
         // rather than land the row in an unknown block.

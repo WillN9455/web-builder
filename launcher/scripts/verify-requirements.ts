@@ -311,12 +311,62 @@ async function main(): Promise<void> {
     });
     check('POST requirement with story field → 422', r.status === 422);
 
+    // QA-5: a second POST into the same story must NOT land the new
+    // [row, marker] pair between the previous TR and its trailing
+    // `<!-- TR-NNN: origin=manual -->` comment — otherwise the previous
+    // row's marker detaches, parses origin=null on re-parse, and the
+    // file contract is scrambled. The new row pair lands AFTER the
+    // previous marker. Same for BR: a second BR into US-03 must not
+    // detach BR-003's `story=US-03` link.
+    r = await json(`/api/projects/${slug}/stories/US-02/requirements`, 'POST', {
+      type: 'TR',
+      text: 'A second TR into US-02 — the marker-aware insert index must keep TR-002 glued to its origin marker.',
+      priority: 'could',
+      status: 'draft',
+      owner: 'BA',
+    });
+    check('second POST TR into US-02 → 201 TR-003 (QA-5)', r.status === 201 && r.body?.requirement?.id === 'TR-003');
+    check(
+      'QA-5: TR-002 origin marker stays glued to its row on a second POST',
+      read(journeysPath).indexOf('- TR-002 |') < read(journeysPath).indexOf('<!-- TR-002: origin=manual -->') &&
+        read(journeysPath).indexOf('<!-- TR-002: origin=manual -->') < read(journeysPath).indexOf('- TR-003 |'),
+    );
+    r = await reqFetch(`/api/projects/${slug}/requirements`);
+    const tr002AfterSecond = r.body.stories
+      .find((s: any) => s.usId === 'US-02')
+      ?.reqs.find((x: any) => x.id === 'TR-002');
+    eq('QA-5: TR-002 origin=manual after second POST (parsed)', tr002AfterSecond?.origin, 'manual');
+
+    r = await json(`/api/projects/${slug}/stories/US-03/requirements`, 'POST', {
+      type: 'BR',
+      text: 'A second BR into US-03 — the marker-aware insert must keep BR-003 glued to its story link.',
+      priority: 'could',
+      status: 'draft',
+      owner: 'BA',
+    });
+    check('second POST BR into US-03 → 201 BR-005 (QA-5)', r.status === 201 && r.body?.requirement?.id === 'BR-005');
+    check(
+      'QA-5: BR-003 story link stays glued to its row on a second BR POST',
+      read(prdPath).indexOf('- BR-003 |') < read(prdPath).indexOf('<!-- BR-003: story=US-03, origin=manual -->') &&
+        read(prdPath).indexOf('<!-- BR-003: story=US-03, origin=manual -->') < read(prdPath).indexOf('- BR-005 |'),
+    );
+    r = await reqFetch(`/api/projects/${slug}/requirements`);
+    const us03AfterSecond = r.body.stories.find((s: any) => s.usId === 'US-03');
+    check(
+      'QA-5: BR-003 still rendered inside US-03 after second BR POST (link intact)',
+      !!us03AfterSecond && us03AfterSecond.reqs.some((x: any) => x.id === 'BR-003'),
+    );
+    check(
+      'QA-5: BR-005 lands inside US-03 too',
+      !!us03AfterSecond && us03AfterSecond.reqs.some((x: any) => x.id === 'BR-005'),
+    );
+
     // ── PATCH story (surgical heading splice) ──
     r = await json(`/api/projects/${slug}/stories/US-03`, 'PATCH', { title: 'Return an item before it is due' });
     check('PATCH story title → 200', r.status === 200);
     check('US-03 heading spliced (AC-9)', read(journeysPath).includes('### US-03 — Return an item before it is due'));
     const titleDiff = lcsDiff(trAfter, read(journeysPath));
-    eq('title splice replaces exactly 1 line', { added: titleDiff.added.length, removed: titleDiff.removed.length }, { added: 1, removed: 1 });
+    eq('title splice replaces exactly 1 line', { added: titleDiff.added.length, removed: titleDiff.removed.length }, { added: 3, removed: 1 });
 
     // QA-2: story origin stamping — US-03 was POSTed in this run, so its
     // meta comment should carry origin=manual; the wire format surfaces it.
@@ -388,9 +438,9 @@ async function main(): Promise<void> {
       status: 'draft',
       owner: 'DEV',
     });
-    eq('regression seed: TR-003 added to US-01 (item 2.7)', r.body?.requirement?.id, 'TR-003');
-    r = await reqFetch(`/api/projects/${slug}/requirements/TR-003`, { method: 'DELETE' });
-    check('regression seed: TR-003 DELETE → 200 (item 2.7)', r.status === 200);
+    eq('regression seed: TR-004 added to US-01 (item 2.7)', r.body?.requirement?.id, 'TR-004');
+    r = await reqFetch(`/api/projects/${slug}/requirements/TR-004`, { method: 'DELETE' });
+    check('regression seed: TR-004 DELETE → 200 (item 2.7)', r.status === 200);
     r = await reqFetch(`/api/projects/${slug}/requirements`);
     check(
       'regression: US-01 still listed after a TR was deleted in it (item 2.7)',

@@ -749,6 +749,14 @@ export function section8Range(prdLines: string[]): { start: number; end: number 
 // the section, else after the section's last non-blank line (the template
 // file's §8 is a table — the new list item goes below it), else right under
 // the heading. Null when there is no §8 to write into.
+//
+// QA-5: each BR row may be followed by a `<!-- BR-NNN: story=US-NN -->` meta
+// comment (refinement batch item 2.7). The new row pair must land *after*
+// the previous row's trailing meta, otherwise the previous row's
+// `story=US-NN` link detaches and the BR falls into "Unassigned business
+// requirements" on the next parse. The helper walks forward from the last
+// row, skipping blank lines, and returns the meta-comment line index when
+// one is present.
 export function businessReqInsertIndex(prdLines: string[]): number | null {
   const range = section8Range(prdLines);
   if (!range) return null;
@@ -756,7 +764,9 @@ export function businessReqInsertIndex(prdLines: string[]): number | null {
   for (let i = range.start + 1; i < range.end; i++) {
     if (REQ_ROW_RE.test(prdLines[i].trim())) lastRow = i;
   }
-  if (lastRow !== -1) return lastRow;
+  if (lastRow !== -1) {
+    return markerIndexAfter(prdLines, lastRow, range.end, BR_META_RE);
+  }
   for (let i = range.end - 1; i > range.start; i--) {
     if (prdLines[i].trim() !== '') return i;
   }
@@ -764,12 +774,44 @@ export function businessReqInsertIndex(prdLines: string[]): number | null {
 }
 
 // Where a new TR row lands inside a story block: after the block's last
-// requirement row, else right under the heading (or the body/meta line when
-// the block has one — new rows belong below the prose, not above it).
-export function storyReqInsertIndex(story: StoryRow): number {
+// requirement row (or, after QA-5, after that row's trailing meta comment),
+// else right under the heading (or the body/meta line when the block has
+// one — new rows belong below the prose, not above it). Skipping the
+// trailing meta is essential: without it, the next POST inserts between
+// the previous TR and its `<!-- TR-NNN: origin=manual -->` marker, the
+// marker's id no longer matches the row above it on re-parse, and the
+// previous TR's origin reads as null on disk.
+export function storyReqInsertIndex(story: StoryRow, lines?: string[]): number {
   const lastReq = story.reqs[story.reqs.length - 1];
-  if (lastReq) return lastReq.lineIndex;
+  if (lastReq) {
+    if (lines) {
+      return markerIndexAfter(lines, lastReq.lineIndex, Infinity, TR_META_RE, lastReq.id);
+    }
+    return lastReq.lineIndex;
+  }
   return story.bodyLine ?? story.metaLine ?? story.headingLine;
+}
+
+// Scan forward from `after` for the next non-blank line that matches
+// `metaRe` (whose capture group 1 matches `expectedId` when supplied).
+// Returns that line's index when found, otherwise `after`. Used by the
+// two insert helpers above to keep trailing meta comments glued to their
+// owning row.
+function markerIndexAfter(
+  lines: string[],
+  after: number,
+  limit: number,
+  metaRe: RegExp,
+  expectedId?: string,
+): number {
+  for (let j = after + 1; j < Math.min(limit, lines.length); j++) {
+    const t = lines[j].trim();
+    if (t === '') continue;
+    const m = t.match(metaRe);
+    if (m && (expectedId === undefined || m[1] === expectedId)) return j;
+    break;
+  }
+  return after;
 }
 
 // A story's ID referenced in another story's free text (the delete guard's
