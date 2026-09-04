@@ -541,10 +541,17 @@ export function RequirementsScreen() {
       const story = data.stories.find((s) => s.usId === form.usId);
       return story ? storyValuesFrom(story) : null;
     }
-    const req = [
-      ...data.businessReqs,
-      ...data.stories.flatMap((s) => s.reqs),
-    ].find((r) => r.id === form.reqId);
+    // QA-13: edit-req forms carry a story id (the row's home story, or
+    // null for unassigned BRs). Scope the lookup so a duplicate display
+    // id across two stories (e.g. both have TR-001) mounts the form with
+    // the right row's values. The PATCH path already scopes via
+    // storyUsId; this matches the same convention client-side.
+    if (form.usId === null) {
+      const br = data.businessReqs.find((r) => r.id === form.reqId);
+      return br ? reqValuesFrom(br) : null;
+    }
+    const story = data.stories.find((s) => s.usId === form.usId);
+    const req = story?.reqs.find((r) => r.id === form.reqId);
     return req ? reqValuesFrom(req) : null;
   }, [form, data, storyValuesFrom, reqValuesFrom]);
 

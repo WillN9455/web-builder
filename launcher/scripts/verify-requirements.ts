@@ -424,6 +424,38 @@ async function main(): Promise<void> {
     r = await json(`/api/projects/${slug}/requirements/TR-001?storyUsId=US-02`, 'PATCH', { owner: 'BA' });
     check('PATCH req owner=BA reset → 200', r.status === 200);
 
+    // ── QA-13: per-story formInitial scoping on the client ──
+    // Both US-01 (legacy) and US-02 (POSTed above) now carry a `TR-001`.
+    // PATCH with storyUsId=US-02 must only mutate US-02's row, leaving
+    // US-01's fixture text untouched. The text discriminator proves the
+    // server scoped the lookup (US-01 still says "Photo uploads…", US-02
+    // now says the QA-13 probe).
+    r = await json(`/api/projects/${slug}/requirements/TR-001?storyUsId=US-02`, 'PATCH', { text: 'QA-13 edit probe' });
+    check('PATCH TR-001 with storyUsId=US-02 → 200', r.status === 200);
+    const journeysAfterQa13 = read(journeysPath);
+    check(
+      'QA-13: PATCH hits US-02 TR-001 only — US-02 row carries probe text',
+      /- TR-001 \| must \| draft \| BA \| QA-13 edit probe/.test(journeysAfterQa13),
+    );
+    check(
+      'QA-13: US-01 TR-001 text is unchanged (Photo uploads…)',
+      journeysAfterQa13.includes(
+        '- TR-001 | must | in_review | DEV | Photo uploads must use signed URLs and store objects in the project bucket with public-read disabled.',
+      ),
+    );
+    // GET confirms the API surface still resolves to US-02's row only.
+    r = await reqFetch(`/api/projects/${slug}/requirements`);
+    const qa13Us02 = r.body.stories.find((s: any) => s.usId === 'US-02')?.reqs.find((x: any) => x.id === 'TR-001');
+    const qa13Us01 = r.body.stories.find((s: any) => s.usId === 'US-01')?.reqs.find((x: any) => x.id === 'TR-001');
+    eq('QA-13: GET US-02 TR-001 text = probe', qa13Us02?.text, 'QA-13 edit probe');
+    eq('QA-13: GET US-01 TR-001 text = original fixture', qa13Us01?.text?.startsWith('Photo uploads'), true);
+    // Reset US-02 TR-001 back to its original text so later assertions
+    // (the QA-5 TR-001 marker test, the delete-guard test, etc.) still match.
+    r = await json(`/api/projects/${slug}/requirements/TR-001?storyUsId=US-02`, 'PATCH', {
+      text: 'Reservations must expire automatically after 24 hours without pickup.',
+    });
+    check('QA-13: PATCH US-02 TR-001 text reset → 200', r.status === 200);
+
     // Story comment owner also accepts DES
     r = await json(`/api/projects/${slug}/stories/US-02`, 'PATCH', { owner: 'DES' });
     check('PATCH story owner=DES → 200', r.status === 200);
@@ -453,7 +485,6 @@ async function main(): Promise<void> {
     // storyUsId scope to disambiguate.
     r = await json(`/api/projects/${slug}/requirements/TR-001/status?storyUsId=US-01`, 'PATCH', { status: 'approved' });
     check('US-01 TR-001 in_review → approved → 200', r.status === 200);
-    if (r.status !== 200) console.error('DEBUG TR-001 status PATCH:', r.status, JSON.stringify(r.body));
     r = await reqFetch(`/api/projects/${slug}/requirements/TR-001?storyUsId=US-01`, { method: 'DELETE' });
     check('delete guard → 409 with referencedBy US-02 (AC-11)', r.status === 409 && JSON.stringify(r.body?.referencedBy) === '["US-02"]');
     check('guarded row NOT struck on disk', read(journeysPath).includes('- TR-001 | must | approved | DEV |'));

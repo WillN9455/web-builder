@@ -149,8 +149,9 @@ function applyInsertions(lines: string[], ops: { after: number; lines: string[] 
 // row), `scopeUsId` narrows the search to that story's rows. Unassigned BRs
 // live in `parsed.businessReqs` and form their own null-scope pool. Once
 // two stories both carry a `TR-001`, scopeUsId is the only way to tell
-// them apart — without it we fall back to "first match wins" and log a
-// 409 if the id exists in more than one story.
+// them apart — omitting it falls back to "first match wins" so legacy
+// callers and the verify suite keep working. The UI should always pass
+// the row's storyUsId once duplicate display ids exist.
 function locateReq(
   parsed: ParseResult,
   reqId: string,

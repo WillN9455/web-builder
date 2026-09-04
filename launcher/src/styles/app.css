@@ -1951,6 +1951,12 @@ button.oq-btn:focus-visible {
    this twice. The chip keeps the color-coded dot (blue = manual,
    coral = generated) plus the label so the tag is unambiguous without a
    hover tooltip. Rendered on both the story head and every req row. */
+/* TODO(SCSS phase A): tokenize — 4 origin-chip color literals below
+   (rgba(60,130,220,0.12), rgba(255,110,110,0.14), #1d4f8a, #a83232)
+   plus the rgba(255,140,140,0.18) dot glow should move into
+   tokens.css as --origin-manual-bg / --origin-manual-fg /
+   --origin-generated-bg / --origin-generated-fg /
+   --origin-generated-dot-glow. Tracked in chore PR #24. */
 .req-origin-chip {
   display: inline-flex; align-items: center; gap: 5px;
   padding: 2px 7px;
