@@ -568,12 +568,22 @@ export function RequirementsScreen() {
 
   const renderForm = (slot: 'top' | string) => {
     if (!form || !formInitial) return null;
+    // Slot match (refinement batch items 2.7 + 2.8 + QA-1):
+    //  - add-story → top bar only
+    //  - edit-story / add-req → the story's head slot (the add-req form
+    //    carries the story id, NOT a req id — slot matches `form.usId`)
+    //  - edit-req → the per-row slot (carries the req id)
+    // The previous code required `'reqId' in form` for any non-story form,
+    // which silently dropped add-req forms (no reqId) — clicking Add
+    // requirement in a story opened state but rendered nothing (QA-1).
     const belongsHere =
       form.mode === 'add' && form.kind === 'story'
         ? slot === 'top'
         : form.kind === 'story'
           ? slot === form.usId
-          : 'reqId' in form && slot === form.reqId;
+          : form.mode === 'add'
+            ? slot === form.usId
+            : 'reqId' in form && slot === form.reqId;
     if (!belongsHere) return null;
     return (
       <InlineForm
