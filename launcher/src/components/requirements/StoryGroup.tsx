@@ -106,17 +106,22 @@ export function StoryGroup({
       {showForm && renderForm?.()}
       {story.reqs.length > 0 && (
         <div className="req-list" role="list">
-          {story.reqs.map((req) => (
-            <ReqRow
-              key={req.id}
-              req={req}
-              statusPending={statusPendingReqId === req.id}
-              onEdit={() => onReqEdit(req)}
-              onDelete={() => onReqDelete(req)}
-              onStatusChange={(next) => onReqStatus(req, next)}
-              editFormNode={editFormFor?.(req.id) ?? null}
-            />
-          ))}
+          {/* QA-9: render linked BRs first, then TRs, preserving within-group
+              file order (Array.prototype.sort is stable). Disk order is
+              untouched — the move is purely a render-side decision. */}
+          {[...story.reqs]
+            .sort((a, b) => (a.type === b.type ? 0 : a.type === 'BR' ? -1 : 1))
+            .map((req) => (
+              <ReqRow
+                key={req.id}
+                req={req}
+                statusPending={statusPendingReqId === req.id}
+                onEdit={() => onReqEdit(req)}
+                onDelete={() => onReqDelete(req)}
+                onStatusChange={(next) => onReqStatus(req, next)}
+                editFormNode={editFormFor?.(req.id) ?? null}
+              />
+            ))}
         </div>
       )}
     </div>
