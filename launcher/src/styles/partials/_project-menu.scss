@@ -11,8 +11,8 @@
 
 .side {
   padding: 28px 18px 24px;
-  border-right: 1px solid rgba(50, 42, 92, 0.08);
-  background: rgba(255, 255, 255, 0.45);
+  border-right: 1px solid rgba(tokens.$navy, 0.08);
+  background: rgba(tokens.$white, 0.45);
   display: flex;
   flex-direction: column;
   gap: 22px;
@@ -37,7 +37,7 @@
   background: var(--navy);
   display: grid;
   place-items: center;
-  color: #fff;
+  color: tokens.$white;
   font-weight: 700;
   font-size: 16px;
   font-family: var(--font-mono);
@@ -67,11 +67,11 @@
 }
 
 .nav a .ico { width: 18px; height: 18px; flex: none; }
-.nav a:hover { background: rgba(255, 255, 255, 0.7); }
+.nav a:hover { background: rgba(tokens.$white, 0.7); }
 
 .nav a.active {
   background: var(--navy);
-  color: #fff;
+  color: tokens.$white;
 }
 
 /* Count chip (v5 block). No component renders one yet — see the TODO(count)
@@ -79,14 +79,14 @@
 .nav a .count {
   font-family: var(--font-mono);
   font-size: 10px;
-  background: rgba(50, 42, 92, 0.08);
+  background: rgba(tokens.$navy, 0.08);
   color: var(--ink-2);
   padding: 2px 7px;
   border-radius: 999px;
   margin-left: auto;
 }
 
-.nav a.active .count { background: rgba(255, 255, 255, 0.18); color: #fff; }
+.nav a.active .count { background: rgba(tokens.$white, 0.18); color: tokens.$white; }
 
 .side-promo {
   margin-top: auto;
@@ -105,7 +105,7 @@
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.35);
+  background: rgba(tokens.$white, 0.35);
 }
 
 /* v5 overrides — the project-menu variant of the promo card. */
@@ -122,7 +122,7 @@
 }
 .side .side-promo p code {
   font-family: var(--font-mono);
-  background: rgba(50, 42, 92, 0.06);
+  background: rgba(tokens.$navy, 0.06);
   padding: 1px 5px;
   border-radius: 4px;
   font-size: 11px;
@@ -140,7 +140,7 @@
   color: var(--ink);
 }
 
-.side-foot a:hover { background: rgba(255, 255, 255, 0.7); }
+.side-foot a:hover { background: rgba(tokens.$white, 0.7); }
 .side-foot a .ico { width: 18px; height: 18px; }
 
 /* Locked gate tabs (Sprint / Design / Build / QA) — mockup N11b. Not
@@ -163,7 +163,7 @@
   transform: translateY(-50%);
   margin-left: 12px;
   background: var(--ink);
-  color: #fff;
+  color: tokens.$white;
   font-size: 11px;
   font-weight: 500;
   padding: 5px 10px;
