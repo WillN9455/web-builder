@@ -154,6 +154,16 @@ export function InlineForm<V extends FormValues>(props: InlineFormProps<V>) {
   };
   const fieldErrors = { ...clientErrors, ...errors };
   const hasErrors = Object.keys(fieldErrors).length > 0;
+  // QA-3: the form-error-summary banner ("Fix the N highlighted fields")
+  // and aria-invalid only reflect the *visible* error set — otherwise the
+  // banner pre-fires on mount because the client-side length checks
+  // already populated clientErrors for every untouched field. The full
+  // clientErrors set still drives submit gating above (server is the
+  // backstop — refusing a submit because of an unseen client error is
+  // intentional; the user just hasn't seen the banner yet, but the form
+  // never opens with errors *visible* before they touched anything).
+  const visibleErrorKeys = Object.keys(fieldErrors).filter((k) => showError(k) != null);
+  const visibleErrorCount = visibleErrorKeys.length;
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -202,9 +212,9 @@ export function InlineForm<V extends FormValues>(props: InlineFormProps<V>) {
         <span className="form-id">{formId}</span>
       </div>
 
-      {hasErrors && (
+      {visibleErrorCount > 0 && (
         <div className="form-error-summary" role="alert">
-          Fix the {Object.keys(fieldErrors).length} highlighted field{Object.keys(fieldErrors).length > 1 ? 's' : ''} below.
+          Fix the {visibleErrorCount} highlighted field{visibleErrorCount > 1 ? 's' : ''} below.
         </div>
       )}
 
