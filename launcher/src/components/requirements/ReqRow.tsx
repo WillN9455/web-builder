@@ -30,22 +30,25 @@ const PRIO_LABELS: Record<string, string> = {
 };
 
 export function ReqRow({ req, statusPending, onEdit, onDelete, onStatusChange, editFormNode }: Props) {
+  // QA-2: every req row carries an origin dot — null renders as 'manual'
+  // (the §5 resolution Will approved), so legacy rows with no marker still
+  // surface the tag. The dot is purely presentational and screen-readable
+  // (aria-label differentiates manual/generated).
+  const effectiveOrigin: 'manual' | 'generated' = req.origin ?? 'manual';
   return (
     <>
       <div className={`req ${statusPending ? 'req-pending' : ''}`} role="listitem">
         <span className="req-id">
           {req.id}
-          {req.origin ? (
-            <span
-              className={`req-origin-dot req-origin-${req.origin}`}
-              title={
-                req.origin === 'generated'
-                  ? `${req.id} was written by a code/design agent`
-                  : `${req.id} was written by the BA`
-              }
-              aria-label={req.origin === 'generated' ? 'Auto-generated' : 'Manually written'}
-            />
-          ) : null}
+          <span
+            className={`req-origin-dot req-origin-${effectiveOrigin}`}
+            title={
+              effectiveOrigin === 'generated'
+                ? `${req.id} was written by a code/design agent`
+                : `${req.id} was written by the BA`
+            }
+            aria-label={effectiveOrigin === 'generated' ? 'Auto-generated' : 'Manually written'}
+          />
         </span>
         <span className="req-text">{req.text}</span>
         <span className={`req-type ${req.type === 'BR' ? 'type-br' : 'type-tr'}`}>

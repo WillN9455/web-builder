@@ -268,8 +268,12 @@ async function main(): Promise<void> {
       storyForUs03?.reqs?.find((r: any) => r.id === 'BR-003')?.origin,
       'manual',
     );
+    // QA-2: every req row carries an origin tag — legacy rows render as
+    // manual (null→manual). The wire format still surfaces origin=null so
+    // the client can distinguish "marked manual" from "untouched legacy"
+    // if it ever needs to; the UI default-folds it for display.
     check(
-      'legacy BR-001 carries origin=null (item 2.6)',
+      'legacy BR-001 carries origin=null on disk (QA-2)',
       afterBrGet.body?.businessReqs?.find((b: any) => b.id === 'BR-001')?.origin === null,
     );
 
@@ -285,9 +289,15 @@ async function main(): Promise<void> {
     const trAfter = read(journeysPath);
     const trDiff = lcsDiff(afterJ, trAfter);
     eq(
-      'TR lands inside the US-02 block — one inserted row, nothing else (AC-9)',
+      'TR lands inside the US-02 block — one inserted row + origin marker (AC-9 / QA-2)',
       { removed: trDiff.removed, added: trDiff.added },
-      { removed: [], added: [trDiff.added.find((l) => l.startsWith('- TR-002 |')) ?? ''] },
+      {
+        removed: [],
+        added: [
+          trDiff.added.find((l) => l.startsWith('- TR-002 |')) ?? '',
+          '<!-- TR-002: origin=manual -->',
+        ],
+      },
     );
 
     // ── Story-first rule: body carrying a story field → 422 (spec VALID) ──
@@ -308,6 +318,18 @@ async function main(): Promise<void> {
     const titleDiff = lcsDiff(trAfter, read(journeysPath));
     eq('title splice replaces exactly 1 line', { added: titleDiff.added.length, removed: titleDiff.removed.length }, { added: 1, removed: 1 });
 
+    // QA-2: story origin stamping — US-03 was POSTed in this run, so its
+    // meta comment should carry origin=manual; the wire format surfaces it.
+    r = await reqFetch(`/api/projects/${slug}/requirements`);
+    const us03Origin = r.body?.stories?.find((s: any) => s.usId === 'US-03')?.origin;
+    check('US-03 origin=manual after POST (QA-2)', us03Origin === 'manual');
+    check('US-03 meta comment carries origin=manual (QA-2)', read(journeysPath).includes('<!-- story: priority=should status=draft owner=BA origin=manual -->'));
+
+    // Legacy blocks (the fixture's US-01/US-02) keep origin=null on disk
+    // until a PATCH touches the meta block; the UI renders null as manual.
+    const us01Origin = r.body?.stories?.find((s: any) => s.usId === 'US-01')?.origin;
+    check('legacy US-01 origin=null on the wire (QA-2)', us01Origin === null);
+
     // ── PATCH requirement meta ──
     r = await json(`/api/projects/${slug}/requirements/TR-002`, 'PATCH', { priority: 'must', owner: 'BA' });
     check('PATCH req meta → 200', r.status === 200);
@@ -327,7 +349,7 @@ async function main(): Promise<void> {
     // Story comment owner also accepts DES
     r = await json(`/api/projects/${slug}/stories/US-02`, 'PATCH', { owner: 'DES' });
     check('PATCH story owner=DES → 200', r.status === 200);
-    check('DES story owner re-rendered in place', read(journeysPath).includes('<!-- story: priority=should status=draft owner=DES -->'));
+    check('DES story owner re-rendered in place', /<!-- story: priority=should status=draft owner=DES origin=manual -->/.test(read(journeysPath)));
     r = await json(`/api/projects/${slug}/stories/US-02`, 'PATCH', { owner: 'SA' });
     check('PATCH story owner=SA reset → 200', r.status === 200);
 
@@ -475,6 +497,27 @@ async function main(): Promise<void> {
     });
     check('legacy row status-only PATCH → 422 (N1)', r.status === 422 && typeof r.body?.errors?._ === 'string');
     check('legacy row untouched on disk (N1)', read(prdPath).includes('- BR-004 | Legacy requirement row without meta segments, kept for the conversion flow.'));
+
+    // QA-2: a real PATCH on a legacy row stamps origin=manual so the tag
+    // starts rendering. BR-001 is the seeded legacy BR (no meta comment).
+    const beforeLegacy = read(prdPath);
+    r = await json(`/api/projects/${slug}/requirements/BR-001`, 'PATCH', {
+      text: 'The list form must require title, photo, condition, and a pickup window before save.',
+    });
+    check('legacy row full PATCH → 200 (QA-2)', r.status === 200);
+    const legacyAfter = read(prdPath);
+    const legacyDiff = lcsDiff(beforeLegacy, legacyAfter);
+    eq(
+      'legacy PATCH adds the origin=manual marker (QA-2)',
+      legacyDiff.added.filter((l) => l !== ''),
+      ['<!-- BR-001: origin=manual -->'],
+    );
+    r = await reqFetch(`/api/projects/${slug}/requirements`);
+    eq(
+      'legacy BR-001 now origin=manual after PATCH (QA-2)',
+      r.body?.businessReqs?.find((b: any) => b.id === 'BR-001')?.origin,
+      'manual',
+    );
 
     // ── Parse-error resilience (AC-10): unreadable file → 200, hidden rows ──
     fs.chmodSync(prdPath, 0o000);

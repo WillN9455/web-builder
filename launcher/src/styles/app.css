@@ -1908,6 +1908,7 @@ button.oq-btn:focus-visible {
   background: rgba(50,42,92,0.06);
   padding: 4px 8px; border-radius: 6px;
   flex: none; align-self: flex-start;
+  display: inline-flex; align-items: center; gap: 6px;
 }
 .story-body { flex: 1; }
 .story-title { font-size: 14px; font-weight: 700; color: var(--ink); }

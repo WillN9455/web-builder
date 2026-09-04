@@ -90,6 +90,10 @@ function serializeStory(s: StoryRow) {
     priority: s.priority,
     status: s.status,
     owner: s.owner,
+    // QA-2: stories carry their own origin tag; null renders as manual in
+    // the UI (per the §5 Q1 resolution Will approved — overrides the
+    // 2026-09-03 Flag-1 wording).
+    origin: s.origin,
     reqs: s.reqs.map(serializeReq),
   };
 }
@@ -258,6 +262,9 @@ export function registerRequirementsRoutes(app: express.Express): void {
         priority: validation.value.priority,
         status: validation.value.status,
         owner: validation.value.owner,
+        // QA-2: every POST stamps origin=manual — the BA is the only writer
+        // today; the future auto-draft will stamp origin=generated.
+        origin: 'manual',
         reqs: [],
         headingLine: -1,
         metaLine: null,
@@ -326,9 +333,15 @@ export function registerRequirementsRoutes(app: express.Express): void {
       const priority = value.priority ?? story.priority;
       const status = value.status ?? story.status;
       const owner = value.owner ?? story.owner;
+      // QA-2: stories carry their own origin tag. A legacy block has no
+      // origin in its meta comment; the first PATCH that touches the meta
+      // block stamps origin=manual so the tag starts rendering. Future
+      // BA auto-draft writes origin=generated.
+      const origin: 'manual' | 'generated' = story.origin ?? 'manual';
       if (priority) parts.push(`priority=${priority}`);
       if (status) parts.push(`status=${status}`);
       if (owner) parts.push(`owner=${owner}`);
+      parts.push(`origin=${origin}`);
       if (parts.length > 0) {
         const meta = `<!-- story: ${parts.join(' ')} -->`;
         if (story.metaLine !== null) {
@@ -356,6 +369,9 @@ export function registerRequirementsRoutes(app: express.Express): void {
         priority: value.priority ?? story.priority,
         status: value.status ?? story.status,
         owner: value.owner ?? story.owner,
+        // QA-2: a PATCH that touches the meta comment stamps origin so
+        // the tag starts rendering; preserve it otherwise.
+        origin: story.origin ?? 'manual',
       }),
     });
   });
@@ -485,9 +501,11 @@ export function registerRequirementsRoutes(app: express.Express): void {
       return;
     }
     const id = nextFreeId(liveReqIds(parseRequirements('', text)).filter((x) => x.startsWith('TR-')), 'TR');
-    const lines = insertAfter(text.split('\n'), storyReqInsertIndex(story), [
-      renderReqRow(id, value.priority, value.status, value.owner, value.text),
-    ]);
+    // QA-2: TRs stamp origin=manual on POST — pairs with the BR origin
+    // marker, parser reads it via TR_META_RE one line look-ahead.
+    const newRow = renderReqRow(id, value.priority, value.status, value.owner, value.text);
+    const trMeta = `<!-- ${id}: origin=manual -->`;
+    const lines = insertAfter(text.split('\n'), storyReqInsertIndex(story), [newRow, trMeta]);
     try {
       await atomicWritePrd(journeysPath, lines.join('\n'));
     } catch {
@@ -496,7 +514,7 @@ export function registerRequirementsRoutes(app: express.Express): void {
     }
     res.status(201).json({
       ok: true,
-      requirement: { id, type: 'TR', priority: value.priority, status: value.status, owner: value.owner, text: value.text },
+      requirement: { id, type: 'TR', priority: value.priority, status: value.status, owner: value.owner, text: value.text, origin: 'manual' as const },
     });
   });
 
@@ -577,15 +595,17 @@ export function registerRequirementsRoutes(app: express.Express): void {
       ).filter((x) => x.startsWith(targetType));
       const newId = nextFreeId(live, targetType as 'BR' | 'TR');
       const newRow = renderReqRow(newId, merged.priority, merged.status, merged.owner, merged.text);
+      // QA-2: type moves stamp origin=manual on the new row — same as POST.
+      const newMeta = `<!-- ${newId}: origin=manual -->`;
       if (targetType === 'BR') {
         const idx = businessReqInsertIndex(files['prd.md'].lines);
         if (idx === null) {
           res.status(409).json({ error: 'prd.md has no §8 section to write business requirements into' });
           return;
         }
-        files['prd.md'].ops.push({ after: idx, lines: [newRow] });
+        files['prd.md'].ops.push({ after: idx, lines: [newRow, newMeta] });
       } else if (ownerStory) {
-        files['user-journeys.md'].ops.push({ after: storyReqInsertIndex(ownerStory), lines: [newRow] });
+        files['user-journeys.md'].ops.push({ after: storyReqInsertIndex(ownerStory), lines: [newRow, newMeta] });
       } else {
         // A TR whose owning story is gone (soft-deleted mid-flight) — refuse
         // rather than land the row in an unknown block.
@@ -596,6 +616,22 @@ export function registerRequirementsRoutes(app: express.Express): void {
       const updated = renderReqRow(reqRow.id, merged.priority, merged.status, merged.owner, merged.text);
       const home = reqRow.type === 'BR' ? 'prd.md' : 'user-journeys.md';
       files[home].lines = spliceLine(files[home].lines, reqRow.lineIndex, updated);
+      // QA-2: editing a legacy row (origin=null) stamps origin=manual so
+      // the dot starts rendering. The marker is glued to the row — the
+      // parser's meta-comment look-ahead skips blank lines so a separator
+      // between the row and the marker still parses correctly.
+      if (reqRow.origin === null) {
+        const meta = `<!-- ${reqRow.id}: origin=manual -->`;
+        const insertAt = reqRow.lineIndex + 1;
+        const next = files[home].lines[insertAt];
+        if (next === '' || next === undefined) {
+          // Replace the blank line (or fill the trailing gap) with the
+          // marker so we don't grow the file with two blank lines.
+          files[home].lines = spliceLine(files[home].lines, insertAt, meta);
+        } else {
+          files[home].lines.splice(insertAt, 0, meta);
+        }
+      }
     }
 
     for (const f of Object.values(files)) {

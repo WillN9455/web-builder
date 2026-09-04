@@ -575,6 +575,9 @@ export type StoryItem = {
   priority: ReqPriority | null;
   status: ReqStatus | null;
   owner: ReqOwner | null;
+  // QA-2: stories carry their own origin tag (manual vs generated).
+  // null on legacy blocks; the UI renders null as manual.
+  origin: 'manual' | 'generated' | null;
   reqs: RequirementItem[];
 };
 

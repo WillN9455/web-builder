@@ -147,6 +147,11 @@ export type StoryRow = {
   priority: ReqPriority | null;
   status: ReqStatus | null;
   owner: ReqOwner | null;
+  // Origin tag (QA-2): manual = BA wrote the story; generated = an agent
+  // wrote it; null = legacy block predating the meta-comment extension.
+  // TRs inherit from their owning story's origin in the UI (TR rows don't
+  // override the story-wide tag) — see StoryGroup's render.
+  origin: 'manual' | 'generated' | null;
   reqs: ReqRow[];
   // Block geometry in user-journeys.md (0-based line indexes):
   headingLine: number; // the `### US-NN …` heading
@@ -204,15 +209,18 @@ function parseRowSegments(segs: string[]): Pick<ReqRow, 'priority' | 'status' | 
   return { priority: null, status: null, owner: null, text: textOf(segs) };
 }
 
-// `priority=must status=approved owner=BA` inside the story comment.
-function parseStoryMeta(raw: string): Partial<Pick<StoryRow, 'priority' | 'status' | 'owner'>> {
-  const out: Partial<Pick<StoryRow, 'priority' | 'status' | 'owner'>> = {};
+// `priority=must status=approved owner=BA origin=manual` inside the story
+// comment. Origin was added in QA-2 — same vocabulary as BR/TR meta
+// comments so a future BA-auto-draft job can stamp it consistently.
+function parseStoryMeta(raw: string): Partial<Pick<StoryRow, 'priority' | 'status' | 'owner' | 'origin'>> {
+  const out: Partial<Pick<StoryRow, 'priority' | 'status' | 'owner' | 'origin'>> = {};
   for (const m of raw.matchAll(/(\w+)\s*=\s*([^\s]+)\s*(?:,|$|(?=\w+=))/g)) {
     const key = m[1].toLowerCase();
     const val = m[2].replace(/,$/, '');
     if (key === 'priority' && isReqPriority(val)) out.priority = val;
     else if (key === 'status' && isReqStatus(val)) out.status = val;
     else if (key === 'owner' && isReqOwner(val)) out.owner = val;
+    else if (key === 'origin' && (val === 'manual' || val === 'generated')) out.origin = val;
   }
   return out;
 }
@@ -235,6 +243,13 @@ function parseStoryBody(raw: string): { asA: string; iWantTo: string; soThat: st
 // (or capture the origin marker — batch item 2.6, future batch).
 //   <!-- BR-001: story=US-01, origin=generated -->
 const BR_META_RE = /^<!--\s*(BR-\d{3}):\s*(.*?)\s*-->$/;
+
+// Match the comment line that follows a TR row to read its origin marker
+// (Will QA-2: TRs now carry origin just like BRs — the BA stamps
+// origin=manual on every POST; the future TR auto-draft job will write
+// origin=generated). Pairs one-to-one with BR_META_RE — same grammar,
+// different prefix.
+const TR_META_RE = /^<!--\s*(TR-\d{3}):\s*(.*?)\s*-->$/;
 
 // Split a `<!-- BR-NNN: k=v, k=v -->` body into key/value pairs. Unknown keys
 // are ignored silently so this stays forward-compatible with new markers.
@@ -260,6 +275,21 @@ function parseBrMeta(body: string): {
   return { storyUsId, origin, other };
 }
 
+// Same shape as parseBrMeta but only `origin=` — TR meta comments don't
+// carry a story link (TRs implicitly live in their block). Refinement batch
+// QA-2: TRs now stamp origin the same way BRs do.
+function parseTrMeta(body: string): { origin: 'manual' | 'generated' | null } {
+  let origin: 'manual' | 'generated' | null = null;
+  for (const m of body.matchAll(/(\w+)\s*=\s*([^,\s]+)(?:,|$)/g)) {
+    const key = m[1].toLowerCase();
+    const val = m[2];
+    if (key === 'origin' && (val === 'manual' || val === 'generated')) {
+      origin = val;
+    }
+  }
+  return { origin };
+}
+
 // Parse the BR- rows out of prd.md. Tolerant: scans every list item in the
 // file whose first token matches the ID grammar — §8 is the contract's home
 // but legacy files that scattered rows elsewhere still surface.
@@ -278,16 +308,21 @@ export function parseBusinessReqs(prd: string): { rows: ReqRow[]; parseError: st
     // tolerated as missing — unlinked BRs default to storyUsId=null and
     // origin-less BRs default to null (legacy rows; new writes stamp
     // origin=manual, the future BA auto-draft will stamp origin=generated).
+    // QA-2: blank lines between row and marker are tolerated so the
+    // look-ahead survives whichever insertion pattern (POST inserts two
+    // adjacent lines; a legacy PATCH may sit next to a pre-existing blank).
     let storyUsId: string | null = null;
     let origin: 'manual' | 'generated' | null = null;
-    const nextRaw = lines[i + 1];
-    if (nextRaw) {
-      const cm = nextRaw.trim().match(BR_META_RE);
+    for (let j = i + 1; j < lines.length; j++) {
+      const candidate = lines[j];
+      if (candidate.trim() === '') continue;
+      const cm = candidate.trim().match(BR_META_RE);
       if (cm && cm[1] === m[1]) {
         const meta = parseBrMeta(cm[2]);
         storyUsId = meta.storyUsId;
         origin = meta.origin;
       }
+      break;
     }
 
     rows.push({
@@ -320,6 +355,11 @@ export function parseStories(journeys: string): { stories: StoryRow[]; parseErro
       priority: null,
       status: null,
       owner: null,
+      // QA-2: stories carry their own origin tag (manual vs generated).
+      // Today the BA is the only writer, so every POST stamps manual.
+      // Legacy blocks (no `origin=` in the meta comment) keep null and the
+      // UI renders them as manual — same null→manual rule as BRs/TRs.
+      origin: null,
       reqs: [],
       headingLine: start,
       metaLine: null,
@@ -378,16 +418,30 @@ export function parseStories(journeys: string): { stories: StoryRow[]; parseErro
       if (rm && rm[1].startsWith('TR-')) {
         const fields = parseRowSegments(rm[2] ? rm[2].split('|').map((s) => s.trim()) : []);
         if (fields.text) {
+          // Look one line ahead for the row's metadata comment. Today's
+          // POST stamps `<!-- TR-NNN: origin=manual -->`; the BA auto-draft
+          // (future) will stamp origin=generated. Legacy rows (no marker)
+          // leave origin=null — the UI renders those as manual per QA-2
+          // (overrides the 2026-09-03 Flag-1 wording). Blank lines between
+          // the row and its marker are tolerated (mirrors the BR look-ahead).
+          let origin: 'manual' | 'generated' | null = null;
+          for (let j = i + 1; j < lines.length; j++) {
+            const candidate = lines[j];
+            if (candidate.trim() === '') continue;
+            const cm = candidate.trim().match(TR_META_RE);
+            if (cm && cm[1] === rm[1]) {
+              origin = parseTrMeta(cm[2]).origin;
+            }
+            break;
+          }
           story.reqs.push({
             id: rm[1],
             type: 'TR',
             ...fields,
             // TRs implicitly live in their story block; the storyUsId is the
             // block's heading id, set after parseStories collects them.
-            // TR origin is null in v1 — only the BR auto-draft job writes
-            // origin=generated today; the BA never synthesizes TRs.
             storyUsId: null,
-            origin: null,
+            origin,
             lineIndex: i,
             raw: line,
           });
@@ -457,7 +511,9 @@ export function renderReqRow(
 }
 
 // A story block exactly as the grammar draws it — appended to
-// user-journeys.md on POST /stories.
+// user-journeys.md on POST /stories. QA-2: stories now stamp origin=manual
+// on first write; PATCH preserves the existing origin (or stamps manual
+// when the caller explicitly sets it).
 export function renderStoryBlock(input: {
   usId: string;
   title: string;
@@ -467,10 +523,11 @@ export function renderStoryBlock(input: {
   priority: ReqPriority;
   status: ReqStatus;
   owner: ReqOwner;
+  origin?: 'manual' | 'generated';
 }): string {
   return [
     `### ${input.usId} — ${input.title}`,
-    `<!-- story: priority=${input.priority} status=${input.status} owner=${input.owner} -->`,
+    `<!-- story: priority=${input.priority} status=${input.status} owner=${input.owner} origin=${input.origin ?? 'manual'} -->`,
     `**As a** ${input.asA}, **I want to** ${input.iWantTo}, **so that** ${input.soThat}.`,
   ].join('\n');
 }

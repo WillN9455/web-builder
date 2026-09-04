@@ -52,10 +52,25 @@ export function StoryGroup({
     ((openForm.kind === 'story' && openForm.mode === 'edit' && openForm.usId === story.usId) ||
       (openForm.kind === 'req' && openForm.mode === 'add' && openForm.usId === story.usId));
 
+  // QA-2: stories carry their own origin tag; null renders as manual
+  // (same null→manual rule as req rows).
+  const effectiveOrigin: 'manual' | 'generated' = story.origin ?? 'manual';
+
   return (
     <div className={`story ${flash ? 'story-flash' : ''}`} id={`story-${story.usId}`}>
       <div className="story-head">
-        <div className="story-id">{story.usId}</div>
+        <div className="story-id">
+          {story.usId}
+          <span
+            className={`req-origin-dot req-origin-${effectiveOrigin}`}
+            title={
+              effectiveOrigin === 'generated'
+                ? `${story.usId} was written by a code/design agent`
+                : `${story.usId} was written by the BA`
+            }
+            aria-label={effectiveOrigin === 'generated' ? 'Auto-generated' : 'Manually written'}
+          />
+        </div>
         <div className="story-body">
           <div className="story-title">{story.title || 'Untitled story'}</div>
           {story.asA && (
