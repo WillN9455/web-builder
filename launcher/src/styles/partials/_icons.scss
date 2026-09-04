@@ -1,0 +1,26 @@
+// Icons — N3 retirement (the deferred PR #20 nit), phase A's only piggyback
+// (plan §4.4). The primary icon surfaces — requirement row actions, the
+// add-story CTA, and the empty-state CTA — now share one stroke convention:
+// width 1.8, round cap, round join.
+//
+// This partial is the declared exception to compiled-output byte-equality:
+// its rules are new (the mixin expansion below), appended after the
+// requirements partial. CSS presentation rules override the SVG
+// presentation attributes in the JSX, which already set stroke-width 1.8 and
+// round linecap; the one rendering change is stroke-linejoin on the two
+// add-story plus icons (miter → round), which is exactly the consistency
+// N3 asked for. Every other surface keeps its current rendering.
+@use '../tokens';
+
+@mixin fe-icon($width: 1.8) {
+  stroke: currentColor;
+  stroke-width: $width;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.req-action svg,
+.req-add-bar .btn-primary svg,
+.req-empty .btn-primary svg {
+  @include fe-icon;
+}

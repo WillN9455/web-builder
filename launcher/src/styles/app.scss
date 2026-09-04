@@ -1,0 +1,16 @@
+// Entry — order-preserving split of the former app.css (plan §4).
+// The @use chain below IS the original rule order; cascade order is behavior.
+// Do not reorder without running scripts/verify-css-equivalence.mjs against a
+// pre-split build.
+@use 'tokens';
+@use 'partials/layout';
+@use 'partials/projects';
+@use 'partials/intake';
+@use 'partials/shared-ui';
+@use 'partials/empty-state';
+@use 'partials/project-menu';
+@use 'partials/background';
+@use 'partials/requirements';
+// Icons last — the N3 consolidation layers shared stroke rules on top of the
+// partials above (see partials/_icons.scss).
+@use 'partials/icons';

@@ -1,0 +1,151 @@
+// Part of the order-preserving app.css split (plan §4). The @use chain in
+// app.scss IS the original rule order; do not reorder without running
+// scripts/verify-css-equivalence.mjs against a pre-split build.
+@use '../tokens';
+
+/* Screen 1 — Projects initial layout.
+ * The panel is the only chrome; everything else is content. */
+
+/* Two-column frame (sidebar + main) — the open-project layout, per mockup
+ * #s3. The `.full` variant keeps the original single-column flex layout for
+ * /projects and /new, which render no sidebar. */
+.app {
+  min-height: 100vh;
+  padding: 24px;
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+}
+
+.app.full {
+  display: flex;
+  grid-template-columns: 1fr;
+}
+
+.app .main {
+  flex: 1;
+  background: var(--panel);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--panel-stroke);
+  border-radius: var(--r-2xl);
+  box-shadow: var(--shadow);
+  padding: 28px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  min-height: calc(100vh - 48px);
+}
+
+/* ─── Topbar ──────────────────────────────────────────────────────────── */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.topbar h1 {
+  font-size: 22px;
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.search {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255,255,255,0.55);
+  border: 1px solid rgba(50,42,92,0.06);
+  border-radius: var(--r-md);
+  padding: 0 12px;
+  height: 38px;
+  color: var(--ink-2);
+  max-width: 480px;
+}
+.search input {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  outline: 0;
+  font-size: 13.5px;
+  color: var(--ink);
+}
+.search input::placeholder { color: var(--ink-3); }
+.search .kbd {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-2);
+  background: rgba(50,42,92,0.06);
+  padding: 2px 7px;
+  border-radius: 6px;
+}
+
+.icon-btn {
+  position: relative;
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  border: 0;
+  background: rgba(255,255,255,0.5);
+  color: var(--ink-2);
+  display: flex; align-items: center; justify-content: center;
+}
+.icon-btn:hover { background: rgba(255,255,255,0.85); color: var(--ink); }
+.icon-btn .dot {
+  position: absolute; top: 8px; right: 8px;
+  width: 8px; height: 8px;
+  background: var(--coral);
+  border-radius: 50%;
+  border: 2px solid #fff;
+}
+
+.avatar {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--peach), var(--butter));
+  color: var(--ink);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  border: 0;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 9px 16px;
+  border-radius: var(--r-md);
+  transition: background 120ms ease, color 120ms ease, transform 120ms ease;
+}
+.btn-primary {
+  background: var(--navy);
+  color: #fff;
+}
+.btn-primary:hover { background: var(--navy-2); }
+.btn-pill { border-radius: 999px; }
+.btn-soft {
+  background: rgba(50,42,92,0.06);
+  color: var(--ink);
+}
+.btn-soft:hover { background: rgba(50,42,92,0.12); }
+
+/* ─── Section heading ────────────────────────────────────────────────── */
+
+.sec-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.sec-head h2 {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+.sec-head .more {
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.sec-head .more:hover { color: var(--ink); }

@@ -1,0 +1,179 @@
+// Part of the order-preserving app.css split (plan §4). The @use chain in
+// app.scss IS the original rule order; do not reorder without running
+// scripts/verify-css-equivalence.mjs against a pre-split build.
+@use '../tokens';
+
+/* ─── Project-scoped menu — per-project sidebar (mockup #s3) ────────────
+ * Ported from design/mockups.html: the #s3 sidebar block, the v5 additions
+ * block (count chip + side-promo overrides), and the N11b locked-row
+ * pattern. Only the open-project tree renders `.side`; /projects and /new
+ * stay `.app.full` with no sidebar. */
+
+.side {
+  padding: 28px 18px 24px;
+  border-right: 1px solid rgba(50, 42, 92, 0.08);
+  background: rgba(255, 255, 255, 0.45);
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  /* Keep the locked-row tooltip above the frosted-glass `.main` panel —
+   * backdrop-filter promotes `.main` to its own stacking context, which
+   * otherwise paints over the tooltip that overlaps it. */
+  position: relative;
+  z-index: 2;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 8px;
+}
+
+.brand-mark {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: var(--navy);
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 16px;
+  font-family: var(--font-mono);
+}
+
+.brand-name { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+
+.menu-label {
+  font-size: 11px;
+  color: var(--ink-2);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0 12px;
+}
+
+.nav { display: flex; flex-direction: column; gap: 2px; }
+
+.nav a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  font-size: 14px;
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.nav a .ico { width: 18px; height: 18px; flex: none; }
+.nav a:hover { background: rgba(255, 255, 255, 0.7); }
+
+.nav a.active {
+  background: var(--navy);
+  color: #fff;
+}
+
+/* Count chip (v5 block). No component renders one yet — see the TODO(count)
+ * note in ProjectSidebar; the styling is ready for when a count source lands. */
+.nav a .count {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  background: rgba(50, 42, 92, 0.08);
+  color: var(--ink-2);
+  padding: 2px 7px;
+  border-radius: 999px;
+  margin-left: auto;
+}
+
+.nav a.active .count { background: rgba(255, 255, 255, 0.18); color: #fff; }
+
+.side-promo {
+  margin-top: auto;
+  background: linear-gradient(160deg, var(--peach) 0%, var(--blush) 100%);
+  border-radius: var(--r-lg);
+  padding: 18px;
+  position: relative;
+  overflow: hidden;
+}
+
+.side-promo::after {
+  content: "";
+  position: absolute;
+  right: -16px;
+  top: -16px;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.35);
+}
+
+/* v5 overrides — the project-menu variant of the promo card. */
+.side .side-promo h4 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+.side .side-promo p {
+  font-size: 12px;
+  color: var(--ink-2);
+  line-height: 1.5;
+}
+.side .side-promo p code {
+  font-family: var(--font-mono);
+  background: rgba(50, 42, 92, 0.06);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+.side-foot { display: flex; flex-direction: column; gap: 2px; }
+
+.side-foot a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.side-foot a:hover { background: rgba(255, 255, 255, 0.7); }
+.side-foot a .ico { width: 18px; height: 18px; }
+
+/* Locked gate tabs (Sprint / Design / Build / QA) — mockup N11b. Not
+ * contrast-disabled: the label keeps readable contrast, the row stays
+ * keyboard-focusable (tooltip shows on :focus-within), and navigation is
+ * blocked in the component rather than the CSS. */
+.nav a.locked {
+  opacity: 0.62;
+  cursor: not-allowed;
+  position: relative;
+}
+
+.nav a.locked .lbl { color: var(--ink-2); }
+
+.nav a.locked::after {
+  content: "Confirm project context first";
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-left: 12px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 5px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+  z-index: 5;
+}
+
+.nav a.locked:hover::after,
+.nav a.locked:focus-within::after { opacity: 1; }
