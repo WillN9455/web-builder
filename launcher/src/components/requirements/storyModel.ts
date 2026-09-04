@@ -66,7 +66,12 @@ export function applyFilters(
   );
   const stories = data.stories
     .map((story) => {
-      const rows = story.reqs.filter((r) => typeFor('TR') && statusFor(r.status) && (!q || reqMatchesQuery(r, q)));
+      // QA-12: each row's own type decides inclusion — a story can hold both
+      // BRs (linked from prd.md §8) and TRs, and the Technical filter must
+      // hide the linked BRs without hiding the TRs in the same block.
+      const rows = story.reqs.filter(
+        (r) => typeFor(r.type) && statusFor(r.status) && (!q || reqMatchesQuery(r, q)),
+      );
       // The story itself matches search on its own text; status/type chips
       // apply to rows only (a story has no type of its own).
       const selfMatch =

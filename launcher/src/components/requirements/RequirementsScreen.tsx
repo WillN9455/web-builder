@@ -172,6 +172,12 @@ export function RequirementsScreen() {
   );
   // Chip + segment counts always come from the FULL list, never the filtered
   // view — a filter must not shrink its own controls.
+  //
+  // QA-12: business = ALL BRs (unassigned + linked inside stories); technical
+  // = TRs only. The previous code counted every story.reqs row as "technical"
+  // even when those rows were linked BRs (and business was only the
+  // unassigned §8 rows), so the Business count and filter hid every BR that
+  // lived inside a story.
   const chipCounts = useMemo(() => {
     const byStatus = {} as Record<ReqStatus, number>;
     const bump = (st: ReqStatus | null) => {
@@ -180,11 +186,19 @@ export function RequirementsScreen() {
     let business = 0;
     let technical = 0;
     if (data && data.source === 'ok') {
-      business = data.businessReqs.length;
-      for (const r of data.businessReqs) bump(r.status);
+      for (const r of data.businessReqs) {
+        business += 1;
+        bump(r.status);
+      }
       for (const s of data.stories) {
-        technical += s.reqs.length;
-        for (const r of s.reqs) bump(r.status);
+        for (const r of s.reqs) {
+          if (r.type === 'BR') {
+            business += 1;
+          } else {
+            technical += 1;
+          }
+          bump(r.status);
+        }
       }
     }
     return { all: business + technical, business, technical, byStatus };
