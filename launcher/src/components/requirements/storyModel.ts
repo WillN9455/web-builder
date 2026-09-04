@@ -116,10 +116,28 @@ export function nextStoryIdPreview(stories: { usId: string }[]): string {
   return nextFreeId(stories.map((s) => s.usId), 'US');
 }
 
-export function nextReqIdPreview(type: 'BR' | 'TR', data: RequirementsResponse): string {
-  const existing = [
-    ...data.businessReqs.map((r) => r.id),
-    ...data.stories.flatMap((s) => s.reqs.map((r) => r.id)),
-  ].filter((id) => id.startsWith(type));
-  return nextFreeId(existing, type);
+// QA-10: per-story ID preview. The form's add-req flow passes the story
+// usId (the add form is mounted under a specific story's head). For an
+// add-req BR we scope to the story's linked BRs; for unassigned BRs we
+// fall back to the global pool; for TRs we scope to that story's TRs.
+// `storyUsId === null` means "unassigned BR pool".
+export function nextReqIdPreview(
+  type: 'BR' | 'TR',
+  data: RequirementsResponse,
+  storyUsId: string | null | undefined,
+): string {
+  if (type === 'TR') {
+    if (!storyUsId) return nextFreeId([], 'TR');
+    const story = data.stories.find((s) => s.usId === storyUsId);
+    const ids = story ? story.reqs.filter((r) => r.type === 'TR').map((r) => r.id) : [];
+    return nextFreeId(ids, 'TR');
+  }
+  // BR: scope to the story's linked BRs, or to the global unassigned pool.
+  const linkedIds = storyUsId
+    ? data.stories
+        .flatMap((s) => s.reqs)
+        .filter((r) => r.type === 'BR' && r.storyUsId === storyUsId)
+        .map((r) => r.id)
+    : data.businessReqs.filter((r) => r.storyUsId === null).map((r) => r.id);
+  return nextFreeId(linkedIds, 'BR');
 }

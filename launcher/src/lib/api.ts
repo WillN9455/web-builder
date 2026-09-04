@@ -723,9 +723,16 @@ export async function updateRequirement(
   idOrSlug: string,
   reqId: string,
   patch: RequirementPatch,
+  // QA-10: storyUsId disambiguates duplicate ids across stories once two
+  // stories both have a TR-001. The UI always passes it (every
+  // RequirementItem carries the field), the server scopes locateReq to it.
+  storyUsId?: string | null,
 ): Promise<UpdateRequirementResponse> {
+  const qs = storyUsId !== undefined && storyUsId !== null
+    ? `?storyUsId=${encodeURIComponent(storyUsId)}`
+    : '';
   return reqFetch(
-    `/api/projects/${encodeURIComponent(idOrSlug)}/requirements/${encodeURIComponent(reqId)}`,
+    `/api/projects/${encodeURIComponent(idOrSlug)}/requirements/${encodeURIComponent(reqId)}${qs}`,
     {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -738,9 +745,13 @@ export async function updateRequirementStatus(
   idOrSlug: string,
   reqId: string,
   status: ReqStatus,
+  storyUsId?: string | null,
 ): Promise<UpdateRequirementResponse> {
+  const qs = storyUsId !== undefined && storyUsId !== null
+    ? `?storyUsId=${encodeURIComponent(storyUsId)}`
+    : '';
   return reqFetch(
-    `/api/projects/${encodeURIComponent(idOrSlug)}/requirements/${encodeURIComponent(reqId)}/status`,
+    `/api/projects/${encodeURIComponent(idOrSlug)}/requirements/${encodeURIComponent(reqId)}/status${qs}`,
     {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -749,9 +760,16 @@ export async function updateRequirementStatus(
   );
 }
 
-export async function deleteRequirement(idOrSlug: string, reqId: string): Promise<{ ok: true; id: string }> {
+export async function deleteRequirement(
+  idOrSlug: string,
+  reqId: string,
+  storyUsId?: string | null,
+): Promise<{ ok: true; id: string }> {
+  const qs = storyUsId !== undefined && storyUsId !== null
+    ? `?storyUsId=${encodeURIComponent(storyUsId)}`
+    : '';
   return reqFetch(
-    `/api/projects/${encodeURIComponent(idOrSlug)}/requirements/${encodeURIComponent(reqId)}`,
+    `/api/projects/${encodeURIComponent(idOrSlug)}/requirements/${encodeURIComponent(reqId)}${qs}`,
     { method: 'DELETE' },
   );
 }

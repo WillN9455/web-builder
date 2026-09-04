@@ -137,15 +137,19 @@ export function InlineForm<V extends FormValues>(props: InlineFormProps<V>) {
   // loaded values verbatim fails before the server is ever contacted.
   // `isChanged(key)` compares the live value to the initial value (string
   // compare for text, strict-equal for selects).
-  const initialStr = (k: keyof FormValues): string => {
-    const v = (initial as unknown as Record<string, unknown>)[k as string];
+  // `keyof FormValues` resolves to the union of both subtypes' keys, which
+// collapses to just the shared fields (priority/status/owner). Cast the
+// keys we care about to the broader string-keyed record shape so the
+// helpers can read any field by name.
+const initialStr = (k: string): string => {
+    const v = (initial as unknown as Record<string, unknown>)[k];
     return typeof v === 'string' ? v : '';
   };
-  const liveStr = (k: keyof FormValues): string => {
-    const v = (values as unknown as Record<string, unknown>)[k as string];
+  const liveStr = (k: string): string => {
+    const v = (values as unknown as Record<string, unknown>)[k];
     return typeof v === 'string' ? v : '';
   };
-  const isChanged = (k: keyof FormValues): boolean => {
+  const isChanged = (k: string): boolean => {
     if (mode !== 'edit') return true;
     const a = initialStr(k);
     const b = liveStr(k);

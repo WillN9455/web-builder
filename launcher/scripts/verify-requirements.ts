@@ -232,7 +232,11 @@ async function main(): Promise<void> {
       owner: 'BA',
     });
     check('POST BR → 201', r.status === 201);
-    eq('BR gets lowest free id BR-003 (AC-8)', r.body?.requirement?.id, 'BR-003');
+    // QA-10: per-story BR allocation. US-03's linked-BR pool is empty, so
+    // the new row takes BR-001 — the same id a TR-001 would use, which
+    // is now expected behaviour, not a clash (BR and TR namespaces are
+    // separate). The legacy global allocator would have produced BR-003.
+    eq('BR gets per-story lowest free id BR-001 (QA-10)', r.body?.requirement?.id, 'BR-001');
     const brAfter = read(prdPath);
     const brDiff = lcsDiff(beforeP, brAfter);
     eq(
@@ -240,22 +244,29 @@ async function main(): Promise<void> {
       brDiff,
       {
         added: [
-          brAfter.split('\n').find((l) => l.startsWith('- BR-003 |')) ?? '',
-          '<!-- BR-003: story=US-03, origin=manual -->',
+          // QA-10: per-story allocation; US-03's pool is empty, so the
+          // new row takes BR-001 — same id the legacy BR-001 in
+          // businessReqs carries. They live in different scopes and never
+          // collide on disk. Find the *new* row by its unique text.
+          brAfter
+            .split('\n')
+            .filter((l) => l.startsWith('- BR-001 |') && l.includes('Returned items must reappear'))
+            .pop() ?? '',
+          '<!-- BR-001: story=US-03, origin=manual -->',
         ],
         removed: [],
       },
     );
     eq('user-journeys.md byte-identical after BR (AC-9)', read(journeysPath), afterJ);
 
-    // ── BR-under-story (item 2.7) — GET must move BR-003 into US-03's reqs,
+    // ── BR-under-story (item 2.7) — GET must move BR-001 into US-03's reqs,
     //    and legacy BR-004 (no story link) stays in businessReqs.
     const afterBrGet = await reqFetch(`/api/projects/${slug}/requirements`);
     const storyForUs03 = afterBrGet.body?.stories?.find((s: any) => s.usId === 'US-03');
-    check('BR-003 lands inside US-03 (item 2.7)', !!storyForUs03 && storyForUs03.reqs.some((r: any) => r.id === 'BR-003'));
+    check('BR-001 lands inside US-03 (item 2.7)', !!storyForUs03 && storyForUs03.reqs.some((r: any) => r.id === 'BR-001'));
     eq(
-      'BR-003 carries storyUsId=US-03 (item 2.7)',
-      storyForUs03?.reqs?.find((r: any) => r.id === 'BR-003')?.storyUsId,
+      'BR-001 carries storyUsId=US-03 (item 2.7)',
+      storyForUs03?.reqs?.find((r: any) => r.id === 'BR-001')?.storyUsId,
       'US-03',
     );
     eq(
@@ -264,8 +275,8 @@ async function main(): Promise<void> {
       ['BR-001', 'BR-002', 'BR-004'].sort().join(','),
     );
     eq(
-      'BR-003 carries origin=manual (item 2.6)',
-      storyForUs03?.reqs?.find((r: any) => r.id === 'BR-003')?.origin,
+      'BR-001 carries origin=manual (item 2.6)',
+      storyForUs03?.reqs?.find((r: any) => r.id === 'BR-001')?.origin,
       'manual',
     );
     // QA-2: every req row carries an origin tag — legacy rows render as
@@ -285,7 +296,7 @@ async function main(): Promise<void> {
       status: 'draft',
       owner: 'DEV',
     });
-    check('POST TR → 201 TR-002', r.status === 201 && r.body?.requirement?.id === 'TR-002');
+    check('POST TR → 201 TR-001 (per-story, US-02 pool empty)', r.status === 201 && r.body?.requirement?.id === 'TR-001');
     const trAfter = read(journeysPath);
     const trDiff = lcsDiff(afterJ, trAfter);
     eq(
@@ -294,8 +305,8 @@ async function main(): Promise<void> {
       {
         removed: [],
         added: [
-          trDiff.added.find((l) => l.startsWith('- TR-002 |')) ?? '',
-          '<!-- TR-002: origin=manual -->',
+          trDiff.added.find((l) => l.startsWith('- TR-001 |')) ?? '',
+          '<!-- TR-001: origin=manual -->',
         ],
       },
     );
@@ -317,48 +328,62 @@ async function main(): Promise<void> {
     // row's marker detaches, parses origin=null on re-parse, and the
     // file contract is scrambled. The new row pair lands AFTER the
     // previous marker. Same for BR: a second BR into US-03 must not
-    // detach BR-003's `story=US-03` link.
+    // detach the first BR's `story=US-03` link.
     r = await json(`/api/projects/${slug}/stories/US-02/requirements`, 'POST', {
       type: 'TR',
-      text: 'A second TR into US-02 — the marker-aware insert index must keep TR-002 glued to its origin marker.',
+      text: 'A second TR into US-02 — the marker-aware insert index must keep TR-001 glued to its origin marker.',
       priority: 'could',
       status: 'draft',
       owner: 'BA',
     });
-    check('second POST TR into US-02 → 201 TR-003 (QA-5)', r.status === 201 && r.body?.requirement?.id === 'TR-003');
+    // QA-10: per-story allocation. US-02's TR pool now has TR-001, so the
+    // second TR is TR-002 (not the legacy global TR-003).
+    check('second POST TR into US-02 → 201 TR-002 (QA-5 + QA-10)', r.status === 201 && r.body?.requirement?.id === 'TR-002');
     check(
-      'QA-5: TR-002 origin marker stays glued to its row on a second POST',
-      read(journeysPath).indexOf('- TR-002 |') < read(journeysPath).indexOf('<!-- TR-002: origin=manual -->') &&
-        read(journeysPath).indexOf('<!-- TR-002: origin=manual -->') < read(journeysPath).indexOf('- TR-003 |'),
+      'QA-5: TR-001 origin marker stays glued to its row on a second POST',
+      read(journeysPath).indexOf('- TR-001 |') < read(journeysPath).indexOf('<!-- TR-001: origin=manual -->') &&
+        read(journeysPath).indexOf('<!-- TR-001: origin=manual -->') < read(journeysPath).indexOf('- TR-002 |'),
     );
     r = await reqFetch(`/api/projects/${slug}/requirements`);
-    const tr002AfterSecond = r.body.stories
+    const tr001AfterSecond = r.body.stories
       .find((s: any) => s.usId === 'US-02')
-      ?.reqs.find((x: any) => x.id === 'TR-002');
-    eq('QA-5: TR-002 origin=manual after second POST (parsed)', tr002AfterSecond?.origin, 'manual');
+      ?.reqs.find((x: any) => x.id === 'TR-001');
+    eq('QA-5: TR-001 origin=manual after second POST (parsed)', tr001AfterSecond?.origin, 'manual');
 
     r = await json(`/api/projects/${slug}/stories/US-03/requirements`, 'POST', {
       type: 'BR',
-      text: 'A second BR into US-03 — the marker-aware insert must keep BR-003 glued to its story link.',
+      text: 'A second BR into US-03 — the marker-aware insert must keep BR-001 glued to its story link.',
       priority: 'could',
       status: 'draft',
       owner: 'BA',
     });
-    check('second POST BR into US-03 → 201 BR-005 (QA-5)', r.status === 201 && r.body?.requirement?.id === 'BR-005');
-    check(
-      'QA-5: BR-003 story link stays glued to its row on a second BR POST',
-      read(prdPath).indexOf('- BR-003 |') < read(prdPath).indexOf('<!-- BR-003: story=US-03, origin=manual -->') &&
-        read(prdPath).indexOf('<!-- BR-003: story=US-03, origin=manual -->') < read(prdPath).indexOf('- BR-005 |'),
-    );
+    // QA-10: US-03's linked-BR pool now has BR-001, so the second BR is
+    // BR-002 (not the legacy global BR-005).
+    check('second POST BR into US-03 → 201 BR-002 (QA-5 + QA-10)', r.status === 201 && r.body?.requirement?.id === 'BR-002');
+    // QA-10: per-story numbering means the fixture's legacy BR-001 still
+    // exists in §8 alongside US-03's new BR-001. Anchor the row/marker
+    // proximity check on the linked row's marker line (find from the
+    // marker backward to the nearest preceding BR-001 row line).
+    {
+      const text = read(prdPath);
+      const m1 = text.indexOf('<!-- BR-001: story=US-03, origin=manual -->');
+      const m2 = text.indexOf('<!-- BR-002: story=US-03, origin=manual -->');
+      const i1 = m1 === -1 ? -1 : text.lastIndexOf('- BR-001 |', m1);
+      const i2 = m2 === -1 ? -1 : text.lastIndexOf('- BR-002 |', m2);
+      check(
+        'QA-5: BR-001 story link stays glued to its row on a second BR POST',
+        i1 !== -1 && m1 !== -1 && m2 !== -1 && i2 !== -1 && i1 < m1 && m1 < i2 && i2 < m2,
+      );
+    }
     r = await reqFetch(`/api/projects/${slug}/requirements`);
     const us03AfterSecond = r.body.stories.find((s: any) => s.usId === 'US-03');
     check(
-      'QA-5: BR-003 still rendered inside US-03 after second BR POST (link intact)',
-      !!us03AfterSecond && us03AfterSecond.reqs.some((x: any) => x.id === 'BR-003'),
+      'QA-5: BR-001 still rendered inside US-03 after second BR POST (link intact)',
+      !!us03AfterSecond && us03AfterSecond.reqs.some((x: any) => x.id === 'BR-001'),
     );
     check(
-      'QA-5: BR-005 lands inside US-03 too',
-      !!us03AfterSecond && us03AfterSecond.reqs.some((x: any) => x.id === 'BR-005'),
+      'QA-5: BR-002 lands inside US-03 too',
+      !!us03AfterSecond && us03AfterSecond.reqs.some((x: any) => x.id === 'BR-002'),
     );
 
     // ── PATCH story (surgical heading splice) ──
@@ -381,19 +406,22 @@ async function main(): Promise<void> {
     check('legacy US-01 origin=null on the wire (QA-2)', us01Origin === null);
 
     // ── PATCH requirement meta ──
-    r = await json(`/api/projects/${slug}/requirements/TR-002`, 'PATCH', { priority: 'must', owner: 'BA' });
+    // QA-10: per-story allocation, so the first TR into US-02 is TR-001
+    // (not TR-002 as the legacy global allocator would produce). Pass
+    // storyUsId to disambiguate from US-01's TR-001.
+    r = await json(`/api/projects/${slug}/requirements/TR-001?storyUsId=US-02`, 'PATCH', { priority: 'must', owner: 'BA' });
     check('PATCH req meta → 200', r.status === 200);
-    check('row re-rendered in place', read(journeysPath).includes('- TR-002 | must | draft | BA |'));
+    check('row re-rendered in place', read(journeysPath).includes('- TR-001 | must | draft | BA |'));
 
     // ── DES owner round-trip (refinement batch item 2.5) ──
-    r = await json(`/api/projects/${slug}/requirements/TR-002`, 'PATCH', { owner: 'DES' });
+    r = await json(`/api/projects/${slug}/requirements/TR-001?storyUsId=US-02`, 'PATCH', { owner: 'DES' });
     check('PATCH req owner=DES → 200', r.status === 200);
-    check('DES owner re-rendered in place', read(journeysPath).includes('- TR-002 | must | draft | DES |'));
+    check('DES owner re-rendered in place', read(journeysPath).includes('- TR-001 | must | draft | DES |'));
     r = await reqFetch(`/api/projects/${slug}/requirements`);
-    const tr002 = r.body.stories.flatMap((s: any) => s.reqs).find((x: any) => x.id === 'TR-002');
-    check('GET TR-002 owner = DES', tr002?.owner === 'DES');
+    const tr001InUs02 = r.body.stories.find((s: any) => s.usId === 'US-02')?.reqs.find((x: any) => x.id === 'TR-001');
+    check('GET US-02 TR-001 owner = DES', tr001InUs02?.owner === 'DES');
     // Reset to BA so later assertions still match the fixture
-    r = await json(`/api/projects/${slug}/requirements/TR-002`, 'PATCH', { owner: 'BA' });
+    r = await json(`/api/projects/${slug}/requirements/TR-001?storyUsId=US-02`, 'PATCH', { owner: 'BA' });
     check('PATCH req owner=BA reset → 200', r.status === 200);
 
     // Story comment owner also accepts DES
@@ -419,9 +447,14 @@ async function main(): Promise<void> {
     check('BR-002 draft → in_review → 200', r.status === 200);
 
     // ── Delete guard (AC-11): approved + referenced by ANOTHER story → 409 ──
-    r = await json(`/api/projects/${slug}/requirements/TR-001/status`, 'PATCH', { status: 'approved' });
-    check('TR-001 in_review → approved → 200', r.status === 200);
-    r = await reqFetch(`/api/projects/${slug}/requirements/TR-001`, { method: 'DELETE' });
+    // QA-10: per-story numbering means US-01 and US-02 both have a TR-001.
+    // The delete guard targets US-01's TR-001 (the legacy fixture row that
+    // US-02's body references), so the PATCH and DELETE both need the
+    // storyUsId scope to disambiguate.
+    r = await json(`/api/projects/${slug}/requirements/TR-001/status?storyUsId=US-01`, 'PATCH', { status: 'approved' });
+    check('US-01 TR-001 in_review → approved → 200', r.status === 200);
+    if (r.status !== 200) console.error('DEBUG TR-001 status PATCH:', r.status, JSON.stringify(r.body));
+    r = await reqFetch(`/api/projects/${slug}/requirements/TR-001?storyUsId=US-01`, { method: 'DELETE' });
     check('delete guard → 409 with referencedBy US-02 (AC-11)', r.status === 409 && JSON.stringify(r.body?.referencedBy) === '["US-02"]');
     check('guarded row NOT struck on disk', read(journeysPath).includes('- TR-001 | must | approved | DEV |'));
 
@@ -429,8 +462,9 @@ async function main(): Promise<void> {
     //    `<!-- deleted … -->` marker *anywhere* in a story block as a
     //    story-level delete, which meant soft-deleting a TR also hid the
     //    parent story. The fix scopes story-delete markers to "before any
-    //    requirement rows / body". Repro: add TR-003 to US-01, delete it
-    //    (unapproved, so no guard), then assert US-01 still surfaces. ──
+    //    requirement rows / body". Repro: add a second TR to US-01,
+    //    delete it (unapproved, so no guard), then assert US-01 still
+    //    surfaces. ──
     r = await json(`/api/projects/${slug}/stories/US-01/requirements`, 'POST', {
       type: 'TR',
       text: 'A throwaway TR whose delete marker used to hide the whole story.',
@@ -438,9 +472,12 @@ async function main(): Promise<void> {
       status: 'draft',
       owner: 'DEV',
     });
-    eq('regression seed: TR-004 added to US-01 (item 2.7)', r.body?.requirement?.id, 'TR-004');
-    r = await reqFetch(`/api/projects/${slug}/requirements/TR-004`, { method: 'DELETE' });
-    check('regression seed: TR-004 DELETE → 200 (item 2.7)', r.status === 200);
+    // QA-10: US-01's TR pool already has TR-001, so the new throwaway is
+    // TR-002 (per-story) — not TR-004 as the legacy global allocator would
+    // produce. storyUsId disambiguates the delete from any other TR-001.
+    eq('regression seed: TR-002 added to US-01 (item 2.7 + QA-10)', r.body?.requirement?.id, 'TR-002');
+    r = await reqFetch(`/api/projects/${slug}/requirements/TR-002?storyUsId=US-01`, { method: 'DELETE' });
+    check('regression seed: TR-002 DELETE → 200 (item 2.7)', r.status === 200);
     r = await reqFetch(`/api/projects/${slug}/requirements`);
     check(
       'regression: US-01 still listed after a TR was deleted in it (item 2.7)',
@@ -466,7 +503,7 @@ async function main(): Promise<void> {
         [
           '### US-05 — Body-less edge case for the parser',
           '<!-- story: priority=wont status=draft owner=BA -->',
-          '- ~~TR-004 | wont | draft | DEV | A throwaway TR in a body-less story.~~',
+          '- ~~TR-001 | wont | draft | DEV | A throwaway TR in a body-less story.~~',
           '<!-- deleted ' + new Date().toISOString().slice(0, 10) + ' by BA -->',
         ].join('\n') +
         '\n',
@@ -477,9 +514,9 @@ async function main(): Promise<void> {
       Array.isArray(r.body?.stories) && r.body.stories.some((s: any) => s.usId === 'US-05'),
     );
     check(
-      'B2 regression: struck TR-004 absent from US-05.reqs but the row is still in the block on disk (item B2)',
-      r.body?.stories?.find((s: any) => s.usId === 'US-05')?.reqs?.some((x: any) => x.id === 'TR-004') !== true &&
-        read(journeysPath).includes('~~TR-004'),
+      'B2 regression: struck TR-001 absent from US-05.reqs but the row is still in the block on disk (item B2)',
+      r.body?.stories?.find((s: any) => s.usId === 'US-05')?.reqs?.some((x: any) => x.id === 'TR-001') !== true &&
+        read(journeysPath).includes('~~TR-001'),
     );
 
     // ── DELETE requirement (AC-8/9): strike + marker, freed id reusable ──
@@ -507,15 +544,19 @@ async function main(): Promise<void> {
     r = await reqFetch(`/api/projects/${slug}/requirements`);
     check('struck row absent from list (AC-8)', !JSON.stringify(r.body?.businessReqs).includes('BR-002'));
 
-    // Freed number is reusable (spec DATA: BR/TR ids recycle)
+    // QA-10: the per-story allocator picks the next free id from US-03's
+    // linked-BR pool (which now has BR-001). The freed BR-002 in the
+    // unassigned pool is not what allocates here — that's a separate
+    // pool. The new row is BR-002 within US-03's scope (per-story), not
+    // the global-recycled BR-002 the legacy allocator would produce.
     r = await json(`/api/projects/${slug}/stories/US-03/requirements`, 'POST', {
       type: 'BR',
-      text: 'A brand-new business requirement to prove the freed id is reused.',
+      text: 'A third BR into US-03 to confirm per-story allocation continues past BR-002.',
       priority: 'could',
       status: 'draft',
       owner: 'BA',
     });
-    eq('freed BR-002 id reused (AC-8)', r.body?.requirement?.id, 'BR-002');
+    eq('next per-story BR after BR-002 is BR-003 (QA-10)', r.body?.requirement?.id, 'BR-003');
 
     // ── DELETE story: marker after heading, US id never reused (AC-8) ──
     r = await reqFetch(`/api/projects/${slug}/stories/US-03`, { method: 'DELETE' });

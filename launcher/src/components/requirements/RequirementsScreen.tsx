@@ -357,7 +357,9 @@ export function RequirementsScreen() {
             if (v.priority !== initial.priority) patch.priority = v.priority;
             if (v.status !== initial.status) patch.status = v.status;
             if (v.owner !== initial.owner) patch.owner = v.owner;
-            await updateRequirement(idOrSlug, form.reqId, patch);
+            // QA-10: pass storyUsId so the server scopes locateReq to the
+            // right row once duplicate ids exist across stories.
+            await updateRequirement(idOrSlug, form.reqId, patch, form.usId);
             showNotice({ kind: 'success', text: `${form.reqId} updated` });
           }
         }
@@ -428,7 +430,9 @@ export function RequirementsScreen() {
         await deleteStory(idOrSlug, deleteTarget.usId);
         showNotice({ kind: 'success', text: `${deleteTarget.usId} deleted (struck in user-journeys.md)` });
       } else {
-        await deleteRequirement(idOrSlug, deleteTarget.reqId);
+        // QA-10: pass usId so the server scopes locateReq to the right
+        // row once duplicate ids exist across stories.
+        await deleteRequirement(idOrSlug, deleteTarget.reqId, deleteTarget.usId);
         showNotice({ kind: 'success', text: `${deleteTarget.reqId} deleted (struck in its source file)` });
       }
       closeDelete();
@@ -492,7 +496,9 @@ export function RequirementsScreen() {
           : d,
       );
       try {
-        await updateRequirementStatus(idOrSlug, req.id, next);
+        // QA-10: pass storyUsId so the server scopes locateReq to the right
+        // row once duplicate ids exist across stories.
+        await updateRequirementStatus(idOrSlug, req.id, next, req.storyUsId);
         await reloadQuiet();
       } catch (e) {
         await reloadQuiet();
@@ -513,8 +519,12 @@ export function RequirementsScreen() {
     if (!form || !data || data.source !== 'ok') return '';
     if (form.mode === 'add') {
       if (form.kind === 'story') return `new story · auto-assigned as ${nextStoryIdPreview(data.stories)}`;
+      // QA-10: scope the per-story preview to the story under which the
+      // form is mounted (add-req always has a usId). Edit-req uses its
+      // form's usId (null for unassigned BRs).
       const type = (formValues as ReqFormValues | null)?.type ?? 'TR';
-      return `new requirement · auto-assigned as ${nextReqIdPreview(type, data)}`;
+      const previewUsId = form.kind === 'req' ? (form as { usId: string | null }).usId : null;
+      return `new requirement · auto-assigned as ${nextReqIdPreview(type, data, previewUsId)}`;
     }
     return form.kind === 'story' ? form.usId : form.reqId;
   }, [form, data, formValues]);
