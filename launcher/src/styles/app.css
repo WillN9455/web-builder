@@ -1345,10 +1345,12 @@ button.oq-btn:focus-visible {
   flex-direction: column;
   gap: 14px;
 }
-/* Requirements tab only: a touch more breathing room between the summary
-   strip and the requirements card (refinement batch item 2.2). Scoped to
-   .req-screen so the BA workspace tab keeps its tighter rhythm. */
-.req-screen > .ba-workspace { gap: 20px; }
+/* QA-7: real margin (28px) above the summary card and the requirements
+   card. The earlier 14→20px gap was perceptually subtle and didn't even
+   fire — the Requirements tab renders .ba-stage (summary strip) as a
+   sibling of .ba-workspace (requirements card), so the gap lives on
+   .req-screen itself, not on the inner workspace. */
+.req-screen { display: flex; flex-direction: column; gap: 28px; align-items: stretch; }
 
 /* Stage banner — a status counter, not a bulk action (sitemap zone 1). */
 .ba-stage {
