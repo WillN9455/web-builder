@@ -39,10 +39,14 @@ export function ReqRow({ req, statusPending, onEdit, onDelete, onStatusChange, e
     <>
       <div className={`req ${statusPending ? 'req-pending' : ''}`} role="listitem">
         <span className="req-id">
-          {req.id}
-          {/* QA-6: labeled origin chip on every req row (the dot alone was
-              too subtle to read). Null origin renders as 'manual' so
-              legacy rows surface the tag without a backfill. */}
+          <span className="req-id-text">{req.id}</span>
+          {/* QA-6/QA-15: labeled origin chip on every req row, stacked UNDER
+              the id inside the id cell. The chip is wider than the 64px
+              column, so keeping it in the same inline flow made it overflow
+              the cell and paint over the description text (QA-16) — and
+              letting it wrap pushed the row tall. Confining it to its own
+              line inside the (now 72px) cell keeps it out of the text's
+              way: no overlap, no overflow, no scrollbar. */}
           <span
             className={`req-origin-chip req-origin-${effectiveOrigin}`}
             title={

@@ -386,6 +386,33 @@ async function main(): Promise<void> {
       !!us03AfterSecond && us03AfterSecond.reqs.some((x: any) => x.id === 'BR-002'),
     );
 
+    // ── QA-14: linked-BR writes must land in prd.md, never user-journeys.md ──
+    // The scoped locateReq used to return a linked BR from story.reqs stamped
+    // as user-journeys.md (its untyped find() predates linked BRs living in
+    // that list). PATCH/DELETE then struck user-journeys.md at the row's
+    // prd.md line index: the real prd.md row survived (Will's "cannot delete
+    // business requirements") and a phantom strike + marker landed in
+    // journeys. US-03's linked BR-002 (POSTed above) is the probe row.
+    const qa14JourneysBefore = read(journeysPath);
+    r = await json(`/api/projects/${slug}/requirements/BR-002?storyUsId=US-03`, 'PATCH', { text: 'QA-14 linked-BR edit probe' });
+    check('QA-14: PATCH linked BR-002 (storyUsId=US-03) → 200', r.status === 200);
+    check(
+      'QA-14: linked BR text edit landed in prd.md',
+      /- BR-002 \| could \| draft \| BA \| QA-14 linked-BR edit probe/.test(read(prdPath)),
+    );
+    eq('QA-14: user-journeys.md byte-identical after linked-BR PATCH (AC-9)', read(journeysPath), qa14JourneysBefore);
+    r = await json(`/api/projects/${slug}/requirements/BR-002/status?storyUsId=US-03`, 'PATCH', { status: 'in_review' });
+    check('QA-14: status PATCH on linked BR-002 → 200', r.status === 200);
+    check(
+      'QA-14: linked BR status change landed in prd.md',
+      /- BR-002 \| could \| in_review \| BA \| QA-14 linked-BR edit probe/.test(read(prdPath)),
+    );
+    eq('QA-14: journeys byte-identical after linked-BR status PATCH', read(journeysPath), qa14JourneysBefore);
+    r = await json(`/api/projects/${slug}/requirements/BR-002?storyUsId=US-03`, 'PATCH', {
+      text: 'A second BR into US-03 — the marker-aware insert must keep BR-001 glued to its story link.',
+    });
+    check('QA-14: linked BR text reset → 200', r.status === 200);
+
     // ── PATCH story (surgical heading splice) ──
     r = await json(`/api/projects/${slug}/stories/US-03`, 'PATCH', { title: 'Return an item before it is due' });
     check('PATCH story title → 200', r.status === 200);
@@ -588,6 +615,26 @@ async function main(): Promise<void> {
       owner: 'BA',
     });
     eq('next per-story BR after BR-002 is BR-003 (QA-10)', r.body?.requirement?.id, 'BR-003');
+
+    // ── QA-14: deleting a LINKED BR must strike prd.md, never journeys ──
+    // This is Will's exact repro: trash a business requirement that lives
+    // inside a story. The wrong-file locateReq returned 200 + toast while
+    // the real row survived and a phantom strike landed in
+    // user-journeys.md. The byte-identical assertion is the load-bearing
+    // one — it proves the strike never touched journeys on disk.
+    const qa14JourneysBeforeDel = read(journeysPath);
+    r = await reqFetch(`/api/projects/${slug}/requirements/BR-003?storyUsId=US-03`, { method: 'DELETE' });
+    check('QA-14: DELETE linked BR-003 (storyUsId=US-03) → 200', r.status === 200);
+    check(
+      'QA-14: linked BR struck in prd.md (strike-in-place)',
+      /- ~~BR-003 \| could \| draft \| BA \| A third BR into US-03/.test(read(prdPath)),
+    );
+    eq('QA-14: user-journeys.md byte-identical after linked-BR DELETE (AC-9)', read(journeysPath), qa14JourneysBeforeDel);
+    r = await reqFetch(`/api/projects/${slug}/requirements`);
+    check(
+      'QA-14: deleted linked BR absent from US-03.reqs (AC-8)',
+      r.body?.stories?.find((s: any) => s.usId === 'US-03')?.reqs?.some((x: any) => x.id === 'BR-003') !== true,
+    );
 
     // ── DELETE story: marker after heading, US id never reused (AC-8) ──
     r = await reqFetch(`/api/projects/${slug}/stories/US-03`, { method: 'DELETE' });

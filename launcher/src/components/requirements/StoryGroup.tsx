@@ -59,8 +59,12 @@ export function StoryGroup({
   return (
     <div className={`story ${flash ? 'story-flash' : ''}`} id={`story-${story.usId}`}>
       <div className="story-head">
-        <div className="story-id">
-          {story.usId}
+        {/* QA-15: the origin chip renders as a SIBLING of the story-id pill,
+            not inside it — nesting made the chip look encased in the id's
+            gray block (Will's "outer block"). The wrapper keeps pill and
+            chip stacked as one flex-none column. */}
+        <div className="story-head-id">
+          <div className="story-id">{story.usId}</div>
           {/* QA-6: labeled origin chip — the 7px dot failed twice, so we
               show the text label too. Null origin renders as 'manual'
               per the §5 resolution Will approved (legacy rows still

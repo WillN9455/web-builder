@@ -166,12 +166,16 @@ function locateReq(
   if (scopeUsId) {
     const story = parsed.stories.find((s) => s.usId === scopeUsId);
     if (!story) return null;
-    const tr = story.reqs.find((r) => r.id === reqId);
-    if (tr) return { file: 'user-journeys.md', row: tr, ownerStory: story };
-    // Story-scoped callers may also be looking for a BR linked to their
-    // story (the UI groups linked BRs under the story's reqs list).
-    const linkedBr = story.reqs.find((r) => r.id === reqId && r.type === 'BR');
-    if (linkedBr) return { file: 'prd.md', row: linkedBr, ownerStory: story };
+    // QA-14: map the file by row type, never by which find() matched. The
+    // parser puts linked BRs INSIDE story.reqs, so an untyped find would
+    // return a BR stamped as user-journeys.md — the PATCH/DELETE then struck
+    // user-journeys.md at the row's prd.md line index (the real row survived
+    // and a phantom strike landed in journeys). BRs always live in prd.md;
+    // TRs always live in their story block in user-journeys.md.
+    const row = story.reqs.find((r) => r.id === reqId);
+    if (row) {
+      return { file: row.type === 'BR' ? 'prd.md' : 'user-journeys.md', row, ownerStory: story };
+    }
     return null;
   }
   // Unscoped lookup — preserve the legacy "first match" behaviour so the
@@ -179,8 +183,10 @@ function locateReq(
   const br = parsed.businessReqs.find((r) => r.id === reqId);
   if (br) return { file: 'prd.md', row: br, ownerStory: null };
   for (const story of parsed.stories) {
-    const tr = story.reqs.find((r) => r.id === reqId);
-    if (tr) return { file: 'user-journeys.md', row: tr, ownerStory: story };
+    const row = story.reqs.find((r) => r.id === reqId);
+    // QA-14: same file-by-type rule as the scoped branch — unscoped callers
+    // can hit linked BRs too.
+    if (row) return { file: row.type === 'BR' ? 'prd.md' : 'user-journeys.md', row, ownerStory: story };
   }
   return null;
 }

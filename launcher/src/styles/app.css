@@ -1853,6 +1853,7 @@ button.oq-btn:focus-visible {
 .req-filter-sep { width: 1px; height: 22px; background: rgba(50,42,92,0.08); }
 .req-type-tabs {
   display: inline-flex;
+  gap: 4px; /* QA-17: breathing room between All / Business / Technical segments */
   background: rgba(50, 42, 92, 0.05);
   border-radius: 999px;
   padding: 3px;
@@ -1914,7 +1915,12 @@ button.oq-btn:focus-visible {
   background: rgba(50,42,92,0.06);
   padding: 4px 8px; border-radius: 6px;
   flex: none; align-self: flex-start;
-  display: inline-flex; align-items: center; gap: 6px;
+}
+/* QA-15: pill + origin chip stack in their own flex-none column so the chip
+   is a sibling of the pill, not a child — no more "encased in a gray block". */
+.story-head-id {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
+  flex: none;
 }
 .story-body { flex: 1; }
 .story-title { font-size: 14px; font-weight: 700; color: var(--ink); }
@@ -1934,10 +1940,16 @@ button.oq-btn:focus-visible {
 }
 
 /* Requirement rows */
-.req-list { border-top: 1px solid rgba(50,42,92,0.06); border-bottom-left-radius: 14px; border-bottom-right-radius: 14px; overflow: hidden; }
+/* QA-17: no overflow:hidden on .req-list — it clipped the status dropdown's
+   absolutely-positioned menu at story bottoms. Rounded corners on the last
+   row preserve the visual the clip was providing. */
+.req-list { border-top: 1px solid rgba(50,42,92,0.06); border-bottom-left-radius: 14px; border-bottom-right-radius: 14px; }
+.req:last-child { border-bottom-left-radius: 14px; border-bottom-right-radius: 14px; }
 .req {
   display: grid;
-  grid-template-columns: 64px 1fr 86px 64px 130px 50px;
+  /* QA-16: id column widened 64→72px — the origin chip stacked under the id
+     is wider than 64px and painted over the description text before. */
+  grid-template-columns: 72px 1fr 86px 64px 130px 50px;
   gap: 12px; align-items: center;
   padding: 10px 14px;
   font-size: 12.5px;
@@ -1945,7 +1957,9 @@ button.oq-btn:focus-visible {
 }
 .req:first-child { border-top: 0; }
 .req:hover { background: rgba(50,42,92,0.02); }
-.req-id { font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--ink-2); display: inline-flex; align-items: center; gap: 6px; }
+/* QA-15/QA-16: id + origin chip stack vertically in their own grid cell so
+   the chip can't paint over the description text and can't push the row tall. */
+.req-id { font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--ink-2); display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
 /* QA-6: labeled origin chip (Manual / Generated). The 7px dot shipped
    earlier was effective but too subtle to read at a glance — Will flagged
    this twice. The chip keeps the color-coded dot (blue = manual,
@@ -2075,7 +2089,7 @@ button.oq-btn:focus-visible {
   border-radius: 10px;
   box-shadow: 0 16px 40px -16px rgba(50,42,92,0.25);
   padding: 4px;
-  z-index: 20;
+  z-index: 60; /* QA-17: status menus float ABOVE every row/chip/overlay — no more encasing block */
   list-style: none;
   margin: 0;
 }
