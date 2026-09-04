@@ -479,9 +479,7 @@
   overflow-y: auto;
 }
 .oq-item {
-  background: tokens.$white;
-  border: 1px solid rgba(tokens.$navy, 0.08);
-  border-radius: 10px;
+  @include mixins.fe-panel($border: rgba(tokens.$navy, 0.08), $radius: 10px);
   padding: 10px 12px;
 }
 .oq-q { font-size: 13px; font-weight: 500; line-height: 1.4; }
