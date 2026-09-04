@@ -68,7 +68,9 @@ function firstDivergence(base, cand) {
 
 let git;
 try {
-  git = (cmd) => execSync(`git ${cmd}`, { encoding: 'utf8', maxBuffer: 20 * 1024 * 1024 });
+  // stderr is silenced: git's raw `fatal:` lines printed ahead of this
+  // script's friendly setup messages (review polish from #24, §5.6).
+  git = (cmd) => execSync(`git ${cmd}`, { encoding: 'utf8', maxBuffer: 20 * 1024 * 1024, stdio: ['ignore', 'pipe', 'ignore'] });
 } catch {
   console.error('verify-css-equivalence: must run inside the git repository (launcher/ or its parent).');
   process.exit(2);
