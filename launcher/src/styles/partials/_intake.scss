@@ -66,9 +66,14 @@
   color: var(--ink);
   outline: none;
   transition: background 120ms ease, border-color 120ms ease;
+
+  &:focus {
+    background: tokens.$white; border-color: var(--navy);
+  }
+  &.mono {
+    font-family: var(--font-mono); font-size: 13px;
+  }
 }
-.input:focus { background: tokens.$white; border-color: var(--navy); }
-.input.mono { font-family: var(--font-mono); font-size: 13px; }
 
 .help {
   font-size: 12px;
@@ -108,15 +113,21 @@
   font: inherit;
   font-size: 13px;
   cursor: pointer;
+
+  &:hover {
+    color: var(--ink);
+  }
 }
-.btn-link:hover { color: var(--ink); }
 
 .btn-ghost {
   background: tokens.$white;
   color: var(--ink);
   border: 1px solid rgba(tokens.$navy, 0.1);
+
+  &:hover {
+    background: rgba(tokens.$white, 0.7);
+  }
 }
-.btn-ghost:hover { background: rgba(tokens.$white, 0.7); }
 
 .btn-ghost:disabled, .btn-primary:disabled {
   opacity: 0.55;
@@ -162,8 +173,11 @@
   cursor: pointer;
   font-family: inherit;
   padding: 0;
+
+  &:hover {
+    color: var(--ink);
+  }
 }
-.chat-head .back:hover { color: var(--ink); }
 .chat-head .sep { color: var(--ink-3); }
 .chat-head .crumb {
   font-family: var(--font-mono);
@@ -197,12 +211,13 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-}
-.chat-head .meta span::before {
-  content: "";
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  background: var(--green);
+
+  &::before {
+    content: "";
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+  }
 }
 
 .chat-error {
@@ -293,9 +308,14 @@
   background: var(--ink-2);
   opacity: 0.4;
   animation: typing 1.2s infinite;
+
+  &:nth-child(2) {
+    animation-delay: 0.15s;
+  }
+  &:nth-child(3) {
+    animation-delay: 0.3s;
+  }
 }
-.typing-dots span:nth-child(2) { animation-delay: 0.15s; }
-.typing-dots span:nth-child(3) { animation-delay: 0.3s; }
 @keyframes typing {
   0%, 60%, 100% { opacity: 0.4; transform: translateY(0); }
   30% { opacity: 1; transform: translateY(-2px); }
@@ -321,9 +341,14 @@
   min-height: 130px;
   max-height: 260px;
   line-height: 1.5;
+
+  &:focus {
+    border-color: var(--navy);
+  }
+  &:disabled {
+    background: rgba(tokens.$navy, 0.04); color: var(--ink-2);
+  }
 }
-.chat-foot .ta:focus { border-color: var(--navy); }
-.chat-foot .ta:disabled { background: rgba(tokens.$navy, 0.04); color: var(--ink-2); }
 
 .chat-back-link {
   position: absolute;
@@ -347,9 +372,14 @@
   font-size: 13px;
   cursor: pointer;
   white-space: nowrap;
+
+  &:hover {
+    background: rgba(tokens.$navy, 0.12); color: var(--ink);
+  }
+  &:disabled {
+    opacity: 0.5; cursor: not-allowed;
+  }
 }
-.btn-skip:hover { background: rgba(tokens.$navy, 0.12); color: var(--ink); }
-.btn-skip:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* ─── Chat sidebar (interview progress) ───────────────────────────────── */
 
@@ -378,8 +408,11 @@
   padding: 8px 0;
   border-bottom: 1px dashed rgba(tokens.$navy, 0.08);
   font-size: 13px;
+
+  &:last-of-type {
+    border-bottom: 0;
+  }
 }
-.chat-side .step:last-of-type { border-bottom: 0; }
 .chat-side .step .num {
   width: 22px; height: 22px;
   border-radius: 50%;
@@ -463,8 +496,11 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
   margin: 12px 0 6px;
+
+  &:first-child {
+    margin-top: 0;
+  }
 }
-.oq-group:first-child { margin-top: 0; }
 
 /* Clickable outstanding-question button (drops question into the chat) */
 button.oq-btn {
@@ -475,12 +511,17 @@ button.oq-btn {
   font: inherit;
   color: inherit;
   transition: background 0.12s, border-color 0.12s, transform 0.12s;
-}
-button.oq-btn:hover { background: var(--lavender); border-color: rgba(tokens.$navy, 0.18); }
-button.oq-btn:active { transform: translateY(1px); }
-button.oq-btn:focus-visible {
-  outline: 2px solid var(--navy);
-  outline-offset: 2px;
+
+  &:hover {
+    background: var(--lavender); border-color: rgba(tokens.$navy, 0.18);
+  }
+  &:active {
+    transform: translateY(1px);
+  }
+  &:focus-visible {
+    outline: 2px solid var(--navy);
+    outline-offset: 2px;
+  }
 }
 .oq-empty {
   display: flex;
