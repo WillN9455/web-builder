@@ -14,11 +14,11 @@
   padding: 24px;
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr);
-}
 
-.app.full {
-  display: flex;
-  grid-template-columns: 1fr;
+  &.full {
+    display: flex;
+    grid-template-columns: 1fr;
+  }
 }
 
 .app .main {
@@ -70,8 +70,11 @@
   outline: 0;
   font-size: 13.5px;
   color: var(--ink);
+
+  &::placeholder {
+    color: var(--ink-3);
+  }
 }
-.search input::placeholder { color: var(--ink-3); }
 .search .kbd {
   font-family: var(--font-mono);
   font-size: 11px;
@@ -89,8 +92,11 @@
   background: rgba(tokens.$white, 0.5);
   color: var(--ink-2);
   display: flex; align-items: center; justify-content: center;
+
+  &:hover {
+    background: rgba(tokens.$white, 0.85); color: var(--ink);
+  }
 }
-.icon-btn:hover { background: rgba(tokens.$white, 0.85); color: var(--ink); }
 .icon-btn .dot {
   position: absolute; top: 8px; right: 8px;
   width: 8px; height: 8px;
@@ -121,14 +127,20 @@
 .btn-primary {
   background: var(--navy);
   color: tokens.$white;
+
+  &:hover {
+    background: var(--navy-2);
+  }
 }
-.btn-primary:hover { background: var(--navy-2); }
 .btn-pill { border-radius: 999px; }
 .btn-soft {
   background: rgba(tokens.$navy, 0.06);
   color: var(--ink);
+
+  &:hover {
+    background: rgba(tokens.$navy, 0.12);
+  }
 }
-.btn-soft:hover { background: rgba(tokens.$navy, 0.12); }
 
 /* ─── Section heading ────────────────────────────────────────────────── */
 
@@ -147,5 +159,8 @@
 .sec-head .more {
   font-size: 12px;
   color: var(--ink-2);
+
+  &:hover {
+    color: var(--ink);
+  }
 }
-.sec-head .more:hover { color: var(--ink); }
