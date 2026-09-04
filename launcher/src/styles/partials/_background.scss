@@ -178,9 +178,7 @@
   min-height: 100%;
 }
 .ba-doc-col > .review-thread {
-  background: tokens.$white;
-  border: 1px solid rgba(tokens.$navy, 0.06);
-  border-radius: var(--r-xl);
+  @include mixins.fe-panel;
   /* AC-25 — breathing room between the editor and the thread (the thread now
      also shows for Returned files, AC-24, so it reads as its own card). */
   margin-top: 14px;
@@ -189,9 +187,7 @@
 /* Idea summary card (plan §9.4 AC-21) — the LLM-written summary of idea.md,
    shown above the tree/editor grid. Reference aid only. */
 .idea-summary {
-  background: tokens.$white;
-  border: 1px solid rgba(tokens.$navy, 0.06);
-  border-radius: var(--r-xl);
+  @include mixins.fe-panel;
   padding: 16px 22px;
   display: flex;
   flex-direction: column;
@@ -559,9 +555,7 @@
 }
 .review-thread .comment {
   display: flex; gap: 10px;
-  background: tokens.$white;
-  border: 1px solid rgba(tokens.$navy, 0.06);
-  border-radius: 12px;
+  @include mixins.fe-panel($radius: 12px);
   padding: 12px 14px;
 
   &.sa {
@@ -586,9 +580,7 @@
 .review-thread .comment .body p { margin: 4px 0 0; color: var(--ink); }
 .review-thread .compose {
   display: flex; gap: 10px; align-items: end;
-  background: tokens.$white;
-  border: 1px solid rgba(tokens.$navy, 0.06);
-  border-radius: 12px;
+  @include mixins.fe-panel($radius: 12px);
   padding: 10px 12px;
 }
 .review-thread .compose textarea {
@@ -620,9 +612,7 @@
 
 /* ─── State D — context-ready confirmation view (background.html #sD) ─── */
 .state-d {
-  background: tokens.$white;
-  border: 1px solid rgba(tokens.$navy, 0.08);
-  border-radius: 16px;
+  @include mixins.fe-panel($border: rgba(tokens.$navy, 0.08), $radius: 16px);
   padding: 28px 32px;
   max-width: 760px;
   display: flex;
