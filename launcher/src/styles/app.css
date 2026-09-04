@@ -1894,13 +1894,17 @@ button.oq-btn:focus-visible {
   border: 1px solid rgba(50,42,92,0.06);
   border-radius: 14px;
   background: #fff;
-  overflow: hidden;
+  /* QA-11: drop overflow:hidden — it clipped the status-menu (absolutely
+     positioned dropdown in the story head). The rounded corners survive
+     because .story-head + .req-list round their own top/bottom corners. */
 }
 .story + .story { margin-top: 10px; }
 .story-head {
   display: flex; align-items: flex-start; gap: 12px;
   padding: 12px 14px;
   background: linear-gradient(180deg, rgba(50,42,92,0.02), transparent);
+  border-top-left-radius: 14px;
+  border-top-right-radius: 14px;
 }
 .story-id {
   font-family: var(--font-mono); font-size: 11px; font-weight: 700;
@@ -1928,7 +1932,7 @@ button.oq-btn:focus-visible {
 }
 
 /* Requirement rows */
-.req-list { border-top: 1px solid rgba(50,42,92,0.06); }
+.req-list { border-top: 1px solid rgba(50,42,92,0.06); border-bottom-left-radius: 14px; border-bottom-right-radius: 14px; overflow: hidden; }
 .req {
   display: grid;
   grid-template-columns: 64px 1fr 86px 64px 130px 50px;
