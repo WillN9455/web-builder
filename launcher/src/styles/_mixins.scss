@@ -1,0 +1,26 @@
+// Shared mixins — the mixin contract (plan §2, §5.1).
+//
+// Partials `@use '../mixins'` and include by namespace (`mixins.fe-icon`).
+// Contract: a mixin's expansion must be identical to the declarations it
+// replaces — the compiled-equivalence gate proves this per-commit, so a
+// mixin adoption never changes the stylesheet's behavior.
+
+// fe-icon — shared SVG stroke convention for UI icons (N3, phase A).
+// Expansion: stroke: currentColor; stroke-width: $width (default 1.8);
+// round linecap + join. CSS presentation rules win over SVG presentation
+// attributes in the JSX, so this mixin is the consistency authority.
+@mixin fe-icon($width: 1.8) {
+  stroke: currentColor;
+  stroke-width: $width;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+// fe-focus-ring — keyboard focus ring.
+// Expansion: outline: 2px solid $color; outline-offset: 2px;. Include
+// inside a :focus-visible / :focus rule. $color may be a runtime var()
+// reference (theming layer) or a compile-time token.
+@mixin fe-focus-ring($color) {
+  outline: 2px solid $color;
+  outline-offset: 2px;
+}
