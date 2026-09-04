@@ -91,8 +91,15 @@ try {
   console.error('Set CSS_BASELINE=<sha> to a commit containing src/styles/tokens.css + app.css.');
   process.exit(2);
 }
-const baseline =
-  git(`show ${baselineSha}:${relTokensCss}`) + '\n' + git(`show ${baselineSha}:${relAppCss}`);
+let baseline;
+try {
+  baseline =
+    git(`show ${baselineSha}:${relTokensCss}`) + '\n' + git(`show ${baselineSha}:${relAppCss}`);
+} catch {
+  console.error(`verify-css-equivalence: pinned baseline ${baselineSha} does not contain ${relTokensCss} / ${relAppCss}.`);
+  console.error('Set CSS_BASELINE=<sha> to a commit containing src/styles/tokens.css + app.css.');
+  process.exit(2);
+}
 
 const result = compile(APP_SCSS);
 const candidate = result.css;
