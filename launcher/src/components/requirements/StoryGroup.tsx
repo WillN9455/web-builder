@@ -61,15 +61,22 @@ export function StoryGroup({
       <div className="story-head">
         <div className="story-id">
           {story.usId}
+          {/* QA-6: labeled origin chip — the 7px dot failed twice, so we
+              show the text label too. Null origin renders as 'manual'
+              per the §5 resolution Will approved (legacy rows still
+              surface the tag). */}
           <span
-            className={`req-origin-dot req-origin-${effectiveOrigin}`}
+            className={`req-origin-chip req-origin-${effectiveOrigin}`}
             title={
               effectiveOrigin === 'generated'
                 ? `${story.usId} was written by a code/design agent`
                 : `${story.usId} was written by the BA`
             }
             aria-label={effectiveOrigin === 'generated' ? 'Auto-generated' : 'Manually written'}
-          />
+          >
+            <span className="req-origin-dot" aria-hidden="true" />
+            {effectiveOrigin === 'generated' ? 'Generated' : 'Manual'}
+          </span>
         </div>
         <div className="story-body">
           <div className="story-title">{story.title || 'Untitled story'}</div>

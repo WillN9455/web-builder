@@ -40,15 +40,21 @@ export function ReqRow({ req, statusPending, onEdit, onDelete, onStatusChange, e
       <div className={`req ${statusPending ? 'req-pending' : ''}`} role="listitem">
         <span className="req-id">
           {req.id}
+          {/* QA-6: labeled origin chip on every req row (the dot alone was
+              too subtle to read). Null origin renders as 'manual' so
+              legacy rows surface the tag without a backfill. */}
           <span
-            className={`req-origin-dot req-origin-${effectiveOrigin}`}
+            className={`req-origin-chip req-origin-${effectiveOrigin}`}
             title={
               effectiveOrigin === 'generated'
                 ? `${req.id} was written by a code/design agent`
                 : `${req.id} was written by the BA`
             }
             aria-label={effectiveOrigin === 'generated' ? 'Auto-generated' : 'Manually written'}
-          />
+          >
+            <span className="req-origin-dot" aria-hidden="true" />
+            {effectiveOrigin === 'generated' ? 'Generated' : 'Manual'}
+          </span>
         </span>
         <span className="req-text">{req.text}</span>
         <span className={`req-type ${req.type === 'BR' ? 'type-br' : 'type-tr'}`}>
