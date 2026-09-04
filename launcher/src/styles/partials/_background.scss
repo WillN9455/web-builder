@@ -688,7 +688,7 @@
 
 /* Narrow screens: collapse the workspace grid to one column (the shell's
  * `.side { display: none }` breakpoint at 980px). */
-@media (max-width: 980px) {
+@include mixins.fe-below(md) {
   .ba-grid { grid-template-columns: 1fr; min-height: 0; }
   /* §9.6g — the tree-matched column trick is desktop-only: in the stacked
      layout the doc column sizes to its content again. */
