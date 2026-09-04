@@ -15,7 +15,8 @@
     "db:seed": "tsx scripts/seed-db.ts",
     "typecheck": "tsc -b --noEmit",
     "verify:requirements": "tsx scripts/verify-requirements.ts",
-    "verify:visual": "node scripts/verify-visual.mjs"
+    "verify:visual": "node scripts/verify-visual.mjs",
+    "verify:css-equivalence": "node scripts/verify-css-equivalence.mjs"
   },
   "dependencies": {
     "better-sqlite3": "^11.5.0",
@@ -37,6 +38,7 @@
     "@vitejs/plugin-react": "^4.3.3",
     "concurrently": "^9.1.0",
     "puppeteer-core": "^25.10.0",
+    "sass": "^1.93.2",
     "tsx": "^4.19.2",
     "typescript": "^5.6.3",
     "vite": "^5.4.10"
