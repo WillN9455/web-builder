@@ -303,15 +303,27 @@ export function RequirementsScreen() {
             });
             showNotice({ kind: 'success', text: 'User story created' });
           } else {
-            await updateStory(idOrSlug, form.usId, {
-              title: v.title,
-              asA: v.asA,
-              iWantTo: v.iWantTo,
-              soThat: v.soThat,
-              priority: v.priority,
-              status: v.status,
-              owner: v.owner,
-            });
+            // QA-8: edit mode sends only the fields the user actually
+            // changed. The server's validateStoryPatch ignores absent
+            // keys, so a legacy story whose body fields are empty can
+            // still be saved by editing its title alone — the form used
+            // to refuse the submit before the server was ever contacted.
+            const initial = storyValuesFrom(
+              data?.stories.find((s) => s.usId === form.usId) ?? {
+                usId: form.usId, title: '', asA: null, iWantTo: null, soThat: null,
+                priority: 'must', status: 'draft', owner: 'BA', origin: 'manual', reqs: [],
+                headingLine: -1, metaLine: null, bodyLine: null, blockEnd: -1, deleted: false,
+              } as StoryItem,
+            );
+            const patch: Partial<StoryFormValues> = {};
+            if (v.title !== initial.title) patch.title = v.title;
+            if (v.asA !== initial.asA) patch.asA = v.asA;
+            if (v.iWantTo !== initial.iWantTo) patch.iWantTo = v.iWantTo;
+            if (v.soThat !== initial.soThat) patch.soThat = v.soThat;
+            if (v.priority !== initial.priority) patch.priority = v.priority;
+            if (v.status !== initial.status) patch.status = v.status;
+            if (v.owner !== initial.owner) patch.owner = v.owner;
+            await updateStory(idOrSlug, form.usId, patch);
             showNotice({ kind: 'success', text: `${form.usId} updated` });
           }
         } else {
@@ -329,13 +341,23 @@ export function RequirementsScreen() {
               text: v.type === 'BR' ? 'Business requirement added to prd.md §8' : 'Technical requirement added',
             });
           } else {
-            await updateRequirement(idOrSlug, form.reqId, {
-              type: v.type,
-              text: v.text,
-              priority: v.priority,
-              status: v.status,
-              owner: v.owner,
-            });
+            // QA-8: edit mode sends only changed fields (same shape as
+            // the story path; server's validateReqPatch ignores absent
+            // keys).
+            const initial = reqValuesFrom(
+              [...(data?.businessReqs ?? []), ...(data?.stories.flatMap((s) => s.reqs) ?? [])].find(
+                (r) => r.id === form.reqId,
+              ) ?? {
+                id: form.reqId, type: 'TR', text: '', priority: null, status: null, owner: null, origin: null, storyUsId: form.usId,
+              } as RequirementItem,
+            );
+            const patch: Partial<ReqFormValues> = {};
+            if (v.type !== initial.type) patch.type = v.type;
+            if (v.text !== initial.text) patch.text = v.text;
+            if (v.priority !== initial.priority) patch.priority = v.priority;
+            if (v.status !== initial.status) patch.status = v.status;
+            if (v.owner !== initial.owner) patch.owner = v.owner;
+            await updateRequirement(idOrSlug, form.reqId, patch);
             showNotice({ kind: 'success', text: `${form.reqId} updated` });
           }
         }
@@ -347,7 +369,7 @@ export function RequirementsScreen() {
         setSubmitting(false);
       }
     },
-    [form, idOrSlug, showNotice, closeForm, load, handleError],
+    [form, idOrSlug, showNotice, closeForm, load, handleError, data],
   );
 
   // Trash icons open the modal directly (refinement batch item 2.9). The

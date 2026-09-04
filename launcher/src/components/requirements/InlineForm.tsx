@@ -131,15 +131,38 @@ export function InlineForm<V extends FormValues>(props: InlineFormProps<V>) {
   const sv = values as StoryFormValues;
   const rv = values as ReqFormValues;
 
+  // QA-8: in EDIT mode, the form only validates and submits the fields the
+  // user actually changed. A legacy story whose As-a/I-want-to/So-that
+  // body is empty can't satisfy the add-mode min lengths, so submitting the
+  // loaded values verbatim fails before the server is ever contacted.
+  // `isChanged(key)` compares the live value to the initial value (string
+  // compare for text, strict-equal for selects).
+  const initialStr = (k: keyof FormValues): string => {
+    const v = (initial as unknown as Record<string, unknown>)[k as string];
+    return typeof v === 'string' ? v : '';
+  };
+  const liveStr = (k: keyof FormValues): string => {
+    const v = (values as unknown as Record<string, unknown>)[k as string];
+    return typeof v === 'string' ? v : '';
+  };
+  const isChanged = (k: keyof FormValues): boolean => {
+    if (mode !== 'edit') return true;
+    const a = initialStr(k);
+    const b = liveStr(k);
+    return a !== b;
+  };
+
   // Client-side field errors (server errors arrive via props and merge).
+  // In edit mode, untouched fields bypass validation entirely (the server
+  // ignores fields the PATCH doesn't include).
   const clientErrors: Record<string, string> = {};
   if (isStory) {
-    checkLength('title', sv.title, LIMITS.storyTitle.min, LIMITS.storyTitle.max, clientErrors);
-    checkLength('asA', sv.asA, LIMITS.asA.min, LIMITS.asA.max, clientErrors);
-    checkLength('iWantTo', sv.iWantTo, LIMITS.iWantTo.min, LIMITS.iWantTo.max, clientErrors);
-    checkLength('soThat', sv.soThat, LIMITS.soThat.min, LIMITS.soThat.max, clientErrors);
+    if (mode !== 'edit' || isChanged('title')) checkLength('title', sv.title, LIMITS.storyTitle.min, LIMITS.storyTitle.max, clientErrors);
+    if (mode !== 'edit' || isChanged('asA')) checkLength('asA', sv.asA, LIMITS.asA.min, LIMITS.asA.max, clientErrors);
+    if (mode !== 'edit' || isChanged('iWantTo')) checkLength('iWantTo', sv.iWantTo, LIMITS.iWantTo.min, LIMITS.iWantTo.max, clientErrors);
+    if (mode !== 'edit' || isChanged('soThat')) checkLength('soThat', sv.soThat, LIMITS.soThat.min, LIMITS.soThat.max, clientErrors);
   } else {
-    checkLength('text', rv.text, LIMITS.reqText.min, LIMITS.reqText.max, clientErrors);
+    if (mode !== 'edit' || isChanged('text')) checkLength('text', rv.text, LIMITS.reqText.min, LIMITS.reqText.max, clientErrors);
   }
   // Server errors always render (they came back from a real submit and the
   // user needs the feedback); client errors only show on touched fields or
