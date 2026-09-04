@@ -35,6 +35,21 @@ contained `app.css` / `tokens.css`).
   round cap + join) is in `_icons.scss`. The JSX still carries per-icon
   presentation attributes; the CSS layer is the consistency authority (CSS
   presentation rules win over SVG presentation attributes).
+- **Shared mixins** live in `../_mixins.scss`; partials `@use '../mixins'`
+  and include through the `mixins.*` namespace. The mixin contract is
+  output-identical expansion — a mixin adoption never moves a selector or
+  reorders declarations, and the equivalence gate proves it per-commit:
+  - `fe-icon($width)` — shared SVG stroke convention (see Icons above).
+  - `fe-focus-ring($color)` — keyboard focus ring; include inside a
+    `:focus-visible` / `:focus` rule.
+  - `fe-panel($border, $radius, $shadow)` — the shared white-surface card
+    recipe (`background: tokens.$white; border: 1px solid $border;
+    border-radius: $radius;` + optional shadow). Adopt **only** where the
+    site already emits declarations in exactly that order — the gate is
+    byte-level, so reordering inside a block is a delta even when inert.
+  - `fe-below($bp)` — max-width media query; breakpoint values live only in
+    the `$breakpoints` map in `../tokens.scss` (`md: 980px` today), never as
+    bare px literals in a partial.
 - **Section heading** styles sit inside `_layout.scss` (they precede the
   screen-1 banner in the original file); they are not a partial of their own.
 - **Skeletons** sit inside `_projects.scss` for the same reason.

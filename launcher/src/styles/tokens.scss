@@ -1,6 +1,8 @@
 /* Design tokens — single source of truth for the launcher UI.
  * Values match the v5 mockup (launcher/design/mockups.html :root). */
 
+@use 'sass:map';
+
 :root {
   --ground-a: #d9d5ec;
   --ground-b: #c3cde8;
@@ -86,6 +88,10 @@ $tokens: (
   'green': #5fbf95,
   'amber': #e8b94a,
   'rose': #d97a8e,
+  // Compile-time-only (no :root counterpart — `#fff` has no custom property
+  // today, and adding one changes compiled output, which is a theming-layer
+  // decision, not a lint adoption).
+  'white': #fff,
   'font-sans': "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
   'font-mono': "'JetBrains Mono', ui-monospace, SFMono-Regular, monospace",
   'r-sm': 10px,
@@ -94,6 +100,55 @@ $tokens: (
   'r-xl': 24px,
   'r-2xl': 28px,
 );
+
+// Breakpoints — the single home for media-query values. Consume through the
+// fe-below mixin (../mixins), never as a bare px literal in a partial.
+$breakpoints: (
+  'md': 980px,
+);
+
+// ---------------------------------------------------------------------------
+// Scalar accessors — derived from the map above (single source of truth).
+// Partials reference these through their `tokens` namespace and never write
+// color literals; scripts/verify-no-color-literals.mjs enforces it.
+// ---------------------------------------------------------------------------
+$white: map.get($tokens, 'white');
+$ground-a: map.get($tokens, 'ground-a');
+$ground-b: map.get($tokens, 'ground-b');
+$panel: map.get($tokens, 'panel');
+$panel-stroke: map.get($tokens, 'panel-stroke');
+$ink: map.get($tokens, 'ink');
+$ink-2: map.get($tokens, 'ink-2');
+$ink-3: map.get($tokens, 'ink-3');
+$navy: map.get($tokens, 'navy');
+$navy-2: map.get($tokens, 'navy-2');
+$peach: map.get($tokens, 'peach');
+$sky: map.get($tokens, 'sky');
+$lavender: map.get($tokens, 'lavender');
+$mint: map.get($tokens, 'mint');
+$butter: map.get($tokens, 'butter');
+$blush: map.get($tokens, 'blush');
+$coral: map.get($tokens, 'coral');
+$blue: map.get($tokens, 'blue');
+$purple: map.get($tokens, 'purple');
+$green: map.get($tokens, 'green');
+$amber: map.get($tokens, 'amber');
+$rose: map.get($tokens, 'rose');
+
+// Compile-time-only values — named literals that predate the lint. Deliberately
+// NOT in :root: they are not runtime theming tokens yet, and promoting one is
+// a theming-layer change (its own reviewed decision). Each names a value that
+// is already compiled into the stylesheet today — this section bakes no new
+// colors. Promoting any of these to a runtime custom property is the natural
+// follow-up; until then they stay compile-time.
+$danger-ink: #8b3354; // danger text/labels on light surfaces
+$danger-hover: #c66b80; // .btn-danger:hover
+$danger-hover-add: #c4677a; // .add-form .form-foot-delete .btn-danger:hover (more-specific selector carries a slightly different value — kept separate, not unified)
+$info-ink: #1d4f8a; // info-state text on tinted surfaces
+$info-tint: rgba(60, 130, 220, 0.12); // info-state surface wash
+$error-ink: #a83232; // error text
+$error-tint: rgba(255, 110, 110, 0.14); // error-state surface wash
+$error-glow: rgba(255, 140, 140, 0.18); // origin-chip dot glow (QA-13)
 
 button { font-family: inherit; cursor: pointer; }
 input { font-family: inherit; }

@@ -4,6 +4,16 @@ import path from 'node:path';
 
 export default defineConfig({
   plugins: [react()],
+  css: {
+    preprocessorOptions: {
+      scss: {
+        // Sass 2.0 prep (plan §5.5): the legacy JS API is deprecated — use
+        // the modern compiler API so builds stop emitting the deprecation
+        // warning.
+        api: 'modern-compiler',
+      },
+    },
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

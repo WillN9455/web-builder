@@ -5,11 +5,11 @@
 
 /* ─── Screen 2 — empty state (mockup `#s2`) ────────────────────────────── */
 .empty {
-  background: #fff;
+  background: tokens.$white;
   border-radius: var(--r-2xl);
   padding: 56px 32px;
   text-align: center;
-  border: 1px dashed rgba(50, 42, 92, 0.18);
+  border: 1px dashed rgba(tokens.$navy, 0.18);
 }
 .empty .illu {
   width: 88px; height: 88px;
