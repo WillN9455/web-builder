@@ -22,10 +22,11 @@
   box-shadow: 0 1px 0 rgba(tokens.$white, 0.6) inset, 0 6px 18px -10px rgba(tokens.$navy, 0.2);
   cursor: pointer;
   transition: transform 120ms ease, box-shadow 120ms ease;
-}
-.tile:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 1px 0 rgba(tokens.$white, 0.6) inset, 0 14px 28px -16px rgba(tokens.$navy, 0.32);
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 1px 0 rgba(tokens.$white, 0.6) inset, 0 14px 28px -16px rgba(tokens.$navy, 0.32);
+  }
 }
 
 .tile-peach    { background: var(--peach); }
@@ -50,8 +51,11 @@
   color: var(--ink-2);
   cursor: pointer;
   transition: transform 200ms;
+
+  &:hover {
+    color: var(--ink);
+  }
 }
-.expand-btn:hover { color: var(--ink); }
 .expand-btn[aria-expanded="true"] svg { transform: rotate(180deg); }
 
 .tile h3 {
@@ -114,8 +118,11 @@
   background: transparent;
   color: var(--ink-2);
   display: flex; align-items: center; justify-content: center;
+
+  &:hover {
+    background: rgba(tokens.$white, 0.55); color: var(--ink);
+  }
 }
-.more-btn:hover { background: rgba(tokens.$white, 0.55); color: var(--ink); }
 
 /* ─── Pipeline ring + legend + next milestone ────────────────────────── */
 
@@ -198,17 +205,22 @@
   padding: 12px 8px;
   border-bottom: 1px solid rgba(tokens.$navy, 0.06);
   font-size: 12.5px;
+
+  &:last-child {
+    border-bottom: 0;
+  }
+  &.head {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+    color: var(--ink-2);
+    border-bottom: 1px solid rgba(tokens.$navy, 0.08);
+  }
+  &.head > span {
+    padding: 0 2px;
+  }
 }
-.rows .row:last-child { border-bottom: 0; }
-.rows .row.head {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-weight: 600;
-  color: var(--ink-2);
-  border-bottom: 1px solid rgba(tokens.$navy, 0.08);
-}
-.rows .row.head > span { padding: 0 2px; }
 
 /* Tile pill row: pill left, ⋯ button right (mockup `#s1`). */
 .tile .row { justify-content: space-between; }
@@ -244,15 +256,16 @@
   background: rgba(tokens.$navy, 0.08);
   position: relative;
   overflow: hidden;
-}
-.progress::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  width: var(--p, 0%);
-  background: linear-gradient(90deg, var(--navy), var(--blue));
-  border-radius: 999px;
-  transition: width 400ms ease;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    width: var(--p, 0%);
+    background: linear-gradient(90deg, var(--navy), var(--blue));
+    border-radius: 999px;
+    transition: width 400ms ease;
+  }
 }
 
 .more {
@@ -262,8 +275,11 @@
   font-size: 18px;
   border-radius: 6px;
   width: 28px; height: 28px;
+
+  &:hover {
+    background: rgba(tokens.$navy, 0.06); color: var(--ink);
+  }
 }
-.more:hover { background: rgba(tokens.$navy, 0.06); color: var(--ink); }
 
 /* ─── Loading / error skeletons ──────────────────────────────────────── */
 
