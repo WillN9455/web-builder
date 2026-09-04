@@ -45,7 +45,7 @@ export type ReqStatus = (typeof REQ_STATUSES)[number];
 export const REQ_PRIORITIES = ['must', 'should', 'could', 'wont'] as const;
 export type ReqPriority = (typeof REQ_PRIORITIES)[number];
 
-export const REQ_OWNERS = ['BA', 'SA', 'DEV', 'QA'] as const;
+export const REQ_OWNERS = ['BA', 'SA', 'DEV', 'DES', 'QA'] as const;
 export type ReqOwner = (typeof REQ_OWNERS)[number];
 
 export type ReqType = 'BR' | 'TR';
@@ -119,6 +119,21 @@ export type ReqRow = {
   status: ReqStatus | null;
   owner: ReqOwner | null;
   text: string;
+  // Link to a story (refinement batch item 2.7). For TRs this is implicit —
+  // they live inside a story block in user-journeys.md. For BRs it's read
+  // from an optional comment line that follows the row:
+  //   - BR-001 | must | approved | BA | The list form…
+  //   <!-- BR-001: story=US-01 -->
+  // When null the BR is "unassigned" and lives in its own standalone group
+  // in the UI until the BA attaches it.
+  storyUsId: string | null;
+  // Where this requirement came from (refinement batch item 2.6):
+  //   manual    — written by the BA via the UI
+  //   generated — written by a code/design agent (the future BA auto-draft
+  //               job, plan §6); the BA can promote / edit / delete them
+  //               like any other row
+  // null on legacy rows that pre-date the marker.
+  origin: 'manual' | 'generated' | null;
   lineIndex: number;
   raw: string;
 };
@@ -132,6 +147,11 @@ export type StoryRow = {
   priority: ReqPriority | null;
   status: ReqStatus | null;
   owner: ReqOwner | null;
+  // Origin tag (QA-2): manual = BA wrote the story; generated = an agent
+  // wrote it; null = legacy block predating the meta-comment extension.
+  // TRs inherit from their owning story's origin in the UI (TR rows don't
+  // override the story-wide tag) — see StoryGroup's render.
+  origin: 'manual' | 'generated' | null;
   reqs: ReqRow[];
   // Block geometry in user-journeys.md (0-based line indexes):
   headingLine: number; // the `### US-NN …` heading
@@ -189,15 +209,18 @@ function parseRowSegments(segs: string[]): Pick<ReqRow, 'priority' | 'status' | 
   return { priority: null, status: null, owner: null, text: textOf(segs) };
 }
 
-// `priority=must status=approved owner=BA` inside the story comment.
-function parseStoryMeta(raw: string): Partial<Pick<StoryRow, 'priority' | 'status' | 'owner'>> {
-  const out: Partial<Pick<StoryRow, 'priority' | 'status' | 'owner'>> = {};
+// `priority=must status=approved owner=BA origin=manual` inside the story
+// comment. Origin was added in QA-2 — same vocabulary as BR/TR meta
+// comments so a future BA-auto-draft job can stamp it consistently.
+function parseStoryMeta(raw: string): Partial<Pick<StoryRow, 'priority' | 'status' | 'owner' | 'origin'>> {
+  const out: Partial<Pick<StoryRow, 'priority' | 'status' | 'owner' | 'origin'>> = {};
   for (const m of raw.matchAll(/(\w+)\s*=\s*([^\s]+)\s*(?:,|$|(?=\w+=))/g)) {
     const key = m[1].toLowerCase();
     const val = m[2].replace(/,$/, '');
     if (key === 'priority' && isReqPriority(val)) out.priority = val;
     else if (key === 'status' && isReqStatus(val)) out.status = val;
     else if (key === 'owner' && isReqOwner(val)) out.owner = val;
+    else if (key === 'origin' && (val === 'manual' || val === 'generated')) out.origin = val;
   }
   return out;
 }
@@ -216,6 +239,57 @@ function parseStoryBody(raw: string): { asA: string; iWantTo: string; soThat: st
 
 // ── Parsers ────────────────────────────────────────────────────────────────
 
+// Match the comment line that follows a BR row to associate it with a story
+// (or capture the origin marker — batch item 2.6, future batch).
+//   <!-- BR-001: story=US-01, origin=generated -->
+const BR_META_RE = /^<!--\s*(BR-\d{3}):\s*(.*?)\s*-->$/;
+
+// Match the comment line that follows a TR row to read its origin marker
+// (Will QA-2: TRs now carry origin just like BRs — the BA stamps
+// origin=manual on every POST; the future TR auto-draft job will write
+// origin=generated). Pairs one-to-one with BR_META_RE — same grammar,
+// different prefix.
+const TR_META_RE = /^<!--\s*(TR-\d{3}):\s*(.*?)\s*-->$/;
+
+// Split a `<!-- BR-NNN: k=v, k=v -->` body into key/value pairs. Unknown keys
+// are ignored silently so this stays forward-compatible with new markers.
+function parseBrMeta(body: string): {
+  storyUsId: string | null;
+  origin: 'manual' | 'generated' | null;
+  other: Record<string, string>;
+} {
+  const other: Record<string, string> = {};
+  let storyUsId: string | null = null;
+  let origin: 'manual' | 'generated' | null = null;
+  for (const m of body.matchAll(/(\w+)\s*=\s*([^,\s]+)(?:,|$)/g)) {
+    const key = m[1].toLowerCase();
+    const val = m[2];
+    if (key === 'story' && /^US-\d{2,}$/.test(val)) {
+      storyUsId = val;
+    } else if (key === 'origin' && (val === 'manual' || val === 'generated')) {
+      origin = val;
+    } else if (/^[a-z][a-z0-9_]*$/i.test(key)) {
+      other[key] = val;
+    }
+  }
+  return { storyUsId, origin, other };
+}
+
+// Same shape as parseBrMeta but only `origin=` — TR meta comments don't
+// carry a story link (TRs implicitly live in their block). Refinement batch
+// QA-2: TRs now stamp origin the same way BRs do.
+function parseTrMeta(body: string): { origin: 'manual' | 'generated' | null } {
+  let origin: 'manual' | 'generated' | null = null;
+  for (const m of body.matchAll(/(\w+)\s*=\s*([^,\s]+)(?:,|$)/g)) {
+    const key = m[1].toLowerCase();
+    const val = m[2];
+    if (key === 'origin' && (val === 'manual' || val === 'generated')) {
+      origin = val;
+    }
+  }
+  return { origin };
+}
+
 // Parse the BR- rows out of prd.md. Tolerant: scans every list item in the
 // file whose first token matches the ID grammar — §8 is the contract's home
 // but legacy files that scattered rows elsewhere still surface.
@@ -229,10 +303,34 @@ export function parseBusinessReqs(prd: string): { rows: ReqRow[]; parseError: st
     if (!m || !m[1].startsWith('BR-')) continue;
     const fields = parseRowSegments(m[2] ? m[2].split('|').map((s) => s.trim()) : []);
     if (!fields.text) continue; // a bare ID with no text isn't a row
+
+    // Look one line ahead for the row's metadata comment. Comments are
+    // tolerated as missing — unlinked BRs default to storyUsId=null and
+    // origin-less BRs default to null (legacy rows; new writes stamp
+    // origin=manual, the future BA auto-draft will stamp origin=generated).
+    // QA-2: blank lines between row and marker are tolerated so the
+    // look-ahead survives whichever insertion pattern (POST inserts two
+    // adjacent lines; a legacy PATCH may sit next to a pre-existing blank).
+    let storyUsId: string | null = null;
+    let origin: 'manual' | 'generated' | null = null;
+    for (let j = i + 1; j < lines.length; j++) {
+      const candidate = lines[j];
+      if (candidate.trim() === '') continue;
+      const cm = candidate.trim().match(BR_META_RE);
+      if (cm && cm[1] === m[1]) {
+        const meta = parseBrMeta(cm[2]);
+        storyUsId = meta.storyUsId;
+        origin = meta.origin;
+      }
+      break;
+    }
+
     rows.push({
       id: m[1],
       type: 'BR',
       ...fields,
+      storyUsId,
+      origin,
       lineIndex: i,
       raw,
     });
@@ -257,6 +355,11 @@ export function parseStories(journeys: string): { stories: StoryRow[]; parseErro
       priority: null,
       status: null,
       owner: null,
+      // QA-2: stories carry their own origin tag (manual vs generated).
+      // Today the BA is the only writer, so every POST stamps manual.
+      // Legacy blocks (no `origin=` in the meta comment) keep null and the
+      // UI renders them as manual — same null→manual rule as BRs/TRs.
+      origin: null,
       reqs: [],
       headingLine: start,
       metaLine: null,
@@ -264,6 +367,14 @@ export function parseStories(journeys: string): { stories: StoryRow[]; parseErro
       blockEnd: lines.length,
       deleted: false,
     };
+    // Tracks whether any committed-content line has appeared yet (body
+    // sentence OR a TR row, struck or not). A `<!-- deleted … -->` marker
+    // is a story-level delete iff it appears *before* that content — the
+    // DELETE-stories endpoint writes it on its own line directly after the
+    // heading; the DELETE-requirements endpoint writes its marker directly
+    // after a struck row, which is NOT a story delete (review item B2:
+    // body-less + all-struck stories used to flip story-deleted).
+    let seenFirstContent = false;
     for (let i = start + 1; i < lines.length; i++) {
       const line = lines[i];
       if (/^###\s+US-/.test(line.trim())) {
@@ -276,8 +387,9 @@ export function parseStories(journeys: string): { stories: StoryRow[]; parseErro
         Object.assign(story, parseStoryMeta(trimmed.match(STORY_META_RE)![1]));
         continue;
       }
-      if (STORY_DELETED_RE.test(trimmed)) {
-        // A delete marker anywhere in the block soft-deletes the whole story.
+      // A delete marker is a story-level delete iff it is the first content
+      // line in the block (see `seenFirstContent` above).
+      if (STORY_DELETED_RE.test(trimmed) && !seenFirstContent) {
         story.deleted = true;
         continue;
       }
@@ -290,23 +402,50 @@ export function parseStories(journeys: string): { stories: StoryRow[]; parseErro
             story.asA = parts.asA || null;
             story.iWantTo = parts.iWantTo || null;
             story.soThat = parts.soThat || null;
+            seenFirstContent = true;
             continue;
           }
         }
       }
-      // Requirement row (TR-) — struck rows are skipped.
-      if (DELETED_ROW_RE.test(trimmed)) continue;
+      // Requirement row (TR-) — struck rows are skipped but still count as
+      // "first content" (B2: a struck row's delete marker is a row-level
+      // delete, not a story-level delete).
+      if (DELETED_ROW_RE.test(trimmed)) {
+        seenFirstContent = true;
+        continue;
+      }
       const rm = trimmed.match(REQ_ROW_RE);
       if (rm && rm[1].startsWith('TR-')) {
         const fields = parseRowSegments(rm[2] ? rm[2].split('|').map((s) => s.trim()) : []);
         if (fields.text) {
+          // Look one line ahead for the row's metadata comment. Today's
+          // POST stamps `<!-- TR-NNN: origin=manual -->`; the BA auto-draft
+          // (future) will stamp origin=generated. Legacy rows (no marker)
+          // leave origin=null — the UI renders those as manual per QA-2
+          // (overrides the 2026-09-03 Flag-1 wording). Blank lines between
+          // the row and its marker are tolerated (mirrors the BR look-ahead).
+          let origin: 'manual' | 'generated' | null = null;
+          for (let j = i + 1; j < lines.length; j++) {
+            const candidate = lines[j];
+            if (candidate.trim() === '') continue;
+            const cm = candidate.trim().match(TR_META_RE);
+            if (cm && cm[1] === rm[1]) {
+              origin = parseTrMeta(cm[2]).origin;
+            }
+            break;
+          }
           story.reqs.push({
             id: rm[1],
             type: 'TR',
             ...fields,
+            // TRs implicitly live in their story block; the storyUsId is the
+            // block's heading id, set after parseStories collects them.
+            storyUsId: null,
+            origin,
             lineIndex: i,
             raw: line,
           });
+          seenFirstContent = true;
         }
       }
       // Anything else: unknown content — passes through untouched (we never
@@ -328,9 +467,33 @@ export function parseStories(journeys: string): { stories: StoryRow[]; parseErro
 export function parseRequirements(prd: string, journeys: string): ParseResult {
   const b = parseBusinessReqs(prd);
   const s = parseStories(journeys);
+  // Stamp TR rows with their owning story's usId (block-based assignment;
+  // not a comment-line lookup) so the UI can group BRs + TRs under the
+  // right story.
+  for (const story of s.stories) {
+    for (const tr of story.reqs) tr.storyUsId = story.usId;
+  }
+  // Collect the set of valid story ids for the BR-link validation below.
+  const knownStoryIds = new Set(s.stories.map((st) => st.usId));
+  // Linked BRs move into their story's reqs list; unlinked stay in
+  // businessReqs so the UI can render an "Unassigned" group.
+  const linked: typeof b.rows = [];
+  const unlinked: typeof b.rows = [];
+  for (const br of b.rows) {
+    if (br.storyUsId && knownStoryIds.has(br.storyUsId)) {
+      const story = s.stories.find((st) => st.usId === br.storyUsId)!;
+      story.reqs.push(br);
+      linked.push(br);
+    } else {
+      // Story link is invalid (US id no longer exists) → treat as unassigned
+      // rather than orphan the row in a vanished block.
+      br.storyUsId = null;
+      unlinked.push(br);
+    }
+  }
   return {
     stories: s.stories,
-    businessReqs: b.rows,
+    businessReqs: unlinked,
     parseError: b.parseError ?? s.parseError,
   };
 }
@@ -348,7 +511,9 @@ export function renderReqRow(
 }
 
 // A story block exactly as the grammar draws it — appended to
-// user-journeys.md on POST /stories.
+// user-journeys.md on POST /stories. QA-2: stories now stamp origin=manual
+// on first write; PATCH preserves the existing origin (or stamps manual
+// when the caller explicitly sets it).
 export function renderStoryBlock(input: {
   usId: string;
   title: string;
@@ -358,10 +523,11 @@ export function renderStoryBlock(input: {
   priority: ReqPriority;
   status: ReqStatus;
   owner: ReqOwner;
+  origin?: 'manual' | 'generated';
 }): string {
   return [
     `### ${input.usId} — ${input.title}`,
-    `<!-- story: priority=${input.priority} status=${input.status} owner=${input.owner} -->`,
+    `<!-- story: priority=${input.priority} status=${input.status} owner=${input.owner} origin=${input.origin ?? 'manual'} -->`,
     `**As a** ${input.asA}, **I want to** ${input.iWantTo}, **so that** ${input.soThat}.`,
   ].join('\n');
 }
@@ -503,7 +669,7 @@ export function validateReqInput(
   if (!isReqType(body?.type)) errors.type = 'Must be BR or TR';
   if (!isReqPriority(body?.priority)) errors.priority = 'Must be must | should | could | wont';
   if (!isReqStatus(body?.status)) errors.status = 'Must be one of the 8 canonical statuses';
-  if (!isReqOwner(body?.owner)) errors.owner = 'Must be BA | SA | DEV | QA';
+  if (!isReqOwner(body?.owner)) errors.owner = `Must be one of ${REQ_OWNERS.join(' | ')}`;
   if (Object.keys(errors).length > 0 || text === null || !isReqType(body?.type)) {
     return { ok: false, errors };
   }
@@ -583,6 +749,14 @@ export function section8Range(prdLines: string[]): { start: number; end: number 
 // the section, else after the section's last non-blank line (the template
 // file's §8 is a table — the new list item goes below it), else right under
 // the heading. Null when there is no §8 to write into.
+//
+// QA-5: each BR row may be followed by a `<!-- BR-NNN: story=US-NN -->` meta
+// comment (refinement batch item 2.7). The new row pair must land *after*
+// the previous row's trailing meta, otherwise the previous row's
+// `story=US-NN` link detaches and the BR falls into "Unassigned business
+// requirements" on the next parse. The helper walks forward from the last
+// row, skipping blank lines, and returns the meta-comment line index when
+// one is present.
 export function businessReqInsertIndex(prdLines: string[]): number | null {
   const range = section8Range(prdLines);
   if (!range) return null;
@@ -590,7 +764,9 @@ export function businessReqInsertIndex(prdLines: string[]): number | null {
   for (let i = range.start + 1; i < range.end; i++) {
     if (REQ_ROW_RE.test(prdLines[i].trim())) lastRow = i;
   }
-  if (lastRow !== -1) return lastRow;
+  if (lastRow !== -1) {
+    return markerIndexAfter(prdLines, lastRow, range.end, BR_META_RE);
+  }
   for (let i = range.end - 1; i > range.start; i--) {
     if (prdLines[i].trim() !== '') return i;
   }
@@ -598,12 +774,44 @@ export function businessReqInsertIndex(prdLines: string[]): number | null {
 }
 
 // Where a new TR row lands inside a story block: after the block's last
-// requirement row, else right under the heading (or the body/meta line when
-// the block has one — new rows belong below the prose, not above it).
-export function storyReqInsertIndex(story: StoryRow): number {
+// requirement row (or, after QA-5, after that row's trailing meta comment),
+// else right under the heading (or the body/meta line when the block has
+// one — new rows belong below the prose, not above it). Skipping the
+// trailing meta is essential: without it, the next POST inserts between
+// the previous TR and its `<!-- TR-NNN: origin=manual -->` marker, the
+// marker's id no longer matches the row above it on re-parse, and the
+// previous TR's origin reads as null on disk.
+export function storyReqInsertIndex(story: StoryRow, lines?: string[]): number {
   const lastReq = story.reqs[story.reqs.length - 1];
-  if (lastReq) return lastReq.lineIndex;
+  if (lastReq) {
+    if (lines) {
+      return markerIndexAfter(lines, lastReq.lineIndex, Infinity, TR_META_RE, lastReq.id);
+    }
+    return lastReq.lineIndex;
+  }
   return story.bodyLine ?? story.metaLine ?? story.headingLine;
+}
+
+// Scan forward from `after` for the next non-blank line that matches
+// `metaRe` (whose capture group 1 matches `expectedId` when supplied).
+// Returns that line's index when found, otherwise `after`. Used by the
+// two insert helpers above to keep trailing meta comments glued to their
+// owning row.
+function markerIndexAfter(
+  lines: string[],
+  after: number,
+  limit: number,
+  metaRe: RegExp,
+  expectedId?: string,
+): number {
+  for (let j = after + 1; j < Math.min(limit, lines.length); j++) {
+    const t = lines[j].trim();
+    if (t === '') continue;
+    const m = t.match(metaRe);
+    if (m && (expectedId === undefined || m[1] === expectedId)) return j;
+    break;
+  }
+  return after;
 }
 
 // A story's ID referenced in another story's free text (the delete guard's

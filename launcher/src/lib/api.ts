@@ -601,6 +601,13 @@ export type RequirementItem = {
   status: ReqStatus | null;
   owner: ReqOwner | null;
   text: string;
+  // Story link (item 2.7): BRs can be linked to a story via a meta comment;
+  // TRs always carry their block's usId. null = unassigned (BR) / null (TR
+  // before the parse stamp) — see RequirementItem.storyUsId.
+  storyUsId: string | null;
+  // Origin tag (item 2.6): manual = BA wrote it via the UI; generated = an
+  // agent wrote it; null = legacy row predating the marker.
+  origin: 'manual' | 'generated' | null;
 };
 
 export type StoryItem = {
@@ -612,6 +619,9 @@ export type StoryItem = {
   priority: ReqPriority | null;
   status: ReqStatus | null;
   owner: ReqOwner | null;
+  // QA-2: stories carry their own origin tag (manual vs generated).
+  // null on legacy blocks; the UI renders null as manual.
+  origin: 'manual' | 'generated' | null;
   reqs: RequirementItem[];
 };
 
@@ -757,9 +767,16 @@ export async function updateRequirement(
   idOrSlug: string,
   reqId: string,
   patch: RequirementPatch,
+  // QA-10: storyUsId disambiguates duplicate ids across stories once two
+  // stories both have a TR-001. The UI always passes it (every
+  // RequirementItem carries the field), the server scopes locateReq to it.
+  storyUsId?: string | null,
 ): Promise<UpdateRequirementResponse> {
+  const qs = storyUsId !== undefined && storyUsId !== null
+    ? `?storyUsId=${encodeURIComponent(storyUsId)}`
+    : '';
   return reqFetch(
-    `/api/projects/${encodeURIComponent(idOrSlug)}/requirements/${encodeURIComponent(reqId)}`,
+    `/api/projects/${encodeURIComponent(idOrSlug)}/requirements/${encodeURIComponent(reqId)}${qs}`,
     {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -772,9 +789,13 @@ export async function updateRequirementStatus(
   idOrSlug: string,
   reqId: string,
   status: ReqStatus,
+  storyUsId?: string | null,
 ): Promise<UpdateRequirementResponse> {
+  const qs = storyUsId !== undefined && storyUsId !== null
+    ? `?storyUsId=${encodeURIComponent(storyUsId)}`
+    : '';
   return reqFetch(
-    `/api/projects/${encodeURIComponent(idOrSlug)}/requirements/${encodeURIComponent(reqId)}/status`,
+    `/api/projects/${encodeURIComponent(idOrSlug)}/requirements/${encodeURIComponent(reqId)}/status${qs}`,
     {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -783,9 +804,16 @@ export async function updateRequirementStatus(
   );
 }
 
-export async function deleteRequirement(idOrSlug: string, reqId: string): Promise<{ ok: true; id: string }> {
+export async function deleteRequirement(
+  idOrSlug: string,
+  reqId: string,
+  storyUsId?: string | null,
+): Promise<{ ok: true; id: string }> {
+  const qs = storyUsId !== undefined && storyUsId !== null
+    ? `?storyUsId=${encodeURIComponent(storyUsId)}`
+    : '';
   return reqFetch(
-    `/api/projects/${encodeURIComponent(idOrSlug)}/requirements/${encodeURIComponent(reqId)}`,
+    `/api/projects/${encodeURIComponent(idOrSlug)}/requirements/${encodeURIComponent(reqId)}${qs}`,
     { method: 'DELETE' },
   );
 }

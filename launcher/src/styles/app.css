@@ -1345,6 +1345,12 @@ button.oq-btn:focus-visible {
   flex-direction: column;
   gap: 14px;
 }
+/* QA-7: real margin (28px) above the summary card and the requirements
+   card. The earlier 14→20px gap was perceptually subtle and didn't even
+   fire — the Requirements tab renders .ba-stage (summary strip) as a
+   sibling of .ba-workspace (requirements card), so the gap lives on
+   .req-screen itself, not on the inner workspace. */
+.req-screen { display: flex; flex-direction: column; gap: 28px; align-items: stretch; }
 
 /* Stage banner — a status counter, not a bulk action (sitemap zone 1). */
 .ba-stage {
@@ -1977,9 +1983,9 @@ button.oq-btn:focus-visible {
 
 /* Filter bar (type segments + status chips + search) */
 .req-filter {
-  display: flex; align-items: center; gap: 14px;
-  padding: 4px 0 2px;
-  margin-bottom: 12px;
+  display: flex; align-items: center; gap: 16px;
+  padding: 6px 0 4px;
+  margin-bottom: 14px;
   flex-wrap: wrap;
 }
 .req-filter-left { display: flex; align-items: center; gap: 14px; flex: 1; flex-wrap: wrap; }
@@ -1987,6 +1993,7 @@ button.oq-btn:focus-visible {
 .req-filter-sep { width: 1px; height: 22px; background: rgba(50,42,92,0.08); }
 .req-type-tabs {
   display: inline-flex;
+  gap: 4px; /* QA-17: breathing room between All / Business / Technical segments */
   background: rgba(50, 42, 92, 0.05);
   border-radius: 999px;
   padding: 3px;
@@ -2003,7 +2010,7 @@ button.oq-btn:focus-visible {
   color: var(--ink-2); font-weight: 600;
 }
 .req-filter .req-type-tabs button.active .filter-count { color: var(--ink); }
-.req-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.req-chips { display: flex; gap: 8px; flex-wrap: wrap; }
 .req-chip {
   display: inline-flex; align-items: center; gap: 4px;
   padding: 4px 10px; border-radius: 999px;
@@ -2030,13 +2037,17 @@ button.oq-btn:focus-visible {
   border: 1px solid rgba(50,42,92,0.06);
   border-radius: 14px;
   background: #fff;
-  overflow: hidden;
+  /* QA-11: drop overflow:hidden — it clipped the status-menu (absolutely
+     positioned dropdown in the story head). The rounded corners survive
+     because .story-head + .req-list round their own top/bottom corners. */
 }
 .story + .story { margin-top: 10px; }
 .story-head {
   display: flex; align-items: flex-start; gap: 12px;
   padding: 12px 14px;
   background: linear-gradient(180deg, rgba(50,42,92,0.02), transparent);
+  border-top-left-radius: 14px;
+  border-top-right-radius: 14px;
 }
 .story-id {
   font-family: var(--font-mono); font-size: 11px; font-weight: 700;
@@ -2044,6 +2055,12 @@ button.oq-btn:focus-visible {
   background: rgba(50,42,92,0.06);
   padding: 4px 8px; border-radius: 6px;
   flex: none; align-self: flex-start;
+}
+/* QA-15: pill + origin chip stack in their own flex-none column so the chip
+   is a sibling of the pill, not a child — no more "encased in a gray block". */
+.story-head-id {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
+  flex: none;
 }
 .story-body { flex: 1; }
 .story-title { font-size: 14px; font-weight: 700; color: var(--ink); }
@@ -2063,10 +2080,16 @@ button.oq-btn:focus-visible {
 }
 
 /* Requirement rows */
-.req-list { border-top: 1px solid rgba(50,42,92,0.06); }
+/* QA-17: no overflow:hidden on .req-list — it clipped the status dropdown's
+   absolutely-positioned menu at story bottoms. Rounded corners on the last
+   row preserve the visual the clip was providing. */
+.req-list { border-top: 1px solid rgba(50,42,92,0.06); border-bottom-left-radius: 14px; border-bottom-right-radius: 14px; }
+.req:last-child { border-bottom-left-radius: 14px; border-bottom-right-radius: 14px; }
 .req {
   display: grid;
-  grid-template-columns: 64px 1fr 86px 64px 130px 50px;
+  /* QA-16: id column widened 64→72px — the origin chip stacked under the id
+     is wider than 64px and painted over the description text before. */
+  grid-template-columns: 72px 1fr 86px 64px 130px 50px;
   gap: 12px; align-items: center;
   padding: 10px 14px;
   font-size: 12.5px;
@@ -2074,7 +2097,45 @@ button.oq-btn:focus-visible {
 }
 .req:first-child { border-top: 0; }
 .req:hover { background: rgba(50,42,92,0.02); }
-.req-id { font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--ink-2); }
+/* QA-15/QA-16: id + origin chip stack vertically in their own grid cell so
+   the chip can't paint over the description text and can't push the row tall. */
+.req-id { font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--ink-2); display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+/* QA-6: labeled origin chip (Manual / Generated). The 7px dot shipped
+   earlier was effective but too subtle to read at a glance — Will flagged
+   this twice. The chip keeps the color-coded dot (blue = manual,
+   coral = generated) plus the label so the tag is unambiguous without a
+   hover tooltip. Rendered on both the story head and every req row. */
+/* TODO(SCSS phase A): tokenize — 4 origin-chip color literals below
+   (rgba(60,130,220,0.12), rgba(255,110,110,0.14), #1d4f8a, #a83232)
+   plus the rgba(255,140,140,0.18) dot glow should move into
+   tokens.css as --origin-manual-bg / --origin-manual-fg /
+   --origin-generated-bg / --origin-generated-fg /
+   --origin-generated-dot-glow. Tracked in chore PR #24. */
+.req-origin-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 9.5px; font-weight: 700; letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-family: var(--font-sans, system-ui);
+  line-height: 1;
+  white-space: nowrap;
+}
+.req-origin-chip .req-origin-dot {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+}
+.req-origin-chip.req-origin-manual {
+  background: rgba(60, 130, 220, 0.12);
+  color: #1d4f8a;
+}
+.req-origin-chip.req-origin-manual .req-origin-dot { background: var(--blue); }
+.req-origin-chip.req-origin-generated {
+  background: rgba(255, 110, 110, 0.14);
+  color: #a83232;
+}
+.req-origin-chip.req-origin-generated .req-origin-dot { background: var(--coral); box-shadow: 0 0 0 2px rgba(255,140,140,0.18); }
 .req-text { color: var(--ink); line-height: 1.5; }
 .req-type {
   display: inline-flex; align-items: center; justify-content: center;
@@ -2168,7 +2229,7 @@ button.oq-btn:focus-visible {
   border-radius: 10px;
   box-shadow: 0 16px 40px -16px rgba(50,42,92,0.25);
   padding: 4px;
-  z-index: 20;
+  z-index: 60; /* QA-17: status menus float ABOVE every row/chip/overlay — no more encasing block */
   list-style: none;
   margin: 0;
 }
@@ -2214,6 +2275,12 @@ button.oq-btn:focus-visible {
 .req-add-bar .label b { color: var(--ink); }
 .req-add-bar .btn-primary,
 .req-add-bar .btn-ghost { padding: 6px 12px; font-size: 12px; }
+/* Add-user-story / empty-state CTA icons: the SVG inside .btn-primary has no
+   intrinsic size rule, so the 24-viewBox path renders too large (refinement
+   batch item 2.3). Scoped here so form-title SVGs and .ba-stage .ico keep
+   their own sizes. */
+.req-add-bar .btn-primary svg,
+.req-empty .btn-primary svg { width: 24px; height: 24px; }
 
 /* Inline "Add requirement / Add user story" form — one component, mode =
    'add' | 'edit' (spec UI); edit gets the amber framing + delete strip. */

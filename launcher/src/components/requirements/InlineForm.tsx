@@ -1,8 +1,10 @@
 // The unified add/edit form (spec UI: Add and Edit share one component — the
 // only differences are the framing pill, the form-id line, the submit label,
-// the edit-mode delete strip, and the border tint). One form is open at a
-// time across the screen; Esc/Cancel collapses it and the screen returns
-// focus to the originating button (AC-5).
+// and the border tint). One form is open at a time across the screen;
+// Esc/Cancel collapses it and the screen returns focus to the originating
+// button (AC-5). Delete is no longer a form affordance — it lives in a
+// confirmation modal opened from the row trash icon (refinement batch
+// item 2.9).
 
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -50,11 +52,9 @@ export type InlineFormProps<V extends FormValues> = {
   onValuesChange?: (values: V) => void;
   onSubmit: (values: V) => void;
   onCancel: () => void;
-  // Edit mode's form-foot-delete strip. Blocked deletes (spec UX) replace it
-  // with the "Cannot delete" notice + scroll-and-flash escape hatch.
-  onDelete?: () => void;
-  deleteCopy?: React.ReactNode;
-  deleteBlocked?: { message: string; onOpenStory?: () => void } | null;
+  // Delete is no longer part of the form (refinement batch item 2.9): a
+  // confirmation modal owns it, opened directly from the row trash icon. The
+  // form's footer is now just help text + Cancel + Save.
 };
 
 const PRIORITY_LABELS: Record<ReqPriority, string> = {
@@ -68,6 +68,7 @@ const OWNER_LABELS: Record<ReqOwner, string> = {
   BA: 'BA',
   SA: 'SA',
   DEV: 'Dev',
+  DES: 'Design',
   QA: 'QA',
 };
 
@@ -94,12 +95,15 @@ export function InlineForm<V extends FormValues>(props: InlineFormProps<V>) {
     onValuesChange,
     onSubmit,
     onCancel,
-    onDelete,
-    deleteCopy,
-    deleteBlocked,
   } = props;
 
   const [values, setValues] = useState<FormValues>(initial);
+  // Touched tracking (refinement batch item 2.4): client-side length errors
+  // only render after the user has interacted with the field (or after a
+  // submit attempt). The server is still the backstop — it always
+  // re-validates and the merged {errors} payload bypasses touched.
+  const [touched, setTouched] = useState<Set<string>>(new Set());
+  const [submitAttempted, setSubmitAttempted] = useState(false);
   // First field gets focus on mount (spec UX). The kind of element differs
   // per kind (input vs select), so a callback ref keeps the type honest.
   const firstFieldRef = useRef<HTMLElement | null>(null);
@@ -127,37 +131,91 @@ export function InlineForm<V extends FormValues>(props: InlineFormProps<V>) {
   const sv = values as StoryFormValues;
   const rv = values as ReqFormValues;
 
+  // QA-8: in EDIT mode, the form only validates and submits the fields the
+  // user actually changed. A legacy story whose As-a/I-want-to/So-that
+  // body is empty can't satisfy the add-mode min lengths, so submitting the
+  // loaded values verbatim fails before the server is ever contacted.
+  // `isChanged(key)` compares the live value to the initial value (string
+  // compare for text, strict-equal for selects).
+  // `keyof FormValues` resolves to the union of both subtypes' keys, which
+// collapses to just the shared fields (priority/status/owner). Cast the
+// keys we care about to the broader string-keyed record shape so the
+// helpers can read any field by name.
+const initialStr = (k: string): string => {
+    const v = (initial as unknown as Record<string, unknown>)[k];
+    return typeof v === 'string' ? v : '';
+  };
+  const liveStr = (k: string): string => {
+    const v = (values as unknown as Record<string, unknown>)[k];
+    return typeof v === 'string' ? v : '';
+  };
+  const isChanged = (k: string): boolean => {
+    if (mode !== 'edit') return true;
+    const a = initialStr(k);
+    const b = liveStr(k);
+    return a !== b;
+  };
+
   // Client-side field errors (server errors arrive via props and merge).
+  // In edit mode, untouched fields bypass validation entirely (the server
+  // ignores fields the PATCH doesn't include).
   const clientErrors: Record<string, string> = {};
   if (isStory) {
-    checkLength('title', sv.title, LIMITS.storyTitle.min, LIMITS.storyTitle.max, clientErrors);
-    checkLength('asA', sv.asA, LIMITS.asA.min, LIMITS.asA.max, clientErrors);
-    checkLength('iWantTo', sv.iWantTo, LIMITS.iWantTo.min, LIMITS.iWantTo.max, clientErrors);
-    checkLength('soThat', sv.soThat, LIMITS.soThat.min, LIMITS.soThat.max, clientErrors);
+    if (mode !== 'edit' || isChanged('title')) checkLength('title', sv.title, LIMITS.storyTitle.min, LIMITS.storyTitle.max, clientErrors);
+    if (mode !== 'edit' || isChanged('asA')) checkLength('asA', sv.asA, LIMITS.asA.min, LIMITS.asA.max, clientErrors);
+    if (mode !== 'edit' || isChanged('iWantTo')) checkLength('iWantTo', sv.iWantTo, LIMITS.iWantTo.min, LIMITS.iWantTo.max, clientErrors);
+    if (mode !== 'edit' || isChanged('soThat')) checkLength('soThat', sv.soThat, LIMITS.soThat.min, LIMITS.soThat.max, clientErrors);
   } else {
-    checkLength('text', rv.text, LIMITS.reqText.min, LIMITS.reqText.max, clientErrors);
+    if (mode !== 'edit' || isChanged('text')) checkLength('text', rv.text, LIMITS.reqText.min, LIMITS.reqText.max, clientErrors);
   }
+  // Server errors always render (they came back from a real submit and the
+  // user needs the feedback); client errors only show on touched fields or
+  // after a submit attempt — the spec UX is "errors after the user has
+  // tried the field, not before they typed a thing".
+  const showError = (name: string): string | null => {
+    if (errors[name]) return errors[name];
+    if (clientErrors[name] && (touched.has(name) || submitAttempted)) {
+      return clientErrors[name];
+    }
+    return null;
+  };
   const fieldErrors = { ...clientErrors, ...errors };
   const hasErrors = Object.keys(fieldErrors).length > 0;
+  // QA-3: the form-error-summary banner ("Fix the N highlighted fields")
+  // and aria-invalid only reflect the *visible* error set — otherwise the
+  // banner pre-fires on mount because the client-side length checks
+  // already populated clientErrors for every untouched field. The full
+  // clientErrors set still drives submit gating above (server is the
+  // backstop — refusing a submit because of an unseen client error is
+  // intentional; the user just hasn't seen the banner yet, but the form
+  // never opens with errors *visible* before they touched anything).
+  const visibleErrorKeys = Object.keys(fieldErrors).filter((k) => showError(k) != null);
+  const visibleErrorCount = visibleErrorKeys.length;
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitAttempted(true);
     if (hasErrors || submitting) return;
     onSubmit(values as V);
   };
 
-  const fieldErr = (name: string) =>
-    fieldErrors[name] ? (
+  const markTouched = (name: string) =>
+    setTouched((prev) => (prev.has(name) ? prev : new Set(prev).add(name)));
+
+  const fieldErr = (name: string) => {
+    const msg = showError(name);
+    return msg ? (
       <div className="field-error" id={`err-${name}`} role="alert">
-        {fieldErrors[name]}
+        {msg}
       </div>
     ) : (
       <div className="field-error" id={`err-${name}`}>
         {' '}
       </div>
     );
+  };
 
-  const invalid = (name: string) => (fieldErrors[name] ? true : undefined);
+  const invalid = (name: string) => (showError(name) ? true : undefined);
 
   return (
     <form
@@ -181,9 +239,9 @@ export function InlineForm<V extends FormValues>(props: InlineFormProps<V>) {
         <span className="form-id">{formId}</span>
       </div>
 
-      {hasErrors && (
+      {visibleErrorCount > 0 && (
         <div className="form-error-summary" role="alert">
-          Fix the {Object.keys(fieldErrors).length} highlighted field{Object.keys(fieldErrors).length > 1 ? 's' : ''} below.
+          Fix the {visibleErrorCount} highlighted field{visibleErrorCount > 1 ? 's' : ''} below.
         </div>
       )}
 
@@ -201,6 +259,7 @@ export function InlineForm<V extends FormValues>(props: InlineFormProps<V>) {
                 aria-invalid={invalid('title')}
                 aria-describedby="err-title"
                 onChange={(e) => set({ title: e.target.value })}
+                onBlur={() => markTouched('title')}
               />
               {fieldErr('title')}
             </div>
@@ -219,6 +278,7 @@ export function InlineForm<V extends FormValues>(props: InlineFormProps<V>) {
                 aria-invalid={invalid('asA')}
                 aria-describedby="err-asA"
                 onChange={(e) => set({ asA: e.target.value })}
+                onBlur={() => markTouched('asA')}
               />
               {fieldErr('asA')}
             </div>
@@ -232,6 +292,7 @@ export function InlineForm<V extends FormValues>(props: InlineFormProps<V>) {
                 aria-invalid={invalid('iWantTo')}
                 aria-describedby="err-iWantTo"
                 onChange={(e) => set({ iWantTo: e.target.value })}
+                onBlur={() => markTouched('iWantTo')}
               />
               {fieldErr('iWantTo')}
             </div>
@@ -247,6 +308,7 @@ export function InlineForm<V extends FormValues>(props: InlineFormProps<V>) {
                 aria-invalid={invalid('soThat')}
                 aria-describedby="err-soThat"
                 onChange={(e) => set({ soThat: e.target.value })}
+                onBlur={() => markTouched('soThat')}
               />
               {fieldErr('soThat')}
             </div>
@@ -287,6 +349,7 @@ export function InlineForm<V extends FormValues>(props: InlineFormProps<V>) {
                 aria-invalid={invalid('text')}
                 aria-describedby="err-text"
                 onChange={(e) => set({ text: e.target.value })}
+                onBlur={() => markTouched('text')}
               />
               {fieldErr('text')}
             </div>
@@ -333,7 +396,7 @@ export function InlineForm<V extends FormValues>(props: InlineFormProps<V>) {
         <button type="button" className="btn btn-ghost" onClick={onCancel} disabled={submitting}>
           Cancel
         </button>
-        <button type="submit" className="btn btn-primary" disabled={submitting || hasErrors}>
+        <button type="submit" className="btn btn-primary" disabled={submitting}>
           {submitting ? (
             <>
               <span className="spinner" aria-hidden="true" /> Saving…
@@ -345,28 +408,6 @@ export function InlineForm<V extends FormValues>(props: InlineFormProps<V>) {
           )}
         </button>
       </div>
-
-      {mode === 'edit' && onDelete && (
-        deleteBlocked ? (
-          <div className="form-foot-delete blocked" role="alert">
-            <span>
-              <b>Cannot delete.</b> {deleteBlocked.message}
-            </span>
-            {deleteBlocked.onOpenStory && (
-              <button type="button" className="btn btn-ghost" onClick={deleteBlocked.onOpenStory}>
-                Open referencing story
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className="form-foot-delete">
-            <span>{deleteCopy}</span>
-            <button type="button" className="btn btn-danger" onClick={onDelete} disabled={submitting}>
-              Delete
-            </button>
-          </div>
-        )
-      )}
     </form>
   );
 }

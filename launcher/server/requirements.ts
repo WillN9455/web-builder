@@ -63,7 +63,21 @@ const US_ID_RE = /^US-\d{2,}$/;
 // ── Serialization (internal geometry never leaves the server) ──────────────
 
 function serializeReq(r: ReqRow) {
-  return { id: r.id, type: r.type, priority: r.priority, status: r.status, owner: r.owner, text: r.text };
+  return {
+    id: r.id,
+    type: r.type,
+    priority: r.priority,
+    status: r.status,
+    owner: r.owner,
+    text: r.text,
+    // Only meaningful for BRs; TRs always carry their block's usId (set by
+    // the parse step). The UI uses this to label the row in the right
+    // group without re-parsing the file.
+    storyUsId: r.storyUsId,
+    // 'manual' = BA wrote it via the UI; 'generated' = an agent wrote it;
+    // null = legacy row, predates the marker.
+    origin: r.origin,
+  };
 }
 
 function serializeStory(s: StoryRow) {
@@ -76,6 +90,10 @@ function serializeStory(s: StoryRow) {
     priority: s.priority,
     status: s.status,
     owner: s.owner,
+    // QA-2: stories carry their own origin tag; null renders as manual in
+    // the UI (per the §5 Q1 resolution Will approved — overrides the
+    // 2026-09-03 Flag-1 wording).
+    origin: s.origin,
     reqs: s.reqs.map(serializeReq),
   };
 }
@@ -126,15 +144,49 @@ function applyInsertions(lines: string[], ops: { after: number; lines: string[] 
 // Locate a requirement across the two files. TR- rows live inside story
 // blocks (their owner story matters for the delete guard); a soft-deleted
 // story's rows are absent from the parse and 404 like anything unknown.
+//
+// QA-10: when the caller knows the story (the UI tracks storyUsId on every
+// row), `scopeUsId` narrows the search to that story's rows. Unassigned BRs
+// live in `parsed.businessReqs` and form their own null-scope pool. Once
+// two stories both carry a `TR-001`, scopeUsId is the only way to tell
+// them apart — omitting it falls back to "first match wins" so legacy
+// callers and the verify suite keep working. The UI should always pass
+// the row's storyUsId once duplicate display ids exist.
 function locateReq(
   parsed: ParseResult,
   reqId: string,
+  scopeUsId: string | null | undefined,
 ): { file: 'prd.md' | 'user-journeys.md'; row: ReqRow; ownerStory: StoryRow | null } | null {
+  if (scopeUsId === null) {
+    // Caller is asking for an unassigned BR specifically.
+    const br = parsed.businessReqs.find((r) => r.id === reqId);
+    if (br) return { file: 'prd.md', row: br, ownerStory: null };
+    return null;
+  }
+  if (scopeUsId) {
+    const story = parsed.stories.find((s) => s.usId === scopeUsId);
+    if (!story) return null;
+    // QA-14: map the file by row type, never by which find() matched. The
+    // parser puts linked BRs INSIDE story.reqs, so an untyped find would
+    // return a BR stamped as user-journeys.md — the PATCH/DELETE then struck
+    // user-journeys.md at the row's prd.md line index (the real row survived
+    // and a phantom strike landed in journeys). BRs always live in prd.md;
+    // TRs always live in their story block in user-journeys.md.
+    const row = story.reqs.find((r) => r.id === reqId);
+    if (row) {
+      return { file: row.type === 'BR' ? 'prd.md' : 'user-journeys.md', row, ownerStory: story };
+    }
+    return null;
+  }
+  // Unscoped lookup — preserve the legacy "first match" behaviour so the
+  // status-only PATCH and the verify suite keep working on legacy files.
   const br = parsed.businessReqs.find((r) => r.id === reqId);
   if (br) return { file: 'prd.md', row: br, ownerStory: null };
   for (const story of parsed.stories) {
-    const tr = story.reqs.find((r) => r.id === reqId);
-    if (tr) return { file: 'user-journeys.md', row: tr, ownerStory: story };
+    const row = story.reqs.find((r) => r.id === reqId);
+    // QA-14: same file-by-type rule as the scoped branch — unscoped callers
+    // can hit linked BRs too.
+    if (row) return { file: row.type === 'BR' ? 'prd.md' : 'user-journeys.md', row, ownerStory: story };
   }
   return null;
 }
@@ -244,6 +296,9 @@ export function registerRequirementsRoutes(app: express.Express): void {
         priority: validation.value.priority,
         status: validation.value.status,
         owner: validation.value.owner,
+        // QA-2: every POST stamps origin=manual — the BA is the only writer
+        // today; the future auto-draft will stamp origin=generated.
+        origin: 'manual',
         reqs: [],
         headingLine: -1,
         metaLine: null,
@@ -312,9 +367,15 @@ export function registerRequirementsRoutes(app: express.Express): void {
       const priority = value.priority ?? story.priority;
       const status = value.status ?? story.status;
       const owner = value.owner ?? story.owner;
+      // QA-2: stories carry their own origin tag. A legacy block has no
+      // origin in its meta comment; the first PATCH that touches the meta
+      // block stamps origin=manual so the tag starts rendering. Future
+      // BA auto-draft writes origin=generated.
+      const origin: 'manual' | 'generated' = story.origin ?? 'manual';
       if (priority) parts.push(`priority=${priority}`);
       if (status) parts.push(`status=${status}`);
       if (owner) parts.push(`owner=${owner}`);
+      parts.push(`origin=${origin}`);
       if (parts.length > 0) {
         const meta = `<!-- story: ${parts.join(' ')} -->`;
         if (story.metaLine !== null) {
@@ -342,6 +403,9 @@ export function registerRequirementsRoutes(app: express.Express): void {
         priority: value.priority ?? story.priority,
         status: value.status ?? story.status,
         owner: value.owner ?? story.owner,
+        // QA-2: a PATCH that touches the meta comment stamps origin so
+        // the tag starts rendering; preserve it otherwise.
+        origin: story.origin ?? 'manual',
       }),
     });
   });
@@ -428,8 +492,32 @@ export function registerRequirementsRoutes(app: express.Express): void {
         res.status(409).json({ error: 'prd.md has no §8 section to write business requirements into' });
         return;
       }
-      const id = nextFreeId(liveReqIds(parseRequirements(text, '')).filter((x) => x.startsWith('BR-')), 'BR');
-      const lines = insertAfter(prdLines, idx, [renderReqRow(id, value.priority, value.status, value.owner, value.text)]);
+      // QA-10: per-story BR allocation. A BR linked to US-1 gets the
+      // next free BR-NNN relative to that story's existing linked BRs
+      // (so US-1 and US-2 can both have BR-001). Unassigned BRs keep
+      // their own shared pool — they don't belong to any story, so a
+      // global pool is the only sensible allocator for them.
+      const journeysForBrScope = fs.existsSync(prdFilePath(dir, 'user-journeys.md'))
+        ? readPrdFile(prdFilePath(dir, 'user-journeys.md')).text
+        : '';
+      const parsedScope = parseRequirements(text, journeysForBrScope);
+      const storyLink = req.params.usId;
+      // Linked BRs live in parsedScope.stories[*].reqs; unassigned live
+      // in parsedScope.businessReqs (with storyUsId === null). Pull both
+      // and filter by the story scope.
+      const linkedIds = parsedScope.stories
+        .flatMap((s) => s.reqs)
+        .filter((r) => r.type === 'BR' && r.storyUsId === storyLink)
+        .map((r) => r.id);
+      const id = nextFreeId(linkedIds, 'BR');
+      // Always link a BR to its creating story — refinement batch item 2.7.
+      // The link lives as `<!-- BR-NNN: story=US-NN, origin=manual -->` directly
+      // after the row so the next parse reads it. origin=manual is the BA's
+      // stamp today; the future BA auto-draft job will write origin=generated
+      // (item 2.6 — this commit only ships the marker plumbing).
+      const row1 = renderReqRow(id, value.priority, value.status, value.owner, value.text);
+      const meta = `<!-- ${id}: story=${req.params.usId}, origin=manual -->`;
+      const lines = insertAfter(prdLines, idx, [row1, meta]);
       try {
         await atomicWritePrd(prdPath, lines.join('\n'));
       } catch {
@@ -438,7 +526,16 @@ export function registerRequirementsRoutes(app: express.Express): void {
       }
       res.status(201).json({
         ok: true,
-        requirement: { id, type: 'BR', priority: value.priority, status: value.status, owner: value.owner, text: value.text },
+        requirement: {
+          id,
+          type: 'BR',
+          priority: value.priority,
+          status: value.status,
+          owner: value.owner,
+          text: value.text,
+          storyUsId: req.params.usId,
+          origin: 'manual',
+        },
       });
       return;
     }
@@ -454,10 +551,22 @@ export function registerRequirementsRoutes(app: express.Express): void {
       res.status(404).json({ error: `Unknown story ${req.params.usId}` });
       return;
     }
-    const id = nextFreeId(liveReqIds(parseRequirements('', text)).filter((x) => x.startsWith('TR-')), 'TR');
-    const lines = insertAfter(text.split('\n'), storyReqInsertIndex(story), [
-      renderReqRow(id, value.priority, value.status, value.owner, value.text),
-    ]);
+    // QA-10: per-story TR allocation. Allocate from THIS story's existing
+    // TR ids only — so US-1 and US-2 can both have TR-001. Storage is
+    // already per-story (TR rows live inside their block on disk); the
+    // change is allocation, not storage.
+    const storyTrIds = story.reqs.filter((r) => r.type === 'TR').map((r) => r.id);
+    const id = nextFreeId(storyTrIds, 'TR');
+    // QA-2: TRs stamp origin=manual on POST — pairs with the BR origin
+    // marker, parser reads it via TR_META_RE one line look-ahead.
+    const newRow = renderReqRow(id, value.priority, value.status, value.owner, value.text);
+    const trMeta = `<!-- ${id}: origin=manual -->`;
+    const journeyLines = text.split('\n');
+    // QA-5: pass the raw lines so the helper can skip past the previous
+    // row's trailing meta comment (otherwise a second POST inserts the
+    // new [row, marker] pair between the previous TR and its marker,
+    // detaching the previous TR's origin marker on re-parse).
+    const lines = insertAfter(journeyLines, storyReqInsertIndex(story, journeyLines), [newRow, trMeta]);
     try {
       await atomicWritePrd(journeysPath, lines.join('\n'));
     } catch {
@@ -466,7 +575,7 @@ export function registerRequirementsRoutes(app: express.Express): void {
     }
     res.status(201).json({
       ok: true,
-      requirement: { id, type: 'TR', priority: value.priority, status: value.status, owner: value.owner, text: value.text },
+      requirement: { id, type: 'TR', priority: value.priority, status: value.status, owner: value.owner, text: value.text, origin: 'manual' as const },
     });
   });
 
@@ -496,7 +605,11 @@ export function registerRequirementsRoutes(app: express.Express): void {
     const prd = readPrdFile(prdPath);
     const journeys = readPrdFile(journeysPath);
     const parsed = parseRequirements(prd.text, journeys.text);
-    const located = locateReq(parsed, req.params.reqId);
+    // QA-10: the UI always sends `storyUsId` on PATCH/DELETE so duplicate
+    // ids across stories resolve to the right row. The query param is
+    // optional — legacy callers and the verify suite still work without it.
+    const scopeUsId = typeof req.query.storyUsId === 'string' ? req.query.storyUsId : null;
+    const located = locateReq(parsed, req.params.reqId, scopeUsId);
     if (!located) {
       res.status(404).json({ error: `Unknown requirement ${req.params.reqId}` });
       return;
@@ -542,20 +655,41 @@ export function registerRequirementsRoutes(app: express.Express): void {
         after: struck.markerAfter,
         lines: [deleteMarker(`moved to ${targetType === 'BR' ? 'prd.md §8' : 'the story block'}`)],
       });
-      const live = liveReqIds(
-        parseRequirements(files['prd.md'].lines.join('\n'), files['user-journeys.md'].lines.join('\n')),
-      ).filter((x) => x.startsWith(targetType));
-      const newId = nextFreeId(live, targetType as 'BR' | 'TR');
+      // QA-10: scope the new id to the row's owning story (TR) or its
+      // linked-story pool (BR) — duplicate-safe across stories. BR rows
+      // live in parsedScope.stories[*].reqs after parseRequirements
+      // distributes them, so filter there for the BR branch.
+      const reparse = parseRequirements(files['prd.md'].lines.join('\n'), files['user-journeys.md'].lines.join('\n'));
+      const scopeIds =
+        targetType === 'TR'
+          ? reparse.stories
+              .find((s) => s.usId === (ownerStory?.usId ?? null))
+              ?.reqs.filter((r) => r.type === 'TR')
+              .map((r) => r.id) ?? []
+          : reparse.stories
+              .flatMap((s) => s.reqs)
+              .filter((r) => r.type === 'BR' && r.storyUsId === ownerStory?.usId)
+              .map((r) => r.id);
+      const newId = nextFreeId(scopeIds, targetType as 'BR' | 'TR');
       const newRow = renderReqRow(newId, merged.priority, merged.status, merged.owner, merged.text);
+      // QA-10: a type move that lands a BR inside a story's pool must
+      // carry the story link in its meta comment, just like POST does
+      // — otherwise the new BR becomes an unassigned row.
+      const newMeta =
+        targetType === 'BR' && ownerStory
+          ? `<!-- ${newId}: story=${ownerStory.usId}, origin=manual -->`
+          : `<!-- ${newId}: origin=manual -->`;
       if (targetType === 'BR') {
         const idx = businessReqInsertIndex(files['prd.md'].lines);
         if (idx === null) {
           res.status(409).json({ error: 'prd.md has no §8 section to write business requirements into' });
           return;
         }
-        files['prd.md'].ops.push({ after: idx, lines: [newRow] });
+        files['prd.md'].ops.push({ after: idx, lines: [newRow, newMeta] });
       } else if (ownerStory) {
-        files['user-journeys.md'].ops.push({ after: storyReqInsertIndex(ownerStory), lines: [newRow] });
+        // QA-5: pass the in-flight lines so the helper skips past the
+        // previous row's trailing meta comment when inserting the new pair.
+        files['user-journeys.md'].ops.push({ after: storyReqInsertIndex(ownerStory, files['user-journeys.md'].lines), lines: [newRow, newMeta] });
       } else {
         // A TR whose owning story is gone (soft-deleted mid-flight) — refuse
         // rather than land the row in an unknown block.
@@ -566,6 +700,22 @@ export function registerRequirementsRoutes(app: express.Express): void {
       const updated = renderReqRow(reqRow.id, merged.priority, merged.status, merged.owner, merged.text);
       const home = reqRow.type === 'BR' ? 'prd.md' : 'user-journeys.md';
       files[home].lines = spliceLine(files[home].lines, reqRow.lineIndex, updated);
+      // QA-2: editing a legacy row (origin=null) stamps origin=manual so
+      // the dot starts rendering. The marker is glued to the row — the
+      // parser's meta-comment look-ahead skips blank lines so a separator
+      // between the row and the marker still parses correctly.
+      if (reqRow.origin === null) {
+        const meta = `<!-- ${reqRow.id}: origin=manual -->`;
+        const insertAt = reqRow.lineIndex + 1;
+        const next = files[home].lines[insertAt];
+        if (next === '' || next === undefined) {
+          // Replace the blank line (or fill the trailing gap) with the
+          // marker so we don't grow the file with two blank lines.
+          files[home].lines = spliceLine(files[home].lines, insertAt, meta);
+        } else {
+          files[home].lines.splice(insertAt, 0, meta);
+        }
+      }
     }
 
     for (const f of Object.values(files)) {
@@ -611,7 +761,9 @@ export function registerRequirementsRoutes(app: express.Express): void {
     const prd = readPrdFile(prdPath);
     const journeys = readPrdFile(journeysPath);
     const parsed = parseRequirements(prd.text, journeys.text);
-    const located = locateReq(parsed, req.params.reqId);
+    // QA-10: storyUsId query param disambiguates duplicate ids across stories.
+    const scopeUsId = typeof req.query.storyUsId === 'string' ? req.query.storyUsId : null;
+    const located = locateReq(parsed, req.params.reqId, scopeUsId);
     if (!located) {
       res.status(404).json({ error: `Unknown requirement ${req.params.reqId}` });
       return;
@@ -687,7 +839,9 @@ export function registerRequirementsRoutes(app: express.Express): void {
     const prd = readPrdFile(prdPath);
     const journeys = readPrdFile(journeysPath);
     const parsed = parseRequirements(prd.text, journeys.text);
-    const located = locateReq(parsed, req.params.reqId);
+    // QA-10: storyUsId query param disambiguates duplicate ids across stories.
+    const scopeUsId = typeof req.query.storyUsId === 'string' ? req.query.storyUsId : null;
+    const located = locateReq(parsed, req.params.reqId, scopeUsId);
     if (!located) {
       res.status(404).json({ error: `Unknown requirement ${req.params.reqId}` });
       return;
