@@ -11,8 +11,10 @@ export default defineConfig({
   },
   server: {
     // Use ports well clear of the host's other dev servers (the host has
-    // house-build-wiki running on 5173/5174).
-    port: 5183,
+    // house-build-wiki running on 5173/5174). LAUNCHER_* env overrides let
+    // scripts/verify-visual.mjs run on its own pair without colliding with
+    // concurrent dev sessions; unset, the defaults are the dev pair.
+    port: Number(process.env.LAUNCHER_WEB_PORT ?? 5183),
     strictPort: true,
     proxy: {
       // Proxy API requests to the Node/Express server in dev so React can
@@ -20,7 +22,7 @@ export default defineConfig({
       // Use 127.0.0.1 to avoid IPv6/IPv4 localhost resolution mismatch
       // (Vite binds to ::1, which can make `localhost` proxy targets fail).
       '/api': {
-        target: 'http://127.0.0.1:5184',
+        target: `http://127.0.0.1:${process.env.LAUNCHER_API_PORT ?? 5184}`,
         changeOrigin: true,
       },
     },
