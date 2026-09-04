@@ -3,8 +3,9 @@
 // Enforces "no color literals outside the token layer": every color value in
 // the partials must come from the compile-time scalar layer in
 // ../src/styles/tokens.scss (e.g. `rgba(tokens.$navy, 0.06)`), so the palette
-// has exactly one home. Bare hex and rgba()/rgb()/hsl()/hsla() function
-// literals in partials/**/*.scss are violations.
+// has exactly one home. Bare hex and rgba()/rgb()/hsl()/hsla() calls with a
+// numeric/hex argument in partials/**/*.scss are violations; composing
+// rgba(tokens.$navy, α) is the sanctioned form.
 //
 // Scope is partials only — tokens.scss IS the token layer (its :root block and
 // compile-time mirror may contain literals by definition).
@@ -25,7 +26,12 @@ import { fileURLToPath } from 'node:url';
 const partialsDir = resolve(import.meta.dirname, '../src/styles/partials');
 
 const HEX = /#[0-9a-fA-F]{3,8}\b/;
-const FUNC = /\b(?:rgba?|hsla?)\(/;
+// Color FUNCTION literals: a rgba/rgb/hsl/hsla call whose first argument is
+// itself numeric or hex. Token-composed calls — rgba(tokens.$navy, 0.06) —
+// are the sanctioned form (the base color comes from the token layer, only
+// the alpha is written at the site), so a leading identifier/`$`/`var(`
+// argument is not a violation.
+const FUNC = /\b(?:rgba?|hsla?)\(\s*[0-9.#]/;
 
 function findPartials(dir) {
   const out = [];
