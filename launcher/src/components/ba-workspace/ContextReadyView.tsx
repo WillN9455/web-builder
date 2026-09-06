@@ -48,8 +48,7 @@ export function ContextReadyView({
         <div>
           <h3 id="state-d-h">Project context ready</h3>
           <p>
-            All 17 background documents are approved. This is the one-shot that locks context into
-            Requirements and opens the four downstream tabs.
+            All 17 background documents are approved. Confirming will unlock Sprint, Design, Build, and QA, and trigger the BA Agent to auto-generate requirements from your PRD.
           </p>
         </div>
       </div>

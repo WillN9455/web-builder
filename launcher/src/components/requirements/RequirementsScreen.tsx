@@ -13,12 +13,14 @@ import {
   deleteRequirement,
   deleteStory,
   fetchRequirements,
+  fetchRequirementsGenerationStatus,
   RequirementsDeleteGuardError,
   RequirementsValidationError,
   updateRequirement,
   updateRequirementStatus,
   updateStory,
   type RequirementsResponse,
+  type RequirementsGenerationStatus,
   type RequirementItem,
   type ReqStatus,
   type StoryItem,
@@ -128,6 +130,24 @@ export function RequirementsScreen() {
   const noticeTimer = useRef<number | null>(null);
   const [storyStatusPending, setStoryStatusPending] = useState<string | null>(null);
   const [reqStatusPending, setReqStatusPending] = useState<string | null>(null);
+  // In-flight BA Agent auto‑generation of user stories / BR / TR.
+  const [reqGenStatus, setReqGenStatus] = useState<RequirementsGenerationStatus | null>(null);
+
+  useEffect(() => {
+    if (data?.source !== 'ok') return;
+    (async () => {
+      try {
+        const status = await fetchRequirementsGenerationStatus(idOrSlug);
+        setReqGenStatus(status);
+      } catch { /* silently hide bar when server is unreachable */ }
+    })();
+    if (reqGenStatus?.status === 'generating') {
+      const t = setInterval(async () => {
+        try { await fetchRequirementsGenerationStatus(idOrSlug).then(setReqGenStatus); } catch { /* silent */ }
+      }, 3000);
+      return () => clearInterval(t);
+    }
+  }, [data?.source, idOrSlug, reqGenStatus?.status]);
 
   const showNotice = useCallback((n: Notice) => {
     setNotice(n);
@@ -704,6 +724,29 @@ export function RequirementsScreen() {
           </span>
         </div>
       </div>
+
+      {/* In‑flight BA Agent generation progress bar per §8 spec */}
+      {reqGenStatus?.status === 'generating' && (
+        <div className="ba-warn" role="status" aria-live="polite" style={{ padding: 12, background: 'var(--butter)', marginBottom: 12 }}>
+          <b>BA Agent generating stories and requirements</b> — {' '}
+          {reqGenStatus.currentFile ? `${reqGenStatus.currentFile} · ` : ''}
+          {reqGenStatus.progress.generated} of {reqGenStatus.progress.total} artifacts in progress.
+          You can still manually add user stories below.
+        </div>
+      )}
+
+      {reqGenStatus?.status === 'done' && (
+        <div className="toast" role="status" aria-live="polite">
+          <span className="toast-dot" aria-hidden="true" />
+          BA Agent finished generating requirements — {reqGenStatus.progress.generated} artifacts ready.
+        </div>
+      )}
+
+      {reqGenStatus?.status === 'failed' && (
+        <div className="ba-warn" role="alert" style={{ padding: 12, background: 'var(--butter)', marginBottom: 12 }}>
+          <b>Requirements generation failed</b> — please try confirming project context again from the Background tab.
+        </div>
+      )}
 
       <div className="ba-workspace" style={{ gridTemplateColumns: '1fr' }}>
         <div className="ba-doc">

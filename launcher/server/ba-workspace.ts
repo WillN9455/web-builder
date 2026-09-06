@@ -20,6 +20,8 @@ import { db } from './db.js';
 import { readGenerationState, retryBaGeneration, type BaGeneration } from './ba-draft.js';
 import { readIdeaSummary, retryIdeaSummary } from './idea-summary.js';
 import { atomicWritePrd } from './prd-fs.js';
+import { triggerRequirementsGeneration, calculateElapsedMs } from './agent-invoker.js';
+import { readReqGenState, writeReqGenState } from './req-gen-state.js';
 
 // ── The 17 artifacts across 5 bands (sitemap § Project Background tab) ────
 // The sitemap list is canonical — the s12 mockup tree omits personas.md, and
@@ -616,6 +618,74 @@ export function registerBaWorkspaceRoutes(app: express.Express): void {
     ).run(row.id);
     logActivity(row.id, 'BA', 'Confirmed project context — Sprint, Design, Build, QA unlocked', 'milestone');
     res.json({ ok: true, contextConfirmed: true, alreadyConfirmed: false });
+  });
+
+  // ── Requirements generation (auto-generate stories + BR/TR from approved PRD) ────
+
+  // GET /requirements-generation-status — polled by the client to show progress.
+  app.get('/api/projects/:id/requirements-generation-status', (req, res) => {
+    const row = getProjectRow(req.params.id);
+    if (!row) {
+      res.status(404).json({ error: 'Not found' });
+      return;
+    }
+
+    const state = readReqGenState(row.id);
+    if (!state) {
+      return res.json({ status: 'idle', progress: { generated: 0, total: 0 } });
+    }
+
+    let status: 'generating' | 'done' | 'failed' = 'generating';
+    if (state.state === 'done') status = 'done';
+    else if (state.state === 'failed') status = 'failed';
+
+    res.json({
+      status,
+      progress: { generated: state.generated, total: state.total || 2 },
+      currentFile: state.currentFile ?? undefined,
+      elapsedMs: calculateElapsedMs(row.id),
+    });
+  });
+
+  // POST /trigger-requirements-generation — fires the BA Agent to generate stories + BR/TR.
+  app.post('/api/projects/:id/trigger-requirements-generation', (req, res) => {
+    const row = getProjectRow(req.params.id);
+    if (!row) {
+      res.status(404).json({ error: 'Not found' });
+      return;
+    }
+
+    const ctx = contextRow(row.id);
+    if (!ctx?.confirmed) {
+      return res.status(409).json({ error: 'Project context not confirmed yet' });
+    }
+
+    // Re-check readiness
+    const statuses = readStatuses(row.id);
+    if (!BA_ARTIFACTS.every((f) => (statuses.get(f) ?? 'draft') === 'approved')) {
+      return res.status(409).json({ error: 'Not all artifacts are Approved' });
+    }
+
+    // Check / create state idempotently
+    const existing = readReqGenState(row.id);
+    if (existing && (existing.state === 'pending' || existing.state === 'generating')) {
+      return res.json({ ok: true, alreadyRunning: true });
+    }
+    if (existing?.state === 'done' || existing?.state === 'failed') {
+      writeReqGenState(row.id, {
+        state: 'pending',
+        generated: 0,
+        total: BA_ARTIFACTS.length,
+        currentFile: null,
+        startedAt: Date.now(),
+      });
+    }
+
+    const result = triggerRequirementsGeneration(row.id);
+    if (!result.ok) {
+      return res.status(409).json({ ok: false, error: result.error });
+    }
+    res.json({ ok: true, generationId: result.generationId });
   });
 }
 

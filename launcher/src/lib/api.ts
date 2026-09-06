@@ -573,6 +573,42 @@ export async function confirmProjectContext(idOrSlug: string): Promise<ConfirmCo
   });
 }
 
+// ── /api/projects/:id/requirements-generation-status (auto-generate requirements) ───
+
+export type RequirementsGenerationStatus = {
+  status: 'idle' | 'generating' | 'done' | 'failed';
+  progress: { generated: number; total: number };
+  currentFile?: string;
+  elapsedMs?: number;
+};
+
+export async function fetchRequirementsGenerationStatus(
+  idOrSlug: string,
+): Promise<RequirementsGenerationStatus> {
+  return baFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/requirements-generation-status`);
+}
+
+export type Success = { ok: true; generationId: string; alreadyRunning?: boolean };
+export type Failed = { ok: false; error: string };
+export type TriggerRequirementsGenResponse = Success | Failed;
+
+export async function triggerRequirementsGeneration(
+  idOrSlug: string,
+): Promise<TriggerRequirementsGenResponse> {
+  const res = await fetch(`/api/projects/${encodeURIComponent(idOrSlug)}/trigger-requirements-generation`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  });
+
+  const data = await res.json().catch(() => ({})) as Record<string, unknown>;
+  if (!res.ok) {
+    return { ok: false, error: typeof data.error === 'string' ? data.error : `Trigger generation failed (HTTP ${res.status})` } satisfies TriggerRequirementsGenResponse;
+  }
+
+  return { ok: true, alreadyRunning: !!data.alreadyRunning, generationId: String(data.generationId ?? '') } as TriggerRequirementsGenResponse;
+}
+
 // ── /api/projects/:id/requirements (Requirements tab, screen 15) ───────────
 
 import type {

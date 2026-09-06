@@ -16,6 +16,7 @@ import {
   fetchBaOpenQuestions,
   retryBaGeneration,
   saveBaFile,
+  triggerRequirementsGeneration,
   transitionBaFile,
   type BaComment,
   type BaFile,
@@ -373,11 +374,15 @@ export function ProjectBackgroundScreen() {
     try {
       await confirmProjectContext(id ?? '');
       onContextConfirmed();
-      await loadFiles();
+      // Trigger BA Agent to auto-generate stories + BR/TR from approved artifacts.
+      const triggerResult = await triggerRequirementsGeneration(id ?? '');
       showNotice({
         kind: 'success',
-        text: 'Project context confirmed — Sprint, Design, Build, QA unlocked.',
+        text: triggerResult.ok && triggerResult.alreadyRunning
+          ? 'Project context confirmed — Sprint, Design, Build, QA unlocked. Requirements generation already in progress.'
+          : 'Project context confirmed — Sprint, Design, Build, QA unlocked. BA Agent is auto-generating requirements.',
       });
+      await loadFiles();
     } catch (err) {
       showNotice({
         kind: 'error',
