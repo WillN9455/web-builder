@@ -16,6 +16,7 @@ import { readReqGenState, writeReqGenState } from './req-gen-state.js';
 import {
   BUSINESS_SECTION,
   reconcileSectionsDone,
+  requireRows,
   REQ_GEN_SECTIONS,
   spliceBusinessReqs,
   spliceStories,
@@ -24,7 +25,7 @@ import {
   type GenStory,
 } from './req-gen-splice.js';
 import { getProjectRow, resolveProjectFolder, readStatuses, BA_ARTIFACTS, type ProjectRow } from './ba-workspace.js';
-import { atomicWritePrd, prdFilePath, withPrdLock } from './prd-fs.js';
+import { atomicWritePrd, prdFilePath } from './prd-fs.js';
 import { db } from './db.js';
 import { MODEL, OLLAMA } from './intake.js';
 
@@ -272,6 +273,10 @@ async function runRequirementsJob(projectId: number): Promise<void> {
   // stories section. Local to this run: concurrent runs for different
   // projects must not cross-link.
   const storyIds: string[] = [...reconciled.storyIds];
+  // Written into EVERY persisted state write below (entry, completion,
+  // terminal) so the phase-aware banner shows live row counts mid-run — a
+  // generating run's result is "what has landed so far", not just the
+  // finished run's counts.
   const result = { storiesGenerated: 0, brsGenerated: 0, trsGenerated: 0 };
   let lastError: string | null = null;
 
@@ -283,38 +288,47 @@ async function runRequirementsJob(projectId: number): Promise<void> {
         state: 'generating',
         generated: sectionsDone.size,
         currentSection: section,
+        // Bounds this section at SECTION_STALL_MS for the stale-read — a
+        // wedged run with fresh heartbeats must still fail (the round-4
+        // deadlock had exactly that shape for 3.4h).
+        sectionStartedAt: Date.now(),
         lastHeartbeatAt: Date.now(),
         error: null,
+        result,
         sectionsDone: [...sectionsDone],
       });
 
       try {
         if (section === STORIES_SECTION) {
-          const stories = await callModelStories(context);
-          if (stories.length > 0) {
-            const journeys = fs.readFileSync(journeysPath, 'utf-8');
-            const spliced = spliceStories(journeys, stories);
-            if (spliced.usIds.length !== stories.length) {
-              throw new Error('Story splice inserted fewer blocks than the model generated');
-            }
-            await withPrdLock(journeysPath, () => atomicWritePrd(journeysPath, spliced.text));
-            storyIds.push(...spliced.usIds);
-            result.storiesGenerated = spliced.usIds.length;
-            result.trsGenerated = spliced.trCount;
+          // requireRows: a call that yields zero parseable rows must FAIL the
+          // section — a silent empty advance would be marked done and retry
+          // would skip it forever, generating nothing.
+          const stories = requireRows(await callModelStories(context), 'user stories');
+          const journeys = fs.readFileSync(journeysPath, 'utf-8');
+          const spliced = spliceStories(journeys, stories);
+          if (spliced.usIds.length !== stories.length) {
+            throw new Error('Story splice inserted fewer blocks than the model generated');
           }
+          // Direct write — atomicWritePrd takes the PRD lock itself. PR #26
+          // round-4 bug: wrapping it in an outer withPrdLock on the SAME path
+          // was a nested same-key acquire that queued behind its own slot
+          // forever (non-reentrant mutex, deterministic self-deadlock).
+          await atomicWritePrd(journeysPath, spliced.text);
+          storyIds.push(...spliced.usIds);
+          result.storiesGenerated = spliced.usIds.length;
+          result.trsGenerated = spliced.trCount;
         } else {
-          const brs = await callModelBusinessReqs(context, storyIds);
-          if (brs.length > 0) {
-            const prd = fs.readFileSync(prdPath, 'utf-8');
-            const spliced = spliceBusinessReqs(prd, brs, storyIds);
-            if (spliced.brIds.length !== brs.length) {
-              // businessReqInsertIndex found no §8 to write into — nothing
-              // landed, so failing the section is safe (no partial insert).
-              throw new Error('BR splice inserted fewer rows than the model generated — prd.md has no §8 section');
-            }
-            await withPrdLock(prdPath, () => atomicWritePrd(prdPath, spliced.text));
-            result.brsGenerated = spliced.brIds.length;
+          const brs = requireRows(await callModelBusinessReqs(context, storyIds), 'business requirements');
+          const prd = fs.readFileSync(prdPath, 'utf-8');
+          const spliced = spliceBusinessReqs(prd, brs, storyIds);
+          if (spliced.brIds.length !== brs.length) {
+            // businessReqInsertIndex found no §8 to write into — nothing
+            // landed, so failing the section is safe (no partial insert).
+            throw new Error('BR splice inserted fewer rows than the model generated — prd.md has no §8 section');
           }
+          // Same round-4 fix: atomicWritePrd locks; never nest withPrdLock.
+          await atomicWritePrd(prdPath, spliced.text);
+          result.brsGenerated = spliced.brIds.length;
         }
         sectionsDone.add(section);
       } catch (err) {
@@ -326,8 +340,12 @@ async function runRequirementsJob(projectId: number): Promise<void> {
         ...existing,
         state: 'generating',
         generated: sectionsDone.size,
+        // Next section started at the completion write — the elapsed clock
+        // ticks from here (undefined on the last section, which is null).
+        sectionStartedAt: todo[i + 1] ? Date.now() : undefined,
         currentSection: todo[i + 1] ?? null,
         lastHeartbeatAt: Date.now(),
+        result,
         sectionsDone: [...sectionsDone],
       });
     }
@@ -337,6 +355,7 @@ async function runRequirementsJob(projectId: number): Promise<void> {
         ...existing,
         state: 'done',
         currentSection: null,
+        sectionStartedAt: undefined,
         error: null,
         result,
         sectionsDone: [...sectionsDone],
@@ -346,9 +365,11 @@ async function runRequirementsJob(projectId: number): Promise<void> {
         ...existing,
         state: 'failed',
         currentSection: null,
+        sectionStartedAt: undefined,
         error:
           lastError ??
           'Generation finished with missing sections — retry generates only the missing ones.',
+        result,
         sectionsDone: [...sectionsDone],
       });
     }

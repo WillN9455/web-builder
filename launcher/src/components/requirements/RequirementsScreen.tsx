@@ -757,12 +757,34 @@ export function RequirementsScreen() {
         </div>
       </div>
 
-      {/* In‑flight BA Agent generation progress bar per §8 spec */}
+      {/* In‑flight BA Agent generation progress per §8 spec — phase-aware.
+          Generation is ONE large batch per section (the model returns its full
+          section at once; rows splice only after the response parses), so the
+          story count is unknowable mid-call — the banner shows a live elapsed
+          clock + step counter until the first rows land, then live row counts.
+          Accessibility markers from the design state spec: role=status +
+          aria-live=polite, text-only changes under the same live region. */}
       {reqGenStatus?.status === 'generating' && (
         <div className="ba-warn" role="status" aria-live="polite">
-          <b>BA Agent generating stories and requirements</b> — {' '}
-          {reqGenStatus.currentSection ? `${reqGenStatus.currentSection} · ` : ''}
-          {reqGenStatus.progress.generated} of {reqGenStatus.progress.total} steps done.
+          <b>BA Agent generating stories and requirements</b> —{' '}
+          {reqGenStatus.result && reqGenStatus.result.storiesGenerated > 0 ? (
+            <>
+              wrote {reqGenStatus.result.storiesGenerated} user stories · now generating{' '}
+              {reqGenStatus.currentSection ?? 'requirements'} — {reqGenStatus.progress.generated} of{' '}
+              {reqGenStatus.progress.total} steps done.
+            </>
+          ) : reqGenStatus.sectionStartedAt ? (
+            <>
+              calling the {reqGenStatus.currentSection ?? 'requirements'} model…{' '}
+              {Math.max(0, Math.round((Date.now() - reqGenStatus.sectionStartedAt) / 1000))}s elapsed ·{' '}
+              {reqGenStatus.progress.generated} of {reqGenStatus.progress.total} steps done.
+            </>
+          ) : (
+            <>
+              {reqGenStatus.currentSection ? `${reqGenStatus.currentSection} · ` : ''}
+              {reqGenStatus.progress.generated} of {reqGenStatus.progress.total} steps done.
+            </>
+          )}
           You can still manually add user stories below.
         </div>
       )}

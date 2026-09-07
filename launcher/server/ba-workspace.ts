@@ -652,9 +652,13 @@ export function registerBaWorkspaceRoutes(app: express.Express): void {
       status,
       progress: { generated: state.generated, total: state.total || REQ_GEN_SECTIONS.length },
       currentSection: state.currentSection ?? undefined,
+      // When the active section started — the phase-aware banner ticks an
+      // elapsed clock off this so "generating" shows live progress, not spin.
+      sectionStartedAt: state.sectionStartedAt ?? undefined,
       // Surfaced so the Requirements tab can show WHY a run failed.
       error: state.error ?? undefined,
-      // Row counts from the finished run — the done banner reports rows, not sections.
+      // Row counts — persisted incrementally while generating (what has landed
+      // so far) and fully on the finished run; the banner reports rows.
       result: state.result ?? undefined,
       elapsedMs: calculateElapsedMs(row.id),
     });

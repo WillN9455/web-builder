@@ -10,9 +10,33 @@
 //
 // The caller owns containment (which file may be written); this module only
 // guarantees the write lands whole or not at all, one at a time per file.
+//
+// Re-entrancy (PR #26 round 4): withPrdLock is a NON-reentrant mutex, and
+// atomicWritePrd takes the lock itself — so a caller that wrapped
+// atomicWritePrd in an outer withPrdLock on the SAME path queued behind its
+// own slot forever (deterministic self-deadlock; the BA auto-draft job hit
+// this exactly). The lock is now re-entrant per async chain via
+// AsyncLocalStorage: a nested acquire of a key the SAME chain already holds
+// runs inline instead of enqueuing. A separate caller (even one the current
+// holder awaits on) has no shared chain store and still queues FIFO behind the
+// slot — the two load-bearing invariants below are unchanged for that case.
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { AsyncLocalStorage } from 'node:async_hooks';
+
+// Keys the CURRENT async chain already holds. Membership lives only inside the
+// lockChain.run() that wraps a queued fn's execution — a caller's own store is
+// never mutated, so a completed nested turn cannot leave a stale key behind
+// that would make a later acquire of the same key run inline while another
+// chain owns the slot.
+const lockChain = new AsyncLocalStorage<Set<string>>();
+
+function withKey(store: Set<string> | undefined, key: string): Set<string> {
+  const next = new Set(store);
+  next.add(key);
+  return next;
+}
 
 // One promise-chain slot per PRD file path. The two load-bearing invariants a
 // future reader must not break:
@@ -34,9 +58,19 @@ const prdLocks = new Map<string, Promise<unknown>>();
 
 export function withPrdLock<T>(filePath: string, fn: () => T | Promise<T>): Promise<T> {
   const key = path.resolve(filePath);
+  const held = lockChain.getStore();
+  // Same async chain already holds this file's lock — run fn inline rather
+  // than enqueueing behind our own slot (which would never settle). Only the
+  // immediate chain level answers: a fresh caller has held === undefined.
+  if (held?.has(key)) return Promise.resolve().then(fn);
   const prev = prdLocks.get(key) ?? Promise.resolve();
   // Invariant 1 — both arms run fn: a failed write never blocks the queue.
-  const run = prev.then(fn, fn);
+  // The chain that OWNS this acquire runs fn inside lockChain.run so the
+  // re-entrant branch above sees its key for the duration of THE fn only.
+  const run = prev.then(
+    () => lockChain.run(withKey(held, key), fn),
+    () => lockChain.run(withKey(held, key), fn),
+  );
   const tail = run.then(
     () => undefined,
     () => undefined,

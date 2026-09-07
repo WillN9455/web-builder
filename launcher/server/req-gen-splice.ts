@@ -203,3 +203,16 @@ export function spliceBusinessReqs(
 
   return { text: lines.join('\n'), brIds };
 }
+
+// A section whose model call yields zero parseable rows must FAIL the section,
+// not advance silently (PR #26 round 4: a silent zero-row 'done' corrupts
+// resume — retry skips the section as already done and nothing lands). The job
+// wraps both callModelStories and callModelBusinessReqs with this; the thrown
+// error lands in the section's catch, which persists the failed state and
+// lets Retry regenerate only this section.
+export function requireRows<T>(rows: T[], section: string): T[] {
+  if (rows.length === 0) {
+    throw new Error(`Model returned no ${section} rows — the section failed; retry will generate only this section.`);
+  }
+  return rows;
+}

@@ -579,9 +579,13 @@ export type RequirementsGenerationStatus = {
   status: 'idle' | 'generating' | 'done' | 'failed';
   progress: { generated: number; total: number };
   currentSection?: string;
+  // When the active section started (epoch ms) — the generating banner ticks
+  // an elapsed clock off this. Absent on legacy/idle states.
+  sectionStartedAt?: number;
   // Why the run failed — the failed banner surfaces it.
   error?: string;
-  // Row counts from the finished run — the done banner reports these.
+  // Row counts — while generating these are "what has landed so far"; the
+  // banner reports live counts, and the done banner reports final rows.
   result?: { storiesGenerated: number; brsGenerated: number; trsGenerated: number };
   elapsedMs?: number;
 };
