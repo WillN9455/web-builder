@@ -1608,6 +1608,38 @@
     font-size: 11px; color: var(--ink-2);
     display: flex; align-items: center; gap: 6px;
   }
+
+  /* ===== N2 · State D′ — confirmed variant (bulk reopen) ===== */
+  /* Mirrors app _shared-ui.scss (btn-danger / btn-secondary / modal-*) with
+     design-file tokens. The modal is scoped absolute inside .screen-body
+     because .screen has backdrop-filter (containing block) + overflow:hidden,
+     which would clip a position:fixed overlay. */
+  .btn-danger { background: var(--rose); color: #fff; }
+  .btn-danger:hover { background: #c66b80; }
+  .btn-secondary { background: #fff; color: var(--ink); border: 1px solid rgba(50,42,92,0.14); }
+  .btn-secondary:hover { background: rgba(50,42,92,0.04); }
+  .screen-body { position: relative; }
+  .modal-backdrop {
+    position: absolute; inset: 0;
+    z-index: 1000;
+    background: rgba(43,37,71,0.45);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: grid; place-items: center;
+    padding: 24px;
+  }
+  .modal-dialog {
+    width: 100%;
+    max-width: 460px;
+    background: #fff;
+    border-radius: var(--r-xl);
+    box-shadow: 0 30px 60px -30px rgba(50,42,92,0.35), 0 10px 24px -12px rgba(50,42,92,0.2);
+    padding: 28px;
+    display: flex; flex-direction: column; gap: 16px;
+  }
+  .modal-title { margin: 0; font-size: 17px; font-weight: 700; color: var(--ink); }
+  .modal-body { font-size: 13.5px; color: var(--ink); line-height: 1.55; display: flex; flex-direction: column; gap: 10px; }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px; }
 </style>
 <body>
 <div class="doc">
@@ -1618,7 +1650,7 @@
       <div class="doc-title">Idea Hub — Project Background (v5.3)</div>
       <div class="doc-sub">Long-form source documents for a Requirements-stage project — <b>idea</b>, <b>personas</b>, <b>user journeys</b>, <b>PRD</b>, <b>glossary</b>, <b>business rules</b>, and <b>risks</b>. Every artifact moves through its own <code style="font-family: var(--font-mono);">Draft → In Review (SA) → Returned / Approved</code> workflow — no bulk handoff. Read-only for SA, devs, designers, and QA. For the curated, signed-off list of business &amp; technical requirements grouped by user story, see <a href="requirements.html"><b>requirements.html</b></a>.</div>
     </div>
-    <div class="doc-meta">v5.3 · launcher/design/background.html<br/>4 screens (12–14 + State D)</div>
+    <div class="doc-meta">v5.3 · launcher/design/background.html<br/>5 screens (12–14 + State D ×2)</div>
   </header>
 
   <nav class="toc">
@@ -1626,6 +1658,7 @@
     <a href="#s13"><b>13</b> Project Background — unsaved edits (dirty file)</a>
     <a href="#s14"><b>14</b> Project Background — file in SA review (comment thread)</a>
     <a href="#sD"><b>D</b> Project context ready (confirmation gate)</a>
+    <a href="#sD2"><b>D′</b> Project context ready — confirmed (bulk reopen)</a>
   </nav>
 
   <section class="screen" id="s12">
@@ -2409,6 +2442,130 @@ available  ──request──▶ pending   ──approve──▶ on_loan
           </div>
 
         </main>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════════ State D′ · context-ready CONFIRMED view (bulk reopen) ═════════════ -->
+  <!-- Mirrors the shipped ContextReadyView confirmed variant (alreadyConfirmed
+       branch) + the "Send all back to Draft?" ConfirmDialog. Sprint/Design/
+       Build/QA are unlocked here — no aria-disabled. The dialog mockup is
+       scoped absolute inside .screen-body (see N2 CSS note). -->
+  <section class="screen" id="sD2">
+    <div class="screen-label">
+      <span class="num">D′</span>
+      <span class="name">Project context ready — confirmed</span>
+      <span class="route">/projects/:id/background · State D (confirmed) + Send all back to Draft</span>
+    </div>
+    <div class="screen-body">
+      <div class="app">
+        <aside class="side">
+          <div class="brand"><div class="brand-mark">IH</div><div class="brand-name">Idea Hub</div></div>
+          <div>
+            <div class="menu-label">Menu</div>
+            <nav class="nav">
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12l9-9 9 9 M5 10v10h14V10"/></svg> Overview</a>
+              <a href="#" class="active"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h11l3 3v13H5z M16 4v3h3 M8 11h8 M8 14h8 M8 17h5"/></svg> Project Background <span class="count">17</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3h7v7 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> Requirements <span class="count">15</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Sprint <span class="count">12</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z M4 9h16 M9 4v16"/></svg> Design</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg> Build <span class="count">12</span></a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="9" r="3"/><path d="M3 19c0-3 2.7-5 6-5s6 2 6 5 M14 19c0-3 2.7-5 6-5"/></svg> Agents</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 12l2 2 4-4 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg> QA</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> Activity</a>
+              <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 8H3 M21 16H3 M5 4h14v16H5z"/></svg> Artifacts</a>
+            </nav>
+          </div>
+          <div class="side-foot">
+            <a href="#"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 3h6v6 M21 3l-9 9 M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg> ← All projects</a>
+          </div>
+        </aside>
+        <main class="main">
+          <div class="topbar">
+            <a href="#" style="font-size:13px; color: var(--ink-2);">← Projects</a>
+            <h1>Tenant Maintenance</h1>
+            <div style="margin-left: auto; display:flex; align-items:center; gap: 10px;">
+              <span class="pill inprog"><span class="dot"></span> Requirements</span>
+            </div>
+          </div>
+
+          <!-- State D card — confirmed variant -->
+          <div class="state-d" role="region" aria-labelledby="sD2-h">
+
+            <!-- Mint checkmark header -->
+            <div class="state-d-head">
+              <div class="state-d-check">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg>
+              </div>
+              <div>
+                <h3 id="sD2-h">Project context ready</h3>
+                <p>All 17 background documents are approved. This is the one-shot that locks context into Requirements and opens the four downstream tabs.</p>
+              </div>
+            </div>
+
+            <!-- 5-band Approved summary (17/17) -->
+            <div class="state-d-summary" aria-label="Approved count per band">
+              <div class="state-d-band"><div class="n">3 / 3</div><div class="lbl">Core PRD</div></div>
+              <div class="state-d-band"><div class="n">5 / 5</div><div class="lbl">Scope &amp; rules</div></div>
+              <div class="state-d-band"><div class="n">4 / 4</div><div class="lbl">Data &amp; access</div></div>
+              <div class="state-d-band"><div class="n">4 / 4</div><div class="lbl">Planning &amp; risk</div></div>
+              <div class="state-d-band"><div class="n">1 / 1</div><div class="lbl">SA handoff</div></div>
+            </div>
+
+            <!-- Lavender explainer -->
+            <div class="state-d-explainer">
+              Confirming writes the locked context into Requirements and unlocks Sprint, Design, Build, and QA in one shot.
+              The Design, Build, and QA agents read these docs as the brief for every story. Once confirmed you can still
+              revoke individual files, but the tabs stay open (warn-only) — we don't re-lock.
+            </div>
+
+            <!-- Compact 17-artifact Approved list -->
+            <div class="state-d-list" aria-label="17 approved artifacts">
+              <div class="state-d-list-row"><div><div>Main PRD</div><div class="path">PRD/prd.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>Personas</div><div class="path">PRD/personas.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>User journeys</div><div class="path">PRD/user-journeys.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>Glossary</div><div class="path">PRD/glossary.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>Stakeholder map</div><div class="path">PRD/stakeholder-map.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>Business rules</div><div class="path">PRD/business-rules.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>Assumptions</div><div class="path">PRD/assumptions.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>Open questions log</div><div class="path">PRD/open-questions.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>Data model</div><div class="path">PRD/data-model.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>Data flow</div><div class="path">PRD/data-flow.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>RBAC matrix</div><div class="path">PRD/rbac-matrix.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>NFR catalog</div><div class="path">PRD/nfr-catalog.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>Phasing plan</div><div class="path">PRD/phasing-plan.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>Traffic profile</div><div class="path">PRD/traffic-profile.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>Cost model</div><div class="path">PRD/cost-model.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>Risks</div><div class="path">PRD/risks.md</div></div><div class="ok">Approved ✓</div></div>
+              <div class="state-d-list-row"><div><div>Tech decision brief</div><div class="path">PRD/tech-decision-brief.md</div></div><div class="ok">Approved ✓</div></div>
+            </div>
+
+            <!-- Actions — confirmed variant (ContextReadyView alreadyConfirmed branch) -->
+            <div class="state-d-actions">
+              <span class="state-d-foot" role="status">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M5 12l5 5L20 7"/></svg>
+                Context confirmed — the downstream tabs are unlocked.
+              </span>
+              <button class="btn btn-ghost">← Back to artifacts</button>
+              <button class="btn btn-danger">Send all back to Draft</button>
+            </div>
+          </div>
+
+        </main>
+      </div>
+
+      <!-- "Send all back to Draft?" confirm dialog (mirrors ConfirmDialog.tsx) -->
+      <div class="modal-backdrop">
+        <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="sD2-dlg-h" aria-describedby="sD2-dlg-d">
+          <h2 id="sD2-dlg-h" class="modal-title">Send all back to Draft?</h2>
+          <div id="sD2-dlg-d" class="modal-body">
+            Every approved artifact returns to Draft and is open for editing again. You will need to send each one for SA review and get it approved again before the project context can be re-confirmed.
+          </div>
+          <div class="modal-actions">
+            <button class="btn btn-secondary">Keep approved</button>
+            <button class="btn btn-danger">Send all back to Draft</button>
+          </div>
+        </div>
       </div>
     </div>
   </section>
