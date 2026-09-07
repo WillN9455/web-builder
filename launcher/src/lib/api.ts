@@ -390,6 +390,10 @@ export type BaFilesResponse = {
   contextReady: boolean;
   contextConfirmed: boolean;
   contextChangedSinceConfirm: boolean;
+  // Fix #3 — the last completed generation is stale (an approved artifact
+  // reverted since it finished): the confirmed card shows "Regenerate
+  // requirements" and the next trigger reconciles instead of duplicating.
+  requirementsStale: boolean;
   // BA auto-draft generation state (AC-17/AC-18) — null when the project never
   // had a run; the screen's empty state + manual trigger own that case.
   generation: BaGeneration | null;
@@ -600,6 +604,10 @@ export type RequirementsGenerationStatus = {
   // Row counts — while generating these are "what has landed so far"; the
   // banner reports live counts, and the done banner reports final rows.
   result?: { storiesGenerated: number; brsGenerated: number; trsGenerated: number };
+  // Fix #3 — how this/last run ran: 'reconcile' diffs against existing
+  // origin=generated rows (echo = keep/update, omitted = removed). Absent on
+  // pre-reconcile states — treated as 'generate'.
+  mode?: 'generate' | 'reconcile';
   elapsedMs?: number;
 };
 

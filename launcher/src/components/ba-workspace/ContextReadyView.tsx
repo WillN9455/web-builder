@@ -27,6 +27,13 @@ type ContextReadyViewProps = {
   onReopenFile: (filename: string) => void;
   reopeningFile: boolean;
   registerReopenFileRef: (filename: string) => (el: HTMLButtonElement | null) => void;
+  // Fix #3 — shown only in the confirmed variant when an approved artifact
+  // reverted after the last completed generation: re-runs generation in
+  // reconcile mode (updates/removes/adds against the existing generated
+  // rows). The trigger itself is the action — no confirm dialog.
+  requirementsStale: boolean;
+  onRegenerate: () => void;
+  regenerating: boolean;
 };
 
 export function ContextReadyView({
@@ -43,6 +50,9 @@ export function ContextReadyView({
   onReopenFile,
   reopeningFile,
   registerReopenFileRef,
+  requirementsStale,
+  onRegenerate,
+  regenerating,
 }: ContextReadyViewProps) {
   const bandSummary = bandLabels.map((b) => {
     const inBand = files.filter((f) => f.band === b.key);
@@ -125,6 +135,11 @@ export function ContextReadyView({
             <button type="button" className="btn btn-ghost" onClick={onBackToArtifacts}>
               ← Back to artifacts
             </button>
+            {requirementsStale && (
+              <button type="button" className="btn btn-soft" disabled={regenerating} onClick={onRegenerate}>
+                {regenerating ? 'Regenerating…' : 'Regenerate requirements'}
+              </button>
+            )}
             <button
               type="button"
               className="btn btn-danger"

@@ -13,7 +13,15 @@
 
 import { spawn, execFileSync } from 'node:child_process';
 import { collectExistingIds, nextFreeId, parseRequirements } from '../server/requirements-model.js';
-import { reconcileSectionsDone, requireRows, spliceBusinessReqs, spliceStories } from '../server/req-gen-splice.js';
+import {
+  fileHasGeneratedRows,
+  reconcileBusinessReqs,
+  reconcileSectionsDone,
+  reconcileStories,
+  requireRows,
+  spliceBusinessReqs,
+  spliceStories,
+} from '../server/req-gen-splice.js';
 import fs from 'node:fs';
 import net from 'node:net';
 import os from 'node:os';
@@ -190,7 +198,11 @@ async function main(): Promise<void> {
 
   const child = spawn(path.join(LAUNCHER, 'node_modules', '.bin', 'tsx'), [path.join(tmp, 'server', 'index.ts')], {
     cwd: LAUNCHER,
-    env: { ...process.env, PORT: String(port) },
+    // OLLAMA_HOST points at a dead port so a triggered req-gen job's model
+    // fetch fails in ms (connection refused — callOllama has no retry loop):
+    // no live Ollama is needed, fixtures stay synthetic, and the reconcile
+    // tests below assert the FAILED run keeps artifactsChanged=true.
+    env: { ...process.env, PORT: String(port), OLLAMA_HOST: 'http://127.0.0.1:9' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   const serverErr: string[] = [];
@@ -877,6 +889,213 @@ async function main(): Promise<void> {
       zeroRowError instanceof Error && /Model returned no business requirements/.test(zeroRowError.message),
     );
 
+    // ── Reconcile mode (fix #3, req-gen-splice.ts): a run that starts from
+    // existing origin=generated rows must diff — echo valid generated ids,
+    // update in place, remove omitted generated rows, append unknowns — and a
+    // no-change echo must be a byte-identical no-op (the caller skips the
+    // write). Pure module, same AC-9 bar as the generate-mode splices above. ──
+    const us0 = splicedJ.usIds[0] ?? '';
+    const us1 = splicedJ.usIds[1] ?? '';
+    const genTr2Id =
+      reparsed.stories
+        .find((st: any) => st.usId === us1)
+        ?.reqs?.find((r: any) => r.id.startsWith('TR-'))?.id ?? '';
+    const genBr2Id =
+      allBrRows(reparsedP).find((r: any) => r.origin === 'generated' && r.id !== nextBr)?.id ?? '';
+    check(
+      'reconcile: fixture resolves both generated ids (story TR + second BR)',
+      genTr2Id.startsWith('TR-') &&
+        genTr2Id !== nextTr &&
+        genBr2Id.startsWith('BR-') &&
+        genBr2Id !== nextBr,
+    );
+
+    const echoTr = (trId: string | null, text: string, priority: unknown) => ({ trId, text, priority });
+    const echoStory = (i: 0 | 1, trs: ReturnType<typeof echoTr>[]) => ({
+      usId: i === 0 ? us0 : us1,
+      ...genStories[i],
+      trs,
+    });
+    const bothStoryEchoes = () => [
+      echoStory(0, [echoTr(nextTr, 'Persist a due-back date with each loan', 'must')]),
+      echoStory(1, [echoTr(genTr2Id, 'Queue the digest email weekly', 'should')]),
+    ];
+
+    const rcNoChange = reconcileStories(splicedJ.text, bothStoryEchoes());
+    check('reconcile: no-change echo is a byte-identical no-op (AC-9)', rcNoChange.text === splicedJ.text);
+    eq('reconcile: no-change ops are zero', rcNoChange.ops, { added: 0, updated: 0, removed: 0 });
+    eq('reconcile: no-change storyIds keep desired order', rcNoChange.storyIds, [us0, us1]);
+
+    const rcUpd = reconcileStories(splicedJ.text, [
+      { ...echoStory(0, [echoTr(nextTr, 'Persist a due-back date with each loan', 'must')]), soThat: 'I can plan my weekend projects faster' },
+      echoStory(1, [echoTr(genTr2Id, 'Queue the digest email weekly', 'should')]),
+    ]);
+    eq('reconcile: story update ops', rcUpd.ops, { added: 0, updated: 1, removed: 0 });
+    const updParsed = parseRequirements(splicedP.text, rcUpd.text);
+    const updStory = updParsed.stories.find((st: any) => st.usId === us0);
+    check('reconcile: story update rewrites soThat in place', updStory?.soThat === 'I can plan my weekend projects faster');
+    eq(
+      'reconcile: story update preserves status/owner',
+      [updStory?.status, updStory?.owner],
+      [newStory?.status, newStory?.owner],
+    );
+    check(
+      'reconcile: manual stories survive an update',
+      updParsed.stories.map((st: any) => st.usId).includes('US-01') &&
+        updParsed.stories.map((st: any) => st.usId).includes('US-02'),
+    );
+
+    const rcRm = reconcileStories(splicedJ.text, [echoStory(0, [echoTr(nextTr, 'Persist a due-back date with each loan', 'must')])]);
+    eq('reconcile: omitted story is removed (ops)', rcRm.ops, { added: 0, updated: 0, removed: 1 });
+    check('reconcile: removed story leaves no trace', !rcRm.text.includes(us1) && !rcRm.text.includes(genTr2Id));
+    const rmParsed = parseRequirements(splicedP.text, rcRm.text);
+    eq(
+      'reconcile: removal keeps manual + remaining story ids',
+      rmParsed.stories.map((st: any) => st.usId),
+      ['US-01', 'US-02', us0],
+    );
+    check('reconcile: removal preserves the file header', rcRm.text.startsWith('# User journeys'));
+
+    const rcAdd = reconcileStories(splicedJ.text, [
+      ...bothStoryEchoes(),
+      { usId: null, title: 'Flag a lost tool', asA: 'lender', iWantTo: 'report a tool as lost', soThat: 'the borrower is billed', priority: 'must', trs: [] },
+    ]);
+    eq('reconcile: unknown story is appended (ops)', rcAdd.ops, { added: 1, updated: 0, removed: 0 });
+    const addParsed = parseRequirements(splicedP.text, rcAdd.text);
+    const addedStory = addParsed.stories.find(
+      (st: any) => st.origin === 'generated' && ![us0, us1].includes(st.usId),
+    );
+    check('reconcile: appended story stamps origin=generated', addedStory?.origin === 'generated');
+    eq('reconcile: storyIds = reused + appended in desired order', rcAdd.storyIds, [us0, us1, addedStory?.usId ?? '']);
+
+    const rcTrAdd = reconcileStories(splicedJ.text, [
+      echoStory(0, [echoTr(nextTr, 'Persist a due-back date with each loan', 'must'), { trId: null, text: 'Send a reminder the day before due', priority: 'must' }]),
+      echoStory(1, [echoTr(genTr2Id, 'Queue the digest email weekly', 'should')]),
+    ]);
+    check('reconcile: added TR increments trCount', rcTrAdd.trCount === 1);
+    check(
+      'reconcile: added TR renders a generated-stamped row',
+      /- TR-\d{3} \| must \| draft \| BA \| Send a reminder the day before due/.test(rcTrAdd.text) &&
+        /<!-- TR-\d{3}: origin=generated -->/.test(rcTrAdd.text),
+    );
+
+    const rcTrOmit = reconcileStories(splicedJ.text, [
+      echoStory(0, []),
+      echoStory(1, [echoTr(genTr2Id, 'Queue the digest email weekly', 'should')]),
+    ]);
+    const trOmitParsed = parseRequirements(splicedP.text, rcTrOmit.text);
+    const trOmit0 = trOmitParsed.stories.find((st: any) => st.usId === us0);
+    const trOmit1 = trOmitParsed.stories.find((st: any) => st.usId === us1);
+    check(
+      'reconcile: omitted TR is genuinely removed, sibling echo untouched',
+      (trOmit0?.reqs ?? []).filter((r: any) => r.type === 'TR').length === 0 &&
+        (trOmit1?.reqs ?? []).filter((r: any) => r.type === 'TR').length === 1,
+    );
+
+    const rcTrUpd = reconcileStories(splicedJ.text, [
+      echoStory(0, [echoTr(nextTr, 'Persist a due-back date plus a borrower note', 'must')]),
+      echoStory(1, [echoTr(genTr2Id, 'Queue the digest email weekly', 'should')]),
+    ]);
+    check('reconcile: revised TR counts as changed', rcTrUpd.trCount === 1);
+    const trUpdParsed = parseRequirements(splicedP.text, rcTrUpd.text);
+    const trUpdRow = trUpdParsed.stories.find((st: any) => st.usId === us0)?.reqs?.find((r: any) => r.id === nextTr);
+    eq(
+      'reconcile: revised TR keeps its id and text',
+      [trUpdRow?.id, trUpdRow?.text],
+      [nextTr, 'Persist a due-back date plus a borrower note'],
+    );
+
+    const rcKeep = reconcileStories(splicedJ.text, [], [us0, us1]);
+    check(
+      'reconcile: keep-listed stories survive with no desired set (no-op)',
+      rcKeep.text === splicedJ.text && rcKeep.ops.added === 0 && rcKeep.ops.updated === 0 && rcKeep.ops.removed === 0,
+    );
+    const rcWipe = reconcileStories(splicedJ.text, []);
+    eq('reconcile: empty desired wipes only generated stories (ops)', rcWipe.ops, { added: 0, updated: 0, removed: 2 });
+    check(
+      'reconcile: wiped text keeps manual stories and header',
+      rcWipe.text.startsWith('# User journeys') && rcWipe.text.includes('US-01') && rcWipe.text.includes('US-02') && !rcWipe.text.includes(us0),
+    );
+
+    const rcUnknown = reconcileStories(splicedJ.text, [
+      { usId: 'US-99', title: 'Brand new via unknown echo', asA: 'lender', iWantTo: 'report a tool as lost', soThat: 'the borrower is billed', priority: 'must', trs: [] },
+    ]);
+    eq('reconcile: unknown echo adds + omitted stories are removed (ops)', rcUnknown.ops, { added: 1, updated: 0, removed: 2 });
+
+    const rcGarbled = reconcileStories(
+      splicedJ.text,
+      [{ usId: us0, title: '', asA: '', iWantTo: '', soThat: '', priority: 'must', trs: [] }],
+      [us0, us1],
+    );
+    check('reconcile: garbled echo cannot wipe a story (no-op)', rcGarbled.text === splicedJ.text && rcGarbled.ops.updated === 0);
+
+    // BR-level reconcile mirrors the story checks against §8 rows.
+    const echoBr = (brId: string | null, text: string, priority: unknown, storyUsId: string | null) => ({
+      brId,
+      text,
+      priority,
+      storyUsId,
+    });
+    const brEchoes = () => [
+      echoBr(nextBr, 'Every loan shows its due-back date', 'must', us0),
+      echoBr(genBr2Id, 'Overdue items are surfaced weekly', 'should', us1),
+    ];
+
+    const rcBrNoChange = reconcileBusinessReqs(splicedP.text, brEchoes());
+    check('reconcile: no-change BR echo is a byte-identical no-op (AC-9)', rcBrNoChange.text === splicedP.text);
+    eq('reconcile: no-change BR ops are zero', rcBrNoChange.ops, { added: 0, updated: 0, removed: 0 });
+
+    const rcBrUpd = reconcileBusinessReqs(splicedP.text, [
+      echoBr(nextBr, 'Every loan shows its due-back date and condition', 'must', us1),
+      echoBr(genBr2Id, 'Overdue items are surfaced weekly', 'should', us1),
+    ]);
+    eq('reconcile: BR update ops', rcBrUpd.ops, { added: 0, updated: 1, removed: 0 });
+    const brUpdParsed = parseRequirements(rcBrUpd.text, splicedJ.text);
+    const brUpdRow = allBrRows(brUpdParsed).find((r: any) => r.id === nextBr);
+    eq(
+      'reconcile: BR update rewrites text + story link',
+      [brUpdRow?.text, brUpdRow?.storyUsId],
+      ['Every loan shows its due-back date and condition', us1],
+    );
+    check(
+      'reconcile: manual BRs survive an update',
+      ['BR-001', 'BR-002', 'BR-004'].every((id) => allBrRows(brUpdParsed).some((r: any) => r.id === id)),
+    );
+
+    const rcBrRm = reconcileBusinessReqs(splicedP.text, [echoBr(nextBr, 'Every loan shows its due-back date', 'must', us0)]);
+    eq('reconcile: omitted BR is removed (ops)', rcBrRm.ops, { added: 0, updated: 0, removed: 1 });
+    check('reconcile: removed BR leaves no trace', !rcBrRm.text.includes(genBr2Id));
+
+    const rcBrAdd = reconcileBusinessReqs(splicedP.text, [
+      ...brEchoes(),
+      { brId: null, text: 'Late fees accrue per calendar day', priority: 'should', storyUsId: null },
+    ]);
+    eq('reconcile: unknown BR is appended (ops)', rcBrAdd.ops, { added: 1, updated: 0, removed: 0 });
+    const brAddParsed = parseRequirements(rcBrAdd.text, splicedJ.text);
+    const addedBr = allBrRows(brAddParsed).find((r: any) => r.text === 'Late fees accrue per calendar day');
+    const addedBrId = addedBr?.id ?? '';
+    check(
+      'reconcile: appended BR stamps origin=generated with a fresh id',
+      addedBr?.origin === 'generated' &&
+        addedBrId !== '' &&
+        !['BR-001', 'BR-002', 'BR-004', nextBr, genBr2Id].includes(addedBrId),
+    );
+
+    const rcBrKeep = reconcileBusinessReqs(splicedP.text, [], [nextBr, genBr2Id]);
+    check(
+      'reconcile: keep-listed BRs survive with no desired set (no-op)',
+      rcBrKeep.text === splicedP.text && rcBrKeep.ops.added === 0 && rcBrKeep.ops.updated === 0 && rcBrKeep.ops.removed === 0,
+    );
+
+    check(
+      'reconcile: fileHasGeneratedRows flags spliced journeys only',
+      fileHasGeneratedRows(splicedJ.text) === true && fileHasGeneratedRows(journeys0) === false,
+    );
+    check(
+      'reconcile: fileHasGeneratedRows flags spliced PRD only',
+      fileHasGeneratedRows(splicedP.text) === true && fileHasGeneratedRows(prd0) === false,
+    );
+
     // ── Stale-run reconcile (round 4, req-gen-state.ts) — the PR #26 round-4
     // failure shape: heartbeats stayed fresh for hours while the nested PRD
     // write-lock never settled, so heartbeat freshness alone proves nothing
@@ -937,6 +1156,143 @@ async function main(): Promise<void> {
     // on an unconfirmed fixture) — assert the 409 carries a server-side reason.
     check('req-gen: 409 carries a server-side reason', typeof r.body?.error === 'string' && r.body.error.length > 0);
 
+    // ── Requirements staleness + reconcile trigger (fix #3). Runtime wiring:
+    // a done run whose artifacts changed since it finished (artifactsChanged,
+    // set by the per-file transition / reopen-all routes) flips
+    // requirementsStale on GET /files and lets the trigger re-run in
+    // reconcile mode; a done run WITHOUT the flag keeps the done-guard 409.
+    //
+    // Ordering: these run BEFORE the reopen-all tests below — the approved
+    // fixture's trigger must reach a terminal state (failed, via the dead
+    // OLLAMA_HOST) before the mid-run 409 test overwrites the same state
+    // file, and the mixed fixture is restored to 5 Approved via a direct DB
+    // patch (the AC-30 gate blocks draft→in_review without edited_since_send,
+    // so the API cannot restore it). ──
+    const approvedSlug = 'req-verify-approved';
+    const mixedSlug = 'req-verify-mixed';
+    const genStatePath = (pid: number) => path.join(tmp, 'data', 'req-gen', `${pid}.json`);
+    const readGenState = (pid: number): any => {
+      try {
+        return JSON.parse(fs.readFileSync(genStatePath(pid), 'utf8'));
+      } catch {
+        return null;
+      }
+    };
+    const writeGenState = (pid: number, over: Record<string, unknown>) => {
+      fs.mkdirSync(path.join(tmp, 'data', 'req-gen'), { recursive: true });
+      fs.writeFileSync(
+        genStatePath(pid),
+        JSON.stringify({
+          state: 'done',
+          generated: 2,
+          total: 2,
+          startedAt: Date.now(),
+          lastHeartbeatAt: Date.now(),
+          error: null,
+          ...over,
+        }),
+      );
+    };
+    const waitForGenState = async (pid: number, pred: (s: any) => boolean, what: string): Promise<boolean> => {
+      for (let i = 0; i < 100; i++) {
+        const s = readGenState(pid);
+        if (s && pred(s)) return true;
+        await new Promise((res) => setTimeout(res, 100));
+      }
+      console.log(`    [waitForGenState] ${what} timed out; last: ${JSON.stringify(readGenState(pid))}`);
+      return false;
+    };
+
+    // Seed origin=generated rows into the approved fixture's PRD dir — the
+    // done-guard and requirementsStale both key on generated rows existing
+    // (agent-invoker has its own fs wrapper; these files are the input).
+    const GENERATED_JOURNEYS_FIXTURE = [
+      '# User journeys',
+      '',
+      '### US-90 — Generated fixture story',
+      '<!-- story: priority=must status=draft owner=BA origin=generated -->',
+      '',
+      '**As a** tester, **I want to** exercise reconcile, **so that** staleness flips.',
+      '',
+      '- TR-900 | must | draft | BA | Synthetic generated TR row.',
+      '<!-- TR-900: origin=generated -->',
+      '',
+    ].join('\n');
+    const GENERATED_PRD_FIXTURE = [
+      '# PRD',
+      '',
+      '## 8. Business requirements',
+      '',
+      '- BR-900 | must | draft | BA | Synthetic generated BR row.',
+      '<!-- BR-900: story=US-90, origin=generated -->',
+      '',
+    ].join('\n');
+    fs.writeFileSync(path.join(approvedDir, 'PRD', 'user-journeys.md'), GENERATED_JOURNEYS_FIXTURE);
+    fs.writeFileSync(path.join(approvedDir, 'PRD', 'prd.md'), GENERATED_PRD_FIXTURE);
+
+    // 1 — done run with no flag: not stale, trigger still 409s (done-guard).
+    writeGenState(seedIds.approved, {});
+    r = await reqFetch(`/api/projects/${approvedSlug}/ba-workspace/files`);
+    check('stale: GET /files → 17 files, not stale with no flag', r.status === 200 && r.body?.files?.length === 17 && r.body?.requirementsStale === false);
+    r = await json(`/api/projects/${approvedSlug}/trigger-requirements-generation`, 'POST', {});
+    check('stale: trigger on done run without flag → 409 already generated', r.status === 409 && /already generated/i.test(String(r.body?.error)));
+
+    // 2 — same done run + flag: requirementsStale flips on GET /files.
+    writeGenState(seedIds.approved, { artifactsChanged: true });
+    r = await reqFetch(`/api/projects/${approvedSlug}/ba-workspace/files`);
+    eq('stale: requirementsStale true once artifacts changed', r.body?.requirementsStale, true);
+
+    // 3 — trigger now re-enters reconcile: route 200, run labelled reconcile.
+    r = await json(`/api/projects/${approvedSlug}/trigger-requirements-generation`, 'POST', {});
+    check('stale: trigger on done run with flag → 200 reconcile', r.status === 200 && r.body?.ok === true);
+    r = await reqFetch(`/api/projects/${approvedSlug}/requirements-generation-status`);
+    check('stale: status labels the run reconcile', r.body?.mode === 'reconcile');
+
+    // 4 — the run fails in ms (dead OLLAMA_HOST) but MUST keep
+    // artifactsChanged=true + mode=reconcile on the failed state: a dropped
+    // flag would make the retry fall back to generate mode and clobber or
+    // silently no-op the reconciliation.
+    const staleFlagSurvived = await waitForGenState(
+      seedIds.approved,
+      (s) => s.state === 'failed',
+      'stale: waiting for failed run',
+    );
+    check('stale: failed reconcile run reached terminal state', staleFlagSurvived === true);
+    eq('stale: failed run keeps artifactsChanged=true', readGenState(seedIds.approved)?.artifactsChanged, true);
+    eq('stale: failed run keeps mode=reconcile', readGenState(seedIds.approved)?.mode, 'reconcile');
+
+    // 5 — per-file transition mid-run → 409 (fresh heartbeats defeat
+    // reconcileStale; the guard keys on raw pending/generating).
+    writeGenState(seedIds.mixed, {
+      state: 'generating',
+      currentSection: 'user stories',
+      sectionStartedAt: Date.now(),
+      generated: 0,
+    });
+    r = await json(`/api/projects/${mixedSlug}/ba-workspace/files/personas.md/transition`, 'POST', { to: 'draft' });
+    check('stale: per-file revert mid-run → 409 running', r.status === 409 && /running/i.test(String(r.body?.error)));
+
+    // 6 — same revert on a done run → 200, and the route persists
+    // artifactsChanged=true (the staleness signal for the next trigger).
+    writeGenState(seedIds.mixed, {});
+    r = await json(`/api/projects/${mixedSlug}/ba-workspace/files/personas.md/transition`, 'POST', { to: 'draft' });
+    eq('stale: per-file revert on done run → 200 draft', [r.body?.ok, r.body?.filename, r.body?.status], [true, 'personas.md', 'draft']);
+    eq('stale: revert persists artifactsChanged=true', readGenState(seedIds.mixed)?.artifactsChanged, true);
+
+    // Restore the mixed fixture to 5 Approved for the reopen-all tests below
+    // (AC-30 blocks draft→in_review via the API without edited_since_send, so
+    // patch the DB directly), and clear the flag so reopen-all starts clean.
+    const patchPath = path.join(tmp, 'patch-mixed.mts');
+    fs.writeFileSync(
+      patchPath,
+      `import { db } from './server/db.js';\n` +
+        `const info = db.prepare("UPDATE ba_artifacts_status SET status = 'approved' WHERE project_id = ${seedIds.mixed} AND filename IN (${BA_ARTIFACTS.slice(0, 5).map((f) => `'${f}'`).join(',')})").run();\n` +
+        `console.log('PATCH_OK ' + info.changes);\n`,
+    );
+    const patchOut = execFileSync(path.join(LAUNCHER, 'node_modules', '.bin', 'tsx'), [patchPath], { cwd: LAUNCHER }).toString();
+    check('stale: mixed fixture restored to 5 approved', /PATCH_OK 5/.test(patchOut));
+    fs.rmSync(genStatePath(seedIds.mixed), { force: true });
+
     // ── BA-workspace reopen-all (PR #26 follow-up: bulk "send all back to
     // Draft" on the confirmed State D card). One atomic UPDATE of
     // ba_artifacts_status flips every Approved artifact back to Draft; the
@@ -945,8 +1301,6 @@ async function main(): Promise<void> {
     // test writes a req-gen state file with a FRESH heartbeat + section stamp
     // so reconcileStale (req-gen-state.ts) leaves it generating — the route's
     // guard keys on the raw pending/generating state, not staleness. ──
-    const approvedSlug = 'req-verify-approved';
-    const mixedSlug = 'req-verify-mixed';
 
     // 404 — unknown project.
     r = await json(`/api/projects/does-not-exist/background/reopen-all`, 'POST', {});

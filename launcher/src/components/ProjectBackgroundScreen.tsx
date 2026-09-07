@@ -165,6 +165,12 @@ export function ProjectBackgroundScreen() {
   // where it survives the card's unmount (it previously lived in
   // ContextReadyView, whose `return null` blanked the screen).
   const [viewingArtifacts, setViewingArtifacts] = useState(false);
+  // Fix #3 — "Regenerate requirements" on the confirmed State D card, offered
+  // when the last completed generation is stale (an approved artifact
+  // reverted since it finished). The trigger call is the action itself: the
+  // server runs it in reconcile mode (updates/removes/adds against the
+  // existing generated rows) — no confirm dialog needed.
+  const [regenerating, setRegenerating] = useState(false);
 
   // AC-29 — resolve the open file from the tree's full identity, not just the
   // server payload: the synthesized Idea band never appears in filesData.files,
@@ -507,6 +513,33 @@ export function ProjectBackgroundScreen() {
     }
   }, [id, loadFiles, onContextConfirmed, showNotice]);
 
+  // Fix #3 — regenerate stale requirements in reconcile mode. Unlike the
+  // confirm-then-trigger pair, the trigger call is the whole action: the
+  // server's reconcile path updates/removes/adds against the existing
+  // generated rows. A 409 (mid-run, or rows deleted since) surfaces as an
+  // error notice per the baFetch convention — never a success-shaped payload.
+  const handleRegenerateRequirements = useCallback(async () => {
+    setRegenerating(true);
+    try {
+      const triggerResult = await triggerRequirementsGeneration(id ?? '');
+      const running = !!triggerResult.alreadyRunning;
+      showNotice({
+        kind: 'success',
+        text: running
+          ? 'Requirements generation already in progress — the reconcile will resume when it finishes.'
+          : 'Regenerating requirements — the BA Agent will reconcile against the previously generated stories and requirements.',
+      });
+      await loadFiles();
+    } catch (err) {
+      showNotice({
+        kind: 'error',
+        text: err instanceof Error ? err.message : 'Could not regenerate requirements',
+      });
+    } finally {
+      setRegenerating(false);
+    }
+  }, [id, loadFiles, showNotice]);
+
   // ── Shell-level states ───────────────────────────────────────────────────
 
   if (shellError) {
@@ -590,6 +623,9 @@ export function ProjectBackgroundScreen() {
           onReopenFile={openReopenFileDialog}
           reopeningFile={reopeningFile}
           registerReopenFileRef={registerReopenFileRef}
+          requirementsStale={filesData.requirementsStale}
+          onRegenerate={() => void handleRegenerateRequirements()}
+          regenerating={regenerating}
         />
         {/* Bulk reopen — the confirmed State D card's "Send all back to Draft".
             Reverses all 17 approvals at once, so it confirms first (same
