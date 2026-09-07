@@ -581,6 +581,8 @@ export type RequirementsGenerationStatus = {
   currentSection?: string;
   // Why the run failed — the failed banner surfaces it.
   error?: string;
+  // Row counts from the finished run — the done banner reports these.
+  result?: { storiesGenerated: number; brsGenerated: number; trsGenerated: number };
   elapsedMs?: number;
 };
 

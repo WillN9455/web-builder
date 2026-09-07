@@ -24,9 +24,61 @@ import {
   insertAfter,
   isReqPriority,
   nextFreeId,
+  parseStories,
   renderReqRow,
   renderStoryBlock,
 } from './requirements-model.js';
+
+// ── The generation sections (the job's progress units) ─────────────────────
+// One Ollama call per section, run in order. Single source of truth for the
+// progress total — the status route and the job both read this length.
+// (Lives here, in the pure module, so reconcileSectionsDone can name the
+// sections without a circular import back into agent-invoker.ts.)
+
+export const REQ_GEN_SECTIONS = ['user stories', 'business requirements'] as const;
+
+export type ReqGenSection = (typeof REQ_GEN_SECTIONS)[number];
+
+export const STORIES_SECTION: ReqGenSection = 'user stories';
+export const BUSINESS_SECTION: ReqGenSection = 'business requirements';
+
+/**
+ * Bidirectional resume reconcile (runs before the job's section loop):
+ *
+ * - A section whose `origin=generated` rows are already on disk counts as
+ *   done EVEN IF unmarked — a crash between a section's splice write and the
+ *   next persisted state write would otherwise re-run it on retry, and
+ *   nextFreeId would duplicate the rows (the done-guard only reads the state
+ *   file, which says 'failed' after restart).
+ * - A marked section whose rows the user deleted regenerates.
+ *
+ * The same read rehydrates the generated story ids (in generation order) so
+ * a BR-only retry can still link its BRs to the stories a previous run
+ * inserted.
+ */
+export function reconcileSectionsDone(
+  journeys: string,
+  prd: string,
+  marked: string[],
+): { sectionsDone: string[]; storyIds: string[] } {
+  const sectionsDone = new Set<string>(marked);
+  let storyIds: string[] = [];
+  const HAS_MARK = /origin=generated/;
+  if (HAS_MARK.test(journeys)) {
+    storyIds = parseStories(journeys)
+      .stories.filter((s) => s.origin === 'generated')
+      .map((s) => s.usId);
+    sectionsDone.add(STORIES_SECTION);
+  } else {
+    sectionsDone.delete(STORIES_SECTION);
+  }
+  if (HAS_MARK.test(prd)) {
+    sectionsDone.add(BUSINESS_SECTION);
+  } else {
+    sectionsDone.delete(BUSINESS_SECTION);
+  }
+  return { sectionsDone: [...sectionsDone], storyIds };
+}
 
 export type GenStory = {
   title: string;

@@ -13,7 +13,7 @@
 
 import { spawn, execFileSync } from 'node:child_process';
 import { collectExistingIds, nextFreeId, parseRequirements } from '../server/requirements-model.js';
-import { spliceBusinessReqs, spliceStories } from '../server/req-gen-splice.js';
+import { reconcileSectionsDone, spliceBusinessReqs, spliceStories } from '../server/req-gen-splice.js';
 import fs from 'node:fs';
 import net from 'node:net';
 import os from 'node:os';
@@ -800,6 +800,15 @@ async function main(): Promise<void> {
     check(`req-gen: first generated BR takes ${nextBr} (sequence continues)`, !!newBr);
     check('req-gen: generated BR links to its story', newBr?.storyUsId === splicedJ.usIds[0]);
     check('req-gen: generated BR stamps origin=generated', newBr?.origin === 'generated');
+
+    // Bidirectional resume reconcile (round 2): rows on disk ⇒ done even if
+    // unmarked (crash between splice write and state persist must not
+    // duplicate on retry); marked but rows deleted ⇒ regenerate.
+    const r1 = reconcileSectionsDone(splicedJ.text, splicedP.text, []);
+    check('req-gen: unmarked on-disk rows reconcile to done (P2-2 crash window)', r1.sectionsDone.includes('user stories') && r1.sectionsDone.includes('business requirements'));
+    check('req-gen: reconcile rehydrates generated story ids for BR links (P2-1)', r1.storyIds.join(',') === splicedJ.usIds.join(','));
+    const r2 = reconcileSectionsDone(journeys0, prd0, ['user stories', 'business requirements']);
+    check('req-gen: marked sections with deleted rows reconcile to regenerate', r2.sectionsDone.length === 0 && r2.storyIds.length === 0);
 
     // ── Req-gen routes at runtime: idle before the gate, 409 while the 17
     // artifacts are not all Approved (Ollama is not exercised here — the job

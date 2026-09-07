@@ -770,7 +770,9 @@ export function RequirementsScreen() {
       {reqGenStatus?.status === 'done' && (
         <div className="toast" role="status" aria-live="polite">
           <span className="toast-dot" aria-hidden="true" />
-          BA Agent finished generating requirements — {reqGenStatus.progress.generated} artifacts ready.
+          BA Agent finished generating requirements{reqGenStatus.result
+            ? ` — ${reqGenStatus.result.storiesGenerated} stories, ${reqGenStatus.result.brsGenerated} business and ${reqGenStatus.result.trsGenerated} technical requirements ready.`
+            : ` — ${reqGenStatus.progress.generated} of ${reqGenStatus.progress.total} steps done.`}
         </div>
       )}
 

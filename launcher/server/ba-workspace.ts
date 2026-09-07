@@ -654,6 +654,8 @@ export function registerBaWorkspaceRoutes(app: express.Express): void {
       currentSection: state.currentSection ?? undefined,
       // Surfaced so the Requirements tab can show WHY a run failed.
       error: state.error ?? undefined,
+      // Row counts from the finished run — the done banner reports rows, not sections.
+      result: state.result ?? undefined,
       elapsedMs: calculateElapsedMs(row.id),
     });
   });

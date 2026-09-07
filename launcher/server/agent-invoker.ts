@@ -13,7 +13,16 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { readReqGenState, writeReqGenState } from './req-gen-state.js';
-import { spliceBusinessReqs, spliceStories, type GenBr, type GenStory } from './req-gen-splice.js';
+import {
+  BUSINESS_SECTION,
+  reconcileSectionsDone,
+  REQ_GEN_SECTIONS,
+  spliceBusinessReqs,
+  spliceStories,
+  STORIES_SECTION,
+  type GenBr,
+  type GenStory,
+} from './req-gen-splice.js';
 import { getProjectRow, resolveProjectFolder, readStatuses, BA_ARTIFACTS, type ProjectRow } from './ba-workspace.js';
 import { atomicWritePrd, prdFilePath, withPrdLock } from './prd-fs.js';
 import { db } from './db.js';
@@ -23,12 +32,9 @@ import { MODEL, OLLAMA } from './intake.js';
 // One Ollama call per section, run in order. This is the single source of
 // truth for the progress total — the status route reads the same length.
 
-export const REQ_GEN_SECTIONS = ['user stories', 'business requirements'] as const;
-
-type ReqGenSection = (typeof REQ_GEN_SECTIONS)[number];
-
-const STORIES_SECTION: ReqGenSection = 'user stories';
-const BUSINESS_SECTION: ReqGenSection = 'business requirements';
+// The section list + reconcile live in the pure module (req-gen-splice.ts);
+// re-exported here — ba-workspace.ts reads the length as the progress total.
+export { REQ_GEN_SECTIONS };
 
 // ── Timings ────────────────────────────────────────────────────────────────
 // A local model can spend minutes per section; a heartbeat interval (not
@@ -233,16 +239,17 @@ async function runRequirementsJob(projectId: number): Promise<void> {
     return;
   }
 
-  // A section counts as done only if the previous run recorded it AND its
-  // generated rows are still on disk (the user may have deleted them — then
-  // the section regenerates).
-  const sectionsDone = new Set<string>(existing.sectionsDone ?? []);
-  if (sectionsDone.has(STORIES_SECTION) && !fileHasGeneratedRows(journeysPath)) {
-    sectionsDone.delete(STORIES_SECTION);
-  }
-  if (sectionsDone.has(BUSINESS_SECTION) && !fileHasGeneratedRows(prdPath)) {
-    sectionsDone.delete(BUSINESS_SECTION);
-  }
+  // Bidirectional resume reconcile (pure fn in req-gen-splice.ts): rows on
+  // disk ⇒ done even if the crash lost the marker (retry must not re-run the
+  // section — nextFreeId would duplicate); marked but rows deleted ⇒
+  // regenerate. Also rehydrates the generated story ids so a BR-only retry
+  // still links its BRs.
+  const reconciled = reconcileSectionsDone(
+    fs.existsSync(journeysPath) ? fs.readFileSync(journeysPath, 'utf-8') : '',
+    fs.existsSync(prdPath) ? fs.readFileSync(prdPath, 'utf-8') : '',
+    existing.sectionsDone ?? [],
+  );
+  const sectionsDone = new Set<string>(reconciled.sectionsDone);
   const todo = REQ_GEN_SECTIONS.filter((s) => !sectionsDone.has(s));
   if (todo.length === 0) {
     writeReqGenState(projectId, { ...existing, state: 'done', currentSection: null, error: null });
@@ -260,10 +267,11 @@ async function runRequirementsJob(projectId: number): Promise<void> {
     } catch { /* heartbeat is best-effort */ }
   }, HEARTBEAT_MS);
 
-  // US ids allocated by the 'user stories' section — the 'business
-  // requirements' section links BRs to them via storyIndex. Local to this
-  // run: concurrent runs for different projects must not cross-link.
-  const storyIds: string[] = [];
+  // US ids for BR linking: rehydrated from the previous run's generated
+  // stories when the stories section carried over, else filled by this run's
+  // stories section. Local to this run: concurrent runs for different
+  // projects must not cross-link.
+  const storyIds: string[] = [...reconciled.storyIds];
   const result = { storiesGenerated: 0, brsGenerated: 0, trsGenerated: 0 };
   let lastError: string | null = null;
 
@@ -286,6 +294,9 @@ async function runRequirementsJob(projectId: number): Promise<void> {
           if (stories.length > 0) {
             const journeys = fs.readFileSync(journeysPath, 'utf-8');
             const spliced = spliceStories(journeys, stories);
+            if (spliced.usIds.length !== stories.length) {
+              throw new Error('Story splice inserted fewer blocks than the model generated');
+            }
             await withPrdLock(journeysPath, () => atomicWritePrd(journeysPath, spliced.text));
             storyIds.push(...spliced.usIds);
             result.storiesGenerated = spliced.usIds.length;
@@ -296,6 +307,11 @@ async function runRequirementsJob(projectId: number): Promise<void> {
           if (brs.length > 0) {
             const prd = fs.readFileSync(prdPath, 'utf-8');
             const spliced = spliceBusinessReqs(prd, brs, storyIds);
+            if (spliced.brIds.length !== brs.length) {
+              // businessReqInsertIndex found no §8 to write into — nothing
+              // landed, so failing the section is safe (no partial insert).
+              throw new Error('BR splice inserted fewer rows than the model generated — prd.md has no §8 section');
+            }
             await withPrdLock(prdPath, () => atomicWritePrd(prdPath, spliced.text));
             result.brsGenerated = spliced.brIds.length;
           }
