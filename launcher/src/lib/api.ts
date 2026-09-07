@@ -578,7 +578,9 @@ export async function confirmProjectContext(idOrSlug: string): Promise<ConfirmCo
 export type RequirementsGenerationStatus = {
   status: 'idle' | 'generating' | 'done' | 'failed';
   progress: { generated: number; total: number };
-  currentFile?: string;
+  currentSection?: string;
+  // Why the run failed — the failed banner surfaces it.
+  error?: string;
   elapsedMs?: number;
 };
 
@@ -589,24 +591,26 @@ export async function fetchRequirementsGenerationStatus(
 }
 
 export type Success = { ok: true; generationId: string; alreadyRunning?: boolean };
-export type Failed = { ok: false; error: string };
-export type TriggerRequirementsGenResponse = Success | Failed;
 
+// Throws on failure per the baFetch convention — a 409 (gate not met,
+// already generated, already running) must surface as an error, never as a
+// success-shaped payload the caller can misread as "generation started".
 export async function triggerRequirementsGeneration(
   idOrSlug: string,
-): Promise<TriggerRequirementsGenResponse> {
-  const res = await fetch(`/api/projects/${encodeURIComponent(idOrSlug)}/trigger-requirements-generation`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({}),
-  });
-
-  const data = await res.json().catch(() => ({})) as Record<string, unknown>;
-  if (!res.ok) {
-    return { ok: false, error: typeof data.error === 'string' ? data.error : `Trigger generation failed (HTTP ${res.status})` } satisfies TriggerRequirementsGenResponse;
-  }
-
-  return { ok: true, alreadyRunning: !!data.alreadyRunning, generationId: String(data.generationId ?? '') } as TriggerRequirementsGenResponse;
+): Promise<Success> {
+  const data = await baFetch<{ ok: true; generationId?: string; alreadyRunning?: boolean }>(
+    `/api/projects/${encodeURIComponent(idOrSlug)}/trigger-requirements-generation`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    },
+  );
+  return {
+    ok: true,
+    alreadyRunning: !!data.alreadyRunning,
+    generationId: String(data.generationId ?? ''),
+  };
 }
 
 // ── /api/projects/:id/requirements (Requirements tab, screen 15) ───────────

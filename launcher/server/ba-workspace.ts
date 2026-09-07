@@ -20,8 +20,8 @@ import { db } from './db.js';
 import { readGenerationState, retryBaGeneration, type BaGeneration } from './ba-draft.js';
 import { readIdeaSummary, retryIdeaSummary } from './idea-summary.js';
 import { atomicWritePrd } from './prd-fs.js';
-import { triggerRequirementsGeneration, calculateElapsedMs } from './agent-invoker.js';
-import { readReqGenState, writeReqGenState } from './req-gen-state.js';
+import { triggerRequirementsGeneration, calculateElapsedMs, REQ_GEN_SECTIONS } from './agent-invoker.js';
+import { readReqGenState } from './req-gen-state.js';
 
 // ── The 17 artifacts across 5 bands (sitemap § Project Background tab) ────
 // The sitemap list is canonical — the s12 mockup tree omits personas.md, and
@@ -185,7 +185,9 @@ export function prdDir(row: ProjectRow): string {
   return path.join(resolveProjectFolder(row), 'PRD');
 }
 
-function readStatuses(projectId: number): Map<string, BaStatus> {
+// Exported for agent-invoker.ts (the req-gen trigger re-checks the gate) —
+// single implementation per code-quality §Search Before Creating.
+export function readStatuses(projectId: number): Map<string, BaStatus> {
   const rows = db
     .prepare('SELECT filename, status FROM ba_artifacts_status WHERE project_id = ?')
     .all(projectId) as { filename: string; status: string }[];
@@ -630,6 +632,13 @@ export function registerBaWorkspaceRoutes(app: express.Express): void {
       return;
     }
 
+    // Spec §1: before the context gate nothing has been generated or asked
+    // for — report idle even if a stale state file exists.
+    const ctx = contextRow(row.id);
+    if (!ctx?.confirmed) {
+      return res.json({ status: 'idle', progress: { generated: 0, total: 0 } });
+    }
+
     const state = readReqGenState(row.id);
     if (!state) {
       return res.json({ status: 'idle', progress: { generated: 0, total: 0 } });
@@ -641,8 +650,10 @@ export function registerBaWorkspaceRoutes(app: express.Express): void {
 
     res.json({
       status,
-      progress: { generated: state.generated, total: state.total || 2 },
-      currentFile: state.currentFile ?? undefined,
+      progress: { generated: state.generated, total: state.total || REQ_GEN_SECTIONS.length },
+      currentSection: state.currentSection ?? undefined,
+      // Surfaced so the Requirements tab can show WHY a run failed.
+      error: state.error ?? undefined,
       elapsedMs: calculateElapsedMs(row.id),
     });
   });
@@ -666,20 +677,12 @@ export function registerBaWorkspaceRoutes(app: express.Express): void {
       return res.status(409).json({ error: 'Not all artifacts are Approved' });
     }
 
-    // Check / create state idempotently
+    // Already-running check only — the trigger owns state init (a route
+    // pre-write of 'pending' dead-ended every re-trigger: the trigger read
+    // that same 'pending' and 409'd 'Already running' forever).
     const existing = readReqGenState(row.id);
     if (existing && (existing.state === 'pending' || existing.state === 'generating')) {
       return res.json({ ok: true, alreadyRunning: true });
-    }
-    if (existing?.state === 'done' || existing?.state === 'failed') {
-      writeReqGenState(row.id, {
-        state: 'pending',
-        generated: 0,
-        total: BA_ARTIFACTS.length,
-        currentFile: null,
-        startedAt: Date.now(),
-        error: null,
-      });
     }
 
     const result = triggerRequirementsGeneration(row.id);

@@ -16,6 +16,20 @@ When the user clicks "Confirm project context" on the State D confirmation card:
 3. **NEW**: Requirements tab shows a non-blocking progress indicator while generation is in-flight
 4. User can still manually add stories/requirements during auto-generation
 
+**Where generated rows land (SA P0 call):** directly into the canonical
+Requirements surfaces — story blocks (+ their TR rows) appended to
+`user-journeys.md`, BR rows inserted into `prd.md` §8 — via
+requirements-model's insert helpers (`server/req-gen-splice.ts`). Never
+file replacement: `atomicWritePrd` carries the SPLICED text only, so content
+outside inserted scopes is byte-identical (the AC-9 bar; proven per run by
+`scripts/verify-requirements.ts`). The model never writes file text — it
+returns JSON row inputs, and the server allocates ids (`nextFreeId`
+continues the on-disk sequence) and renders the grammar. Every generated
+row stamps `origin=generated` in its meta comment — traceable, mechanically
+cleanable, and the re-trigger guard reads it (a `done` run 409s with
+"delete the generated rows to regenerate" until the rows are gone; a
+`failed` run is re-triggerable and generates only the missing sections).
+
 ---
 
 ## Server Changes
@@ -76,24 +90,17 @@ app.post('/api/projects/:id/trigger-requirements-generation', (req, res) => {
     return res.status(409).json({ error: 'Not all artifacts are Approved' });
   }
 
-  // Check for existing generation
+  // Already-running check only — the TRIGGER owns state init (a route
+  // pre-write of 'pending' dead-ended every re-trigger: the trigger read
+  // that same 'pending' and 409'd 'Already running' forever).
   const existing = readRequirementsGenerationState(row.id);
-  if (existing && existing.status !== 'completed') {
+  if (existing && (existing.state === 'pending' || existing.state === 'generating')) {
     return res.json({ ok: true, alreadyRunning: true });
-  }
-  if (existing?.status === 'completed' || existing?.status === 'error') {
-    // Allow re-trigger
-    writeRequirementsGenerationState(row.id, {
-      status: 'pending',
-      generated: 0,
-      total: BA_ARTIFACTS.length,
-      currentFile: null,
-      startedAt: Date.now(),
-    });
   }
 
   const genId = triggerBaRequirementsGeneration(row.id);
-  res.json({ ok: true, generationId: genId });
+  if (!genId.ok) return res.status(409).json({ ok: false, error: genId.error });
+  res.json({ ok: true, generationId: genId.generationId });
 });
 ```
 
@@ -105,12 +112,19 @@ app.post('/api/projects/:id/trigger-requirements-generation', (req, res) => {
 import fs from 'fs';
 import path from 'path';
 
-// Reuse existing agent channel pattern (same as existing BA document generation)
-// The BA Agent receives a structured prompt:
-// - List of all approved artifact filenames + their paths on disk
-// - Instructions to lean heavily on PRD §1-§7
-// - Output format: user-journeys.md (stories in As-A-I-Want-To-So-That format)
-//   and prd.md §8/§9 (BR/TR lines linked via <!-- BR-NNN: story=US-NN -->)
+// Reuse existing agent channel pattern (same as existing BA document generation).
+// The BA Agent receives a structured prompt (idea.md + all approved artifacts,
+// PRD-weighted: core-PRD band first so the character cap truncates tail bands,
+// never the PRD):
+// - One Ollama call per section (REQ_GEN_SECTIONS: 'user stories', 'business
+//   requirements') — the model returns JSON row inputs, never file text.
+// - The server allocates ids (nextFreeId continues the on-disk sequence) and
+//   splices rows into the canonical files via req-gen-splice.ts:
+//     story blocks + TR rows → user-journeys.md (append, same surface as POST /stories)
+//     BR rows → prd.md §8 (after the last row's trailing meta, QA-5)
+// - Every generated row stamps origin=generated (traceable, mechanically cleanable).
+// - Re-trigger semantics: done + rows still on disk → 409; failed → re-triggerable,
+//   generating only the sections the failed run didn't finish (sectionsDone).
 export function triggerBaRequirementsGeneration(projectId: number): { generationId: string } {
   const row = getProjectRow(projectId);
   if (!row) throw new Error('Project not found');
@@ -134,18 +148,30 @@ export function triggerBaRequirementsGeneration(projectId: number): { generation
 
 **New file**: `server/req-gen-state.ts`
 
-Simple JSON file per project at `<project-folder>/.req-gen/<projectId>.json`:
+JSON file per project at `<launcher>/data/req-gen/<projectId>.json` —
+machine-local state next to `launcher.db`, not project content. Writes are
+atomic (.tmp + rename) so a crash mid-write can never parse as null → idle →
+double-trigger.
 
 ```typescript
 type ReqGenState = {
-  status: 'pending' | 'generating' | 'completed' | 'error';
-  generated: number;
-  total: number;
-  currentFile: string | null;
+  state: 'pending' | 'generating' | 'done' | 'failed';
+  generated: number;      // completed sections (the job's progress unit)
+  total: number;          // REQ_GEN_SECTIONS.length — one exported source of truth
+  currentSection: string | null;
   startedAt: number;
+  lastHeartbeatAt?: number; // refreshed every HEARTBEAT_MS while the job runs
+  error: string | null;     // why a run failed — surfaced by GET status
+  sectionsDone?: string[];  // a failed run's completed sections; retry generates only the rest
   result?: { storiesGenerated: number; brsGenerated: number; trsGenerated: number };
 };
 ```
+
+Stale/restart recovery follows the ba-draft.ts reconciled-read pattern: any
+read of a pending/generating state whose heartbeat is older than STALE_MS
+resolves to failed (persisted once) — an in-flight job can't survive a
+server restart, so the state can never pin the progress bar forever or make
+a project unretriggerable.
 
 ---
 

@@ -14,6 +14,7 @@ import {
   deleteStory,
   fetchRequirements,
   fetchRequirementsGenerationStatus,
+  triggerRequirementsGeneration,
   RequirementsDeleteGuardError,
   RequirementsValidationError,
   updateRequirement,
@@ -149,6 +150,7 @@ export function RequirementsScreen() {
     }
   }, [data?.source, idOrSlug, reqGenStatus?.status]);
 
+
   const showNotice = useCallback((n: Notice) => {
     setNotice(n);
     if (noticeTimer.current !== null) window.clearTimeout(noticeTimer.current);
@@ -165,6 +167,36 @@ export function RequirementsScreen() {
       setLoadState('error');
     }
   }, [idOrSlug]);
+
+  // When a generation run finishes, the rows behind this screen changed on
+  // disk — refetch so the new stories/BR/TR appear without a remount.
+  // Only the generating → done transition refetches; an initial read that is
+  // already 'done' is covered by the mount-time load().
+  const prevGenStatus = useRef<string | null>(null);
+  useEffect(() => {
+    const status = reqGenStatus?.status ?? null;
+    if (status === 'done' && prevGenStatus.current === 'generating') void load();
+    prevGenStatus.current = status;
+  }, [reqGenStatus?.status, load]);
+
+  // Retry after a failed generation run — the failed state is re-triggerable
+  // server-side (the retry generates only the sections the failed run
+  // didn't finish), so the recovery path lives here next to the banner.
+  const [reqGenRetrying, setReqGenRetrying] = useState(false);
+  const retryReqGen = useCallback(async () => {
+    try {
+      await triggerRequirementsGeneration(idOrSlug);
+      const status = await fetchRequirementsGenerationStatus(idOrSlug);
+      setReqGenStatus(status);
+    } catch (err) {
+      showNotice({
+        kind: 'error',
+        text: err instanceof Error ? err.message : 'Could not retry requirements generation',
+      });
+    } finally {
+      setReqGenRetrying(false);
+    }
+  }, [idOrSlug, showNotice]);
 
   useEffect(() => {
     void load();
@@ -727,10 +759,10 @@ export function RequirementsScreen() {
 
       {/* In‑flight BA Agent generation progress bar per §8 spec */}
       {reqGenStatus?.status === 'generating' && (
-        <div className="ba-warn" role="status" aria-live="polite" style={{ padding: 12, background: 'var(--butter)', marginBottom: 12 }}>
+        <div className="ba-warn" role="status" aria-live="polite">
           <b>BA Agent generating stories and requirements</b> — {' '}
-          {reqGenStatus.currentFile ? `${reqGenStatus.currentFile} · ` : ''}
-          {reqGenStatus.progress.generated} of {reqGenStatus.progress.total} artifacts in progress.
+          {reqGenStatus.currentSection ? `${reqGenStatus.currentSection} · ` : ''}
+          {reqGenStatus.progress.generated} of {reqGenStatus.progress.total} steps done.
           You can still manually add user stories below.
         </div>
       )}
@@ -743,8 +775,12 @@ export function RequirementsScreen() {
       )}
 
       {reqGenStatus?.status === 'failed' && (
-        <div className="ba-warn" role="alert" style={{ padding: 12, background: 'var(--butter)', marginBottom: 12 }}>
-          <b>Requirements generation failed</b> — please try confirming project context again from the Background tab.
+        <div className="ba-warn" role="alert">
+          <b>Requirements generation failed</b>
+          {reqGenStatus.error ? ` — ${reqGenStatus.error}` : ' — retry to continue.'}{' '}
+          <button type="button" className="btn btn-secondary" disabled={reqGenRetrying} onClick={() => { setReqGenRetrying(true); void retryReqGen(); }}>
+            {reqGenRetrying ? 'Retrying…' : 'Retry'}
+          </button>
         </div>
       )}
 
