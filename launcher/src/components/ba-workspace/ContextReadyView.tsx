@@ -1,7 +1,6 @@
 // State D — the "Project context ready" confirmation card (background.html
 // #sD). Renders inside the standard per-project shell (locked decision 10 —
 // no stripped chrome). Confirming fires the one-shot gate unlock.
-import { useState } from 'react';
 import type { BaFile } from '../../lib/api';
 
 type ContextReadyViewProps = {
@@ -12,12 +11,22 @@ type ContextReadyViewProps = {
   busy: boolean;
   error: string | null;
   onConfirm: () => void;
+  // "← Back to artifacts" — the parent owns the toggle (it must outlive this
+  // card's unmount: the button shows the full workspace while the gate card
+  // stays reachable again via the workspace's return button).
+  onBackToArtifacts: () => void;
   // Bulk "send all back to Draft" (confirmed variant only). The trigger ref
   // is the button that opens the confirm dialog — focus returns to it on
   // close (ConfirmDialog triggerRef contract).
   onReopenAll: () => void;
   reopening: boolean;
   reopenAllTriggerRef: React.RefObject<HTMLButtonElement>;
+  // Per-file "Send back to Draft" on the list rows (confirmed variant only) —
+  // reverts one artifact via the same AC-27 transition, without touching the
+  // other 16. The parent holds the dialog + the per-row trigger refs.
+  onReopenFile: (filename: string) => void;
+  reopeningFile: boolean;
+  registerReopenFileRef: (filename: string) => (el: HTMLButtonElement | null) => void;
 };
 
 export function ContextReadyView({
@@ -27,14 +36,14 @@ export function ContextReadyView({
   busy,
   error,
   onConfirm,
+  onBackToArtifacts,
   onReopenAll,
   reopening,
   reopenAllTriggerRef,
+  onReopenFile,
+  reopeningFile,
+  registerReopenFileRef,
 }: ContextReadyViewProps) {
-  // "← Back to artifacts" — show the workspace anyway (the card replaces the
-  // two-column grid while it's up).
-  const [showWorkspace, setShowWorkspace] = useState(false);
-
   const bandSummary = bandLabels.map((b) => {
     const inBand = files.filter((f) => f.band === b.key);
     return {
@@ -43,8 +52,6 @@ export function ContextReadyView({
       total: inBand.length,
     };
   });
-
-  if (showWorkspace) return null;
 
   return (
     <div className="state-d" role="region" aria-labelledby="state-d-h">
@@ -87,7 +94,20 @@ export function ContextReadyView({
               <div>{f.title}</div>
               <div className="path">PRD/{f.filename}</div>
             </div>
-            <div className="ok">Approved ✓</div>
+            <div className="ok">
+              Approved ✓
+              {alreadyConfirmed && (
+                <button
+                  type="button"
+                  className="btn btn-soft"
+                  disabled={reopeningFile}
+                  onClick={() => onReopenFile(f.filename)}
+                  ref={registerReopenFileRef(f.filename)}
+                >
+                  {reopeningFile ? 'Sending back…' : 'Send back to Draft'}
+                </button>
+              )}
+            </div>
           </div>
         ))}
       </div>
@@ -102,7 +122,7 @@ export function ContextReadyView({
               </svg>
               Context confirmed — the downstream tabs are unlocked.
             </span>
-            <button type="button" className="btn btn-ghost" onClick={() => setShowWorkspace(true)}>
+            <button type="button" className="btn btn-ghost" onClick={onBackToArtifacts}>
               ← Back to artifacts
             </button>
             <button
@@ -120,7 +140,7 @@ export function ContextReadyView({
             <button type="button" className="btn btn-primary" disabled={busy} onClick={onConfirm}>
               Confirm project context →
             </button>
-            <button type="button" className="btn btn-ghost" onClick={() => setShowWorkspace(true)}>
+            <button type="button" className="btn btn-ghost" onClick={onBackToArtifacts}>
               ← Back to artifacts
             </button>
           </>

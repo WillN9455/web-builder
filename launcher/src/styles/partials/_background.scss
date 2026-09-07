@@ -671,6 +671,17 @@
   display: flex; align-items: center; gap: 4px;
 }
 .state-d-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+/* The workspace row that re-opens the gate card ("← Project context ready"). */
+.state-d-return-row { display: flex; }
+/* Per-file "Send back to Draft" on the confirmed card's list rows — a
+   compact button beside the Approved label inside the row's .ok cell. */
+.state-d-list-row .ok .btn {
+  font-size: 11px;
+  padding: 4px 10px;
+  /* Cancel the cell's uppercase/green label styling — the button is body copy. */
+  text-transform: none;
+  letter-spacing: 0;
+}
 .state-d-foot {
   font-size: 11px; color: var(--ink-2);
   display: flex; align-items: center; gap: 6px;
