@@ -124,7 +124,7 @@ export function baStatusLabel(status: BaStatus): string {
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-type ProjectRow = { id: number; name: string; slug: string; folder_path: string };
+export type ProjectRow = { id: number; name: string; slug: string; folder_path: string };
 
 export type BaFile = {
   filename: string;
@@ -678,6 +678,7 @@ export function registerBaWorkspaceRoutes(app: express.Express): void {
         total: BA_ARTIFACTS.length,
         currentFile: null,
         startedAt: Date.now(),
+        error: null,
       });
     }
 

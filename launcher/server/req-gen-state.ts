@@ -15,6 +15,8 @@ export type ReqGenState = {
   total: number;
   currentFile: string | null;
   startedAt: number;
+  // Terminal states carry a human-readable failure reason; 'pending'/'generating'/'done' persist null.
+  error: string | null;
   result?: { storiesGenerated: number; brsGenerated: number; trsGenerated: number };
 };
 
@@ -54,5 +56,8 @@ export function setReqGenField<K extends keyof ReqGenState>(
   value: ReqGenState[K],
 ): void {
   const existing = readReqGenState(projectId);
-  writeReqGenState(projectId, { ...existing, [key]: value });
+  if (!existing) return; // nothing to update — callers init via writeReqGenState
+  const next: ReqGenState = { ...existing };
+  next[key] = value;
+  writeReqGenState(projectId, next);
 }

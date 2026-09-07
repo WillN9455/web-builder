@@ -6,7 +6,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { readReqGenState, writeReqGenState } from './req-gen-state.js';
-import { getProjectRow, resolveProjectFolder, BA_ARTIFACTS, BaStatus } from './ba-workspace.js';
+import { getProjectRow, resolveProjectFolder, BA_ARTIFACTS, BaStatus, type ProjectRow } from './ba-workspace.js';
 import { db } from './db.js';
 import { MODEL, OLLAMA } from './intake.js';
 import { atomicWritePrd } from './prd-fs.js';
@@ -80,6 +80,7 @@ export function triggerRequirementsGeneration(projectId: number): TriggerResult 
     total: REQ_ARTIFACTS.length,
     currentFile: null,
     startedAt: Date.now(),
+    error: null,
   });
 
   running.add(projectId);
@@ -106,7 +107,7 @@ export function triggerRequirementsGeneration(projectId: number): TriggerResult 
 
 // ── Context assembly (approved artifacts as prompt context) ─────────────────
 
-function buildContext(row: ReturnType<typeof getProjectRow>): string | null {
+function buildContext(row: ProjectRow): string | null {
   try {
     const lines: string[] = [];
     const prdDir = path.join(resolveProjectFolder(row), 'PRD');
