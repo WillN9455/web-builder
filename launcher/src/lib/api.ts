@@ -573,6 +573,19 @@ export async function confirmProjectContext(idOrSlug: string): Promise<ConfirmCo
   });
 }
 
+// Bulk "send all back to Draft" on the confirmed State D card — one atomic
+// server-side UPDATE flips every Approved artifact back to Draft. Throws on
+// 409 (requirements generation mid-run) per the baFetch convention.
+export type ReopenAllResponse = { ok: true; reopened: number };
+
+export async function reopenAllBaFiles(idOrSlug: string): Promise<ReopenAllResponse> {
+  return baFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/background/reopen-all`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  });
+}
+
 // ── /api/projects/:id/requirements-generation-status (auto-generate requirements) ───
 
 export type RequirementsGenerationStatus = {

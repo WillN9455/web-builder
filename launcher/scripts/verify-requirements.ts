@@ -137,6 +137,26 @@ async function main(): Promise<void> {
   fs.writeFileSync(prdPath, PRD_MD);
   fs.writeFileSync(journeysPath, JOURNEYS_MD);
 
+  // Reopen-all fixtures (PR #26 follow-up): req-verify-approved carries all 17
+  // BA_ARTIFACTS on disk + all Approved + context confirmed; req-verify-mixed
+  // carries 5 Approved + 12 Draft. The 17 filenames are hardcoded here rather
+  // than imported from ba-workspace.ts — importing it would pull in db.ts
+  // (better-sqlite3) and open the real launcher.db at module load.
+  const approvedDir = path.join(tmp, 'proj-approved');
+  const mixedDir = path.join(tmp, 'proj-mixed');
+  fs.mkdirSync(path.join(approvedDir, 'PRD'), { recursive: true });
+  fs.mkdirSync(path.join(mixedDir, 'PRD'), { recursive: true });
+  const BA_ARTIFACTS = [
+    'prd.md', 'user-journeys.md', 'personas.md', 'glossary.md', 'stakeholder-map.md',
+    'business-rules.md', 'assumptions.md', 'open-questions.md', 'data-model.md', 'data-flow.md',
+    'rbac-matrix.md', 'nfr-catalog.md', 'phasing-plan.md', 'traffic-profile.md', 'cost-model.md',
+    'risks.md', 'tech-decision-brief.md',
+  ];
+  for (const f of BA_ARTIFACTS) {
+    fs.writeFileSync(path.join(approvedDir, 'PRD', f), `# ${f}\n\nPlaceholder body for the reopen-all fixture.\n`);
+    fs.writeFileSync(path.join(mixedDir, 'PRD', f), `# ${f}\n\nPlaceholder body for the reopen-all fixture.\n`);
+  }
+
   // Isolated server copy + node_modules link + isolated DB (never the dev DB).
   fs.symlinkSync(path.join(LAUNCHER, 'node_modules'), path.join(tmp, 'node_modules'), 'dir');
   fs.cpSync(path.join(LAUNCHER, 'server'), path.join(tmp, 'server'), { recursive: true });
@@ -147,13 +167,26 @@ async function main(): Promise<void> {
     seedPath,
     `import { migrate, db } from './server/db.js';\n` +
       `migrate();\n` +
-      `const info = db.prepare("INSERT INTO project (name, slug, one_liner, folder_path, current_stage, status) VALUES (?, ?, ?, ?, 'PRD', 'active')").run(\n` +
-      `  'Req Verify Fixture', 'req-verify-fixture', 'fixture', ${JSON.stringify(projDir)});\n` +
-      `db.prepare("INSERT INTO project (name, slug, one_liner, folder_path, current_stage, status) VALUES (?, ?, ?, ?, 'PRD', 'active')").run(\n` +
-      `  'Req Verify Empty', 'req-verify-empty', 'fixture', ${JSON.stringify(emptyDir)});\n` +
-      `console.log('seeded', info.lastInsertRowid);\n`,
+      `const ARTIFACTS = ${JSON.stringify(BA_ARTIFACTS)};\n` +
+      `const ins = db.prepare("INSERT INTO project (name, slug, one_liner, folder_path, current_stage, status) VALUES (?, ?, ?, ?, 'PRD', 'active')");\n` +
+      `const fixtureId = Number(ins.run('Req Verify Fixture', 'req-verify-fixture', 'fixture', ${JSON.stringify(projDir)}).lastInsertRowid);\n` +
+      `const emptyId = Number(ins.run('Req Verify Empty', 'req-verify-empty', 'fixture', ${JSON.stringify(emptyDir)}).lastInsertRowid);\n` +
+      `const approvedId = Number(ins.run('Req Verify Approved', 'req-verify-approved', 'fixture', ${JSON.stringify(approvedDir)}).lastInsertRowid);\n` +
+      `const mixedId = Number(ins.run('Req Verify Mixed', 'req-verify-mixed', 'fixture', ${JSON.stringify(mixedDir)}).lastInsertRowid);\n` +
+      `const setStatus = db.prepare('INSERT INTO ba_artifacts_status (project_id, filename, status) VALUES (?, ?, ?)');\n` +
+      `for (const f of ARTIFACTS) setStatus.run(approvedId, f, 'approved');\n` +
+      `for (const f of ARTIFACTS.slice(0, 5)) setStatus.run(mixedId, f, 'approved');\n` +
+      `for (const f of ARTIFACTS.slice(5)) setStatus.run(mixedId, f, 'draft');\n` +
+      `db.prepare("INSERT INTO ba_context (project_id, confirmed, confirmed_at) VALUES (?, 1, datetime('now'))").run(approvedId);\n` +
+      `console.log('SEED_IDS ' + JSON.stringify({ fixture: fixtureId, empty: emptyId, approved: approvedId, mixed: mixedId }));\n`,
   );
-  execFileSync(path.join(LAUNCHER, 'node_modules', '.bin', 'tsx'), [seedPath], { cwd: LAUNCHER });
+  const seedOut = execFileSync(path.join(LAUNCHER, 'node_modules', '.bin', 'tsx'), [seedPath], { cwd: LAUNCHER }).toString();
+  const seedIds = JSON.parse(seedOut.match(/SEED_IDS (\{.*\})/)?.[1] ?? '{}') as {
+    fixture: number;
+    empty: number;
+    approved: number;
+    mixed: number;
+  };
 
   const child = spawn(path.join(LAUNCHER, 'node_modules', '.bin', 'tsx'), [path.join(tmp, 'server', 'index.ts')], {
     cwd: LAUNCHER,
@@ -903,6 +936,72 @@ async function main(): Promise<void> {
     // The route's first guard is the context gate (fires before the artifact check
     // on an unconfirmed fixture) — assert the 409 carries a server-side reason.
     check('req-gen: 409 carries a server-side reason', typeof r.body?.error === 'string' && r.body.error.length > 0);
+
+    // ── BA-workspace reopen-all (PR #26 follow-up: bulk "send all back to
+    // Draft" on the confirmed State D card). One atomic UPDATE of
+    // ba_artifacts_status flips every Approved artifact back to Draft; the
+    // fixtures are req-verify-approved (all 17 on disk, all Approved, context
+    // confirmed) and req-verify-mixed (5 Approved + 12 Draft). The 409 mid-run
+    // test writes a req-gen state file with a FRESH heartbeat + section stamp
+    // so reconcileStale (req-gen-state.ts) leaves it generating — the route's
+    // guard keys on the raw pending/generating state, not staleness. ──
+    const approvedSlug = 'req-verify-approved';
+    const mixedSlug = 'req-verify-mixed';
+
+    // 404 — unknown project.
+    r = await json(`/api/projects/does-not-exist/background/reopen-all`, 'POST', {});
+    check('reopen-all: unknown project → 404', r.status === 404);
+
+    // 409 — requirements generation mid-run. The state file lives at
+    // <tmp>/data/req-gen/<projectId>.json (req-gen-state DIR resolves against
+    // the copied server dir → tmp/data/req-gen).
+    const reopenNow = Date.now();
+    const reqGenDir = path.join(tmp, 'data', 'req-gen');
+    fs.mkdirSync(reqGenDir, { recursive: true });
+    const midRunPath = path.join(reqGenDir, `${seedIds.approved}.json`);
+    fs.writeFileSync(
+      midRunPath,
+      JSON.stringify({
+        state: 'generating',
+        generated: 1,
+        total: 2,
+        currentSection: 'user stories',
+        startedAt: reopenNow - 3 * 60_000,
+        lastHeartbeatAt: reopenNow - 10_000,
+        sectionStartedAt: reopenNow - 10_000,
+        error: null,
+      }),
+    );
+    r = await json(`/api/projects/${approvedSlug}/background/reopen-all`, 'POST', {});
+    check('reopen-all: mid-run generation → 409', r.status === 409);
+    check('reopen-all: 409 carries a server-side reason', typeof r.body?.error === 'string' && r.body.error.length > 0);
+    // Clear the state file so the 200-path tests below are not blocked.
+    fs.rmSync(midRunPath, { force: true });
+
+    // 200 — full reopen on the approved fixture: all 17 flip to Draft.
+    r = await json(`/api/projects/${approvedSlug}/background/reopen-all`, 'POST', {});
+    check('reopen-all: full reopen → 200 ok', r.status === 200 && r.body?.ok === true);
+    eq('reopen-all: full reopen → reopened 17', r.body?.reopened, 17);
+
+    // GET /files after reopen — every artifact Draft, contextReady false, and
+    // contextChangedSinceConfirm true (confirmed but no longer ready). The
+    // files array follows BA_BANDS order, matching BA_ARTIFACTS above.
+    r = await reqFetch(`/api/projects/${approvedSlug}/ba-workspace/files`);
+    check('reopen-all: GET /files → 200', r.status === 200);
+    eq('reopen-all: all 17 files back to Draft', r.body?.files?.map((f: any) => f.status), BA_ARTIFACTS.map(() => 'draft'));
+    eq('reopen-all: contextReady false after reopen', r.body?.contextReady, false);
+    eq('reopen-all: contextChangedSinceConfirm true (confirmed, no longer ready)', r.body?.contextChangedSinceConfirm, true);
+    eq('reopen-all: contextConfirmed still true (warn-only, no re-lock)', r.body?.contextConfirmed, true);
+
+    // Idempotent — nothing Approved → reopened 0, no activity row.
+    r = await json(`/api/projects/${approvedSlug}/background/reopen-all`, 'POST', {});
+    eq('reopen-all: second call → reopened 0 (idempotent)', r.body?.reopened, 0);
+
+    // Partial — the mixed fixture has 5 Approved + 12 Draft → only 5 flip.
+    r = await json(`/api/projects/${mixedSlug}/background/reopen-all`, 'POST', {});
+    eq('reopen-all: partial reopen → reopened 5', r.body?.reopened, 5);
+    r = await reqFetch(`/api/projects/${mixedSlug}/ba-workspace/files`);
+    eq('reopen-all: mixed fixture now all Draft', r.body?.files?.map((f: any) => f.status), BA_ARTIFACTS.map(() => 'draft'));
   } finally {
     child.kill('SIGTERM');
     await new Promise((res) => setTimeout(res, 300));

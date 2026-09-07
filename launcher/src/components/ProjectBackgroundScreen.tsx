@@ -14,6 +14,7 @@ import {
   fetchBaFiles,
   fetchBaIdea,
   fetchBaOpenQuestions,
+  reopenAllBaFiles,
   retryBaGeneration,
   saveBaFile,
   triggerRequirementsGeneration,
@@ -143,6 +144,13 @@ export function ProjectBackgroundScreen() {
   const [notice, setNotice] = useState<Notice | null>(null);
   const [pendingSelect, setPendingSelect] = useState<string | null>(null);
   const treeTriggerRef = useRef<HTMLDivElement>(null);
+  // Bulk "send all back to Draft" on the confirmed State D card — one atomic
+  // server-side UPDATE flips every Approved artifact back to Draft. Confirmed
+  // first via the dialog below; the trigger ref is the button itself so focus
+  // returns to it on close (ConfirmDialog triggerRef contract).
+  const [pendingReopenAll, setPendingReopenAll] = useState(false);
+  const [reopening, setReopening] = useState(false);
+  const reopenAllTriggerRef = useRef<HTMLButtonElement>(null);
 
   // AC-29 — resolve the open file from the tree's full identity, not just the
   // server payload: the synthesized Idea band never appears in filesData.files,
@@ -369,6 +377,33 @@ export function ProjectBackgroundScreen() {
     }
   }, [id, refreshAfterMutation, selectedFile, showNotice]);
 
+  // Bulk reopen — the confirmed State D card's "Send all back to Draft". One
+  // atomic server-side UPDATE (reopen-all route) flips every Approved artifact
+  // back to Draft; the workspace returns via contextReady flipping false, and
+  // the server's contextChangedSinceConfirm warning appears. 409 (requirements
+  // generation mid-run) surfaces as an error notice.
+  const handleReopenAll = useCallback(async () => {
+    setReopening(true);
+    try {
+      await reopenAllBaFiles(id ?? '');
+      // Reopen only flips statuses — bodies on disk are untouched, so the
+      // in-memory body stays accurate. loadFiles refreshes the tree and flips
+      // contextReady back to false, which returns the workspace.
+      await loadFiles();
+      showNotice({
+        kind: 'success',
+        text: 'All approved artifacts are back in Draft — they are open for editing again.',
+      });
+    } catch (err) {
+      showNotice({
+        kind: 'error',
+        text: err instanceof Error ? err.message : 'Could not send the artifacts back to Draft',
+      });
+    } finally {
+      setReopening(false);
+    }
+  }, [id, loadFiles, showNotice]);
+
   const handleConfirmContext = useCallback(async () => {
     setBusy(true);
     try {
@@ -483,6 +518,25 @@ export function ProjectBackgroundScreen() {
           busy={busy}
           error={notice?.kind === 'error' ? notice.text : null}
           onConfirm={handleConfirmContext}
+          onReopenAll={() => setPendingReopenAll(true)}
+          reopening={reopening}
+          reopenAllTriggerRef={reopenAllTriggerRef}
+        />
+        {/* Bulk reopen — the confirmed State D card's "Send all back to Draft".
+            Reverses all 17 approvals at once, so it confirms first (same
+            severity as the AC-27 per-file dialog). */}
+        <ConfirmDialog
+          open={pendingReopenAll}
+          title="Send all back to Draft?"
+          description="Every approved artifact returns to Draft and is open for editing again. You will need to send each one for SA review and get it approved again before the project context can be re-confirmed."
+          confirmLabel="Send all back to Draft"
+          cancelLabel="Keep approved"
+          triggerRef={reopenAllTriggerRef}
+          onClose={() => setPendingReopenAll(false)}
+          onConfirm={() => {
+            setPendingReopenAll(false);
+            void handleReopenAll();
+          }}
         />
       </>
     );

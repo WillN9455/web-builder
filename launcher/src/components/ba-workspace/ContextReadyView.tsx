@@ -12,6 +12,12 @@ type ContextReadyViewProps = {
   busy: boolean;
   error: string | null;
   onConfirm: () => void;
+  // Bulk "send all back to Draft" (confirmed variant only). The trigger ref
+  // is the button that opens the confirm dialog — focus returns to it on
+  // close (ConfirmDialog triggerRef contract).
+  onReopenAll: () => void;
+  reopening: boolean;
+  reopenAllTriggerRef: React.RefObject<HTMLButtonElement>;
 };
 
 export function ContextReadyView({
@@ -21,6 +27,9 @@ export function ContextReadyView({
   busy,
   error,
   onConfirm,
+  onReopenAll,
+  reopening,
+  reopenAllTriggerRef,
 }: ContextReadyViewProps) {
   // "← Back to artifacts" — show the workspace anyway (the card replaces the
   // two-column grid while it's up).
@@ -85,13 +94,27 @@ export function ContextReadyView({
 
       <div className="state-d-actions">
         {alreadyConfirmed ? (
-          <span className="state-d-foot" role="status">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
-              <circle cx="12" cy="12" r="9" />
-              <path d="M5 12l5 5L20 7" />
-            </svg>
-            Context confirmed — the downstream tabs are unlocked.
-          </span>
+          <>
+            <span className="state-d-foot" role="status">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M5 12l5 5L20 7" />
+              </svg>
+              Context confirmed — the downstream tabs are unlocked.
+            </span>
+            <button type="button" className="btn btn-ghost" onClick={() => setShowWorkspace(true)}>
+              ← Back to artifacts
+            </button>
+            <button
+              type="button"
+              className="btn btn-danger"
+              ref={reopenAllTriggerRef}
+              disabled={reopening}
+              onClick={onReopenAll}
+            >
+              {reopening ? 'Sending back…' : 'Send all back to Draft'}
+            </button>
+          </>
         ) : (
           <>
             <button type="button" className="btn btn-primary" disabled={busy} onClick={onConfirm}>

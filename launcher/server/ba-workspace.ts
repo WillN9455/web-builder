@@ -622,6 +622,39 @@ export function registerBaWorkspaceRoutes(app: express.Express): void {
     res.json({ ok: true, contextConfirmed: true, alreadyConfirmed: false });
   });
 
+  // POST /background/reopen-all — bulk "send all back to Draft" on the
+  // confirmed State D card. One atomic UPDATE flips every Approved artifact
+  // back to Draft (the per-file AC-27 transition, applied to all 17 at once)
+  // so the whole set re-enters the normal review flow. Rejects while
+  // requirements generation is mid-run — a run reads the approved docs as its
+  // prompt context, and reopening under it would change the inputs mid-call.
+  // Idempotent: nothing Approved → reopened 0, no activity row.
+  app.post('/api/projects/:id/background/reopen-all', (req, res) => {
+    const row = getProjectRow(req.params.id);
+    if (!row) {
+      res.status(404).json({ error: 'Not found' });
+      return;
+    }
+    // Mid-run guard — same check as the trigger route. The generation state
+    // lives in a per-project JSON file (req-gen-state), not the DB.
+    const existing = readReqGenState(row.id);
+    if (existing && (existing.state === 'pending' || existing.state === 'generating')) {
+      return res.status(409).json({
+        error: 'Requirements generation is running — wait for it to finish before reopening',
+      });
+    }
+    const info = db.prepare(
+      `UPDATE ba_artifacts_status
+       SET status = 'draft', updated_at = datetime('now')
+       WHERE project_id = ? AND status = 'approved'`,
+    ).run(row.id);
+    const reopened = info.changes;
+    if (reopened > 0) {
+      logActivity(row.id, 'BA', `Set all ${reopened} approved artifacts back to Draft`, 'milestone');
+    }
+    res.json({ ok: true, reopened });
+  });
+
   // ── Requirements generation (auto-generate stories + BR/TR from approved PRD) ────
 
   // GET /requirements-generation-status — polled by the client to show progress.
