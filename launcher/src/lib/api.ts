@@ -573,6 +573,52 @@ export async function confirmProjectContext(idOrSlug: string): Promise<ConfirmCo
   });
 }
 
+// ── /api/projects/:id/requirements-generation-status (auto-generate requirements) ───
+
+export type RequirementsGenerationStatus = {
+  status: 'idle' | 'generating' | 'done' | 'failed';
+  progress: { generated: number; total: number };
+  currentSection?: string;
+  // When the active section started (epoch ms) — the generating banner ticks
+  // an elapsed clock off this. Absent on legacy/idle states.
+  sectionStartedAt?: number;
+  // Why the run failed — the failed banner surfaces it.
+  error?: string;
+  // Row counts — while generating these are "what has landed so far"; the
+  // banner reports live counts, and the done banner reports final rows.
+  result?: { storiesGenerated: number; brsGenerated: number; trsGenerated: number };
+  elapsedMs?: number;
+};
+
+export async function fetchRequirementsGenerationStatus(
+  idOrSlug: string,
+): Promise<RequirementsGenerationStatus> {
+  return baFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/requirements-generation-status`);
+}
+
+export type Success = { ok: true; generationId: string; alreadyRunning?: boolean };
+
+// Throws on failure per the baFetch convention — a 409 (gate not met,
+// already generated, already running) must surface as an error, never as a
+// success-shaped payload the caller can misread as "generation started".
+export async function triggerRequirementsGeneration(
+  idOrSlug: string,
+): Promise<Success> {
+  const data = await baFetch<{ ok: true; generationId?: string; alreadyRunning?: boolean }>(
+    `/api/projects/${encodeURIComponent(idOrSlug)}/trigger-requirements-generation`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    },
+  );
+  return {
+    ok: true,
+    alreadyRunning: !!data.alreadyRunning,
+    generationId: String(data.generationId ?? ''),
+  };
+}
+
 // ── /api/projects/:id/requirements (Requirements tab, screen 15) ───────────
 
 import type {

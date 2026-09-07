@@ -13,12 +13,15 @@ import {
   deleteRequirement,
   deleteStory,
   fetchRequirements,
+  fetchRequirementsGenerationStatus,
+  triggerRequirementsGeneration,
   RequirementsDeleteGuardError,
   RequirementsValidationError,
   updateRequirement,
   updateRequirementStatus,
   updateStory,
   type RequirementsResponse,
+  type RequirementsGenerationStatus,
   type RequirementItem,
   type ReqStatus,
   type StoryItem,
@@ -128,6 +131,25 @@ export function RequirementsScreen() {
   const noticeTimer = useRef<number | null>(null);
   const [storyStatusPending, setStoryStatusPending] = useState<string | null>(null);
   const [reqStatusPending, setReqStatusPending] = useState<string | null>(null);
+  // In-flight BA Agent auto‑generation of user stories / BR / TR.
+  const [reqGenStatus, setReqGenStatus] = useState<RequirementsGenerationStatus | null>(null);
+
+  useEffect(() => {
+    if (data?.source !== 'ok') return;
+    (async () => {
+      try {
+        const status = await fetchRequirementsGenerationStatus(idOrSlug);
+        setReqGenStatus(status);
+      } catch { /* silently hide bar when server is unreachable */ }
+    })();
+    if (reqGenStatus?.status === 'generating') {
+      const t = setInterval(async () => {
+        try { await fetchRequirementsGenerationStatus(idOrSlug).then(setReqGenStatus); } catch { /* silent */ }
+      }, 3000);
+      return () => clearInterval(t);
+    }
+  }, [data?.source, idOrSlug, reqGenStatus?.status]);
+
 
   const showNotice = useCallback((n: Notice) => {
     setNotice(n);
@@ -145,6 +167,36 @@ export function RequirementsScreen() {
       setLoadState('error');
     }
   }, [idOrSlug]);
+
+  // When a generation run finishes, the rows behind this screen changed on
+  // disk — refetch so the new stories/BR/TR appear without a remount.
+  // Only the generating → done transition refetches; an initial read that is
+  // already 'done' is covered by the mount-time load().
+  const prevGenStatus = useRef<string | null>(null);
+  useEffect(() => {
+    const status = reqGenStatus?.status ?? null;
+    if (status === 'done' && prevGenStatus.current === 'generating') void load();
+    prevGenStatus.current = status;
+  }, [reqGenStatus?.status, load]);
+
+  // Retry after a failed generation run — the failed state is re-triggerable
+  // server-side (the retry generates only the sections the failed run
+  // didn't finish), so the recovery path lives here next to the banner.
+  const [reqGenRetrying, setReqGenRetrying] = useState(false);
+  const retryReqGen = useCallback(async () => {
+    try {
+      await triggerRequirementsGeneration(idOrSlug);
+      const status = await fetchRequirementsGenerationStatus(idOrSlug);
+      setReqGenStatus(status);
+    } catch (err) {
+      showNotice({
+        kind: 'error',
+        text: err instanceof Error ? err.message : 'Could not retry requirements generation',
+      });
+    } finally {
+      setReqGenRetrying(false);
+    }
+  }, [idOrSlug, showNotice]);
 
   useEffect(() => {
     void load();
@@ -704,6 +756,57 @@ export function RequirementsScreen() {
           </span>
         </div>
       </div>
+
+      {/* In‑flight BA Agent generation progress per §8 spec — phase-aware.
+          Generation is ONE large batch per section (the model returns its full
+          section at once; rows splice only after the response parses), so the
+          story count is unknowable mid-call — the banner shows a live elapsed
+          clock + step counter until the first rows land, then live row counts.
+          Accessibility markers from the design state spec: role=status +
+          aria-live=polite, text-only changes under the same live region. */}
+      {reqGenStatus?.status === 'generating' && (
+        <div className="ba-warn" role="status" aria-live="polite">
+          <b>BA Agent generating stories and requirements</b> —{' '}
+          {reqGenStatus.result && reqGenStatus.result.storiesGenerated > 0 ? (
+            <>
+              wrote {reqGenStatus.result.storiesGenerated} user stories · now generating{' '}
+              {reqGenStatus.currentSection ?? 'requirements'} — {reqGenStatus.progress.generated} of{' '}
+              {reqGenStatus.progress.total} steps done.
+            </>
+          ) : reqGenStatus.sectionStartedAt ? (
+            <>
+              calling the {reqGenStatus.currentSection ?? 'requirements'} model…{' '}
+              {Math.max(0, Math.round((Date.now() - reqGenStatus.sectionStartedAt) / 1000))}s elapsed ·{' '}
+              {reqGenStatus.progress.generated} of {reqGenStatus.progress.total} steps done.
+            </>
+          ) : (
+            <>
+              {reqGenStatus.currentSection ? `${reqGenStatus.currentSection} · ` : ''}
+              {reqGenStatus.progress.generated} of {reqGenStatus.progress.total} steps done.
+            </>
+          )}
+          You can still manually add user stories below.
+        </div>
+      )}
+
+      {reqGenStatus?.status === 'done' && (
+        <div className="toast" role="status" aria-live="polite">
+          <span className="toast-dot" aria-hidden="true" />
+          BA Agent finished generating requirements{reqGenStatus.result
+            ? ` — ${reqGenStatus.result.storiesGenerated} stories, ${reqGenStatus.result.brsGenerated} business and ${reqGenStatus.result.trsGenerated} technical requirements ready.`
+            : ` — ${reqGenStatus.progress.generated} of ${reqGenStatus.progress.total} steps done.`}
+        </div>
+      )}
+
+      {reqGenStatus?.status === 'failed' && (
+        <div className="ba-warn" role="alert">
+          <b>Requirements generation failed</b>
+          {reqGenStatus.error ? ` — ${reqGenStatus.error}` : ' — retry to continue.'}{' '}
+          <button type="button" className="btn btn-secondary" disabled={reqGenRetrying} onClick={() => { setReqGenRetrying(true); void retryReqGen(); }}>
+            {reqGenRetrying ? 'Retrying…' : 'Retry'}
+          </button>
+        </div>
+      )}
 
       <div className="ba-workspace" style={{ gridTemplateColumns: '1fr' }}>
         <div className="ba-doc">

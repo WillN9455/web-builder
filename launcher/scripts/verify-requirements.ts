@@ -12,6 +12,8 @@
 // #18/#19) — this is a plain assert-and-exit script so it also runs in CI.
 
 import { spawn, execFileSync } from 'node:child_process';
+import { collectExistingIds, nextFreeId, parseRequirements } from '../server/requirements-model.js';
+import { reconcileSectionsDone, requireRows, spliceBusinessReqs, spliceStories } from '../server/req-gen-splice.js';
 import fs from 'node:fs';
 import net from 'node:net';
 import os from 'node:os';
@@ -188,6 +190,10 @@ async function main(): Promise<void> {
 
   try {
     console.log(`\n[verify-requirements] API on ${base}, fixture ${tmp}\n`);
+    // Pristine fixture snapshots for the req-gen splice checks below (the
+    // CRUD walk mutates the on-disk files).
+    const prd0 = read(prdPath);
+    const journeys0 = read(journeysPath);
 
     // ── GET (AC-10: populated + no-prd, never 500) ──
     let r = await reqFetch(`/api/projects/${slug}/requirements`);
@@ -741,6 +747,162 @@ async function main(): Promise<void> {
     check('different file: write lands while another path is locked', await independent);
     release2();
     await holder2;
+
+    // PR #26 round-4 regression: agent-invoker used to nest
+    // withPrdLock(path, () => atomicWritePrd(path, …)) on the SAME path.
+    // atomicWritePrd already takes the lock, so the inner acquire queued
+    // behind its own slot forever (non-reentrant mutex, deterministic
+    // self-deadlock — the model call completed, the write never settled).
+    // The AsyncLocalStorage re-entrancy makes a nested same-key acquire run
+    // inline in the current chain; the race must resolve true ~immediately,
+    // never wait out its 1s timeout.
+    const nestedDeadlockRace = Promise.race([
+      withPrdLock(lockPath, () => atomicWrite(lockPath, 're-entrant write\n')).then(() => true),
+      new Promise<boolean>((res) => setTimeout(() => res(false), 1000)),
+    ]);
+    check(
+      're-entrant: nested same-path withPrdLock→atomicWritePrd completes, no self-deadlock (round 4)',
+      await nestedDeadlockRace,
+    );
+    check('re-entrant: nested write landed whole', read(lockPath) === 're-entrant write\n');
+
+    // ── Req-gen splices (SA P0 redesign: rows land in the canonical files via
+    // the requirements-model insert helpers — never file replacement). The
+    // splice modules are pure, so these run without the API; the byte-identity
+    // bar is the same AC-9 one the walk above proves for the CRUD routes. ──
+    const genStories = [
+      {
+        title: 'Track a borrowed tool return',
+        asA: 'lender',
+        iWantTo: 'see when a borrowed tool is due back',
+        soThat: 'I can plan my weekend projects',
+        priority: 'must',
+        trs: [{ text: 'Persist a due-back date with each loan', priority: 'must' }],
+      },
+      {
+        title: 'Get a overdue-item digest',
+        asA: 'lender',
+        iWantTo: 'get a weekly digest of overdue items',
+        soThat: 'I can follow up without checking manually',
+        priority: 'should',
+        trs: [{ text: 'Queue the digest email weekly', priority: 'should' }],
+      },
+    ];
+    const idsBefore = collectExistingIds(prd0, journeys0);
+    const nextUs = nextFreeId(idsBefore.us, 'US');
+    const nextTr = nextFreeId(idsBefore.tr, 'TR');
+    const splicedJ = spliceStories(journeys0, genStories);
+    check('req-gen: story splice removes nothing (AC-9)', lcsDiff(journeys0, splicedJ.text).removed.length === 0);
+    const reparsed = parseRequirements(prd0, splicedJ.text);
+    const newStory = reparsed.stories.find((st: any) => st.usId === nextUs);
+    check(`req-gen: first generated story takes ${nextUs} (sequence continues)`, !!newStory);
+    check('req-gen: generated story stamps origin=generated', newStory?.origin === 'generated');
+    check('req-gen: generated TR lands in the story block', newStory?.reqs?.some((r: any) => r.id === nextTr) === true);
+    check('req-gen: second generated story gets a distinct US id', splicedJ.usIds.length === 2 && splicedJ.usIds[0] !== splicedJ.usIds[1]);
+
+    const genBrs = [
+      { text: 'Every loan shows its due-back date', priority: 'must', storyIndex: 0 },
+      { text: 'Overdue items are surfaced weekly', priority: 'should', storyIndex: 1 },
+    ];
+    const nextBr = nextFreeId(idsBefore.br, 'BR');
+    const splicedP = spliceBusinessReqs(prd0, genBrs, splicedJ.usIds);
+    check('req-gen: BR splice removes nothing (AC-9)', lcsDiff(prd0, splicedP.text).removed.length === 0);
+    const reparsedP = parseRequirements(splicedP.text, splicedJ.text);
+    // A story-linked BR is MOVED into its story's reqs by parseRequirements —
+    // search both surfaces.
+    const allBrRows = (parsed: ReturnType<typeof parseRequirements>) => [
+      ...parsed.businessReqs,
+      ...parsed.stories.flatMap((st: any) => st.reqs.filter((r: any) => r.id.startsWith('BR-'))),
+    ];
+    const newBr = allBrRows(reparsedP).find((r: any) => r.id === nextBr);
+    check(`req-gen: first generated BR takes ${nextBr} (sequence continues)`, !!newBr);
+    check('req-gen: generated BR links to its story', newBr?.storyUsId === splicedJ.usIds[0]);
+    check('req-gen: generated BR stamps origin=generated', newBr?.origin === 'generated');
+
+    // Bidirectional resume reconcile (round 2): rows on disk ⇒ done even if
+    // unmarked (crash between splice write and state persist must not
+    // duplicate on retry); marked but rows deleted ⇒ regenerate.
+    const r1 = reconcileSectionsDone(splicedJ.text, splicedP.text, []);
+    check('req-gen: unmarked on-disk rows reconcile to done (P2-2 crash window)', r1.sectionsDone.includes('user stories') && r1.sectionsDone.includes('business requirements'));
+    check('req-gen: reconcile rehydrates generated story ids for BR links (P2-1)', r1.storyIds.join(',') === splicedJ.usIds.join(','));
+    const r2 = reconcileSectionsDone(journeys0, prd0, ['user stories', 'business requirements']);
+    check('req-gen: marked sections with deleted rows reconcile to regenerate', r2.sectionsDone.length === 0 && r2.storyIds.length === 0);
+
+    // ── Section-failure guard (round 4): a model call that yields zero
+    // parseable rows must FAIL the section — an invisible empty advance would
+    // be marked done and retry would skip it forever, generating nothing. ──
+    const passthrough = requireRows([{ title: 'x' }], 'user stories');
+    check('req-gen: non-empty rows pass through requireRows untouched', passthrough.length === 1);
+    let zeroRowError: unknown = null;
+    try {
+      requireRows([], 'business requirements');
+    } catch (e) {
+      zeroRowError = e;
+    }
+    check(
+      'req-gen: zero rows throws a section-naming error, silent empty advance impossible',
+      zeroRowError instanceof Error && /Model returned no business requirements/.test(zeroRowError.message),
+    );
+
+    // ── Stale-run reconcile (round 4, req-gen-state.ts) — the PR #26 round-4
+    // failure shape: heartbeats stayed fresh for hours while the nested PRD
+    // write-lock never settled, so heartbeat freshness alone proves nothing
+    // about liveness. Staleness keys on EITHER a section that overruns
+    // SECTION_STALL_MS (20 min, chosen above the model fetch's 15-min abort so
+    // a slow-but-alive call can never false-fail) OR a heartbeat older than
+    // STALE_MS; legacy states without a section stamp keep the heartbeat-only
+    // fallback so the two pre-fix stuck runs (projects 10, 12) still recover
+    // on a dev-server restart. Exercised in-process: req-gen-state.ts's only
+    // runtime import is fs/path (the BaGenerationState import is type-only),
+    // so it loads without the sqlite gate. ──
+    const { reconcileStale } = await import('../server/req-gen-state.js');
+    const sentinelDir = path.join(LAUNCHER, 'data', 'req-gen');
+    const sentinelId = 98888;
+    const sentinelPath = path.join(sentinelDir, `${sentinelId}.json`);
+    const nowSt = Date.now();
+    const fresh = (over: Record<string, unknown>) => ({
+      state: 'generating',
+      generated: 1,
+      total: 2,
+      currentSection: 'user stories',
+      startedAt: nowSt - 3 * 60_000,
+      lastHeartbeatAt: nowSt - 10_000,
+      sectionStartedAt: nowSt - 10_000,
+      error: null,
+      ...over,
+    });
+    const readSentinel = () => JSON.parse(fs.readFileSync(sentinelPath, 'utf-8'));
+    try {
+      fs.mkdirSync(sentinelDir, { recursive: true });
+      fs.writeFileSync(sentinelPath, JSON.stringify(fresh({})));
+      check('staleness: fresh section + fresh heartbeat stays generating', reconcileStale(sentinelId, readSentinel()).state === 'generating');
+      fs.writeFileSync(sentinelPath, JSON.stringify(fresh({ sectionStartedAt: nowSt - 21 * 60_000 })));
+      const stalled = reconcileStale(sentinelId, JSON.parse(fs.readFileSync(sentinelPath, 'utf-8')));
+      check('staleness: section past SECTION_STALL_MS with fresh heartbeat → failed', stalled.state === 'failed');
+      check('staleness: stall error names the wedged section', /Generation of user stories stalled/.test(stalled.error ?? ''));
+      fs.writeFileSync(sentinelPath, JSON.stringify(fresh({ lastHeartbeatAt: nowSt - 10 * 60_000 })));
+      check('staleness: fresh section but dead heartbeat → failed', reconcileStale(sentinelId, readSentinel()).state === 'failed');
+      fs.writeFileSync(sentinelPath, JSON.stringify(fresh({ sectionStartedAt: undefined, lastHeartbeatAt: nowSt - 10_000 })));
+      check('staleness: legacy no-section-stamp + fresh heartbeat stays generating (recovery fallback)', reconcileStale(sentinelId, readSentinel()).state === 'generating');
+      fs.writeFileSync(sentinelPath, JSON.stringify(fresh({ sectionStartedAt: undefined, lastHeartbeatAt: nowSt - 10 * 60_000 })));
+      check('staleness: legacy no-section-stamp + dead heartbeat → failed', reconcileStale(sentinelId, readSentinel()).state === 'failed');
+      fs.writeFileSync(sentinelPath, JSON.stringify(fresh({ state: 'pending', lastHeartbeatAt: nowSt - 10 * 60_000 })));
+      check('staleness: pending state with dead heartbeat → failed', reconcileStale(sentinelId, readSentinel()).state === 'failed');
+    } finally {
+      fs.rmSync(sentinelPath, { force: true });
+    }
+
+    // ── Req-gen routes at runtime: idle before the gate, 409 while the 17
+    // artifacts are not all Approved (Ollama is not exercised here — the job
+    // needs a live model; the state machine is covered by the reconciled-read
+    // design in req-gen-state.ts and the splice checks above). ──
+    r = await reqFetch(`/api/projects/${slug}/requirements-generation-status`);
+    check('req-gen: GET status before gate → idle', r.status === 200 && r.body.status === 'idle');
+    r = await json(`/api/projects/${slug}/trigger-requirements-generation`, 'POST', {});
+    check('req-gen: trigger while artifacts unapproved → 409', r.status === 409);
+    // The route's first guard is the context gate (fires before the artifact check
+    // on an unconfirmed fixture) — assert the 409 carries a server-side reason.
+    check('req-gen: 409 carries a server-side reason', typeof r.body?.error === 'string' && r.body.error.length > 0);
   } finally {
     child.kill('SIGTERM');
     await new Promise((res) => setTimeout(res, 300));

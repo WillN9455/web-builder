@@ -16,6 +16,7 @@ import {
   fetchBaOpenQuestions,
   retryBaGeneration,
   saveBaFile,
+  triggerRequirementsGeneration,
   transitionBaFile,
   type BaComment,
   type BaFile,
@@ -373,11 +374,32 @@ export function ProjectBackgroundScreen() {
     try {
       await confirmProjectContext(id ?? '');
       onContextConfirmed();
+      // Trigger BA Agent to auto-generate stories + BR/TR from approved artifacts.
+      // The confirm itself has already succeeded at this point — a failed
+      // trigger (409 gate/already-generated, server down) must not read as a
+      // failed confirm, so it gets its own catch.
+      let alreadyRunning = false;
+      let triggerError: string | null = null;
+      try {
+        const triggerResult = await triggerRequirementsGeneration(id ?? '');
+        alreadyRunning = !!triggerResult.alreadyRunning;
+      } catch (triggerErr) {
+        triggerError = triggerErr instanceof Error ? triggerErr.message : 'Requirements generation could not start';
+      }
+      showNotice(
+        triggerError
+          ? {
+              kind: 'error',
+              text: `Project context confirmed — Sprint, Design, Build, QA unlocked. But requirements generation could not start: ${triggerError} Retry from the Requirements tab.`,
+            }
+          : {
+              kind: 'success',
+              text: alreadyRunning
+                ? 'Project context confirmed — Sprint, Design, Build, QA unlocked. Requirements generation already in progress.'
+                : 'Project context confirmed — Sprint, Design, Build, QA unlocked. BA Agent is auto-generating requirements.',
+            },
+      );
       await loadFiles();
-      showNotice({
-        kind: 'success',
-        text: 'Project context confirmed — Sprint, Design, Build, QA unlocked.',
-      });
     } catch (err) {
       showNotice({
         kind: 'error',

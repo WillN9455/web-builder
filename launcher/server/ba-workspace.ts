@@ -20,6 +20,8 @@ import { db } from './db.js';
 import { readGenerationState, retryBaGeneration, type BaGeneration } from './ba-draft.js';
 import { readIdeaSummary, retryIdeaSummary } from './idea-summary.js';
 import { atomicWritePrd } from './prd-fs.js';
+import { triggerRequirementsGeneration, calculateElapsedMs, REQ_GEN_SECTIONS } from './agent-invoker.js';
+import { readReqGenState } from './req-gen-state.js';
 
 // ── The 17 artifacts across 5 bands (sitemap § Project Background tab) ────
 // The sitemap list is canonical — the s12 mockup tree omits personas.md, and
@@ -122,7 +124,7 @@ export function baStatusLabel(status: BaStatus): string {
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-type ProjectRow = { id: number; name: string; slug: string; folder_path: string };
+export type ProjectRow = { id: number; name: string; slug: string; folder_path: string };
 
 export type BaFile = {
   filename: string;
@@ -183,7 +185,9 @@ export function prdDir(row: ProjectRow): string {
   return path.join(resolveProjectFolder(row), 'PRD');
 }
 
-function readStatuses(projectId: number): Map<string, BaStatus> {
+// Exported for agent-invoker.ts (the req-gen trigger re-checks the gate) —
+// single implementation per code-quality §Search Before Creating.
+export function readStatuses(projectId: number): Map<string, BaStatus> {
   const rows = db
     .prepare('SELECT filename, status FROM ba_artifacts_status WHERE project_id = ?')
     .all(projectId) as { filename: string; status: string }[];
@@ -616,6 +620,82 @@ export function registerBaWorkspaceRoutes(app: express.Express): void {
     ).run(row.id);
     logActivity(row.id, 'BA', 'Confirmed project context — Sprint, Design, Build, QA unlocked', 'milestone');
     res.json({ ok: true, contextConfirmed: true, alreadyConfirmed: false });
+  });
+
+  // ── Requirements generation (auto-generate stories + BR/TR from approved PRD) ────
+
+  // GET /requirements-generation-status — polled by the client to show progress.
+  app.get('/api/projects/:id/requirements-generation-status', (req, res) => {
+    const row = getProjectRow(req.params.id);
+    if (!row) {
+      res.status(404).json({ error: 'Not found' });
+      return;
+    }
+
+    // Spec §1: before the context gate nothing has been generated or asked
+    // for — report idle even if a stale state file exists.
+    const ctx = contextRow(row.id);
+    if (!ctx?.confirmed) {
+      return res.json({ status: 'idle', progress: { generated: 0, total: 0 } });
+    }
+
+    const state = readReqGenState(row.id);
+    if (!state) {
+      return res.json({ status: 'idle', progress: { generated: 0, total: 0 } });
+    }
+
+    let status: 'generating' | 'done' | 'failed' = 'generating';
+    if (state.state === 'done') status = 'done';
+    else if (state.state === 'failed') status = 'failed';
+
+    res.json({
+      status,
+      progress: { generated: state.generated, total: state.total || REQ_GEN_SECTIONS.length },
+      currentSection: state.currentSection ?? undefined,
+      // When the active section started — the phase-aware banner ticks an
+      // elapsed clock off this so "generating" shows live progress, not spin.
+      sectionStartedAt: state.sectionStartedAt ?? undefined,
+      // Surfaced so the Requirements tab can show WHY a run failed.
+      error: state.error ?? undefined,
+      // Row counts — persisted incrementally while generating (what has landed
+      // so far) and fully on the finished run; the banner reports rows.
+      result: state.result ?? undefined,
+      elapsedMs: calculateElapsedMs(row.id),
+    });
+  });
+
+  // POST /trigger-requirements-generation — fires the BA Agent to generate stories + BR/TR.
+  app.post('/api/projects/:id/trigger-requirements-generation', (req, res) => {
+    const row = getProjectRow(req.params.id);
+    if (!row) {
+      res.status(404).json({ error: 'Not found' });
+      return;
+    }
+
+    const ctx = contextRow(row.id);
+    if (!ctx?.confirmed) {
+      return res.status(409).json({ error: 'Project context not confirmed yet' });
+    }
+
+    // Re-check readiness
+    const statuses = readStatuses(row.id);
+    if (!BA_ARTIFACTS.every((f) => (statuses.get(f) ?? 'draft') === 'approved')) {
+      return res.status(409).json({ error: 'Not all artifacts are Approved' });
+    }
+
+    // Already-running check only — the trigger owns state init (a route
+    // pre-write of 'pending' dead-ended every re-trigger: the trigger read
+    // that same 'pending' and 409'd 'Already running' forever).
+    const existing = readReqGenState(row.id);
+    if (existing && (existing.state === 'pending' || existing.state === 'generating')) {
+      return res.json({ ok: true, alreadyRunning: true });
+    }
+
+    const result = triggerRequirementsGeneration(row.id);
+    if (!result.ok) {
+      return res.status(409).json({ ok: false, error: result.error });
+    }
+    res.json({ ok: true, generationId: result.generationId });
   });
 }
 
