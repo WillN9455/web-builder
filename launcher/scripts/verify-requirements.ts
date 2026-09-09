@@ -458,6 +458,14 @@ async function main(): Promise<void> {
       /- BR-002 \| could \| draft \| BA \| QA-14 linked-BR edit probe/.test(read(prdPath)),
     );
     eq('QA-14: features.md byte-identical after linked-BR PATCH (AC-9)', read(featuresPath), qa14FeaturesBefore);
+    // PR #28 security lens: the `?feId` query param is grammar-validated like
+    // every other ID param — malformed input is rejected 400, never 404'd
+    // through the lookup (which would read as "row missing" instead of
+    // "request malformed").
+    r = await json(`/api/projects/${slug}/requirements/BR-002?feId=FE`, 'PATCH', { text: 'malformed feId probe' });
+    check('malformed feId query param → 400 (not a lookup miss)', r.status === 400);
+    r = await json(`/api/projects/${slug}/requirements/BR-002/status?feId=NOT-FE`, 'PATCH', { status: 'in_review' });
+    check('malformed feId on status route → 400', r.status === 400);
     r = await json(`/api/projects/${slug}/requirements/BR-002/status?feId=FE-03`, 'PATCH', { status: 'in_review' });
     check('QA-14: status PATCH on linked BR-002 → 200', r.status === 200);
     check(

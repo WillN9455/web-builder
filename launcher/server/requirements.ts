@@ -858,6 +858,10 @@ export function registerRequirementsRoutes(app: express.Express): void {
     // across features resolve to the right row. The query param is optional —
     // legacy callers and the verify suite still work without it.
     const scopeFeId = typeof req.query.feId === 'string' ? req.query.feId : undefined;
+    if (scopeFeId && !FE_ID_RE.test(scopeFeId)) {
+      res.status(400).json({ error: 'Invalid feature id' });
+      return;
+    }
     const located = locateReq(parsed, req.params.reqId, scopeFeId);
     if (!located) {
       res.status(404).json({ error: `Unknown requirement ${req.params.reqId}` });
@@ -1032,6 +1036,10 @@ export function registerRequirementsRoutes(app: express.Express): void {
     const parsed = parseRequirements(prd.text, features.text);
     // QA-10: feId query param disambiguates duplicate ids across features.
     const scopeFeId = typeof req.query.feId === 'string' ? req.query.feId : undefined;
+    if (scopeFeId && !FE_ID_RE.test(scopeFeId)) {
+      res.status(400).json({ error: 'Invalid feature id' });
+      return;
+    }
     const located = locateReq(parsed, req.params.reqId, scopeFeId);
     if (!located) {
       res.status(404).json({ error: `Unknown requirement ${req.params.reqId}` });
@@ -1097,6 +1105,10 @@ export function registerRequirementsRoutes(app: express.Express): void {
     const parsed = parseRequirements(prd.text, features.text);
     // QA-10: feId query param disambiguates duplicate ids across features.
     const scopeFeId = typeof req.query.feId === 'string' ? req.query.feId : undefined;
+    if (scopeFeId && !FE_ID_RE.test(scopeFeId)) {
+      res.status(400).json({ error: 'Invalid feature id' });
+      return;
+    }
     const located = locateReq(parsed, req.params.reqId, scopeFeId);
     if (!located) {
       res.status(404).json({ error: `Unknown requirement ${req.params.reqId}` });
