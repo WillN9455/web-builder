@@ -1,43 +1,51 @@
-// Requirements tab (screen 15, requirements.html v5.3) — the story-grouped
-// BR/TR source of truth. One InlineForm open at a time across the screen
-// (spec UX), optimistic status changes with snap-back + toast, delete via the
-// edit form's two-step strip, and the delete-guard 409 surfaced inline with a
-// scroll-and-flash escape hatch. No TanStack Query (plan §2): a plain
-// fetch + reload after every successful mutation.
+// Requirements tab (screen 15, requirements.html v5.3) — the feature-grouped
+// BR/TR/AC source of truth (requirements redesign, slices 1-3). One form open
+// at a time across the screen (spec UX), optimistic status changes with
+// snap-back + toast, delete via the edit form's two-step strip, and the
+// delete-guard 409 surfaced inline with a scroll-and-flash escape hatch. No
+// TanStack Query (plan §2): a plain fetch + reload after every successful
+// mutation.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useOutletContext, useParams } from 'react-router-dom';
 import {
+  createAc,
+  createFeature,
   createRequirement,
-  createStory,
+  deleteAc,
+  deleteFeature,
   deleteRequirement,
-  deleteStory,
   fetchRequirements,
   fetchRequirementsGenerationStatus,
   triggerRequirementsGeneration,
   RequirementsDeleteGuardError,
   RequirementsValidationError,
+  updateAc,
+  updateFeature,
   updateRequirement,
   updateRequirementStatus,
-  updateStory,
+  type AcItem,
   type RequirementsResponse,
   type RequirementsGenerationStatus,
   type RequirementItem,
+  type FeatureItem,
+  type FeaturePatch,
   type ReqStatus,
-  type StoryItem,
 } from '../../lib/api';
+import { nextFreeId } from '../../../server/requirements-model';
 import type { ProjectOutletContext } from '../ProjectDetailScreen';
 import { ConfirmDialog } from '../ConfirmDialog';
-import { InlineForm, type FormValues, type ReqFormValues, type StoryFormValues } from './InlineForm';
+import { InlineForm, type FormValues, type FeatureFormValues, type ReqFormValues } from './InlineForm';
+import { AcForm, type AcFormValues } from './AcForm';
 import { FilterBar } from './FilterBar';
-import { StoryGroup } from './StoryGroup';
+import { FeatureGroup } from './FeatureGroup';
 import { ReqRow } from './ReqRow';
 import {
   applyFilters,
   deriveTotals,
   EMPTY_FILTER,
+  nextFeatureIdPreview,
   nextReqIdPreview,
-  nextStoryIdPreview,
   type FilterState,
   type FormState,
 } from './storyModel';
@@ -57,16 +65,17 @@ function truncate(s: string, max: number): string {
 }
 
 // A delete target describes what the modal is about to strike. The trash
-// icons on rows/stories open the modal directly (refinement batch item 2.9);
-// `linkedUsId` powers the "Open referencing story" escape hatch when the
-// server returns a 409 (the BR is referenced from a story block).
+// icons on rows/features open the modal directly (refinement batch item 2.9).
+// Unlike stories, features strike cleanly (their reqs/ACs live inside the
+// block), so no linked-referencer escape hatch is needed here.
 type DeleteTarget =
-  | { kind: 'story'; usId: string; trigger: HTMLElement | null; label: string; copy: string }
+  | { kind: 'feature'; feId: string; trigger: HTMLElement | null; label: string; copy: string }
+  | { kind: 'ac'; acId: string; trigger: HTMLElement | null; label: string; copy: string }
   | {
       kind: 'req';
       reqId: string;
       type: 'BR' | 'TR';
-      usId: string | null;
+      feId: string | null;
       trigger: HTMLElement | null;
       label: string;
       copy: string;
@@ -74,11 +83,10 @@ type DeleteTarget =
 
 // Client-side field errors keyed the same way the server's {errors} payload
 // keys them, so InlineForm merges both sources unchanged.
-const DEFAULT_STORY_VALUES: StoryFormValues = {
+const DEFAULT_FEATURE_VALUES: FeatureFormValues = {
   title: '',
-  asA: '',
-  iWantTo: '',
-  soThat: '',
+  description: '',
+  source: '',
   priority: 'must',
   status: 'draft',
   owner: 'BA',
@@ -92,6 +100,8 @@ const DEFAULT_REQ_VALUES: ReqFormValues = {
   owner: 'BA',
 };
 
+const DEFAULT_AC_VALUES: AcFormValues = { text: '', status: 'unmet' };
+
 export function RequirementsScreen() {
   const { id } = useParams();
   const { project, onRequirementsCount } = useOutletContext<ProjectOutletContext>();
@@ -104,7 +114,7 @@ export function RequirementsScreen() {
   const [filter, setFilter] = useState<FilterState>(EMPTY_FILTER);
   const [form, setForm] = useState<FormState | null>(null);
   // Live values of the open form (drives the next-ID preview's type segment).
-  const [formValues, setFormValues] = useState<FormValues | null>(null);
+  const [formValues, setFormValues] = useState<(FormValues | AcFormValues) | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -115,7 +125,7 @@ export function RequirementsScreen() {
   // Where focus goes when the form collapses (the button that opened it).
   const originRef = useRef<HTMLElement | null>(null);
   // Delete confirmation modal (refinement batch item 2.9). The trash icons
-  // on rows/stories open this directly — no more two-step "open edit form,
+  // on rows/features open this directly — no more two-step "open edit form,
   // then click Delete in the footer".
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -129,9 +139,10 @@ export function RequirementsScreen() {
 
   const [notice, setNotice] = useState<Notice | null>(null);
   const noticeTimer = useRef<number | null>(null);
-  const [storyStatusPending, setStoryStatusPending] = useState<string | null>(null);
+  const [featureStatusPending, setFeatureStatusPending] = useState<string | null>(null);
   const [reqStatusPending, setReqStatusPending] = useState<string | null>(null);
-  // In-flight BA Agent auto‑generation of user stories / BR / TR.
+  const [acPendingId, setAcPendingId] = useState<string | null>(null);
+  // In-flight BA Agent auto‑generation of features / ACs / BR / TR.
   const [reqGenStatus, setReqGenStatus] = useState<RequirementsGenerationStatus | null>(null);
 
   useEffect(() => {
@@ -169,7 +180,7 @@ export function RequirementsScreen() {
   }, [idOrSlug]);
 
   // When a generation run finishes, the rows behind this screen changed on
-  // disk — refetch so the new stories/BR/TR appear without a remount.
+  // disk — refetch so the new features/ACs/BR/TR appear without a remount.
   // Only the generating → done transition refetches; an initial read that is
   // already 'done' is covered by the mount-time load().
   const prevGenStatus = useRef<string | null>(null);
@@ -225,11 +236,10 @@ export function RequirementsScreen() {
   // Chip + segment counts always come from the FULL list, never the filtered
   // view — a filter must not shrink its own controls.
   //
-  // QA-12: business = ALL BRs (unassigned + linked inside stories); technical
-  // = TRs only. The previous code counted every story.reqs row as "technical"
-  // even when those rows were linked BRs (and business was only the
-  // unassigned §8 rows), so the Business count and filter hid every BR that
-  // lived inside a story.
+  // Feature-first carry-over of QA-12: business = ALL BRs (unassigned + the
+  // ones linked inside feature blocks); technical = TRs only. Feature blocks
+  // contribute their own status to the status chips (a feature has a
+  // ReqStatus even though it has no BR/TR type).
   const chipCounts = useMemo(() => {
     const byStatus = {} as Record<ReqStatus, number>;
     const bump = (st: ReqStatus | null) => {
@@ -238,12 +248,9 @@ export function RequirementsScreen() {
     let business = 0;
     let technical = 0;
     if (data && data.source === 'ok') {
-      for (const r of data.businessReqs) {
-        business += 1;
-        bump(r.status);
-      }
-      for (const s of data.stories) {
-        for (const r of s.reqs) {
+      for (const f of data.features) {
+        bump(f.status);
+        for (const r of f.reqs) {
           if (r.type === 'BR') {
             business += 1;
           } else {
@@ -251,6 +258,10 @@ export function RequirementsScreen() {
           }
           bump(r.status);
         }
+      }
+      for (const r of data.businessReqs) {
+        business += 1;
+        bump(r.status);
       }
     }
     return { all: business + technical, business, technical, byStatus };
@@ -307,14 +318,13 @@ export function RequirementsScreen() {
     }
   }, [idOrSlug]);
 
-  const storyValuesFrom = (story: StoryItem): StoryFormValues => ({
-    title: story.title,
-    asA: story.asA ?? '',
-    iWantTo: story.iWantTo ?? '',
-    soThat: story.soThat ?? '',
-    priority: story.priority ?? 'must',
-    status: story.status ?? 'draft',
-    owner: story.owner ?? 'BA',
+  const featureValuesFrom = (feature: FeatureItem): FeatureFormValues => ({
+    title: feature.title,
+    description: feature.description,
+    source: feature.source ?? '',
+    priority: feature.priority ?? 'must',
+    status: feature.status ?? 'draft',
+    owner: feature.owner ?? 'BA',
   });
 
   const reqValuesFrom = (req: RequirementItem): ReqFormValues => ({
@@ -323,6 +333,11 @@ export function RequirementsScreen() {
     priority: req.priority ?? 'must',
     status: req.status ?? 'draft',
     owner: req.owner ?? 'BA',
+  });
+
+  const acValuesFrom = (ac: AcItem): AcFormValues => ({
+    text: ac.text,
+    status: ac.status ?? 'unmet',
   });
 
   const handleError = useCallback(
@@ -337,51 +352,49 @@ export function RequirementsScreen() {
   );
 
   const submitForm = useCallback(
-    async (values: FormValues) => {
+    async (values: FormValues | AcFormValues) => {
       if (!form || !idOrSlug) return;
       setSubmitting(true);
       try {
-        if (form.kind === 'story') {
-          const v = values as StoryFormValues;
+        if (form.kind === 'feature') {
+          const v = values as FeatureFormValues;
           if (form.mode === 'add') {
-            await createStory(idOrSlug, {
+            await createFeature(idOrSlug, {
               title: v.title,
-              asA: v.asA,
-              iWantTo: v.iWantTo,
-              soThat: v.soThat,
+              description: v.description,
+              // Empty source string = "no source link" — the server stores null.
+              source: v.source === '' ? null : v.source,
               priority: v.priority,
               status: v.status,
               owner: v.owner,
             });
-            showNotice({ kind: 'success', text: 'User story created' });
+            showNotice({ kind: 'success', text: 'Feature created' });
           } else {
             // QA-8: edit mode sends only the fields the user actually
-            // changed. The server's validateStoryPatch ignores absent
-            // keys, so a legacy story whose body fields are empty can
-            // still be saved by editing its title alone — the form used
-            // to refuse the submit before the server was ever contacted.
-            const initial = storyValuesFrom(
-              data?.stories.find((s) => s.usId === form.usId) ?? {
-                usId: form.usId, title: '', asA: null, iWantTo: null, soThat: null,
-                priority: 'must', status: 'draft', owner: 'BA', origin: 'manual', reqs: [],
-                headingLine: -1, metaLine: null, bodyLine: null, blockEnd: -1, deleted: false,
-              } as StoryItem,
+            // changed. The server's validateFeaturePatch ignores absent
+            // keys, so a legacy feature with empty optional fields can
+            // still be saved by editing its title alone.
+            const initial = featureValuesFrom(
+              data?.features.find((f) => f.feId === form.feId) ?? {
+                feId: form.feId, title: '', description: '', source: null,
+                priority: 'must', status: 'draft', owner: 'BA', origin: 'manual',
+                acs: [], reqs: [],
+              } as FeatureItem,
             );
-            const patch: Partial<StoryFormValues> = {};
+            const patch: FeaturePatch = {};
             if (v.title !== initial.title) patch.title = v.title;
-            if (v.asA !== initial.asA) patch.asA = v.asA;
-            if (v.iWantTo !== initial.iWantTo) patch.iWantTo = v.iWantTo;
-            if (v.soThat !== initial.soThat) patch.soThat = v.soThat;
+            if (v.description !== initial.description) patch.description = v.description;
+            if (v.source !== initial.source) patch.source = v.source === '' ? null : v.source;
             if (v.priority !== initial.priority) patch.priority = v.priority;
             if (v.status !== initial.status) patch.status = v.status;
             if (v.owner !== initial.owner) patch.owner = v.owner;
-            await updateStory(idOrSlug, form.usId, patch);
-            showNotice({ kind: 'success', text: `${form.usId} updated` });
+            await updateFeature(idOrSlug, form.feId, patch);
+            showNotice({ kind: 'success', text: `${form.feId} updated` });
           }
-        } else {
+        } else if (form.kind === 'req') {
           const v = values as ReqFormValues;
           if (form.mode === 'add') {
-            await createRequirement(idOrSlug, form.usId, {
+            await createRequirement(idOrSlug, form.feId, {
               type: v.type,
               text: v.text,
               priority: v.priority,
@@ -390,17 +403,22 @@ export function RequirementsScreen() {
             });
             showNotice({
               kind: 'success',
-              text: v.type === 'BR' ? 'Business requirement added to prd.md §8' : 'Technical requirement added',
+              text:
+                v.type === 'BR'
+                  ? `Business requirement added to ${form.feId}`
+                  : `Technical requirement added to ${form.feId}`,
             });
           } else {
             // QA-8: edit mode sends only changed fields (same shape as
-            // the story path; server's validateReqPatch ignores absent
+            // the feature path; server's validateReqPatch ignores absent
             // keys).
             const initial = reqValuesFrom(
-              [...(data?.businessReqs ?? []), ...(data?.stories.flatMap((s) => s.reqs) ?? [])].find(
-                (r) => r.id === form.reqId,
-              ) ?? {
-                id: form.reqId, type: 'TR', text: '', priority: null, status: null, owner: null, origin: null, storyUsId: form.usId,
+              [
+                ...(data?.businessReqs ?? []),
+                ...(data?.features.flatMap((f) => f.reqs) ?? []),
+              ].find((r) => r.id === form.reqId) ?? {
+                id: form.reqId, type: 'TR', text: '', priority: null, status: null,
+                owner: null, origin: null, featureId: form.feId,
               } as RequirementItem,
             );
             const patch: Partial<ReqFormValues> = {};
@@ -409,10 +427,30 @@ export function RequirementsScreen() {
             if (v.priority !== initial.priority) patch.priority = v.priority;
             if (v.status !== initial.status) patch.status = v.status;
             if (v.owner !== initial.owner) patch.owner = v.owner;
-            // QA-10: pass storyUsId so the server scopes locateReq to the
-            // right row once duplicate ids exist across stories.
-            await updateRequirement(idOrSlug, form.reqId, patch, form.usId);
+            // QA-10: pass feId (may be null for unassigned BRs) so the
+            // server scopes locateReq to the right row once duplicate ids
+            // exist across feature blocks.
+            await updateRequirement(idOrSlug, form.reqId, patch, form.feId);
             showNotice({ kind: 'success', text: `${form.reqId} updated` });
+          }
+        } else {
+          const v = values as AcFormValues;
+          if (form.mode === 'add') {
+            await createAc(idOrSlug, form.feId, { text: v.text, status: v.status });
+            showNotice({ kind: 'success', text: `Criterion added to ${form.feId}` });
+          } else {
+            // QA-8 for ACs: only changed fields. (AC ids are unique across
+            // the file, so no feId scoping is needed on the PATCH path.)
+            const initial = acValuesFrom(
+              data?.features.flatMap((f) => f.acs).find((a) => a.id === form.acId) ?? {
+                id: form.acId, text: '', status: 'unmet', origin: null,
+              } as AcItem,
+            );
+            const patch: Partial<AcFormValues> = {};
+            if (v.text !== initial.text) patch.text = v.text;
+            if (v.status !== initial.status) patch.status = v.status;
+            await updateAc(idOrSlug, form.acId, patch);
+            showNotice({ kind: 'success', text: `${form.acId} updated` });
           }
         }
         closeForm();
@@ -427,24 +465,38 @@ export function RequirementsScreen() {
   );
 
   // Trash icons open the modal directly (refinement batch item 2.9). The
-  // helper below builds the right DeleteTarget for a story or a req. The
-  // modal itself owns the focus trap and busy state; we just hold the
-  // target and a ref to the trigger so focus can return on close.
-  const openDeleteForStory = useCallback((story: StoryItem) => {
+  // helpers below build the right DeleteTarget for a feature, an AC, or a
+  // req. The modal itself owns the focus trap and busy state; we just hold
+  // the target and a ref to the trigger so focus can return on close.
+  const openDeleteForFeature = useCallback((feature: FeatureItem) => {
     const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const summary = story.title ? ` — ${truncate(story.title, 60)}` : '';
+    const summary = feature.title ? ` — ${truncate(feature.title, 60)}` : '';
     deleteTriggerRef.current = trigger;
     setDeleteTarget({
-      kind: 'story',
-      usId: story.usId,
+      kind: 'feature',
+      feId: feature.feId,
       trigger,
-      label: `Delete ${story.usId}${summary}`,
-      copy: `Deleting ${story.usId} strikes the block and its rows in user-journeys.md — the ID is never reused.`,
+      label: `Delete ${feature.feId}${summary}`,
+      copy: `Deleting ${feature.feId} strikes the block and its rows in features.md — the ID is never reused.`,
     });
     setDeleteGuardMsg(null);
   }, []);
 
-  const openDeleteForReq = useCallback((req: RequirementItem, usId: string | null) => {
+  const openDeleteForAc = useCallback((ac: AcItem) => {
+    const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const summary = ac.text ? ` — ${truncate(ac.text, 60)}` : '';
+    deleteTriggerRef.current = trigger;
+    setDeleteTarget({
+      kind: 'ac',
+      acId: ac.id,
+      trigger,
+      label: `Delete ${ac.id}${summary}`,
+      copy: `Deleting ${ac.id} strikes the row in features.md — the marker keeps a 30-day recovery seam.`,
+    });
+    setDeleteGuardMsg(null);
+  }, []);
+
+  const openDeleteForReq = useCallback((req: RequirementItem, feId: string | null) => {
     const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const summary = req.text ? ` — ${truncate(req.text, 60)}` : '';
     deleteTriggerRef.current = trigger;
@@ -452,7 +504,7 @@ export function RequirementsScreen() {
       kind: 'req',
       reqId: req.id,
       type: req.type,
-      usId,
+      feId,
       trigger,
       label: `Delete ${req.id}${summary}`,
       copy: `Deleting ${req.id} strikes the row in its source file — the marker keeps a 30-day recovery seam.`,
@@ -478,13 +530,16 @@ export function RequirementsScreen() {
     if (!deleteTarget || !idOrSlug) return;
     setDeleting(true);
     try {
-      if (deleteTarget.kind === 'story') {
-        await deleteStory(idOrSlug, deleteTarget.usId);
-        showNotice({ kind: 'success', text: `${deleteTarget.usId} deleted (struck in user-journeys.md)` });
+      if (deleteTarget.kind === 'feature') {
+        await deleteFeature(idOrSlug, deleteTarget.feId);
+        showNotice({ kind: 'success', text: `${deleteTarget.feId} deleted (struck in features.md)` });
+      } else if (deleteTarget.kind === 'ac') {
+        await deleteAc(idOrSlug, deleteTarget.acId);
+        showNotice({ kind: 'success', text: `${deleteTarget.acId} deleted (struck in features.md)` });
       } else {
-        // QA-10: pass usId so the server scopes locateReq to the right
-        // row once duplicate ids exist across stories.
-        await deleteRequirement(idOrSlug, deleteTarget.reqId, deleteTarget.usId);
+        // QA-10: pass feId (may be null for unassigned BRs) so the server
+        // scopes locateReq to the right row once duplicate ids exist.
+        await deleteRequirement(idOrSlug, deleteTarget.reqId, deleteTarget.feId);
         showNotice({ kind: 'success', text: `${deleteTarget.reqId} deleted (struck in its source file)` });
       }
       closeDelete();
@@ -503,29 +558,31 @@ export function RequirementsScreen() {
   // ── Optimistic status changes (spec UX: flip immediately, snap back + toast
   // if the server rejects the transition) ─────────────────────────────────────
 
-  const changeStoryStatus = useCallback(
-    async (story: StoryItem, next: ReqStatus) => {
+  const changeFeatureStatus = useCallback(
+    async (feature: FeatureItem, next: ReqStatus) => {
       if (!idOrSlug) return;
-      setStoryStatusPending(story.usId);
+      setFeatureStatusPending(feature.feId);
       setData((d) =>
         d
           ? {
               ...d,
-              stories: d.stories.map((s) => (s.usId === story.usId ? { ...s, status: next } : s)),
+              features: d.features.map((f) =>
+                f.feId === feature.feId ? { ...f, status: next } : f,
+              ),
             }
           : d,
       );
       try {
-        await updateStory(idOrSlug, story.usId, { status: next });
+        await updateFeature(idOrSlug, feature.feId, { status: next });
         await reloadQuiet();
       } catch (e) {
         await reloadQuiet();
         showNotice({
           kind: 'error',
-          text: e instanceof Error ? e.message : `Could not update ${story.usId} status`,
+          text: e instanceof Error ? e.message : `Could not update ${feature.feId} status`,
         });
       } finally {
-        setStoryStatusPending(null);
+        setFeatureStatusPending(null);
       }
     },
     [idOrSlug, reloadQuiet, showNotice],
@@ -540,17 +597,18 @@ export function RequirementsScreen() {
           ? {
               ...d,
               businessReqs: d.businessReqs.map((r) => (r.id === req.id ? { ...r, status: next } : r)),
-              stories: d.stories.map((s) => ({
-                ...s,
-                reqs: s.reqs.map((r) => (r.id === req.id ? { ...r, status: next } : r)),
+              features: d.features.map((f) => ({
+                ...f,
+                reqs: f.reqs.map((r) => (r.id === req.id ? { ...r, status: next } : r)),
               })),
             }
           : d,
       );
       try {
-        // QA-10: pass storyUsId so the server scopes locateReq to the right
-        // row once duplicate ids exist across stories.
-        await updateRequirementStatus(idOrSlug, req.id, next, req.storyUsId);
+        // QA-10: pass featureId (may be null for unassigned BRs) so the
+        // server scopes locateReq to the right row once duplicate ids exist
+        // across feature blocks.
+        await updateRequirementStatus(idOrSlug, req.id, next, req.featureId);
         await reloadQuiet();
       } catch (e) {
         await reloadQuiet();
@@ -565,47 +623,92 @@ export function RequirementsScreen() {
     [idOrSlug, reloadQuiet, showNotice],
   );
 
+  const changeAcStatus = useCallback(
+    async (ac: AcItem, next: 'met' | 'unmet') => {
+      if (!idOrSlug) return;
+      setAcPendingId(ac.id);
+      setData((d) =>
+        d
+          ? {
+              ...d,
+              features: d.features.map((f) => ({
+                ...f,
+                acs: f.acs.map((a) => (a.id === ac.id ? { ...a, status: next } : a)),
+              })),
+            }
+          : d,
+      );
+      try {
+        await updateAc(idOrSlug, ac.id, { status: next });
+        await reloadQuiet();
+      } catch (e) {
+        await reloadQuiet();
+        showNotice({
+          kind: 'error',
+          text: e instanceof Error ? e.message : `Could not update ${ac.id} status`,
+        });
+      } finally {
+        setAcPendingId(null);
+      }
+    },
+    [idOrSlug, reloadQuiet, showNotice],
+  );
+
   // ── Derived render data ────────────────────────────────────────────────────
 
   const formIdLine = useMemo(() => {
     if (!form || !data || data.source !== 'ok') return '';
     if (form.mode === 'add') {
-      if (form.kind === 'story') return `new story · auto-assigned as ${nextStoryIdPreview(data.stories)}`;
-      // QA-10: scope the per-story preview to the story under which the
-      // form is mounted (add-req always has a usId). Edit-req uses its
-      // form's usId (null for unassigned BRs).
-      const type = (formValues as ReqFormValues | null)?.type ?? 'TR';
-      const previewUsId = form.kind === 'req' ? (form as { usId: string | null }).usId : null;
-      return `new requirement · auto-assigned as ${nextReqIdPreview(type, data, previewUsId)}`;
+      if (form.kind === 'feature') {
+        return `new feature · auto-assigned as ${nextFeatureIdPreview(data.features)}`;
+      }
+      if (form.kind === 'req') {
+        // QA-10: scope the per-feature preview to the feature under which
+        // the form is mounted (add-req always has a feId).
+        const type = (formValues as ReqFormValues | null)?.type ?? 'TR';
+        return `new requirement · auto-assigned as ${nextReqIdPreview(type, data, form.feId)}`;
+      }
+      const acs = data.features.find((f) => f.feId === form.feId)?.acs ?? [];
+      return `new criterion · auto-assigned as ${nextFreeId(acs.map((a) => a.id), 'AC')}`;
     }
-    return form.kind === 'story' ? form.usId : form.reqId;
+    if (form.mode === 'edit') {
+      if (form.kind === 'feature') return form.feId;
+      if (form.kind === 'req') return form.reqId;
+      return form.acId;
+    }
+    return '';
   }, [form, data, formValues]);
 
-  // Initial values are read at mount (InlineForm captures them once); the
-  // key below guarantees a remount whenever the form target changes.
-  const formInitial: FormValues | null = useMemo(() => {
+  // Initial values are read at mount (the forms capture them once); the key
+  // below guarantees a remount whenever the form target changes.
+  const formInitial: FormValues | AcFormValues | null = useMemo(() => {
     if (!form || !data) return null;
     if (form.mode === 'add') {
-      if (form.kind === 'story') return DEFAULT_STORY_VALUES;
-      return { ...DEFAULT_REQ_VALUES, type: 'TR' };
+      if (form.kind === 'feature') return DEFAULT_FEATURE_VALUES;
+      if (form.kind === 'req') return { ...DEFAULT_REQ_VALUES, type: 'TR' };
+      return DEFAULT_AC_VALUES;
     }
-    if (form.kind === 'story') {
-      const story = data.stories.find((s) => s.usId === form.usId);
-      return story ? storyValuesFrom(story) : null;
+    if (form.kind === 'feature') {
+      const feature = data.features.find((f) => f.feId === form.feId);
+      return feature ? featureValuesFrom(feature) : null;
     }
-    // QA-13: edit-req forms carry a story id (the row's home story, or
-    // null for unassigned BRs). Scope the lookup so a duplicate display
-    // id across two stories (e.g. both have TR-001) mounts the form with
-    // the right row's values. The PATCH path already scopes via
-    // storyUsId; this matches the same convention client-side.
-    if (form.usId === null) {
-      const br = data.businessReqs.find((r) => r.id === form.reqId);
-      return br ? reqValuesFrom(br) : null;
+    if (form.kind === 'req') {
+      // QA-13: edit-req forms carry the row's home feature id (or null for
+      // unassigned BRs). Scope the lookup so a duplicate display id across
+      // two blocks (e.g. both have TR-001) mounts the form with the right
+      // row's values. The PATCH path already scopes via feId; this matches
+      // the same convention client-side.
+      if (form.feId === null) {
+        const br = data.businessReqs.find((r) => r.id === form.reqId);
+        return br ? reqValuesFrom(br) : null;
+      }
+      const feature = data.features.find((f) => f.feId === form.feId);
+      const req = feature?.reqs.find((r) => r.id === form.reqId);
+      return req ? reqValuesFrom(req) : null;
     }
-    const story = data.stories.find((s) => s.usId === form.usId);
-    const req = story?.reqs.find((r) => r.id === form.reqId);
-    return req ? reqValuesFrom(req) : null;
-  }, [form, data, storyValuesFrom, reqValuesFrom]);
+    const ac = data.features.flatMap((f) => f.acs).find((a) => a.id === form.acId);
+    return ac ? acValuesFrom(ac) : null;
+  }, [form, data]);
 
   // ── States ─────────────────────────────────────────────────────────────────
 
@@ -649,9 +752,8 @@ export function RequirementsScreen() {
           <h1>No requirements yet</h1>
           <p className="sub" style={{ textAlign: 'center' }}>
             This project has no PRD/ folder yet. The Requirements tab reads{' '}
-            <code>prd.md</code> §8 and <code>user-journeys.md</code> — both are
-            created in the <b>Project Background</b> tab as the BA workspace is
-            reviewed.
+            <code>features.md</code> — it is created in the <b>Project Background</b> tab
+            as the BA workspace is reviewed.
           </p>
           <div className="actions-row" style={{ justifyContent: 'center' }}>
             <Link className="btn btn-soft" to={`/projects/${idOrSlug}/background`}>
@@ -663,47 +765,61 @@ export function RequirementsScreen() {
     );
   }
 
-  const emptyProject = data.stories.length === 0 && data.businessReqs.length === 0;
+  const emptyProject = data.features.length === 0 && data.businessReqs.length === 0;
 
-  // ── The InlineForm slot (refinement batch items 2.7 + 2.8) ──
-  // Slots: 'top' = the add-story form under the add bar; a story's usId =
-  // edit-story / add-req form under that story's head; a reqId = edit-req
-  // form rendered directly under that specific ReqRow (no more shared
-  // 'brs' slot — edit-BR is just edit-req under the BR row).
+  // ── The form slot (refinement batch items 2.7 + 2.8) ──
+  // Slots: 'top' = the add-feature form under the add bar; a feature's feId
+  // = edit-feature / add-req / add-ac form under that feature's head; a
+  // reqId = edit-req form rendered directly under that specific ReqRow; an
+  // acId = edit-ac form rendered directly under that specific AC row.
 
   const renderForm = (slot: 'top' | string) => {
     if (!form || !formInitial) return null;
     // Slot match (refinement batch items 2.7 + 2.8 + QA-1):
-    //  - add-story → top bar only
-    //  - edit-story / add-req → the story's head slot (the add-req form
-    //    carries the story id, NOT a req id — slot matches `form.usId`)
+    //  - add-feature → top bar only
+    //  - edit-feature / add-req / add-ac → the feature's head slot
     //  - edit-req → the per-row slot (carries the req id)
-    // The previous code required `'reqId' in form` for any non-story form,
-    // which silently dropped add-req forms (no reqId) — clicking Add
-    // requirement in a story opened state but rendered nothing (QA-1).
+    //  - edit-ac → the per-row slot (carries the ac id)
     const belongsHere =
-      form.mode === 'add' && form.kind === 'story'
+      form.mode === 'add' && form.kind === 'feature'
         ? slot === 'top'
-        : form.kind === 'story'
-          ? slot === form.usId
+        : form.mode === 'edit' && form.kind === 'feature'
+          ? slot === form.feId
           : form.mode === 'add'
-            ? slot === form.usId
-            : 'reqId' in form && slot === form.reqId;
+            ? slot === form.feId
+            : form.kind === 'req'
+              ? slot === form.reqId
+              : slot === form.acId;
     if (!belongsHere) return null;
+    if (form.kind === 'ac') {
+      return (
+        <AcForm
+          key={`${form.kind}-${form.mode}-${slot}-${form.mode === 'edit' ? form.acId : 'new'}`}
+          formId={formIdLine}
+          initial={formInitial as AcFormValues}
+          errors={formErrors}
+          submitting={submitting}
+          onDirtyChange={setDirty}
+          onValuesChange={setFormValues}
+          onSubmit={(v) => void submitForm(v)}
+          onCancel={closeForm}
+        />
+      );
+    }
     return (
       <InlineForm
-        key={`${form.kind}-${form.mode}-${slot}-${'reqId' in form ? form.reqId : ''}`}
+        key={`${form.kind}-${form.mode}-${slot}-${form.kind === 'req' && form.mode === 'edit' ? form.reqId : ''}`}
         mode={form.mode}
         kind={form.kind}
         formId={formIdLine}
         heading={
-          form.kind === 'story'
-            ? 'User story'
+          form.kind === 'feature'
+            ? 'Feature'
             : form.mode === 'add'
-              ? `Requirement in ${form.usId}`
+              ? `Requirement in ${form.feId}`
               : 'Requirement'
         }
-        initial={formInitial}
+        initial={formInitial as FormValues}
         errors={formErrors}
         submitting={submitting}
         onDirtyChange={setDirty}
@@ -732,7 +848,7 @@ export function RequirementsScreen() {
         <div className="body">
           <div className="lbl">Requirements</div>
           <div className="ttl">
-            {totals?.total ?? 0} business &amp; technical requirements · grouped by user story
+            {totals?.total ?? 0} business &amp; technical requirements · grouped by feature
           </div>
           <div className="sub">
             The signed-off list. Long-form context lives in the{' '}
@@ -760,18 +876,18 @@ export function RequirementsScreen() {
       {/* In‑flight BA Agent generation progress per §8 spec — phase-aware.
           Generation is ONE large batch per section (the model returns its full
           section at once; rows splice only after the response parses), so the
-          story count is unknowable mid-call — the banner shows a live elapsed
+          feature count is unknowable mid-call — the banner shows a live elapsed
           clock + step counter until the first rows land, then live row counts.
           Accessibility markers from the design state spec: role=status +
           aria-live=polite, text-only changes under the same live region. */}
       {reqGenStatus?.status === 'generating' && (
         <div className="ba-warn" role="status" aria-live="polite">
-          <b>BA Agent generating stories and requirements</b> —{' '}
-          {reqGenStatus.result && reqGenStatus.result.storiesGenerated > 0 ? (
+          <b>BA Agent generating features and requirements</b> —{' '}
+          {reqGenStatus.result && reqGenStatus.result.featuresGenerated > 0 ? (
             <>
-              wrote {reqGenStatus.result.storiesGenerated} user stories · now generating{' '}
-              {reqGenStatus.currentSection ?? 'requirements'} — {reqGenStatus.progress.generated} of{' '}
-              {reqGenStatus.progress.total} steps done.
+              wrote {reqGenStatus.result.featuresGenerated} features ({reqGenStatus.result.acsGenerated}{' '}
+              acceptance criteria) · now generating {reqGenStatus.currentSection ?? 'requirements'} —{' '}
+              {reqGenStatus.progress.generated} of {reqGenStatus.progress.total} steps done.
             </>
           ) : reqGenStatus.sectionStartedAt ? (
             <>
@@ -785,7 +901,7 @@ export function RequirementsScreen() {
               {reqGenStatus.progress.generated} of {reqGenStatus.progress.total} steps done.
             </>
           )}
-          You can still manually add user stories below.
+          You can still manually add features below.
         </div>
       )}
 
@@ -793,7 +909,7 @@ export function RequirementsScreen() {
         <div className="toast" role="status" aria-live="polite">
           <span className="toast-dot" aria-hidden="true" />
           BA Agent finished generating requirements{reqGenStatus.result
-            ? ` — ${reqGenStatus.result.storiesGenerated} stories, ${reqGenStatus.result.brsGenerated} business and ${reqGenStatus.result.trsGenerated} technical requirements ready.`
+            ? ` — ${reqGenStatus.result.featuresGenerated} features, ${reqGenStatus.result.brsGenerated} business and ${reqGenStatus.result.trsGenerated} technical requirements ready.`
             : ` — ${reqGenStatus.progress.generated} of ${reqGenStatus.progress.total} steps done.`}
         </div>
       )}
@@ -822,7 +938,7 @@ export function RequirementsScreen() {
             </div>
             <div className="meta">
               <span>
-                Reads <code>prd.md</code> §8 + <code>user-journeys.md</code>
+                Reads <code>features.md</code>
               </span>
             </div>
           </div>
@@ -836,51 +952,51 @@ export function RequirementsScreen() {
             )}
 
             {emptyProject ? (
-              /* Zero-stories empty state (AC-8): one CTA, story-first. The form
+              /* Zero-features empty state (AC-8): one CTA, feature-first. The form
                  slot rides along — without it the CTA sets form state nothing
                  ever mounts, and the click is a silent no-op. */
               <>
                 <div className="req-empty">
                   <h2>No requirements yet</h2>
                   <p>
-                    Start with a <b>user story</b> — once one exists you can add BR / TR
-                    requirements to it from inside that story's header.
+                    Start with a <b>feature</b> — once one exists you can add BR / TR
+                    requirements and acceptance criteria to it from inside that feature's header.
                   </p>
-                  <button type="button" className="btn btn-primary" aria-label="Add your first user story" onClick={() => openForm({ mode: 'add', kind: 'story' })}>
+                  <button type="button" className="btn btn-primary" aria-label="Add your first feature" onClick={() => openForm({ mode: 'add', kind: 'feature' })}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" aria-hidden="true"><path d="M12 5v14 M5 12h14"/></svg>
-                    Add your first user story
+                    Add your first feature
                   </button>
                 </div>
                 {renderForm('top')}
               </>
             ) : (
               <>
-                {/* Add bar — story-first: only "Add user story" lives here (spec UI). */}
-                <div className="req-add-bar" role="region" aria-label="Add a new user story">
+                {/* Add bar — feature-first: only "Add feature" lives here (spec UI). */}
+                <div className="req-add-bar" role="region" aria-label="Add a new feature">
                   <div className="label">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v8 M8 12h8"/></svg>
                     <span>
-                      <b>BA controls.</b> Start with a <b>user story</b> — once a story exists you
-                      can add BR / TR requirements to it from inside that story's header.
+                      <b>BA controls.</b> Start with a <b>feature</b> — once a feature exists you
+                      can add BR / TR requirements and acceptance criteria to it from inside
+                      that feature's header.
                     </span>
                   </div>
-                  <button type="button" className="btn btn-primary" aria-label="Add a new user story" onClick={() => openForm({ mode: 'add', kind: 'story' })}>
+                  <button type="button" className="btn btn-primary" aria-label="Add a new feature" onClick={() => openForm({ mode: 'add', kind: 'feature' })}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" aria-hidden="true"><path d="M12 5v14 M5 12h14"/></svg>
-                    Add user story
+                    Add feature
                   </button>
                 </div>
 
-                {renderForm('top') /* the add-story form lives under the add bar */}
+                {renderForm('top') /* the add-feature form lives under the add bar */}
 
                 {filtered && (
                   <FilterBar filter={filter} onChange={setFilter} counts={chipCounts} />
                 )}
 
-                {/* Business requirements group — only the *unassigned* BRs
-                    (those without a `<!-- BR-NNN: story=US-NN -->` link, or
-                    whose story no longer exists) live here. Linked BRs are
-                    rendered inside their story's reqs list (refinement batch
-                    item 2.7). */}
+                {/* Unassigned business requirements group — only the BRs
+                    without a feature link (or whose feature no longer
+                    exists) live here. Linked BRs are rendered inside their
+                    feature's reqs list (refinement batch item 2.7). */}
                 {filtered && filtered.businessReqs.length > 0 && (
                   <div className="story brs-group">
                     <div className="story-head">
@@ -888,9 +1004,9 @@ export function RequirementsScreen() {
                       <div className="story-body">
                         <div className="story-title">Unassigned business requirements</div>
                         <div className="story-as">
-                          PRD §8 rows that aren't attached to a user story. New BRs are added
-                          from a story's header (story-first), so this list shrinks as stories
-                          are written. Legacy rows (from before story links existed) start here.
+                          Business requirements that aren't attached to a feature yet. New
+                          BRs are added from a feature's header (feature-first), so this
+                          list shrinks as features are written.
                         </div>
                       </div>
                       <div className="story-meta">
@@ -903,7 +1019,7 @@ export function RequirementsScreen() {
                           key={req.id}
                           req={req}
                           statusPending={reqStatusPending === req.id}
-                          onEdit={() => openForm({ mode: 'edit', kind: 'req', reqId: req.id, usId: null })}
+                          onEdit={() => openForm({ mode: 'edit', kind: 'req', reqId: req.id, feId: null })}
                           onDelete={() => openDeleteForReq(req, null)}
                           onStatusChange={(next) => void changeReqStatus(req, next)}
                           editFormNode={renderForm(req.id)}
@@ -913,28 +1029,44 @@ export function RequirementsScreen() {
                   </div>
                 )}
 
-                {filtered && filtered.stories.map((story) => (
-                  <StoryGroup
-                    key={story.usId}
-                    story={story}
+                {filtered && filtered.features.map((feature) => (
+                  <FeatureGroup
+                    key={feature.feId}
+                    feature={feature}
                     openForm={form}
-                    renderForm={() => renderForm(story.usId)}
-                    editFormFor={(reqId) => renderForm(reqId)}
+                    renderForm={() => renderForm(feature.feId)}
+                    editFormFor={(reqId) =>
+                      // Guard the per-row slot by feId so a duplicate req id
+                      // in another feature block never renders a second form.
+                      form && form.kind === 'req' && form.mode === 'edit' && form.feId === feature.feId
+                        ? renderForm(reqId)
+                        : null
+                    }
+                    editFormForAc={(acId) =>
+                      form && form.kind === 'ac' && form.mode === 'edit' && form.feId === feature.feId
+                        ? renderForm(acId)
+                        : null
+                    }
                     flash={false}
-                    statusPendingStory={storyStatusPending === story.usId}
+                    statusPendingFeature={featureStatusPending === feature.feId}
                     statusPendingReqId={reqStatusPending}
-                    onEditStory={() => openForm({ mode: 'edit', kind: 'story', usId: story.usId })}
-                    onAddReq={() => openForm({ mode: 'add', kind: 'req', usId: story.usId })}
+                    acPendingId={acPendingId}
+                    onEditFeature={() => openForm({ mode: 'edit', kind: 'feature', feId: feature.feId })}
+                    onAddReq={() => openForm({ mode: 'add', kind: 'req', feId: feature.feId })}
+                    onAddAc={() => openForm({ mode: 'add', kind: 'ac', feId: feature.feId })}
                     // Delete is a direct modal (item 2.9), not a two-step form strip.
-                    onDeleteStory={() => openDeleteForStory(story)}
-                    onStoryStatus={(next) => void changeStoryStatus(story, next)}
-                    onReqEdit={(req) => openForm({ mode: 'edit', kind: 'req', reqId: req.id, usId: story.usId })}
-                    onReqDelete={(req) => openDeleteForReq(req, story.usId)}
+                    onDeleteFeature={() => openDeleteForFeature(feature)}
+                    onFeatureStatus={(next) => void changeFeatureStatus(feature, next)}
+                    onReqEdit={(req) => openForm({ mode: 'edit', kind: 'req', reqId: req.id, feId: feature.feId })}
+                    onReqDelete={(req) => openDeleteForReq(req, req.featureId)}
                     onReqStatus={(req, next) => void changeReqStatus(req, next)}
+                    onAcEdit={(ac) => openForm({ mode: 'edit', kind: 'ac', feId: feature.feId, acId: ac.id })}
+                    onAcDelete={(ac) => openDeleteForAc(ac)}
+                    onAcStatus={(ac, next) => void changeAcStatus(ac, next)}
                   />
                 ))}
 
-                {filtered && filtered.stories.length === 0 && filtered.businessReqs.length === 0 && (
+                {filtered && filtered.features.length === 0 && filtered.businessReqs.length === 0 && (
                   <div className="req-empty slim">
                     <p>No requirements match the current filters.</p>
                     <button type="button" className="btn btn-ghost" onClick={() => setFilter(EMPTY_FILTER)}>

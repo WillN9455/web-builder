@@ -17,10 +17,10 @@ import {
   fileHasGeneratedRows,
   reconcileBusinessReqs,
   reconcileSectionsDone,
-  reconcileStories,
+  reconcileFeatures,
   requireRows,
   spliceBusinessReqs,
-  spliceStories,
+  spliceFeatures,
 } from '../server/req-gen-splice.js';
 import fs from 'node:fs';
 import net from 'node:net';
@@ -115,18 +115,25 @@ const PRD_MD = `# PRD — Neighborhood Library
 - The system must stay under 200ms p95 for list reads.
 `;
 
-const JOURNEYS_MD = [
-  '# User journeys',
+const FEATURES_MD = [
+  '# Features',
   '',
-  '### US-01 — List an item for lending',
-  '<!-- story: priority=must status=in_review owner=BA -->',
-  '**As a** household owner, **I want to** list an item with title, photo, condition, and pickup window, **so that** nearby borrowers can find and request it.',
+  '### FE-01 — List an item for lending',
+  '<!-- feature: priority=must status=in_review owner=BA origin=manual -->',
+  '<!-- source: user-journeys.md §3 -->',
+  'Household owners can list an item with title, photo, condition, and pickup window so that nearby borrowers can find and request it.',
   '',
+  '## Acceptance Criteria',
+  '- AC-001 | met | The list form must expose title, photo, condition, and pickup window.',
+  '<!-- AC-001: origin=manual -->',
   '- TR-001 | must | in_review | DEV | Photo uploads must use signed URLs and store objects in the project bucket with public-read disabled.',
+  '<!-- TR-001: origin=manual -->',
   '',
-  '### US-02 — Reserve an item',
-  '<!-- story: priority=should status=draft owner=SA -->',
-  '**As a** borrower, **I want to** reserve an available item for pickup, **so that** nearby borrowers can plan around TR-001 pickup windows.',
+  '### FE-02 — Reserve an item',
+  '<!-- feature: priority=should status=draft owner=SA origin=manual -->',
+  'Borrowers can reserve an available item for pickup so that nearby borrowers can plan around TR-001 pickup windows.',
+  '',
+  '## Acceptance Criteria',
   '',
 ].join('\n');
 
@@ -141,9 +148,9 @@ async function main(): Promise<void> {
   fs.mkdirSync(path.join(projDir, 'PRD'), { recursive: true });
   fs.mkdirSync(emptyDir, { recursive: true });
   const prdPath = path.join(projDir, 'PRD', 'prd.md');
-  const journeysPath = path.join(projDir, 'PRD', 'user-journeys.md');
+  const featuresPath = path.join(projDir, 'PRD', 'features.md');
   fs.writeFileSync(prdPath, PRD_MD);
-  fs.writeFileSync(journeysPath, JOURNEYS_MD);
+  fs.writeFileSync(featuresPath, FEATURES_MD);
 
   // Reopen-all fixtures (PR #26 follow-up): req-verify-approved carries all 17
   // BA_ARTIFACTS on disk + all Approved + context confirmed; req-verify-mixed
@@ -238,14 +245,15 @@ async function main(): Promise<void> {
     // Pristine fixture snapshots for the req-gen splice checks below (the
     // CRUD walk mutates the on-disk files).
     const prd0 = read(prdPath);
-    const journeys0 = read(journeysPath);
+    const features0 = read(featuresPath);
 
     // ── GET (AC-10: populated + no-prd, never 500) ──
     let r = await reqFetch(`/api/projects/${slug}/requirements`);
     check('GET populated → 200 source ok', r.status === 200 && r.body.source === 'ok');
     eq('businessReqs = 3 (incl. the legacy BR-004)', r.body.businessReqs?.length, 3);
-    eq('stories = 2', r.body.stories?.length, 2);
-    eq('US-01 carries TR-001', r.body.stories?.[0]?.reqs?.map((x: any) => x.id), ['TR-001']);
+    eq('features = 2', r.body.features?.length, 2);
+    eq('FE-01 carries TR-001', r.body.features?.[0]?.reqs?.map((x: any) => x.id), ['TR-001']);
+    eq('FE-01 carries AC-001', r.body.features?.[0]?.acs?.map((a: any) => a.id), ['AC-001']);
 
     r = await reqFetch(`/api/projects/${emptySlug}/requirements`);
     check('GET no-prd → 200 with no-prd empty state (AC-10)', r.status === 200 && r.body.source === 'no-prd');
@@ -256,26 +264,25 @@ async function main(): Promise<void> {
     r = await reqFetch('/api/projects/req-verify-nonexistent/requirements');
     check('unknown project → 404', r.status === 404);
 
-    // ── POST story (AC-4/8/9): appends US-03 to user-journeys.md only ──
-    const beforeJ = read(journeysPath);
+    // ── POST feature (AC-4/8/9): appends FE-03 to features.md only ──
+    const beforeF = read(featuresPath);
     const beforeP = read(prdPath);
-    r = await json(`/api/projects/${slug}/stories`, 'POST', {
+    r = await json(`/api/projects/${slug}/features`, 'POST', {
       title: 'Return an item on time',
-      asA: 'borrower',
-      iWantTo: 'return a borrowed item before its due date',
-      soThat: 'the next borrower can pick it up without delay',
+      description: 'Borrowers hand items back before the due date so the next borrower can pick them up without delay.',
+      source: null,
       priority: 'should',
       status: 'draft',
       owner: 'BA',
     });
-    check('POST story → 201', r.status === 201);
-    eq('new story id is lowest free (AC-8)', r.body?.story?.usId, 'US-03');
-    const afterJ = read(journeysPath);
-    check('user-journeys.md grew append-only (AC-9)', afterJ.startsWith(beforeJ));
+    check('POST feature → 201', r.status === 201);
+    eq('new feature id is lowest free (AC-8)', r.body?.feature?.feId, 'FE-03');
+    const afterF = read(featuresPath);
+    check('features.md grew append-only (AC-9)', afterF.startsWith(beforeF));
     eq('prd.md byte-identical (AC-9)', read(prdPath), beforeP);
 
-    // ── POST BR → prd.md §8 (story-first endpoint, type decides target) ──
-    r = await json(`/api/projects/${slug}/stories/US-03/requirements`, 'POST', {
+    // ── POST BR → feature block in features.md (feature-scoped endpoint) ──
+    r = await json(`/api/projects/${slug}/features/FE-03/requirements`, 'POST', {
       type: 'BR',
       text: 'Returned items must reappear in the list within 10 seconds of check-in.',
       priority: 'must',
@@ -283,19 +290,19 @@ async function main(): Promise<void> {
       owner: 'BA',
     });
     check('POST BR → 201', r.status === 201);
-    // QA-10: per-story BR allocation. US-03's linked-BR pool is empty, so
+    // QA-10: per-feature BR allocation. FE-03's linked-BR pool is empty, so
     // the new row takes BR-001 — the same id a TR-001 would use, which
     // is now expected behaviour, not a clash (BR and TR namespaces are
     // separate). The legacy global allocator would have produced BR-003.
-    eq('BR gets per-story lowest free id BR-001 (QA-10)', r.body?.requirement?.id, 'BR-001');
+    eq('BR gets per-feature lowest free id BR-001 (QA-10)', r.body?.requirement?.id, 'BR-001');
     const brAfter = read(prdPath);
     const brDiff = lcsDiff(beforeP, brAfter);
     eq(
-      'BR insert adds exactly 2 lines (row + story link), removes none (AC-9 / 2.7)',
+      'BR insert adds exactly 2 lines (row + feature link), removes none (AC-9 / 2.7)',
       brDiff,
       {
         added: [
-          // QA-10: per-story allocation; US-03's pool is empty, so the
+          // QA-10: per-feature allocation; FE-03's pool is empty, so the
           // new row takes BR-001 — same id the legacy BR-001 in
           // businessReqs carries. They live in different scopes and never
           // collide on disk. Find the *new* row by its unique text.
@@ -303,22 +310,22 @@ async function main(): Promise<void> {
             .split('\n')
             .filter((l) => l.startsWith('- BR-001 |') && l.includes('Returned items must reappear'))
             .pop() ?? '',
-          '<!-- BR-001: story=US-03, origin=manual -->',
+          '<!-- BR-001: feature=FE-03, origin=manual -->',
         ],
         removed: [],
       },
     );
-    eq('user-journeys.md byte-identical after BR (AC-9)', read(journeysPath), afterJ);
+    eq('features.md byte-identical after BR (AC-9)', read(featuresPath), afterF);
 
-    // ── BR-under-story (item 2.7) — GET must move BR-001 into US-03's reqs,
-    //    and legacy BR-004 (no story link) stays in businessReqs.
+    // ── BR-under-feature (item 2.7) — GET must move BR-001 into FE-03's reqs,
+    //    and legacy BR-004 (no feature link) stays in businessReqs.
     const afterBrGet = await reqFetch(`/api/projects/${slug}/requirements`);
-    const storyForUs03 = afterBrGet.body?.stories?.find((s: any) => s.usId === 'US-03');
-    check('BR-001 lands inside US-03 (item 2.7)', !!storyForUs03 && storyForUs03.reqs.some((r: any) => r.id === 'BR-001'));
+    const feForFe03 = afterBrGet.body?.features?.find((f: any) => f.feId === 'FE-03');
+    check('BR-001 lands inside FE-03 (item 2.7)', !!feForFe03 && feForFe03.reqs.some((r: any) => r.id === 'BR-001'));
     eq(
-      'BR-001 carries storyUsId=US-03 (item 2.7)',
-      storyForUs03?.reqs?.find((r: any) => r.id === 'BR-001')?.storyUsId,
-      'US-03',
+      'BR-001 carries featureId=FE-03 (item 2.7)',
+      feForFe03?.reqs?.find((r: any) => r.id === 'BR-001')?.featureId,
+      'FE-03',
     );
     eq(
       'legacy BRs (no link) stay in businessReqs (item 2.7)',
@@ -327,7 +334,7 @@ async function main(): Promise<void> {
     );
     eq(
       'BR-001 carries origin=manual (item 2.6)',
-      storyForUs03?.reqs?.find((r: any) => r.id === 'BR-001')?.origin,
+      feForFe03?.reqs?.find((r: any) => r.id === 'BR-001')?.origin,
       'manual',
     );
     // QA-2: every req row carries an origin tag — legacy rows render as
@@ -339,19 +346,19 @@ async function main(): Promise<void> {
       afterBrGet.body?.businessReqs?.find((b: any) => b.id === 'BR-001')?.origin === null,
     );
 
-    // ── POST TR → the story block ──
-    r = await json(`/api/projects/${slug}/stories/US-02/requirements`, 'POST', {
+    // ── POST TR → the feature block (feature-scoped endpoint, slice 2) ──
+    r = await json(`/api/projects/${slug}/features/FE-02/requirements`, 'POST', {
       type: 'TR',
       text: 'Reservations must expire automatically after 24 hours without pickup.',
       priority: 'should',
       status: 'draft',
       owner: 'DEV',
     });
-    check('POST TR → 201 TR-001 (per-story, US-02 pool empty)', r.status === 201 && r.body?.requirement?.id === 'TR-001');
-    const trAfter = read(journeysPath);
-    const trDiff = lcsDiff(afterJ, trAfter);
+    check('POST TR → 201 TR-001 (per-feature, FE-02 pool empty)', r.status === 201 && r.body?.requirement?.id === 'TR-001');
+    const trAfter = read(featuresPath);
+    const trDiff = lcsDiff(afterF, trAfter);
     eq(
-      'TR lands inside the US-02 block — one inserted row + origin marker (AC-9 / QA-2)',
+      'TR lands inside the FE-02 block — one inserted row + origin marker (AC-9 / QA-2)',
       { removed: trDiff.removed, added: trDiff.added },
       {
         removed: [],
@@ -362,193 +369,193 @@ async function main(): Promise<void> {
       },
     );
 
-    // ── Story-first rule: body carrying a story field → 422 (spec VALID) ──
-    r = await json(`/api/projects/${slug}/stories/US-02/requirements`, 'POST', {
+    // ── Story-first rule (redesigned): body carrying a feature field → 422 ──
+    r = await json(`/api/projects/${slug}/features/FE-02/requirements`, 'POST', {
       type: 'TR',
       text: 'Reservations must expire automatically after 24 hours without pickup.',
       priority: 'should',
       status: 'draft',
       owner: 'DEV',
-      story: { title: 'sneaky' },
+      feature: { title: 'sneaky' },
     });
-    check('POST requirement with story field → 422', r.status === 422);
+    check('POST requirement with feature field → 422', r.status === 422);
 
-    // QA-5: a second POST into the same story must NOT land the new
+    // QA-5: a second POST into the same feature must NOT land the new
     // [row, marker] pair between the previous TR and its trailing
     // `<!-- TR-NNN: origin=manual -->` comment — otherwise the previous
     // row's marker detaches, parses origin=null on re-parse, and the
     // file contract is scrambled. The new row pair lands AFTER the
-    // previous marker. Same for BR: a second BR into US-03 must not
-    // detach the first BR's `story=US-03` link.
-    r = await json(`/api/projects/${slug}/stories/US-02/requirements`, 'POST', {
+    // previous marker. Same for BR: a second BR into FE-03 must not
+    // detach the first BR's `feature=FE-03` link.
+    r = await json(`/api/projects/${slug}/features/FE-02/requirements`, 'POST', {
       type: 'TR',
-      text: 'A second TR into US-02 — the marker-aware insert index must keep TR-001 glued to its origin marker.',
+      text: 'A second TR into FE-02 — the marker-aware insert index must keep TR-001 glued to its origin marker.',
       priority: 'could',
       status: 'draft',
       owner: 'BA',
     });
-    // QA-10: per-story allocation. US-02's TR pool now has TR-001, so the
+    // QA-10: per-feature allocation. FE-02's TR pool now has TR-001, so the
     // second TR is TR-002 (not the legacy global TR-003).
-    check('second POST TR into US-02 → 201 TR-002 (QA-5 + QA-10)', r.status === 201 && r.body?.requirement?.id === 'TR-002');
+    check('second POST TR into FE-02 → 201 TR-002 (QA-5 + QA-10)', r.status === 201 && r.body?.requirement?.id === 'TR-002');
     check(
       'QA-5: TR-001 origin marker stays glued to its row on a second POST',
-      read(journeysPath).indexOf('- TR-001 |') < read(journeysPath).indexOf('<!-- TR-001: origin=manual -->') &&
-        read(journeysPath).indexOf('<!-- TR-001: origin=manual -->') < read(journeysPath).indexOf('- TR-002 |'),
+      read(featuresPath).indexOf('- TR-001 |') < read(featuresPath).indexOf('<!-- TR-001: origin=manual -->') &&
+        read(featuresPath).indexOf('<!-- TR-001: origin=manual -->') < read(featuresPath).indexOf('- TR-002 |'),
     );
     r = await reqFetch(`/api/projects/${slug}/requirements`);
-    const tr001AfterSecond = r.body.stories
-      .find((s: any) => s.usId === 'US-02')
+    const tr001AfterSecond = r.body.features
+      .find((f: any) => f.feId === 'FE-02')
       ?.reqs.find((x: any) => x.id === 'TR-001');
     eq('QA-5: TR-001 origin=manual after second POST (parsed)', tr001AfterSecond?.origin, 'manual');
 
-    r = await json(`/api/projects/${slug}/stories/US-03/requirements`, 'POST', {
+    r = await json(`/api/projects/${slug}/features/FE-03/requirements`, 'POST', {
       type: 'BR',
-      text: 'A second BR into US-03 — the marker-aware insert must keep BR-001 glued to its story link.',
+      text: 'A second BR into FE-03 — the marker-aware insert must keep BR-001 glued to its feature link.',
       priority: 'could',
       status: 'draft',
       owner: 'BA',
     });
-    // QA-10: US-03's linked-BR pool now has BR-001, so the second BR is
+    // QA-10: FE-03's linked-BR pool now has BR-001, so the second BR is
     // BR-002 (not the legacy global BR-005).
-    check('second POST BR into US-03 → 201 BR-002 (QA-5 + QA-10)', r.status === 201 && r.body?.requirement?.id === 'BR-002');
-    // QA-10: per-story numbering means the fixture's legacy BR-001 still
-    // exists in §8 alongside US-03's new BR-001. Anchor the row/marker
+    check('second POST BR into FE-03 → 201 BR-002 (QA-5 + QA-10)', r.status === 201 && r.body?.requirement?.id === 'BR-002');
+    // QA-10: per-feature numbering means the fixture's legacy BR-001 still
+    // exists in §8 alongside FE-03's new BR-001. Anchor the row/marker
     // proximity check on the linked row's marker line (find from the
     // marker backward to the nearest preceding BR-001 row line).
     {
       const text = read(prdPath);
-      const m1 = text.indexOf('<!-- BR-001: story=US-03, origin=manual -->');
-      const m2 = text.indexOf('<!-- BR-002: story=US-03, origin=manual -->');
+      const m1 = text.indexOf('<!-- BR-001: feature=FE-03, origin=manual -->');
+      const m2 = text.indexOf('<!-- BR-002: feature=FE-03, origin=manual -->');
       const i1 = m1 === -1 ? -1 : text.lastIndexOf('- BR-001 |', m1);
       const i2 = m2 === -1 ? -1 : text.lastIndexOf('- BR-002 |', m2);
       check(
-        'QA-5: BR-001 story link stays glued to its row on a second BR POST',
+        'QA-5: BR-001 feature link stays glued to its row on a second BR POST',
         i1 !== -1 && m1 !== -1 && m2 !== -1 && i2 !== -1 && i1 < m1 && m1 < i2 && i2 < m2,
       );
     }
     r = await reqFetch(`/api/projects/${slug}/requirements`);
-    const us03AfterSecond = r.body.stories.find((s: any) => s.usId === 'US-03');
+    const fe03AfterSecond = r.body.features.find((f: any) => f.feId === 'FE-03');
     check(
-      'QA-5: BR-001 still rendered inside US-03 after second BR POST (link intact)',
-      !!us03AfterSecond && us03AfterSecond.reqs.some((x: any) => x.id === 'BR-001'),
+      'QA-5: BR-001 still rendered inside FE-03 after second BR POST (link intact)',
+      !!fe03AfterSecond && fe03AfterSecond.reqs.some((x: any) => x.id === 'BR-001'),
     );
     check(
-      'QA-5: BR-002 lands inside US-03 too',
-      !!us03AfterSecond && us03AfterSecond.reqs.some((x: any) => x.id === 'BR-002'),
+      'QA-5: BR-002 lands inside FE-03 too',
+      !!fe03AfterSecond && fe03AfterSecond.reqs.some((x: any) => x.id === 'BR-002'),
     );
 
-    // ── QA-14: linked-BR writes must land in prd.md, never user-journeys.md ──
-    // The scoped locateReq used to return a linked BR from story.reqs stamped
-    // as user-journeys.md (its untyped find() predates linked BRs living in
-    // that list). PATCH/DELETE then struck user-journeys.md at the row's
-    // prd.md line index: the real prd.md row survived (Will's "cannot delete
-    // business requirements") and a phantom strike + marker landed in
-    // journeys. US-03's linked BR-002 (POSTed above) is the probe row.
-    const qa14JourneysBefore = read(journeysPath);
-    r = await json(`/api/projects/${slug}/requirements/BR-002?storyUsId=US-03`, 'PATCH', { text: 'QA-14 linked-BR edit probe' });
-    check('QA-14: PATCH linked BR-002 (storyUsId=US-03) → 200', r.status === 200);
+    // ── QA-14: linked-BR writes must land in prd.md, never features.md ──
+    // The scoped locateReq (slice 1) resolves BR rows to prd.md and TR rows
+    // to features.md by row TYPE — a linked BR living inside FE-03 must
+    // still be struck in prd.md at the right index, never in features.md
+    // (the original QA-14 failure shape). FE-03's linked BR-002 (POSTed
+    // above) is the probe row.
+    const qa14FeaturesBefore = read(featuresPath);
+    r = await json(`/api/projects/${slug}/requirements/BR-002?feId=FE-03`, 'PATCH', { text: 'QA-14 linked-BR edit probe' });
+    check('QA-14: PATCH linked BR-002 (feId=FE-03) → 200', r.status === 200);
     check(
       'QA-14: linked BR text edit landed in prd.md',
       /- BR-002 \| could \| draft \| BA \| QA-14 linked-BR edit probe/.test(read(prdPath)),
     );
-    eq('QA-14: user-journeys.md byte-identical after linked-BR PATCH (AC-9)', read(journeysPath), qa14JourneysBefore);
-    r = await json(`/api/projects/${slug}/requirements/BR-002/status?storyUsId=US-03`, 'PATCH', { status: 'in_review' });
+    eq('QA-14: features.md byte-identical after linked-BR PATCH (AC-9)', read(featuresPath), qa14FeaturesBefore);
+    r = await json(`/api/projects/${slug}/requirements/BR-002/status?feId=FE-03`, 'PATCH', { status: 'in_review' });
     check('QA-14: status PATCH on linked BR-002 → 200', r.status === 200);
     check(
       'QA-14: linked BR status change landed in prd.md',
       /- BR-002 \| could \| in_review \| BA \| QA-14 linked-BR edit probe/.test(read(prdPath)),
     );
-    eq('QA-14: journeys byte-identical after linked-BR status PATCH', read(journeysPath), qa14JourneysBefore);
-    r = await json(`/api/projects/${slug}/requirements/BR-002?storyUsId=US-03`, 'PATCH', {
-      text: 'A second BR into US-03 — the marker-aware insert must keep BR-001 glued to its story link.',
+    eq('QA-14: features.md byte-identical after linked-BR status PATCH', read(featuresPath), qa14FeaturesBefore);
+    r = await json(`/api/projects/${slug}/requirements/BR-002?feId=FE-03`, 'PATCH', {
+      text: 'A second BR into FE-03 — the marker-aware insert must keep BR-001 glued to its feature link.',
     });
     check('QA-14: linked BR text reset → 200', r.status === 200);
 
-    // ── PATCH story (surgical heading splice) ──
-    r = await json(`/api/projects/${slug}/stories/US-03`, 'PATCH', { title: 'Return an item before it is due' });
-    check('PATCH story title → 200', r.status === 200);
-    check('US-03 heading spliced (AC-9)', read(journeysPath).includes('### US-03 — Return an item before it is due'));
-    const titleDiff = lcsDiff(trAfter, read(journeysPath));
+    // ── PATCH feature (surgical heading splice) ──
+    r = await json(`/api/projects/${slug}/features/FE-03`, 'PATCH', { title: 'Return an item before it is due' });
+    check('PATCH feature title → 200', r.status === 200);
+    check('FE-03 heading spliced (AC-9)', read(featuresPath).includes('### FE-03 — Return an item before it is due'));
+    const titleDiff = lcsDiff(trAfter, read(featuresPath));
     eq('title splice replaces exactly 1 line', { added: titleDiff.added.length, removed: titleDiff.removed.length }, { added: 3, removed: 1 });
 
-    // QA-2: story origin stamping — US-03 was POSTed in this run, so its
+    // QA-2: feature origin stamping — FE-03 was POSTed in this run, so its
     // meta comment should carry origin=manual; the wire format surfaces it.
     r = await reqFetch(`/api/projects/${slug}/requirements`);
-    const us03Origin = r.body?.stories?.find((s: any) => s.usId === 'US-03')?.origin;
-    check('US-03 origin=manual after POST (QA-2)', us03Origin === 'manual');
-    check('US-03 meta comment carries origin=manual (QA-2)', read(journeysPath).includes('<!-- story: priority=should status=draft owner=BA origin=manual -->'));
+    const fe03Origin = r.body?.features?.find((f: any) => f.feId === 'FE-03')?.origin;
+    check('FE-03 origin=manual after POST (QA-2)', fe03Origin === 'manual');
+    check('FE-03 meta comment carries origin=manual (QA-2)', read(featuresPath).includes('<!-- feature: priority=should status=draft owner=BA origin=manual -->'));
 
-    // Legacy blocks (the fixture's US-01/US-02) keep origin=null on disk
-    // until a PATCH touches the meta block; the UI renders null as manual.
-    const us01Origin = r.body?.stories?.find((s: any) => s.usId === 'US-01')?.origin;
-    check('legacy US-01 origin=null on the wire (QA-2)', us01Origin === null);
+    // The fixture's legacy blocks stamp an explicit origin=manual token in
+    // their meta comments, so the wire value is 'manual' — the null→manual
+    // coalescing only applies to meta comments missing the token entirely.
+    const fe01Origin = r.body?.features?.find((f: any) => f.feId === 'FE-01')?.origin;
+    check('legacy FE-01 origin=manual on the wire (QA-2)', fe01Origin === 'manual');
 
     // ── PATCH requirement meta ──
-    // QA-10: per-story allocation, so the first TR into US-02 is TR-001
+    // QA-10: per-feature allocation, so the first TR into FE-02 is TR-001
     // (not TR-002 as the legacy global allocator would produce). Pass
-    // storyUsId to disambiguate from US-01's TR-001.
-    r = await json(`/api/projects/${slug}/requirements/TR-001?storyUsId=US-02`, 'PATCH', { priority: 'must', owner: 'BA' });
+    // feId to disambiguate from FE-01's TR-001.
+    r = await json(`/api/projects/${slug}/requirements/TR-001?feId=FE-02`, 'PATCH', { priority: 'must', owner: 'BA' });
     check('PATCH req meta → 200', r.status === 200);
-    check('row re-rendered in place', read(journeysPath).includes('- TR-001 | must | draft | BA |'));
+    check('row re-rendered in place', read(featuresPath).includes('- TR-001 | must | draft | BA |'));
 
     // ── DES owner round-trip (refinement batch item 2.5) ──
-    r = await json(`/api/projects/${slug}/requirements/TR-001?storyUsId=US-02`, 'PATCH', { owner: 'DES' });
+    r = await json(`/api/projects/${slug}/requirements/TR-001?feId=FE-02`, 'PATCH', { owner: 'DES' });
     check('PATCH req owner=DES → 200', r.status === 200);
-    check('DES owner re-rendered in place', read(journeysPath).includes('- TR-001 | must | draft | DES |'));
+    check('DES owner re-rendered in place', read(featuresPath).includes('- TR-001 | must | draft | DES |'));
     r = await reqFetch(`/api/projects/${slug}/requirements`);
-    const tr001InUs02 = r.body.stories.find((s: any) => s.usId === 'US-02')?.reqs.find((x: any) => x.id === 'TR-001');
-    check('GET US-02 TR-001 owner = DES', tr001InUs02?.owner === 'DES');
+    const tr001InFe02 = r.body.features.find((f: any) => f.feId === 'FE-02')?.reqs.find((x: any) => x.id === 'TR-001');
+    check('GET FE-02 TR-001 owner = DES', tr001InFe02?.owner === 'DES');
     // Reset to BA so later assertions still match the fixture
-    r = await json(`/api/projects/${slug}/requirements/TR-001?storyUsId=US-02`, 'PATCH', { owner: 'BA' });
+    r = await json(`/api/projects/${slug}/requirements/TR-001?feId=FE-02`, 'PATCH', { owner: 'BA' });
     check('PATCH req owner=BA reset → 200', r.status === 200);
 
-    // ── QA-13: per-story formInitial scoping on the client ──
-    // Both US-01 (legacy) and US-02 (POSTed above) now carry a `TR-001`.
-    // PATCH with storyUsId=US-02 must only mutate US-02's row, leaving
-    // US-01's fixture text untouched. The text discriminator proves the
-    // server scoped the lookup (US-01 still says "Photo uploads…", US-02
+    // ── QA-13: per-feature formInitial scoping on the client ──
+    // Both FE-01 (legacy) and FE-02 (POSTed above) now carry a `TR-001`.
+    // PATCH with feId=FE-02 must only mutate FE-02's row, leaving
+    // FE-01's fixture text untouched. The text discriminator proves the
+    // server scoped the lookup (FE-01 still says "Photo uploads…", FE-02
     // now says the QA-13 probe).
-    r = await json(`/api/projects/${slug}/requirements/TR-001?storyUsId=US-02`, 'PATCH', { text: 'QA-13 edit probe' });
-    check('PATCH TR-001 with storyUsId=US-02 → 200', r.status === 200);
-    const journeysAfterQa13 = read(journeysPath);
+    r = await json(`/api/projects/${slug}/requirements/TR-001?feId=FE-02`, 'PATCH', { text: 'QA-13 edit probe' });
+    check('PATCH TR-001 with feId=FE-02 → 200', r.status === 200);
+    const featuresAfterQa13 = read(featuresPath);
     check(
-      'QA-13: PATCH hits US-02 TR-001 only — US-02 row carries probe text',
-      /- TR-001 \| must \| draft \| BA \| QA-13 edit probe/.test(journeysAfterQa13),
+      'QA-13: PATCH hits FE-02 TR-001 only — FE-02 row carries probe text',
+      /- TR-001 \| must \| draft \| BA \| QA-13 edit probe/.test(featuresAfterQa13),
     );
     check(
-      'QA-13: US-01 TR-001 text is unchanged (Photo uploads…)',
-      journeysAfterQa13.includes(
+      'QA-13: FE-01 TR-001 text is unchanged (Photo uploads…)',
+      featuresAfterQa13.includes(
         '- TR-001 | must | in_review | DEV | Photo uploads must use signed URLs and store objects in the project bucket with public-read disabled.',
       ),
     );
-    // GET confirms the API surface still resolves to US-02's row only.
+    // GET confirms the API surface still resolves to FE-02's row only.
     r = await reqFetch(`/api/projects/${slug}/requirements`);
-    const qa13Us02 = r.body.stories.find((s: any) => s.usId === 'US-02')?.reqs.find((x: any) => x.id === 'TR-001');
-    const qa13Us01 = r.body.stories.find((s: any) => s.usId === 'US-01')?.reqs.find((x: any) => x.id === 'TR-001');
-    eq('QA-13: GET US-02 TR-001 text = probe', qa13Us02?.text, 'QA-13 edit probe');
-    eq('QA-13: GET US-01 TR-001 text = original fixture', qa13Us01?.text?.startsWith('Photo uploads'), true);
-    // Reset US-02 TR-001 back to its original text so later assertions
+    const qa13Fe02 = r.body.features.find((f: any) => f.feId === 'FE-02')?.reqs.find((x: any) => x.id === 'TR-001');
+    const qa13Fe01 = r.body.features.find((f: any) => f.feId === 'FE-01')?.reqs.find((x: any) => x.id === 'TR-001');
+    eq('QA-13: GET FE-02 TR-001 text = probe', qa13Fe02?.text, 'QA-13 edit probe');
+    eq('QA-13: GET FE-01 TR-001 text = original fixture', qa13Fe01?.text?.startsWith('Photo uploads'), true);
+    // Reset FE-02 TR-001 back to its original text so later assertions
     // (the QA-5 TR-001 marker test, the delete-guard test, etc.) still match.
-    r = await json(`/api/projects/${slug}/requirements/TR-001?storyUsId=US-02`, 'PATCH', {
+    r = await json(`/api/projects/${slug}/requirements/TR-001?feId=FE-02`, 'PATCH', {
       text: 'Reservations must expire automatically after 24 hours without pickup.',
     });
-    check('QA-13: PATCH US-02 TR-001 text reset → 200', r.status === 200);
+    check('QA-13: PATCH FE-02 TR-001 text reset → 200', r.status === 200);
 
-    // Story comment owner also accepts DES
-    r = await json(`/api/projects/${slug}/stories/US-02`, 'PATCH', { owner: 'DES' });
-    check('PATCH story owner=DES → 200', r.status === 200);
-    check('DES story owner re-rendered in place', /<!-- story: priority=should status=draft owner=DES origin=manual -->/.test(read(journeysPath)));
-    r = await json(`/api/projects/${slug}/stories/US-02`, 'PATCH', { owner: 'SA' });
-    check('PATCH story owner=SA reset → 200', r.status === 200);
+    // Feature comment owner also accepts DES
+    r = await json(`/api/projects/${slug}/features/FE-02`, 'PATCH', { owner: 'DES' });
+    check('PATCH feature owner=DES → 200', r.status === 200);
+    check('DES feature owner re-rendered in place', /<!-- feature: priority=should status=draft owner=DES origin=manual -->/.test(read(featuresPath)));
+    r = await json(`/api/projects/${slug}/features/FE-02`, 'PATCH', { owner: 'SA' });
+    check('PATCH feature owner=SA reset → 200', r.status === 200);
 
     // ── Validation (AC-10): 422 with field errors ──
-    r = await json(`/api/projects/${slug}/stories`, 'POST', { title: 'no', asA: '', iWantTo: '', soThat: '', priority: 'must', status: 'draft', owner: 'BA' });
-    check('invalid story → 422 {errors}', r.status === 422 && typeof r.body?.errors === 'object');
+    r = await json(`/api/projects/${slug}/features`, 'POST', { title: 'no', description: '', priority: 'must', status: 'draft', owner: 'BA' });
+    check('invalid feature → 422 {errors}', r.status === 422 && typeof r.body?.errors === 'object');
 
     // ── State machine (AC-7): out-of-machine → 422, no-op ok ──
-    // Stories move through the meta PATCH endpoint (no separate /status route).
-    r = await json(`/api/projects/${slug}/stories/US-01`, 'PATCH', { status: 'draft' });
-    check('US-01 in_review → draft is out-of-machine → 422', r.status === 422);
+    // Features move through the meta PATCH endpoint (no separate /status route).
+    r = await json(`/api/projects/${slug}/features/FE-01`, 'PATCH', { status: 'draft' });
+    check('FE-01 in_review → draft is out-of-machine → 422', r.status === 422);
     r = await json(`/api/projects/${slug}/requirements/BR-001/status`, 'PATCH', { status: 'in_review' });
     check('BR-001 approved → in_review is out-of-machine → 422', r.status === 422);
     r = await json(`/api/projects/${slug}/requirements/BR-001/status`, 'PATCH', { status: 'approved' });
@@ -556,62 +563,76 @@ async function main(): Promise<void> {
     r = await json(`/api/projects/${slug}/requirements/BR-002/status`, 'PATCH', { status: 'in_review' });
     check('BR-002 draft → in_review → 200', r.status === 200);
 
-    // ── Delete guard (AC-11): approved + referenced by ANOTHER story → 409 ──
-    // QA-10: per-story numbering means US-01 and US-02 both have a TR-001.
-    // The delete guard targets US-01's TR-001 (the legacy fixture row that
-    // US-02's body references), so the PATCH and DELETE both need the
-    // storyUsId scope to disambiguate.
-    r = await json(`/api/projects/${slug}/requirements/TR-001/status?storyUsId=US-01`, 'PATCH', { status: 'approved' });
-    check('US-01 TR-001 in_review → approved → 200', r.status === 200);
-    r = await reqFetch(`/api/projects/${slug}/requirements/TR-001?storyUsId=US-01`, { method: 'DELETE' });
-    check('delete guard → 409 with referencedBy US-02 (AC-11)', r.status === 409 && JSON.stringify(r.body?.referencedBy) === '["US-02"]');
-    check('guarded row NOT struck on disk', read(journeysPath).includes('- TR-001 | must | approved | DEV |'));
+    // ── Delete guard (AC-11): approved + referenced by ANOTHER feature → 409 ──
+    // FE-03's BR-001 (POSTed above, unapproved) is the target: approve it,
+    // then POST a second feature whose text mentions BR-001 — the guard
+    // must refuse the delete and name FE-04 as the referencing feature.
+    r = await json(`/api/projects/${slug}/requirements/BR-001/status?feId=FE-03`, 'PATCH', { status: 'in_review' });
+    check('FE-03 BR-001 draft → in_review → 200', r.status === 200);
+    r = await json(`/api/projects/${slug}/requirements/BR-001/status?feId=FE-03`, 'PATCH', { status: 'approved' });
+    check('FE-03 BR-001 in_review → approved → 200', r.status === 200);
+    // The referencing feature must exist BEFORE the delete attempt — its
+    // text (description) mentioning BR-001 is what the guard matches on.
+    r = await json(`/api/projects/${slug}/features`, 'POST', {
+      title: 'Guard fixture: references BR-001',
+      description: 'This feature narrative mentions BR-001 so the delete guard can find it.',
+      source: null,
+      priority: 'could',
+      status: 'draft',
+      owner: 'BA',
+    });
+    check('guard fixture FE-04 created → 201', r.status === 201 && r.body?.feature?.feId === 'FE-04');
+    r = await reqFetch(`/api/projects/${slug}/requirements/BR-001?feId=FE-03`, { method: 'DELETE' });
+    check('delete guard → 409 with referencedBy FE-04 (AC-11)', r.status === 409 && JSON.stringify(r.body?.referencedBy) === '["FE-04"]');
+    check('guarded row NOT struck on disk', read(prdPath).includes('- BR-001 | must | approved | BA |'));
+    r = await reqFetch(`/api/projects/${slug}/features/FE-04`, { method: 'DELETE' });
+    check('guard fixture FE-04 removed → 200', r.status === 200);
 
     // ── TR-delete regression (item 2.7) — the parser used to treat a
     //    `<!-- deleted … -->` marker *anywhere* in a story block as a
     //    story-level delete, which meant soft-deleting a TR also hid the
     //    parent story. The fix scopes story-delete markers to "before any
-    //    requirement rows / body". Repro: add a second TR to US-01,
-    //    delete it (unapproved, so no guard), then assert US-01 still
+    //    requirement rows / body". Repro: add a second TR to FE-01,
+    //    delete it (unapproved, so no guard), then assert FE-01 still
     //    surfaces. ──
-    r = await json(`/api/projects/${slug}/stories/US-01/requirements`, 'POST', {
+    r = await json(`/api/projects/${slug}/features/FE-01/requirements`, 'POST', {
       type: 'TR',
       text: 'A throwaway TR whose delete marker used to hide the whole story.',
       priority: 'wont',
       status: 'draft',
       owner: 'DEV',
     });
-    // QA-10: US-01's TR pool already has TR-001, so the new throwaway is
-    // TR-002 (per-story) — not TR-004 as the legacy global allocator would
-    // produce. storyUsId disambiguates the delete from any other TR-001.
-    eq('regression seed: TR-002 added to US-01 (item 2.7 + QA-10)', r.body?.requirement?.id, 'TR-002');
-    r = await reqFetch(`/api/projects/${slug}/requirements/TR-002?storyUsId=US-01`, { method: 'DELETE' });
+    // QA-10: FE-01's TR pool already has TR-001, so the new throwaway is
+    // TR-002 (per-feature) — not TR-004 as the legacy global allocator would
+    // produce. feId disambiguates the delete from any other TR-001.
+    eq('regression seed: TR-002 added to FE-01 (item 2.7 + QA-10)', r.body?.requirement?.id, 'TR-002');
+    r = await reqFetch(`/api/projects/${slug}/requirements/TR-002?feId=FE-01`, { method: 'DELETE' });
     check('regression seed: TR-002 DELETE → 200 (item 2.7)', r.status === 200);
     r = await reqFetch(`/api/projects/${slug}/requirements`);
     check(
-      'regression: US-01 still listed after a TR was deleted in it (item 2.7)',
-      Array.isArray(r.body?.stories) && r.body.stories.some((s: any) => s.usId === 'US-01'),
+      'regression: FE-01 still listed after a TR was deleted in it (item 2.7)',
+      Array.isArray(r.body?.features) && r.body.features.some((f: any) => f.feId === 'FE-01'),
     );
     check(
-      'regression: TR-001 still listed (struck) inside US-01 (item 2.7)',
-      r.body?.stories?.find((s: any) => s.usId === 'US-01')?.reqs?.some((x: any) => x.id === 'TR-001') === true,
+      'regression: TR-001 still listed (struck) inside FE-01 (item 2.7)',
+      r.body?.features?.find((f: any) => f.feId === 'FE-01')?.reqs?.some((x: any) => x.id === 'TR-001') === true,
     );
 
     // ── B2 regression (review item B2): the parser used to flip
-    //    story.deleted when a TR's row-delete marker appeared after a struck
-    //    TR in a body-less story (heading → meta → ~~struck TR~~ → marker).
-    //    The fix scopes story-delete markers to "before the first content
-    //    line" — a committed body sentence OR any TR row (struck or not)
-    //    freezes the position. Repro: append a body-less US-05 block with a
-    //    single struck TR + the row-delete marker, then assert the story
-    //    still surfaces. ──
+    //    feature.deleted when a TR's row-delete marker appeared after a
+    //    struck TR in a body-less feature (heading → meta → ~~struck TR~~ →
+    //    marker). The fix scopes feature-delete markers to "before the
+    //    first content line" — a committed body sentence OR any TR row
+    //    (struck or not) freezes the position. Repro: append a body-less
+    //    FE-05 block with a single struck TR + the row-delete marker, then
+    //    assert the feature still surfaces. ──
     fs.writeFileSync(
-      journeysPath,
-      read(journeysPath) +
+      featuresPath,
+      read(featuresPath) +
         '\n' +
         [
-          '### US-05 — Body-less edge case for the parser',
-          '<!-- story: priority=wont status=draft owner=BA -->',
+          '### FE-05 — Body-less edge case for the parser',
+          '<!-- feature: priority=wont status=draft owner=BA -->',
           '- ~~TR-001 | wont | draft | DEV | A throwaway TR in a body-less story.~~',
           '<!-- deleted ' + new Date().toISOString().slice(0, 10) + ' by BA -->',
         ].join('\n') +
@@ -619,13 +640,13 @@ async function main(): Promise<void> {
     );
     r = await reqFetch(`/api/projects/${slug}/requirements`);
     check(
-      'B2 regression: body-less + all-struck US-05 still surfaces (item B2)',
-      Array.isArray(r.body?.stories) && r.body.stories.some((s: any) => s.usId === 'US-05'),
+      'B2 regression: body-less + all-struck FE-05 still surfaces (item B2)',
+      Array.isArray(r.body?.features) && r.body.features.some((f: any) => f.feId === 'FE-05'),
     );
     check(
-      'B2 regression: struck TR-001 absent from US-05.reqs but the row is still in the block on disk (item B2)',
-      r.body?.stories?.find((s: any) => s.usId === 'US-05')?.reqs?.some((x: any) => x.id === 'TR-001') !== true &&
-        read(journeysPath).includes('~~TR-001'),
+      'B2 regression: struck TR-001 absent from FE-05.reqs but the row is still in the block on disk (item B2)',
+      r.body?.features?.find((f: any) => f.feId === 'FE-05')?.reqs?.some((x: any) => x.id === 'TR-001') !== true &&
+        read(featuresPath).includes('~~TR-001'),
     );
 
     // ── DELETE requirement (AC-8/9): strike + marker, freed id reusable ──
@@ -653,61 +674,59 @@ async function main(): Promise<void> {
     r = await reqFetch(`/api/projects/${slug}/requirements`);
     check('struck row absent from list (AC-8)', !JSON.stringify(r.body?.businessReqs).includes('BR-002'));
 
-    // QA-10: the per-story allocator picks the next free id from US-03's
-    // linked-BR pool (which now has BR-001). The freed BR-002 in the
-    // unassigned pool is not what allocates here — that's a separate
-    // pool. The new row is BR-002 within US-03's scope (per-story), not
-    // the global-recycled BR-002 the legacy allocator would produce.
-    r = await json(`/api/projects/${slug}/stories/US-03/requirements`, 'POST', {
+    // QA-10: the per-feature allocator picks the next free id from FE-03's
+    // linked-BR pool (which now has BR-001 and BR-002). The freed BR-002 in
+    // the unassigned §8 pool is not what allocates here — that's a separate
+    // pool. The new row is BR-003 within FE-03's scope (per-feature), not
+    // the global-recycled id the legacy allocator would produce.
+    r = await json(`/api/projects/${slug}/features/FE-03/requirements`, 'POST', {
       type: 'BR',
-      text: 'A third BR into US-03 to confirm per-story allocation continues past BR-002.',
+      text: 'A third BR into FE-03 to confirm per-feature allocation continues past BR-002.',
       priority: 'could',
       status: 'draft',
       owner: 'BA',
     });
-    eq('next per-story BR after BR-002 is BR-003 (QA-10)', r.body?.requirement?.id, 'BR-003');
+    eq('next per-feature BR after BR-002 is BR-003 (QA-10)', r.body?.requirement?.id, 'BR-003');
 
-    // ── QA-14: deleting a LINKED BR must strike prd.md, never journeys ──
-    // This is Will's exact repro: trash a business requirement that lives
-    // inside a story. The wrong-file locateReq returned 200 + toast while
-    // the real row survived and a phantom strike landed in
-    // user-journeys.md. The byte-identical assertion is the load-bearing
-    // one — it proves the strike never touched journeys on disk.
-    const qa14JourneysBeforeDel = read(journeysPath);
-    r = await reqFetch(`/api/projects/${slug}/requirements/BR-003?storyUsId=US-03`, { method: 'DELETE' });
-    check('QA-14: DELETE linked BR-003 (storyUsId=US-03) → 200', r.status === 200);
+    // ── QA-14: deleting a LINKED BR must strike prd.md, never features.md ──
+    // Redesigned QA-14: trash a business requirement that lives inside a
+    // feature. The scoped locateReq resolves BR rows to prd.md by row TYPE
+    // (QA-14 original failure shape). The byte-identical assertion is the
+    // load-bearing one — it proves the strike never touched features.md.
+    const qa14FeaturesBeforeDel = read(featuresPath);
+    r = await reqFetch(`/api/projects/${slug}/requirements/BR-003?feId=FE-03`, { method: 'DELETE' });
+    check('QA-14: DELETE linked BR-003 (feId=FE-03) → 200', r.status === 200);
     check(
       'QA-14: linked BR struck in prd.md (strike-in-place)',
-      /- ~~BR-003 \| could \| draft \| BA \| A third BR into US-03/.test(read(prdPath)),
+      /- ~~BR-003 \| could \| draft \| BA \| A third BR into FE-03/.test(read(prdPath)),
     );
-    eq('QA-14: user-journeys.md byte-identical after linked-BR DELETE (AC-9)', read(journeysPath), qa14JourneysBeforeDel);
+    eq('QA-14: features.md byte-identical after linked-BR DELETE (AC-9)', read(featuresPath), qa14FeaturesBeforeDel);
     r = await reqFetch(`/api/projects/${slug}/requirements`);
     check(
-      'QA-14: deleted linked BR absent from US-03.reqs (AC-8)',
-      r.body?.stories?.find((s: any) => s.usId === 'US-03')?.reqs?.some((x: any) => x.id === 'BR-003') !== true,
+      'QA-14: deleted linked BR absent from FE-03.reqs (AC-8)',
+      r.body?.features?.find((f: any) => f.feId === 'FE-03')?.reqs?.some((x: any) => x.id === 'BR-003') !== true,
     );
 
-    // ── DELETE story: marker after heading, US id never reused (AC-8) ──
-    r = await reqFetch(`/api/projects/${slug}/stories/US-03`, { method: 'DELETE' });
-    check('DELETE US-03 → 200', r.status === 200);
-    const jd = read(journeysPath);
-    const delIdx = jd.indexOf('### US-03 —');
+    // ── DELETE feature: marker after heading, FE id never reused (AC-8) ──
+    r = await reqFetch(`/api/projects/${slug}/features/FE-03`, { method: 'DELETE' });
+    check('DELETE FE-03 → 200', r.status === 200);
+    const fd = read(featuresPath);
+    const delIdx = fd.indexOf('### FE-03 —');
     check(
       'delete marker written directly after the heading',
-      delIdx >= 0 && /^<!-- deleted \d{4}-\d{2}-\d{2} by BA -->$/m.test(jd.slice(delIdx, delIdx + 120)),
+      delIdx >= 0 && /^<!-- deleted \d{4}-\d{2}-\d{2} by BA -->$/m.test(fd.slice(delIdx, delIdx + 120)),
     );
     r = await reqFetch(`/api/projects/${slug}/requirements`);
-    check('deleted story absent from list (AC-8)', !JSON.stringify(r.body?.stories).includes('US-03'));
-    r = await json(`/api/projects/${slug}/stories`, 'POST', {
-      title: 'A fresh story after a delete',
-      asA: 'borrower',
-      iWantTo: 'check that deleted ids are not reused',
-      soThat: 'stable ids never point at new content',
+    check('deleted feature absent from list (AC-8)', !JSON.stringify(r.body?.features).includes('FE-03'));
+    r = await json(`/api/projects/${slug}/features`, 'POST', {
+      title: 'A fresh feature after a delete',
+      description: 'Proves the FE id allocator never reuses a deleted id.',
+      source: null,
       priority: 'must',
       status: 'draft',
       owner: 'BA',
     });
-    eq('deleted US id never reused (AC-8)', r.body?.story?.usId, 'US-04');
+    eq('deleted FE id never reused (AC-8)', r.body?.feature?.feId, 'FE-06');
 
     // ── Legacy-row status-only PATCH (review N1): the server never invents ──
     // grammar values. BR-004 is a metadata-less legacy row (no priority or
@@ -815,284 +834,313 @@ async function main(): Promise<void> {
     // the requirements-model insert helpers — never file replacement). The
     // splice modules are pure, so these run without the API; the byte-identity
     // bar is the same AC-9 one the walk above proves for the CRUD routes. ──
-    const genStories = [
+    const genFeatures = [
       {
         title: 'Track a borrowed tool return',
-        asA: 'lender',
-        iWantTo: 'see when a borrowed tool is due back',
-        soThat: 'I can plan my weekend projects',
+        description: 'Lenders can see when a borrowed tool is due back and mark it returned.',
+        source: 'user-journeys.md §3',
         priority: 'must',
-        trs: [{ text: 'Persist a due-back date with each loan', priority: 'must' }],
+        acs: [{ text: 'The return view must show the due-back date for every active loan.' }],
+        trs: [{ text: 'Persist a due-back date with each loan.', priority: 'must' }],
       },
       {
-        title: 'Get a overdue-item digest',
-        asA: 'lender',
-        iWantTo: 'get a weekly digest of overdue items',
-        soThat: 'I can follow up without checking manually',
+        title: 'Get an overdue-item digest',
+        description: 'Neighbors receive a weekly digest of overdue items so nothing slips.',
+        source: null,
         priority: 'should',
-        trs: [{ text: 'Queue the digest email weekly', priority: 'should' }],
+        acs: [],
+        trs: [{ text: 'Queue the digest email weekly.', priority: 'should' }],
       },
     ];
-    const idsBefore = collectExistingIds(prd0, journeys0);
-    const nextUs = nextFreeId(idsBefore.us, 'US');
+
+    // Gap-fill id math against the pristine snapshots: FE ids continue from the
+    // fixture's FE-01/FE-02, ACs from AC-001, TRs from TR-001, BRs from the §8
+    // pool (BR-001/002/004 → the allocator fills the BR-003 gap). All computed,
+    // never hardcoded.
+    const idsBefore = collectExistingIds(prd0, '', features0);
+    const nextFe = nextFreeId(idsBefore.fe, 'FE');
+    const nextFe2 = nextFreeId([...idsBefore.fe, nextFe], 'FE');
+    const nextAc = nextFreeId(idsBefore.ac, 'AC');
     const nextTr = nextFreeId(idsBefore.tr, 'TR');
-    const splicedJ = spliceStories(journeys0, genStories);
-    check('req-gen: story splice removes nothing (AC-9)', lcsDiff(journeys0, splicedJ.text).removed.length === 0);
-    const reparsed = parseRequirements(prd0, splicedJ.text);
-    const newStory = reparsed.stories.find((st: any) => st.usId === nextUs);
-    check(`req-gen: first generated story takes ${nextUs} (sequence continues)`, !!newStory);
-    check('req-gen: generated story stamps origin=generated', newStory?.origin === 'generated');
-    check('req-gen: generated TR lands in the story block', newStory?.reqs?.some((r: any) => r.id === nextTr) === true);
-    check('req-gen: second generated story gets a distinct US id', splicedJ.usIds.length === 2 && splicedJ.usIds[0] !== splicedJ.usIds[1]);
+    const nextBr = nextFreeId(idsBefore.br, 'BR');
+
+    const splicedF = spliceFeatures(features0, genFeatures);
+    eq('spliceFeatures: allocates the next two FE ids', splicedF.feIds, [nextFe, nextFe2]);
+    check('spliceFeatures: counts 1 AC + 2 TRs', splicedF.acCount === 1 && splicedF.trCount === 2);
+    check(
+      'spliceFeatures: leaves the manual fixture blocks untouched',
+      splicedF.text.startsWith('# Features') &&
+        splicedF.text.includes('### FE-01 — List an item for lending') &&
+        splicedF.text.includes('### FE-02 — Reserve an item'),
+    );
 
     const genBrs = [
-      { text: 'Every loan shows its due-back date', priority: 'must', storyIndex: 0 },
-      { text: 'Overdue items are surfaced weekly', priority: 'should', storyIndex: 1 },
+      { text: 'A returned tool must free its calendar slot within 5 minutes.', priority: 'must', featureIndex: 0 },
+      { text: 'Overdue digests must go out at most once per week.', priority: 'should', featureIndex: 1 },
     ];
-    const nextBr = nextFreeId(idsBefore.br, 'BR');
-    const splicedP = spliceBusinessReqs(prd0, genBrs, splicedJ.usIds);
-    check('req-gen: BR splice removes nothing (AC-9)', lcsDiff(prd0, splicedP.text).removed.length === 0);
-    const reparsedP = parseRequirements(splicedP.text, splicedJ.text);
-    // A story-linked BR is MOVED into its story's reqs by parseRequirements —
-    // search both surfaces.
-    const allBrRows = (parsed: ReturnType<typeof parseRequirements>) => [
-      ...parsed.businessReqs,
-      ...parsed.stories.flatMap((st: any) => st.reqs.filter((r: any) => r.id.startsWith('BR-'))),
-    ];
-    const newBr = allBrRows(reparsedP).find((r: any) => r.id === nextBr);
-    check(`req-gen: first generated BR takes ${nextBr} (sequence continues)`, !!newBr);
-    check('req-gen: generated BR links to its story', newBr?.storyUsId === splicedJ.usIds[0]);
-    check('req-gen: generated BR stamps origin=generated', newBr?.origin === 'generated');
+    const splicedP = spliceBusinessReqs(prd0, genBrs, splicedF.feIds);
+    eq('spliceBusinessReqs: gap-fill BR ids', splicedP.brIds, [nextBr, nextFreeId([...idsBefore.br, nextBr], 'BR')]);
+    const genBr2Id = splicedP.brIds[1];
 
-    // Bidirectional resume reconcile (round 2): rows on disk ⇒ done even if
-    // unmarked (crash between splice write and state persist must not
-    // duplicate on retry); marked but rows deleted ⇒ regenerate.
-    const r1 = reconcileSectionsDone(splicedJ.text, splicedP.text, []);
-    check('req-gen: unmarked on-disk rows reconcile to done (P2-2 crash window)', r1.sectionsDone.includes('user stories') && r1.sectionsDone.includes('business requirements'));
-    check('req-gen: reconcile rehydrates generated story ids for BR links (P2-1)', r1.storyIds.join(',') === splicedJ.usIds.join(','));
-    const r2 = reconcileSectionsDone(journeys0, prd0, ['user stories', 'business requirements']);
-    check('req-gen: marked sections with deleted rows reconcile to regenerate', r2.sectionsDone.length === 0 && r2.storyIds.length === 0);
+    // Parse back the spliced texts — features.md is the second argument now.
+    const parsed = parseRequirements(splicedP.text, splicedF.text);
+    const fe0 = splicedF.feIds[0];
+    const fe1 = splicedF.feIds[1];
+    const newFeature = parsed.features.find((f) => f.feId === fe0);
+    check('generated feature block parses with origin=generated', newFeature?.origin === 'generated');
+    check('generated feature keeps its source link', newFeature?.source === 'user-journeys.md §3');
+    eq(
+      'generated AC allocated next, status=unmet, origin=generated',
+      [newFeature?.acs?.[0]?.id, newFeature?.acs?.[0]?.status, newFeature?.acs?.[0]?.origin],
+      [nextAc, 'unmet', 'generated'],
+    );
+    const newTr = newFeature?.reqs?.find((x) => x.type === 'TR');
+    eq('generated TR lands in-block with the next id', [newTr?.id, newTr?.featureId], [nextTr, fe0]);
+    check(
+      'second generated feature parses with its TR',
+      parsed.features.some((f) => f.feId === fe1 && f.reqs.some((x) => x.type === 'TR')),
+    );
+    const genTr2Id = parsed.features.find((f) => f.feId === fe1)?.reqs?.find((x) => x.type === 'TR')?.id;
 
-    // ── Section-failure guard (round 4): a model call that yields zero
-    // parseable rows must FAIL the section — an invisible empty advance would
-    // be marked done and retry would skip it forever, generating nothing. ──
-    const passthrough = requireRows([{ title: 'x' }], 'user stories');
-    check('req-gen: non-empty rows pass through requireRows untouched', passthrough.length === 1);
-    let zeroRowError: unknown = null;
+    const allBrRows = parsed.features.flatMap((f) => f.reqs.filter((x) => x.type === 'BR'));
+    const newBr = allBrRows.find((b) => b.id === nextBr);
+    check('generated BR links to its feature via the marker', newBr?.featureId === fe0);
+    check(
+      'unlinked fixture BRs stay in the unassigned pool',
+      parsed.businessReqs.length === 3 && parsed.businessReqs.every((b) => b.featureId == null),
+    );
+
+    // reconcileSectionsDone: keys on the origin=generated marks the splices
+    // wrote, so the retry path can skip straight to reconcile.
+    const r1 = reconcileSectionsDone(splicedF.text, splicedP.text, []);
+    check(
+      'resume: spliced sections marked done',
+      r1.sectionsDone.includes('features') && r1.sectionsDone.includes('business requirements'),
+    );
+    eq('resume: generated feIds collected in order', r1.featureIds, splicedF.feIds);
+    const r2 = reconcileSectionsDone(features0, prd0, ['features', 'business requirements']);
+    check('resume: pristine fixture clears both sections', r2.sectionsDone.length === 0 && r2.featureIds.length === 0);
+
+    // requireRows: passthrough identity, and the empty case throws with the
+    // section name interpolated (the retry generates only the failed section).
+    check('requireRows: passthrough identity', requireRows(parsed.features, 'features') === parsed.features);
+    let noRowsErr: unknown = null;
     try {
-      requireRows([], 'business requirements');
+      requireRows([], 'features');
     } catch (e) {
-      zeroRowError = e;
+      noRowsErr = e;
     }
     check(
-      'req-gen: zero rows throws a section-naming error, silent empty advance impossible',
-      zeroRowError instanceof Error && /Model returned no business requirements/.test(zeroRowError.message),
+      'requireRows: empty features throws with the section name',
+      noRowsErr instanceof Error && /Model returned no features rows/.test((noRowsErr as Error).message),
     );
 
-    // ── Reconcile mode (fix #3, req-gen-splice.ts): a run that starts from
-    // existing origin=generated rows must diff — echo valid generated ids,
-    // update in place, remove omitted generated rows, append unknowns — and a
-    // no-change echo must be a byte-identical no-op (the caller skips the
-    // write). Pure module, same AC-9 bar as the generate-mode splices above. ──
-    const us0 = splicedJ.usIds[0] ?? '';
-    const us1 = splicedJ.usIds[1] ?? '';
-    const genTr2Id =
-      reparsed.stories
-        .find((st: any) => st.usId === us1)
-        ?.reqs?.find((r: any) => r.id.startsWith('TR-'))?.id ?? '';
-    const genBr2Id =
-      allBrRows(reparsedP).find((r: any) => r.origin === 'generated' && r.id !== nextBr)?.id ?? '';
+    // ── reconcileFeatures / reconcileBusinessReqs (retry path) ──
+    // Echo helpers rebuild a desired feature/BR from exactly what the splices
+    // wrote — an echoed id may only be reused inside its own generated block,
+    // so a no-op round-trip must be byte-identical (same AC-9 bar as above).
+    const echoFeature = (feId: string) => {
+      const f = parsed.features.find((x) => x.feId === feId);
+      if (!f) throw new Error(`echoFeature: ${feId} not parsed`);
+      return {
+        feId,
+        title: f.title,
+        description: f.description ?? '',
+        source: f.source,
+        priority: f.priority,
+        acs: f.acs.map((a) => ({ acId: a.id, text: a.text })),
+        trs: f.reqs
+          .filter((x) => x.type === 'TR')
+          .map((t) => ({ trId: t.id, text: t.text, priority: t.priority })),
+      };
+    };
+
+    const rcNoChange = reconcileFeatures(splicedF.text, [echoFeature(fe0), echoFeature(fe1)]);
+    check('reconcile no-op: byte-identical', rcNoChange.text === splicedF.text);
     check(
-      'reconcile: fixture resolves both generated ids (story TR + second BR)',
-      genTr2Id.startsWith('TR-') &&
-        genTr2Id !== nextTr &&
-        genBr2Id.startsWith('BR-') &&
-        genBr2Id !== nextBr,
+      'reconcile no-op: zero ops',
+      rcNoChange.ops.added === 0 && rcNoChange.ops.updated === 0 && rcNoChange.ops.removed === 0,
+    );
+    eq('reconcile no-op: feIds preserved in order', rcNoChange.featureIds, splicedF.feIds);
+
+    const updDesc = 'Revised description from the retry pass.';
+    const rcUpd = reconcileFeatures(splicedF.text, [echoFeature(fe0), { ...echoFeature(fe1), description: updDesc }]);
+    check('reconcile update: one feature updated', rcUpd.ops.added === 0 && rcUpd.ops.updated === 1 && rcUpd.ops.removed === 0);
+    check('reconcile update: description spliced in', rcUpd.text.includes(updDesc));
+    const updBack = parseRequirements(splicedP.text, rcUpd.text);
+    const updFeat = updBack.features.find((f) => f.feId === fe1);
+    check('reconcile update: status/owner preserved', updFeat?.status === 'draft' && updFeat?.owner === 'BA');
+    check(
+      'reconcile update: manual fixture features survive',
+      updBack.features.some((f) => f.feId === 'FE-01') && updBack.features.some((f) => f.feId === 'FE-02'),
     );
 
-    const echoTr = (trId: string | null, text: string, priority: unknown) => ({ trId, text, priority });
-    const echoStory = (i: 0 | 1, trs: ReturnType<typeof echoTr>[]) => ({
-      usId: i === 0 ? us0 : us1,
-      ...genStories[i],
-      trs,
-    });
-    const bothStoryEchoes = () => [
-      echoStory(0, [echoTr(nextTr, 'Persist a due-back date with each loan', 'must')]),
-      echoStory(1, [echoTr(genTr2Id, 'Queue the digest email weekly', 'should')]),
-    ];
-
-    const rcNoChange = reconcileStories(splicedJ.text, bothStoryEchoes());
-    check('reconcile: no-change echo is a byte-identical no-op (AC-9)', rcNoChange.text === splicedJ.text);
-    eq('reconcile: no-change ops are zero', rcNoChange.ops, { added: 0, updated: 0, removed: 0 });
-    eq('reconcile: no-change storyIds keep desired order', rcNoChange.storyIds, [us0, us1]);
-
-    const rcUpd = reconcileStories(splicedJ.text, [
-      { ...echoStory(0, [echoTr(nextTr, 'Persist a due-back date with each loan', 'must')]), soThat: 'I can plan my weekend projects faster' },
-      echoStory(1, [echoTr(genTr2Id, 'Queue the digest email weekly', 'should')]),
-    ]);
-    eq('reconcile: story update ops', rcUpd.ops, { added: 0, updated: 1, removed: 0 });
-    const updParsed = parseRequirements(splicedP.text, rcUpd.text);
-    const updStory = updParsed.stories.find((st: any) => st.usId === us0);
-    check('reconcile: story update rewrites soThat in place', updStory?.soThat === 'I can plan my weekend projects faster');
+    const rcRm = reconcileFeatures(splicedF.text, [echoFeature(fe0)]);
+    check(
+      'reconcile remove: omitted generated feature spliced out',
+      rcRm.ops.removed === 1 && rcRm.ops.added === 0 && rcRm.ops.updated === 0,
+    );
+    check('reconcile remove: no trace of the removed block', !rcRm.text.includes(fe1) && !rcRm.text.includes('Get an overdue-item digest'));
     eq(
-      'reconcile: story update preserves status/owner',
-      [updStory?.status, updStory?.owner],
-      [newStory?.status, newStory?.owner],
-    );
-    check(
-      'reconcile: manual stories survive an update',
-      updParsed.stories.map((st: any) => st.usId).includes('US-01') &&
-        updParsed.stories.map((st: any) => st.usId).includes('US-02'),
+      'reconcile remove: remaining order',
+      Array.from(rcRm.text.matchAll(/^### (FE-\d+)/gm)).map((m) => m[1]),
+      ['FE-01', 'FE-02', fe0],
     );
 
-    const rcRm = reconcileStories(splicedJ.text, [echoStory(0, [echoTr(nextTr, 'Persist a due-back date with each loan', 'must')])]);
-    eq('reconcile: omitted story is removed (ops)', rcRm.ops, { added: 0, updated: 0, removed: 1 });
-    check('reconcile: removed story leaves no trace', !rcRm.text.includes(us1) && !rcRm.text.includes(genTr2Id));
-    const rmParsed = parseRequirements(splicedP.text, rcRm.text);
+    const rcAdd = reconcileFeatures(splicedF.text, [
+      echoFeature(fe0),
+      echoFeature(fe1),
+      { feId: null, title: 'Lend out a shared drill', description: 'Manual add from the retry pass.', source: null, priority: 'could', acs: [], trs: [] },
+    ]);
+    check('reconcile add: unknown desired appends a new block', rcAdd.ops.added === 1 && rcAdd.ops.updated === 0 && rcAdd.ops.removed === 0);
     eq(
-      'reconcile: removal keeps manual + remaining story ids',
-      rmParsed.stories.map((st: any) => st.usId),
-      ['US-01', 'US-02', us0],
+      'reconcile add: appended block takes the next id',
+      rcAdd.featureIds[rcAdd.featureIds.length - 1],
+      nextFreeId(collectExistingIds('', '', splicedF.text).fe, 'FE'),
     );
-    check('reconcile: removal preserves the file header', rcRm.text.startsWith('# User journeys'));
-
-    const rcAdd = reconcileStories(splicedJ.text, [
-      ...bothStoryEchoes(),
-      { usId: null, title: 'Flag a lost tool', asA: 'lender', iWantTo: 'report a tool as lost', soThat: 'the borrower is billed', priority: 'must', trs: [] },
-    ]);
-    eq('reconcile: unknown story is appended (ops)', rcAdd.ops, { added: 1, updated: 0, removed: 0 });
-    const addParsed = parseRequirements(splicedP.text, rcAdd.text);
-    const addedStory = addParsed.stories.find(
-      (st: any) => st.origin === 'generated' && ![us0, us1].includes(st.usId),
-    );
-    check('reconcile: appended story stamps origin=generated', addedStory?.origin === 'generated');
-    eq('reconcile: storyIds = reused + appended in desired order', rcAdd.storyIds, [us0, us1, addedStory?.usId ?? '']);
-
-    const rcTrAdd = reconcileStories(splicedJ.text, [
-      echoStory(0, [echoTr(nextTr, 'Persist a due-back date with each loan', 'must'), { trId: null, text: 'Send a reminder the day before due', priority: 'must' }]),
-      echoStory(1, [echoTr(genTr2Id, 'Queue the digest email weekly', 'should')]),
-    ]);
-    check('reconcile: added TR increments trCount', rcTrAdd.trCount === 1);
     check(
-      'reconcile: added TR renders a generated-stamped row',
-      /- TR-\d{3} \| must \| draft \| BA \| Send a reminder the day before due/.test(rcTrAdd.text) &&
-        /<!-- TR-\d{3}: origin=generated -->/.test(rcTrAdd.text),
+      'reconcile add: appended block is generated/draft/BA',
+      /<!-- feature: priority=could status=draft owner=BA origin=generated -->/.test(rcAdd.text),
     );
 
-    const rcTrOmit = reconcileStories(splicedJ.text, [
-      echoStory(0, []),
-      echoStory(1, [echoTr(genTr2Id, 'Queue the digest email weekly', 'should')]),
+    const fe0Echo = echoFeature(fe0);
+    const fe0Tr = fe0Echo.trs[0]!;
+
+    const trAddText = 'New technical requirement from the retry pass.';
+    const rcTrAdd = reconcileFeatures(splicedF.text, [
+      { ...fe0Echo, trs: [...fe0Echo.trs, { trId: null, text: trAddText, priority: 'must' }] },
+      echoFeature(fe1),
     ]);
-    const trOmitParsed = parseRequirements(splicedP.text, rcTrOmit.text);
-    const trOmit0 = trOmitParsed.stories.find((st: any) => st.usId === us0);
-    const trOmit1 = trOmitParsed.stories.find((st: any) => st.usId === us1);
+    check('reconcile TR add: counts one new TR', rcTrAdd.trCount === 1);
+    const trPool = parsed.features.flatMap((f) => f.reqs.filter((x) => x.type === 'TR').map((x) => x.id));
+    const expectedTr = nextFreeId(trPool, 'TR');
     check(
-      'reconcile: omitted TR is genuinely removed, sibling echo untouched',
-      (trOmit0?.reqs ?? []).filter((r: any) => r.type === 'TR').length === 0 &&
-        (trOmit1?.reqs ?? []).filter((r: any) => r.type === 'TR').length === 1,
+      'reconcile TR add: row + marker land in the block',
+      rcTrAdd.text.includes(`- ${expectedTr} | must | draft | BA | ${trAddText}`) &&
+        rcTrAdd.text.includes(`<!-- ${expectedTr}: origin=generated -->`),
     );
 
-    const rcTrUpd = reconcileStories(splicedJ.text, [
-      echoStory(0, [echoTr(nextTr, 'Persist a due-back date plus a borrower note', 'must')]),
-      echoStory(1, [echoTr(genTr2Id, 'Queue the digest email weekly', 'should')]),
+    const rcTrOmit = reconcileFeatures(splicedF.text, [{ ...fe0Echo, trs: [] }, echoFeature(fe1)]);
+    check(
+      'reconcile TR omit: block rewritten without the row',
+      !rcTrOmit.text.includes(`- ${fe0Tr.trId} |`) && rcTrOmit.ops.updated === 1,
+    );
+
+    const trUpdText = 'Revised TR text from the retry pass.';
+    const rcTrUpd = reconcileFeatures(splicedF.text, [
+      { ...fe0Echo, trs: [{ trId: fe0Tr.trId, text: trUpdText, priority: fe0Tr.priority }] },
+      echoFeature(fe1),
     ]);
-    check('reconcile: revised TR counts as changed', rcTrUpd.trCount === 1);
-    const trUpdParsed = parseRequirements(splicedP.text, rcTrUpd.text);
-    const trUpdRow = trUpdParsed.stories.find((st: any) => st.usId === us0)?.reqs?.find((r: any) => r.id === nextTr);
-    eq(
-      'reconcile: revised TR keeps its id and text',
-      [trUpdRow?.id, trUpdRow?.text],
-      [nextTr, 'Persist a due-back date plus a borrower note'],
+    check(
+      'reconcile TR update: same id, revised text',
+      rcTrUpd.text.includes(`- ${fe0Tr.trId} | must | draft | BA | ${trUpdText}`) && !rcTrUpd.text.includes(fe0Tr.text),
     );
 
-    const rcKeep = reconcileStories(splicedJ.text, [], [us0, us1]);
+    const rcKeep = reconcileFeatures(splicedF.text, [echoFeature(fe0)], [fe1]);
     check(
-      'reconcile: keep-listed stories survive with no desired set (no-op)',
-      rcKeep.text === splicedJ.text && rcKeep.ops.added === 0 && rcKeep.ops.updated === 0 && rcKeep.ops.removed === 0,
-    );
-    const rcWipe = reconcileStories(splicedJ.text, []);
-    eq('reconcile: empty desired wipes only generated stories (ops)', rcWipe.ops, { added: 0, updated: 0, removed: 2 });
-    check(
-      'reconcile: wiped text keeps manual stories and header',
-      rcWipe.text.startsWith('# User journeys') && rcWipe.text.includes('US-01') && rcWipe.text.includes('US-02') && !rcWipe.text.includes(us0),
+      'reconcile keep: kept feature survives untouched',
+      rcKeep.text === splicedF.text && rcKeep.ops.added === 0 && rcKeep.ops.updated === 0 && rcKeep.ops.removed === 0,
     );
 
-    const rcUnknown = reconcileStories(splicedJ.text, [
-      { usId: 'US-99', title: 'Brand new via unknown echo', asA: 'lender', iWantTo: 'report a tool as lost', soThat: 'the borrower is billed', priority: 'must', trs: [] },
+    const rcWipe = reconcileFeatures(splicedF.text, []);
+    check('reconcile wipe: both generated blocks removed', rcWipe.ops.removed === 2);
+    check(
+      'reconcile wipe: manual fixture survives',
+      rcWipe.text.startsWith('# Features') &&
+        rcWipe.text.includes('### FE-01') &&
+        rcWipe.text.includes('### FE-02') &&
+        !rcWipe.text.includes(fe0) &&
+        !rcWipe.text.includes(fe1),
+    );
+
+    const rcUnknown = reconcileFeatures(splicedF.text, [
+      echoFeature(fe0),
+      { feId: 'FE-99', title: 'Unknown id lands as an add', description: 'An id that matches no existing block cannot echo.', source: null, priority: 'could', acs: [], trs: [] },
     ]);
-    eq('reconcile: unknown echo adds + omitted stories are removed (ops)', rcUnknown.ops, { added: 1, updated: 0, removed: 2 });
-
-    const rcGarbled = reconcileStories(
-      splicedJ.text,
-      [{ usId: us0, title: '', asA: '', iWantTo: '', soThat: '', priority: 'must', trs: [] }],
-      [us0, us1],
+    check('reconcile unknown id: appends, never echoes', rcUnknown.ops.added === 1 && rcUnknown.ops.updated === 0 && rcUnknown.ops.removed === 1);
+    check(
+      'reconcile unknown id: omitted generated block spliced out, add appended',
+      // fe1's id is recycled by the appended add (spliceFeatures allocates
+      // against the already-mutated lines), so the title is the stable
+      // assertion — plus the recycled heading pins that behavior exactly.
+      !rcUnknown.text.includes('Get an overdue-item digest') &&
+        rcUnknown.text.includes(`### ${fe1} — Unknown id lands as an add`),
     );
-    check('reconcile: garbled echo cannot wipe a story (no-op)', rcGarbled.text === splicedJ.text && rcGarbled.ops.updated === 0);
 
-    // BR-level reconcile mirrors the story checks against §8 rows.
-    const echoBr = (brId: string | null, text: string, priority: unknown, storyUsId: string | null) => ({
-      brId,
-      text,
-      priority,
-      storyUsId,
-    });
-    const brEchoes = () => [
-      echoBr(nextBr, 'Every loan shows its due-back date', 'must', us0),
-      echoBr(genBr2Id, 'Overdue items are surfaced weekly', 'should', us1),
-    ];
+    // fe1's echo keeps the genuinely-omitted sweep out of the picture: with
+    // only the garbled entry the sweep would legitimately remove fe1, so the
+    // zero-removal assertion would not isolate the garbled-row behavior.
+    const rcGarbled = reconcileFeatures(splicedF.text, [{ ...fe0Echo, title: '   ' }, echoFeature(fe1)]);
+    check(
+      'reconcile garbled: silently skipped, byte-identical',
+      rcGarbled.text === splicedF.text && rcGarbled.ops.added === 0 && rcGarbled.ops.updated === 0 && rcGarbled.ops.removed === 0,
+    );
 
-    const rcBrNoChange = reconcileBusinessReqs(splicedP.text, brEchoes());
-    check('reconcile: no-change BR echo is a byte-identical no-op (AC-9)', rcBrNoChange.text === splicedP.text);
-    eq('reconcile: no-change BR ops are zero', rcBrNoChange.ops, { added: 0, updated: 0, removed: 0 });
+    const echoBr = (brId: string) => {
+      const row = [...allBrRows, ...parsed.businessReqs].find((b) => b.id === brId);
+      if (!row) throw new Error(`echoBr: ${brId} not parsed`);
+      return { brId, text: row.text, priority: row.priority, featureId: row.featureId ?? null };
+    };
 
+    const rcBrNoChange = reconcileBusinessReqs(splicedP.text, [echoBr(nextBr), echoBr(genBr2Id!)]);
+    check(
+      'BR reconcile no-op: byte-identical, zero ops',
+      rcBrNoChange.text === splicedP.text &&
+        rcBrNoChange.ops.added === 0 &&
+        rcBrNoChange.ops.updated === 0 &&
+        rcBrNoChange.ops.removed === 0,
+    );
+
+    const brUpdText = 'Revised BR text from the retry pass.';
     const rcBrUpd = reconcileBusinessReqs(splicedP.text, [
-      echoBr(nextBr, 'Every loan shows its due-back date and condition', 'must', us1),
-      echoBr(genBr2Id, 'Overdue items are surfaced weekly', 'should', us1),
+      echoBr(nextBr),
+      { ...echoBr(genBr2Id!), text: brUpdText, featureId: fe0 },
     ]);
-    eq('reconcile: BR update ops', rcBrUpd.ops, { added: 0, updated: 1, removed: 0 });
-    const brUpdParsed = parseRequirements(rcBrUpd.text, splicedJ.text);
-    const brUpdRow = allBrRows(brUpdParsed).find((r: any) => r.id === nextBr);
-    eq(
-      'reconcile: BR update rewrites text + story link',
-      [brUpdRow?.text, brUpdRow?.storyUsId],
-      ['Every loan shows its due-back date and condition', us1],
+    check('BR reconcile update: one row updated', rcBrUpd.ops.updated === 1 && rcBrUpd.ops.added === 0 && rcBrUpd.ops.removed === 0);
+    check(
+      'BR reconcile update: text + link rewritten',
+      rcBrUpd.text.includes(`- ${genBr2Id} | should | draft | BA | ${brUpdText}`) &&
+        rcBrUpd.text.includes(`<!-- ${genBr2Id}: feature=${fe0}, origin=generated -->`),
     );
     check(
-      'reconcile: manual BRs survive an update',
-      ['BR-001', 'BR-002', 'BR-004'].every((id) => allBrRows(brUpdParsed).some((r: any) => r.id === id)),
+      'BR reconcile update: manual fixture rows survive',
+      ['BR-001', 'BR-002', 'BR-004'].every((id) => rcBrUpd.text.includes(`- ${id} `)),
     );
 
-    const rcBrRm = reconcileBusinessReqs(splicedP.text, [echoBr(nextBr, 'Every loan shows its due-back date', 'must', us0)]);
-    eq('reconcile: omitted BR is removed (ops)', rcBrRm.ops, { added: 0, updated: 0, removed: 1 });
-    check('reconcile: removed BR leaves no trace', !rcBrRm.text.includes(genBr2Id));
+    const rcBrRm = reconcileBusinessReqs(splicedP.text, [echoBr(genBr2Id!)]);
+    check('BR reconcile remove: omitted generated row spliced out', rcBrRm.ops.removed === 1 && !rcBrRm.text.includes(nextBr));
+    check(
+      'BR reconcile remove: manual rows survive',
+      ['BR-001', 'BR-002', 'BR-004'].every((id) => rcBrRm.text.includes(`- ${id} `)),
+    );
 
+    const brAddText = 'Late fees accrue per calendar day.';
     const rcBrAdd = reconcileBusinessReqs(splicedP.text, [
-      ...brEchoes(),
-      { brId: null, text: 'Late fees accrue per calendar day', priority: 'should', storyUsId: null },
+      echoBr(nextBr),
+      echoBr(genBr2Id!),
+      { brId: null, text: brAddText, priority: 'should', featureId: null },
     ]);
-    eq('reconcile: unknown BR is appended (ops)', rcBrAdd.ops, { added: 1, updated: 0, removed: 0 });
-    const brAddParsed = parseRequirements(rcBrAdd.text, splicedJ.text);
-    const addedBr = allBrRows(brAddParsed).find((r: any) => r.text === 'Late fees accrue per calendar day');
-    const addedBrId = addedBr?.id ?? '';
+    check('BR reconcile add: appends one unassigned row', rcBrAdd.ops.added === 1);
+    const brPool = [...allBrRows, ...parsed.businessReqs].map((b) => b.id);
+    const expectedBr = nextFreeId(brPool, 'BR');
     check(
-      'reconcile: appended BR stamps origin=generated with a fresh id',
-      addedBr?.origin === 'generated' &&
-        addedBrId !== '' &&
-        !['BR-001', 'BR-002', 'BR-004', nextBr, genBr2Id].includes(addedBrId),
+      'BR reconcile add: gap-fill id + marker without a feature link',
+      rcBrAdd.text.includes(`- ${expectedBr} | should | draft | BA | ${brAddText}`) &&
+        rcBrAdd.text.includes(`<!-- ${expectedBr}: origin=generated -->`),
     );
 
-    const rcBrKeep = reconcileBusinessReqs(splicedP.text, [], [nextBr, genBr2Id]);
+    const rcBrKeep = reconcileBusinessReqs(splicedP.text, [echoBr(genBr2Id!)], [nextBr]);
     check(
-      'reconcile: keep-listed BRs survive with no desired set (no-op)',
+      'BR reconcile keep: kept row survives untouched',
       rcBrKeep.text === splicedP.text && rcBrKeep.ops.added === 0 && rcBrKeep.ops.updated === 0 && rcBrKeep.ops.removed === 0,
     );
 
     check(
-      'reconcile: fileHasGeneratedRows flags spliced journeys only',
-      fileHasGeneratedRows(splicedJ.text) === true && fileHasGeneratedRows(journeys0) === false,
+      'fileHasGeneratedRows flags spliced features only',
+      fileHasGeneratedRows(splicedF.text) === true && fileHasGeneratedRows(features0) === false,
     );
     check(
-      'reconcile: fileHasGeneratedRows flags spliced PRD only',
+      'fileHasGeneratedRows flags spliced PRD only',
       fileHasGeneratedRows(splicedP.text) === true && fileHasGeneratedRows(prd0) === false,
     );
 
@@ -1116,7 +1164,7 @@ async function main(): Promise<void> {
       state: 'generating',
       generated: 1,
       total: 2,
-      currentSection: 'user stories',
+      currentSection: 'features',
       startedAt: nowSt - 3 * 60_000,
       lastHeartbeatAt: nowSt - 10_000,
       sectionStartedAt: nowSt - 10_000,
@@ -1131,7 +1179,7 @@ async function main(): Promise<void> {
       fs.writeFileSync(sentinelPath, JSON.stringify(fresh({ sectionStartedAt: nowSt - 21 * 60_000 })));
       const stalled = reconcileStale(sentinelId, JSON.parse(fs.readFileSync(sentinelPath, 'utf-8')));
       check('staleness: section past SECTION_STALL_MS with fresh heartbeat → failed', stalled.state === 'failed');
-      check('staleness: stall error names the wedged section', /Generation of user stories stalled/.test(stalled.error ?? ''));
+      check('staleness: stall error names the wedged section', /Generation of features stalled/.test(stalled.error ?? ''));
       fs.writeFileSync(sentinelPath, JSON.stringify(fresh({ lastHeartbeatAt: nowSt - 10 * 60_000 })));
       check('staleness: fresh section but dead heartbeat → failed', reconcileStale(sentinelId, readSentinel()).state === 'failed');
       fs.writeFileSync(sentinelPath, JSON.stringify(fresh({ sectionStartedAt: undefined, lastHeartbeatAt: nowSt - 10_000 })));
@@ -1206,13 +1254,21 @@ async function main(): Promise<void> {
     // Seed origin=generated rows into the approved fixture's PRD dir — the
     // done-guard and requirementsStale both key on generated rows existing
     // (agent-invoker has its own fs wrapper; these files are the input).
-    const GENERATED_JOURNEYS_FIXTURE = [
-      '# User journeys',
+    // Feature-shaped per the redesign: a generated feature block in
+    // features.md + its linked BR row in prd.md. user-journeys.md keeps the
+    // hand-written seeded copy — stories are no longer generated here.
+    const GENERATED_FEATURES_FIXTURE = [
+      '# Features',
       '',
-      '### US-90 — Generated fixture story',
-      '<!-- story: priority=must status=draft owner=BA origin=generated -->',
+      '### FE-90 — Generated fixture feature',
+      '<!-- feature: priority=must status=draft owner=BA origin=generated -->',
       '',
-      '**As a** tester, **I want to** exercise reconcile, **so that** staleness flips.',
+      'Synthetic generated feature block for the staleness walk.',
+      '',
+      '## Acceptance Criteria',
+      '',
+      '- AC-900 | met | Synthetic generated AC row.',
+      '<!-- AC-900: origin=generated -->',
       '',
       '- TR-900 | must | draft | BA | Synthetic generated TR row.',
       '<!-- TR-900: origin=generated -->',
@@ -1224,10 +1280,10 @@ async function main(): Promise<void> {
       '## 8. Business requirements',
       '',
       '- BR-900 | must | draft | BA | Synthetic generated BR row.',
-      '<!-- BR-900: story=US-90, origin=generated -->',
+      '<!-- BR-900: feature=FE-90, origin=generated -->',
       '',
     ].join('\n');
-    fs.writeFileSync(path.join(approvedDir, 'PRD', 'user-journeys.md'), GENERATED_JOURNEYS_FIXTURE);
+    fs.writeFileSync(path.join(approvedDir, 'PRD', 'features.md'), GENERATED_FEATURES_FIXTURE);
     fs.writeFileSync(path.join(approvedDir, 'PRD', 'prd.md'), GENERATED_PRD_FIXTURE);
 
     // 1 — done run with no flag: not stale, trigger still 409s (done-guard).
@@ -1265,7 +1321,7 @@ async function main(): Promise<void> {
     // reconcileStale; the guard keys on raw pending/generating).
     writeGenState(seedIds.mixed, {
       state: 'generating',
-      currentSection: 'user stories',
+      currentSection: 'features',
       sectionStartedAt: Date.now(),
       generated: 0,
     });
@@ -1319,7 +1375,7 @@ async function main(): Promise<void> {
         state: 'generating',
         generated: 1,
         total: 2,
-        currentSection: 'user stories',
+        currentSection: 'features',
         startedAt: reopenNow - 3 * 60_000,
         lastHeartbeatAt: reopenNow - 10_000,
         sectionStartedAt: reopenNow - 10_000,

@@ -101,9 +101,9 @@ export async function atomicWritePrd(filePath: string, content: string): Promise
   });
 }
 
-// The only two files the Requirements routes may ever touch (R1 containment —
+// The only files the Requirements routes may ever touch (R1 containment —
 // the filenames come from these constants, never from the request).
-export type PrdFile = 'prd.md' | 'user-journeys.md';
+export type PrdFile = 'prd.md' | 'user-journeys.md' | 'features.md';
 
 export function prdFilePath(dir: string, file: PrdFile): string {
   return path.join(dir, file);

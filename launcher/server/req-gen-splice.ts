@@ -2,21 +2,26 @@
 //
 // The generation job (agent-invoker.ts) parses model output into the row
 // inputs below, then this module inserts them into the canonical surfaces —
-// story blocks (with their TR rows) appended to user-journeys.md, BR rows
-// inserted into prd.md §8 — using the exact renderers and insert-index
-// helpers the manual CRUD routes use (requirements-model.ts). Content outside
-// the inserted scopes is byte-identical to the input: that is the AC-9 bar,
-// and scripts/verify-requirements.ts exercises this module directly to prove
-// it.
+// feature blocks (with their AC + TR rows inside the block) appended to
+// features.md, BR rows inserted into prd.md §8 — using the exact renderers
+// and insert-index helpers the manual CRUD routes use (requirements-model.ts).
+// Content outside the inserted scopes is byte-identical to the input: that is
+// the AC-9 bar, and scripts/verify-requirements.ts exercises this module
+// directly to prove it.
 //
 // Generated rows are traceable and mechanically cleanable via the existing
 // origin vocabulary: every generated block/row stamps `origin=generated` in
 // its meta comment — the same marker the UI already renders as the
 // "generated" origin tag. No new marker format is introduced.
 //
+// File-of-record (QA-14): BRs ALWAYS land in prd.md §8, linked to their
+// feature by `<!-- BR-NNN: feature=FE-NN, origin=generated -->`; ACs and TRs
+// always land inside their feature block in features.md. The file a row
+// splices into is chosen by row type, never by which find() matched.
+//
 // IDs are allocated HERE, never by the model — nextFreeId continues the
 // on-disk sequence, so the model's text can never collide with an existing
-// US/BR/TR id.
+// FE/AC/BR/TR id.
 
 import {
   businessReqInsertIndex,
@@ -25,16 +30,18 @@ import {
   isReqPriority,
   nextFreeId,
   parseBusinessReqs,
-  parseStories,
+  parseFeatures,
+  renderAcRow,
+  renderFeatureBlock,
   renderReqRow,
-  renderStoryBlock,
 } from './requirements-model.js';
 import type {
+  AcStatus,
+  FeatureRow,
   ReqOwner,
   ReqPriority,
   ReqRow,
   ReqStatus,
-  StoryRow,
 } from './requirements-model.js';
 
 // ── The generation sections (the job's progress units) ─────────────────────
@@ -43,11 +50,11 @@ import type {
 // (Lives here, in the pure module, so reconcileSectionsDone can name the
 // sections without a circular import back into agent-invoker.ts.)
 
-export const REQ_GEN_SECTIONS = ['user stories', 'business requirements'] as const;
+export const REQ_GEN_SECTIONS = ['features', 'business requirements'] as const;
 
 export type ReqGenSection = (typeof REQ_GEN_SECTIONS)[number];
 
-export const STORIES_SECTION: ReqGenSection = 'user stories';
+export const FEATURES_SECTION: ReqGenSection = 'features';
 export const BUSINESS_SECTION: ReqGenSection = 'business requirements';
 
 // Pure marker check — the fs-reading wrappers live in agent-invoker.ts
@@ -67,49 +74,54 @@ export function fileHasGeneratedRows(text: string): boolean {
  *   file, which says 'failed' after restart).
  * - A marked section whose rows the user deleted regenerates.
  *
- * The same read rehydrates the generated story ids (in generation order) so
- * a BR-only retry can still link its BRs to the stories a previous run
+ * The same read rehydrates the generated feature ids (in generation order) so
+ * a BR-only retry can still link its BRs to the features a previous run
  * inserted.
  */
 export function reconcileSectionsDone(
-  journeys: string,
+  features: string,
   prd: string,
   marked: string[],
-): { sectionsDone: string[]; storyIds: string[] } {
+): { sectionsDone: string[]; featureIds: string[] } {
   const sectionsDone = new Set<string>(marked);
-  let storyIds: string[] = [];
+  let featureIds: string[] = [];
   const HAS_MARK = /origin=generated/;
-  if (HAS_MARK.test(journeys)) {
-    storyIds = parseStories(journeys)
-      .stories.filter((s) => s.origin === 'generated')
-      .map((s) => s.usId);
-    sectionsDone.add(STORIES_SECTION);
+  if (HAS_MARK.test(features)) {
+    featureIds = parseFeatures(features)
+      .features.filter((f) => f.origin === 'generated')
+      .map((f) => f.feId);
+    sectionsDone.add(FEATURES_SECTION);
   } else {
-    sectionsDone.delete(STORIES_SECTION);
+    sectionsDone.delete(FEATURES_SECTION);
   }
   if (HAS_MARK.test(prd)) {
     sectionsDone.add(BUSINESS_SECTION);
   } else {
     sectionsDone.delete(BUSINESS_SECTION);
   }
-  return { sectionsDone: [...sectionsDone], storyIds };
+  return { sectionsDone: [...sectionsDone], featureIds };
 }
 
-export type GenStory = {
+export type GenAc = {
+  text: string;
+};
+
+export type GenFeature = {
   title: string;
-  asA: string;
-  iWantTo: string;
-  soThat: string;
+  description: string;
+  /** Background-doc source link recorded by the BA agent (design decision 7). */
+  source: string | null;
   // Raw model output — cleaned via cleanPriority at render time.
   priority: unknown;
+  acs: GenAc[];
   trs: { text: string; priority: unknown }[];
 };
 
 export type GenBr = {
   text: string;
   priority: unknown;
-  /** 0-based index into the stories generated in the same run — BRs link to a story via the BR meta comment. */
-  storyIndex: number | null;
+  /** 0-based index into the features generated in the same run — BRs link to a feature via the BR meta comment. */
+  featureIndex: number | null;
 };
 
 // Model output is untrusted text: single-line, pipe-free (pipes are the row
@@ -129,53 +141,95 @@ function cleanPriority(raw: unknown): ReqPriority {
 }
 
 /**
- * Append generated story blocks (each with its TR rows inside the block) to
- * user-journeys.md. Appending is the same write surface as POST /stories —
- * existing blocks are untouched, byte for byte.
+ * Append generated feature blocks (each with its AC + TR rows inside the
+ * block) to features.md. Appending is the same write surface as POST
+ * /features — existing blocks are untouched, byte for byte.
  *
- * Returns the spliced file text plus the allocated US ids (in generation
- * order) and the TR row count, for the job's progress + result counts.
+ * Returns the spliced file text plus the allocated FE ids (in generation
+ * order) and the AC/TR row counts, for the job's progress + result counts.
  */
-export function spliceStories(
-  journeys: string,
-  stories: GenStory[],
-): { text: string; usIds: string[]; trCount: number } {
-  const lines = journeys.split('\n');
-  const usIds: string[] = [];
+export function spliceFeatures(
+  featuresText: string,
+  features: GenFeature[],
+): { text: string; feIds: string[]; acCount: number; trCount: number } {
+  const lines = featuresText.split('\n');
+  const feIds: string[] = [];
+  let acCount = 0;
   let trCount = 0;
 
-  for (const story of stories) {
-    const usId = nextFreeId(collectExistingIds('', lines.join('\n')).us, 'US');
-    const block: string[] = renderStoryBlock({
-      usId,
-      title: cleanRowText(story.title, 120),
-      asA: cleanRowText(story.asA, 200),
-      iWantTo: cleanRowText(story.iWantTo, 200),
-      soThat: cleanRowText(story.soThat, 200),
-      priority: cleanPriority(story.priority),
-      status: 'draft',
-      owner: 'BA',
-      origin: 'generated',
-    }).split('\n');
+  // All ids for one block are pre-allocated before the block is emitted
+  // (renderFeatureBlock needs them up-front), so per-block allocations must
+  // also see the ids already allocated for THIS block — allocating against
+  // only the on-disk snapshot would give two ACs/TRs in the same block the
+  // same id. The snapshot re-scan already covers previous blocks (they were
+  // appended to `lines`).
+  const onDiskIds = () => collectExistingIds('', '', lines.join('\n'));
 
-    for (const tr of story.trs) {
-      const text = cleanRowText(tr.text, 300);
+  for (const feature of features) {
+    const title = cleanRowText(feature.title, 120);
+    const description = cleanRowText(feature.description, 1000);
+    // A feature needs a title + description to be a block; a garbled pair
+    // must not land as a heading-only stub.
+    if (!title || !description) continue;
+
+    const feId = nextFreeId(onDiskIds().fe, 'FE');
+
+    const acs: { id: string; status: AcStatus; text: string; origin: 'generated' }[] = [];
+    const allocatedAcs: string[] = [];
+    for (const ac of feature.acs) {
+      const text = cleanRowText(ac.text, 500);
       if (!text) continue; // a bare ID with no text isn't a row (parser skips it)
-      const trId = nextFreeId(collectExistingIds('', lines.join('\n')).tr, 'TR');
-      block.push(
-        renderReqRow(trId, cleanPriority(tr.priority), 'draft', 'BA', text),
-        `<!-- ${trId}: origin=generated -->`,
-      );
+      const id = nextFreeId([...onDiskIds().ac, ...allocatedAcs], 'AC');
+      allocatedAcs.push(id);
+      acs.push({ id, status: 'unmet', text, origin: 'generated' });
+      acCount++;
+    }
+
+    const trs: {
+      id: string;
+      priority: ReqPriority;
+      status: ReqStatus;
+      owner: ReqOwner;
+      text: string;
+      origin: 'generated';
+    }[] = [];
+    const allocatedTrs: string[] = [];
+    for (const tr of feature.trs) {
+      const text = cleanRowText(tr.text, 300);
+      if (!text) continue;
+      const id = nextFreeId([...onDiskIds().tr, ...allocatedTrs], 'TR');
+      allocatedTrs.push(id);
+      trs.push({
+        id,
+        priority: cleanPriority(tr.priority),
+        status: 'draft',
+        owner: 'BA',
+        text,
+        origin: 'generated',
+      });
       trCount++;
     }
 
-    // Same trailing-blank padding as POST /stories, then the block.
+    const block: string[] = renderFeatureBlock({
+      feId,
+      title,
+      description,
+      source: feature.source ? cleanRowText(feature.source, 200) : null,
+      priority: cleanPriority(feature.priority),
+      status: 'draft',
+      owner: 'BA',
+      origin: 'generated',
+      acs,
+      trs,
+    }).split('\n');
+
+    // Same trailing-blank padding as POST /features, then the block.
     if (lines.length === 0 || lines[lines.length - 1].trim() !== '') lines.push('');
     lines.push(...block);
-    usIds.push(usId);
+    feIds.push(feId);
   }
 
-  return { text: lines.join('\n'), usIds, trCount };
+  return { text: lines.join('\n'), feIds, acCount, trCount };
 }
 
 /**
@@ -185,13 +239,13 @@ export function spliceStories(
  * shifts the lines below it.
  *
  * Returns the spliced file text plus the allocated BR ids (in generation
- * order). Requires storyIds from the same run's spliceStories for
- * `<!-- BR-NNN: story=US-NN, origin=generated -->` links.
+ * order). Requires featureIds from the same run's spliceFeatures for
+ * `<!-- BR-NNN: feature=FE-NN, origin=generated -->` links.
  */
 export function spliceBusinessReqs(
   prd: string,
   brs: GenBr[],
-  storyIds: string[],
+  featureIds: string[],
 ): { text: string; brIds: string[] } {
   let lines = prd.split('\n');
   const brIds: string[] = [];
@@ -202,13 +256,13 @@ export function spliceBusinessReqs(
     const index = businessReqInsertIndex(lines);
     if (index === null) break; // no §8 section to write into — caller reports the failure
 
-    const brId = nextFreeId(collectExistingIds(lines.join('\n'), '').br, 'BR');
-    const storyId =
-      br.storyIndex !== null && br.storyIndex >= 0 && br.storyIndex < storyIds.length
-        ? storyIds[br.storyIndex]
+    const brId = nextFreeId(collectExistingIds(lines.join('\n'), '', '').br, 'BR');
+    const featureId =
+      br.featureIndex !== null && br.featureIndex >= 0 && br.featureIndex < featureIds.length
+        ? featureIds[br.featureIndex]
         : null;
-    const meta = storyId
-      ? `<!-- ${brId}: story=${storyId}, origin=generated -->`
+    const meta = featureId
+      ? `<!-- ${brId}: feature=${featureId}, origin=generated -->`
       : `<!-- ${brId}: origin=generated -->`;
     lines = insertAfter(lines, index, [renderReqRow(brId, cleanPriority(br.priority), 'draft', 'BA', text), meta]);
     brIds.push(brId);
@@ -220,7 +274,7 @@ export function spliceBusinessReqs(
 // A section whose model call yields zero parseable rows must FAIL the section,
 // not advance silently (PR #26 round 4: a silent zero-row 'done' corrupts
 // resume — retry skips the section as already done and nothing lands). The job
-// wraps both callModelStories and callModelBusinessReqs with this; the thrown
+// wraps both callModelFeatures and callModelBusinessReqs with this; the thrown
 // error lands in the section's catch, which persists the failed state and
 // lets Retry regenerate only this section.
 export function requireRows<T>(rows: T[], section: string): T[] {
@@ -241,32 +295,39 @@ export function requireRows<T>(rows: T[], section: string): T[] {
 // Zero desired rows is legal — "remove everything" — unlike generate mode,
 // which requires rows (requireRows).
 //
-// Manual content is never touched: manual/legacy stories and rows are not
-// update or removal candidates, and manual TR rows living inside an UPDATED
+// Manual content is never touched: manual/legacy features and rows are not
+// update or removal candidates, and manual AC/TR rows living inside an UPDATED
 // generated block (plus that block's soft-deleted rows — the 30-day recovery
 // seam, and the delete-marker comments that pair with them) re-render after
-// the desired TRs instead of being clobbered. Known limitation: a REMOVED
-// generated block still takes its manual TRs with it — the block is the unit.
-// A regenerated (rewritten) block also clobbers BA text edits to its
-// generated rows: there is no edit baseline to merge against.
+// the desired AC/TR rows instead of being clobbered. Known limitation: a
+// REMOVED generated block still takes its manual rows with it — the block is
+// the unit. A regenerated (rewritten) block also clobbers BA text edits to
+// its generated rows: there is no edit baseline to merge against.
 
 export type DesiredTr = {
-  /** Echoed TR- id to reuse (must belong to the same generated story); null or unknown = new row. */
+  /** Echoed TR- id to reuse (must belong to the same generated feature); null or unknown = new row. */
   trId: string | null;
   text: string;
   // Raw model output — cleaned via cleanRowText/cleanPriority at render time.
   priority: unknown;
 };
 
-export type DesiredStory = {
-  /** Echoed US- id to reuse (generated stories only); null or unknown = new story. */
-  usId: string | null;
+export type DesiredAc = {
+  /** Echoed AC- id to reuse (must belong to the same generated feature); null or unknown = new row. */
+  acId: string | null;
+  text: string;
+};
+
+export type DesiredFeature = {
+  /** Echoed FE- id to reuse (generated features only); null or unknown = new feature. */
+  feId: string | null;
   title: string;
-  asA: string;
-  iWantTo: string;
-  soThat: string;
-  // Raw model output — cleaned via cleanPriority at render time.
+  description: string;
+  /** Background-doc source link recorded by the BA agent (design decision 7); null = no source meta. */
+  source: string | null;
+  // Raw model output — cleaned via cleanRowText/cleanPriority at render time.
   priority: unknown;
+  acs: DesiredAc[];
   trs: DesiredTr[];
 };
 
@@ -276,19 +337,20 @@ export type DesiredBr = {
   text: string;
   // Raw model output — cleaned via cleanPriority at render time.
   priority: unknown;
-  /** Resolved by the caller against the post-reconcile story ids; null = unlinked. */
-  storyUsId: string | null;
+  /** Resolved by the caller against the post-reconcile feature ids; null = unlinked. */
+  featureId: string | null;
 };
 
 export type ReconcileOps = { added: number; updated: number; removed: number };
 
 // Grammar regexes mirrored from requirements-model.ts (kept private there):
 // struck rows carry the 30-day recovery seam; BR meta comments pair rows to
-// stories; TR/BR meta comments carry the origin stamp.
-const STRUCK_ROW_RE = /^[-*+]\s*~~\s*((?:BR|TR)-\d{3})[\s\S]*~~\s*$/;
-const ROW_META_LINE_RE = /^<!--\s*((?:BR|TR)-\d{3}):\s*(.*?)\s*-->$/;
-const STORY_DELETED_LINE_RE = /^<!--\s*deleted\s+/i;
-const US_ID_RE = /^US-\d{2,}$/;
+// features; AC/TR/BR meta comments carry the origin stamp.
+const STRUCK_ROW_RE = /^[-*+]\s*~~\s*((?:BR|TR|AC)-\d{3})[\s\S]*~~\s*$/;
+const ROW_META_LINE_RE = /^<!--\s*((?:BR|TR|AC)-\d{3}):\s*(.*?)\s*-->$/;
+const DELETED_LINE_RE = /^<!--\s*deleted\s+/i;
+const FE_ID_RE = /^FE-\d{2,}$/;
+const AC_ID_RE = /^AC-\d{3}$/;
 const TR_ID_RE = /^TR-\d{3}$/;
 const BR_ID_RE = /^BR-\d{3}$/;
 
@@ -322,66 +384,103 @@ function normalizedText(block: string[]): string {
 }
 
 // Manual rows + soft-deleted rows + their delete-marker comments inside one
-// story block, in file order — re-rendered after the desired TRs on UPDATE so
-// BA-owned content inside a generated block survives the rewrite. Struck rows
-// are invisible to parseStories (recovery seam) and manual rows carry no
-// origin stamp, so both are found by scanning the block's raw lines.
-function preservedBlockLines(lines: string[], story: StoryRow): string[] {
-  const manualIds = new Set(
-    story.reqs.filter((r) => r.origin !== 'generated').map((r) => r.id),
+// feature block, in file order — re-rendered after the desired AC/TR rows on
+// UPDATE so BA-owned content inside a generated block survives the rewrite.
+// Struck rows are invisible to parseFeatures (recovery seam) and manual rows
+// carry no origin stamp, so both are found by scanning the block's raw lines.
+function preservedBlockLines(lines: string[], feature: FeatureRow): string[] {
+  const manualAcIds = new Set(
+    feature.acs.filter((a) => a.origin !== 'generated').map((a) => a.id),
+  );
+  const manualReqIds = new Set(
+    feature.reqs.filter((r) => r.origin !== 'generated').map((r) => r.id),
   );
   const out: string[] = [];
-  for (let i = story.headingLine; i < story.blockEnd && i < lines.length; i++) {
+  for (let i = feature.headingLine; i < feature.blockEnd && i < lines.length; i++) {
     const trimmed = lines[i].trim();
     if (STRUCK_ROW_RE.test(trimmed)) {
       out.push(lines[i]);
-      const meta = nextNonBlank(lines, i + 1, story.blockEnd);
+      const meta = nextNonBlank(lines, i + 1, feature.blockEnd);
       if (meta && ROW_META_LINE_RE.test(meta.line.trim())) {
         out.push(lines[meta.index]);
         i = meta.index;
       }
       continue;
     }
-    const row = story.reqs.find((r) => manualIds.has(r.id) && r.lineIndex === i);
+    const acRow = feature.acs.find((a) => manualAcIds.has(a.id) && a.lineIndex === i);
+    if (acRow) {
+      out.push(lines[i]);
+      const meta = nextNonBlank(lines, i + 1, feature.blockEnd);
+      if (meta && ROW_META_LINE_RE.test(meta.line.trim()) && meta.line.includes(acRow.id)) {
+        out.push(lines[meta.index]);
+        i = meta.index;
+      }
+      continue;
+    }
+    const row = feature.reqs.find((r) => manualReqIds.has(r.id) && r.lineIndex === i);
     if (row) {
       out.push(lines[i]);
-      const meta = nextNonBlank(lines, i + 1, story.blockEnd);
+      const meta = nextNonBlank(lines, i + 1, feature.blockEnd);
       if (meta && ROW_META_LINE_RE.test(meta.line.trim()) && meta.line.includes(row.id)) {
         out.push(lines[meta.index]);
         i = meta.index;
       }
       continue;
     }
-    if (STORY_DELETED_LINE_RE.test(trimmed)) out.push(lines[i]);
+    if (DELETED_LINE_RE.test(trimmed)) out.push(lines[i]);
   }
   return out;
 }
 
-function renderDesiredStoryBlock(
-  usId: string,
-  d: DesiredStory,
-  existing: StoryRow | null,
+function renderDesiredFeatureBlock(
+  feId: string,
+  d: DesiredFeature,
+  existing: FeatureRow | null,
+  acOwner: Map<
+    string,
+    { feId: string; generated: boolean; raw: string; status: AcStatus | null }
+  >,
   trOwner: Map<
     string,
-    { storyUsId: string; generated: boolean; raw: string; status: ReqStatus | null; owner: ReqOwner | null }
+    { feId: string; generated: boolean; raw: string; status: ReqStatus | null; owner: ReqOwner | null }
   >,
   preserved: string[],
+  allocAc: () => string,
   allocTr: () => string,
-): { block: string[]; trsChanged: number } {
-  const block: string[] = renderStoryBlock({
-    usId,
-    title: cleanRowText(d.title, 120),
-    asA: cleanRowText(d.asA, 200),
-    iWantTo: cleanRowText(d.iWantTo, 200),
-    soThat: cleanRowText(d.soThat, 200),
-    priority: cleanPriority(d.priority),
-    // Reused ids keep the BA's status/owner progress — an approved story must
-    // not silently fall back to draft. New ids start draft/BA.
-    status: existing?.status ?? 'draft',
-    owner: existing?.owner ?? 'BA',
-    origin: 'generated',
-  }).split('\n');
+): { block: string[]; acsChanged: number; trsChanged: number } {
+  // Desired ACs, then desired TRs — renderFeatureBlock emits both inside the
+  // block (its `## Acceptance Criteria` section anchor is always present,
+  // even when empty) and stamps each row's origin meta itself.
+  const acs: { id: string; status: AcStatus; text: string; origin: 'generated' }[] = [];
+  let acsChanged = 0;
+  for (const ac of d.acs) {
+    const text = cleanRowText(ac.text, 500);
+    if (!text) continue; // a bare ID with no text isn't a row (parser skips it)
+    const echo = ac.acId && AC_ID_RE.test(ac.acId) ? acOwner.get(ac.acId) : undefined;
+    let id: string;
+    let status: AcStatus = 'unmet';
+    let raw: string | null = null;
+    if (echo && echo.feId === feId && echo.generated) {
+      id = ac.acId as string;
+      status = echo.status ?? 'unmet';
+      raw = echo.raw;
+    } else {
+      id = allocAc();
+      acsChanged++; // a non-echoed row inside an updated block is a new row
+    }
+    const row = renderAcRow(id, status, text);
+    if (raw !== null && row.trim() !== raw.trim()) acsChanged++;
+    acs.push({ id, status, text, origin: 'generated' });
+  }
 
+  const trs: {
+    id: string;
+    priority: ReqPriority;
+    status: ReqStatus;
+    owner: ReqOwner;
+    text: string;
+    origin: 'generated';
+  }[] = [];
   let trsChanged = 0;
   for (const tr of d.trs) {
     const text = cleanRowText(tr.text, 300);
@@ -391,7 +490,7 @@ function renderDesiredStoryBlock(
     let status: ReqStatus = 'draft';
     let owner: ReqOwner = 'BA';
     let raw: string | null = null;
-    if (echo && echo.storyUsId === usId && echo.generated) {
+    if (echo && echo.feId === feId && echo.generated) {
       trId = tr.trId as string;
       status = echo.status ?? 'draft';
       owner = echo.owner ?? 'BA';
@@ -402,43 +501,83 @@ function renderDesiredStoryBlock(
     }
     const row = renderReqRow(trId, cleanPriority(tr.priority), status, owner, text);
     if (raw !== null && row.trim() !== raw.trim()) trsChanged++;
-    block.push(row, `<!-- ${trId}: origin=generated -->`);
+    trs.push({
+      id: trId,
+      priority: cleanPriority(tr.priority),
+      status,
+      owner,
+      text,
+      origin: 'generated',
+    });
   }
+
+  const block: string[] = renderFeatureBlock({
+    feId,
+    title: cleanRowText(d.title, 120),
+    description: cleanRowText(d.description, 1000),
+    source: d.source ? cleanRowText(d.source, 200) : null,
+    priority: cleanPriority(d.priority),
+    // Reused ids keep the BA's status/owner progress — an approved feature
+    // must not silently fall back to draft. New ids start draft/BA.
+    status: existing?.status ?? 'draft',
+    owner: existing?.owner ?? 'BA',
+    origin: 'generated',
+    acs,
+    trs,
+  }).split('\n');
   block.push(...preserved);
-  return { block, trsChanged };
+  return { block, acsChanged, trsChanged };
 }
 
 /**
- * Diff the desired story set against the generated story blocks already on
- * disk in user-journeys.md, and splice the delta. Echoed generated US ids are
- * updated in place (status/owner preserved, manual TR rows and struck rows
- * re-rendered); generated stories the model omits are removed; everything
- * else appends via spliceStories. Manual/legacy blocks are never candidates.
+ * Diff the desired feature set against the generated feature blocks already
+ * on disk in features.md, and splice the delta. Echoed generated FE ids are
+ * updated in place (status/owner preserved, manual AC/TR rows and struck rows
+ * re-rendered); generated features the model omits are removed; everything
+ * else appends via spliceFeatures. Manual/legacy blocks are never candidates.
  *
  * Returns the reconciled text (the input unchanged when nothing differs —
  * the caller skips the write), the ops counts, the post-reconcile generated
- * story ids in DESIRED order (reused first, appended after), and the TR count
- * (changed + appended rows) for the job's result counts.
+ * feature ids in DESIRED order (reused first, appended after), and the
+ * AC/TR counts (changed + appended rows) for the job's result counts.
  */
-export function reconcileStories(
-  journeys: string,
-  desired: DesiredStory[],
-  keepUsIds: string[] = [],
-): { text: string; ops: ReconcileOps; storyIds: string[]; trCount: number } {
-  const lines = journeys.split('\n');
-  const parsed = parseStories(journeys);
-  const byUsId = new Map(parsed.stories.map((s) => [s.usId, s]));
-  // File-wide TR ownership — an echoed TR id may only be reused inside its
-  // own generated story block; every other echo is a new row.
+export function reconcileFeatures(
+  featuresText: string,
+  desired: DesiredFeature[],
+  keepFeIds: string[] = [],
+): {
+  text: string;
+  ops: ReconcileOps;
+  featureIds: string[];
+  acCount: number;
+  trCount: number;
+} {
+  const lines = featuresText.split('\n');
+  const parsed = parseFeatures(featuresText);
+  const byFeId = new Map(parsed.features.map((f) => [f.feId, f]));
+  // Block-wide AC/TR ownership — an echoed id may only be reused inside its
+  // own generated feature block; every other echo is a new row.
+  const acOwner = new Map<
+    string,
+    { feId: string; generated: boolean; raw: string; status: AcStatus | null }
+  >();
   const trOwner = new Map<
     string,
-    { storyUsId: string; generated: boolean; raw: string; status: ReqStatus | null; owner: ReqOwner | null }
+    { feId: string; generated: boolean; raw: string; status: ReqStatus | null; owner: ReqOwner | null }
   >();
-  for (const story of parsed.stories) {
-    for (const row of story.reqs) {
+  for (const feature of parsed.features) {
+    for (const ac of feature.acs) {
+      acOwner.set(ac.id, {
+        feId: feature.feId,
+        generated: ac.origin === 'generated',
+        raw: ac.raw,
+        status: ac.status,
+      });
+    }
+    for (const row of feature.reqs) {
       if (row.type === 'TR') {
         trOwner.set(row.id, {
-          storyUsId: story.usId,
+          feId: feature.feId,
           generated: row.origin === 'generated',
           raw: row.raw,
           status: row.status,
@@ -450,70 +589,95 @@ export function reconcileStories(
 
   const plan: { start: number; end: number; block: string[] | null }[] = [];
   const ops: ReconcileOps = { added: 0, updated: 0, removed: 0 };
-  const reusedStoryIds: string[] = [];
-  const desiredUsIds = new Set<string>();
+  const reusedFeatureIds: string[] = [];
+  const desiredFeIds = new Set<string>();
+  const allocatedAcs: string[] = [];
   const allocatedTrs: string[] = [];
+  let acCount = 0;
   let trCount = 0;
-  const adds: GenStory[] = [];
+  const adds: GenFeature[] = [];
 
+  // Ids for newly added rows accumulate in allocated* so two echoes inside
+  // the same planning pass never collide (the on-disk snapshot can't see
+  // them — nothing has been spliced yet).
+  const allocAc = (): string => {
+    const id = nextFreeId([...collectExistingIds('', '', lines.join('\n')).ac, ...allocatedAcs], 'AC');
+    allocatedAcs.push(id);
+    return id;
+  };
+  const allocTr = (): string => {
+    const id = nextFreeId([...collectExistingIds('', '', lines.join('\n')).tr, ...allocatedTrs], 'TR');
+    allocatedTrs.push(id);
+    return id;
+  };
+
+  // Keep-listing lives above the desired loop so a garbled echo can protect
+  // its named block from the omission sweep below.
+  const keepSet = new Set(keepFeIds);
   for (const d of desired) {
     const title = cleanRowText(d.title, 120);
-    const asA = cleanRowText(d.asA, 200);
-    const iWantTo = cleanRowText(d.iWantTo, 200);
-    const soThat = cleanRowText(d.soThat, 200);
+    const description = cleanRowText(d.description, 1000);
     // Incomplete rows are skipped by the caller's parse (same bar as generate
-    // mode); belt-and-braces here — a garbled echo must not wipe a story.
-    if (!title || !asA || !iWantTo || !soThat) continue;
+    // mode); belt-and-braces here — a garbled echo must not wipe a feature.
+    const echoId = d.feId && FE_ID_RE.test(d.feId) ? d.feId : null;
+    if (!title || !description) {
+      // A garbled row that still names an existing generated block keeps that
+      // block: the model clearly wants it, the retry pass can re-edit it.
+      const garbledExisting = echoId ? byFeId.get(echoId) : undefined;
+      if (echoId && garbledExisting?.origin === 'generated') keepSet.add(echoId);
+      continue;
+    }
 
-    const echoId = d.usId && US_ID_RE.test(d.usId) ? d.usId : null;
-    const existing = echoId ? byUsId.get(echoId) : undefined;
-    if (echoId && existing && existing.origin === 'generated' && !desiredUsIds.has(echoId)) {
-      desiredUsIds.add(echoId);
-      reusedStoryIds.push(echoId);
-      const { block, trsChanged } = renderDesiredStoryBlock(
+    const existing = echoId ? byFeId.get(echoId) : undefined;
+    if (echoId && existing && existing.origin === 'generated' && !desiredFeIds.has(echoId)) {
+      desiredFeIds.add(echoId);
+      reusedFeatureIds.push(echoId);
+      const { block, acsChanged, trsChanged } = renderDesiredFeatureBlock(
         echoId,
         d,
         existing,
+        acOwner,
         trOwner,
         preservedBlockLines(lines, existing),
-        () => {
-          const id = nextFreeId(
-            [...collectExistingIds('', lines.join('\n')).tr, ...allocatedTrs],
-            'TR',
-          );
-          allocatedTrs.push(id);
-          return id;
-        },
+        allocAc,
+        allocTr,
       );
       const start = existing.headingLine;
       const end = contentEnd(lines, start, existing.blockEnd);
       if (normalizedText(block) !== normalizedText(lines.slice(start, end))) {
         plan.push({ start, end, block });
         ops.updated++;
+        acCount += acsChanged;
         trCount += trsChanged;
       }
       continue;
     }
-    // Unknown id, manual-owned id, duplicate echo, or no id → a new story.
-    adds.push({ title, asA, iWantTo, soThat, priority: d.priority, trs: d.trs });
+    // Unknown id, manual-owned id, duplicate echo, or no id → a new feature.
+    adds.push({
+      title,
+      description,
+      source: d.source,
+      priority: d.priority,
+      acs: d.acs,
+      trs: d.trs,
+    });
   }
 
-  // Omitted generated stories are removed — the model's desired set is the
+  // Omitted generated features are removed — the model's desired set is the
   // full replacement. Manual/legacy blocks and keep-listed ids stay untouched.
-  const keepSet = new Set(keepUsIds);
-  for (const story of parsed.stories) {
-    if (story.origin !== 'generated') continue;
-    if (desiredUsIds.has(story.usId) || keepSet.has(story.usId)) continue;
+  for (const feature of parsed.features) {
+    if (feature.origin !== 'generated') continue;
+    if (desiredFeIds.has(feature.feId) || keepSet.has(feature.feId)) continue;
     plan.push({
-      start: story.headingLine,
-      end: contentEnd(lines, story.headingLine, story.blockEnd),
+      start: feature.headingLine,
+      end: contentEnd(lines, feature.headingLine, feature.blockEnd),
       block: null,
     });
     ops.removed++;
   }
 
   if (plan.length === 0 && adds.length === 0) {
-    return { text: journeys, ops, storyIds: reusedStoryIds, trCount: 0 };
+    return { text: featuresText, ops, featureIds: reusedFeatureIds, acCount: 0, trCount: 0 };
   }
 
   // Apply plan ranges in DESCENDING order — every range indexes the ORIGINAL
@@ -525,15 +689,16 @@ export function reconcileStories(
   }
 
   // Appends reuse the generate-mode splice verbatim — ids are allocated
-  // against the already-mutated lines, so pre-allocated TR ids can't collide.
-  // spliceStories returns no ops object (generate mode counts differently),
-  // so the reconcile ops must count the appends themselves.
-  const appended = spliceStories(lines.join('\n'), adds);
-  ops.added += appended.usIds.length;
+  // against the already-mutated lines, so pre-allocated AC/TR ids can't
+  // collide. spliceFeatures returns no ops object (generate mode counts
+  // differently), so the reconcile ops must count the appends themselves.
+  const appended = spliceFeatures(lines.join('\n'), adds);
+  ops.added += appended.feIds.length;
   return {
     text: appended.text,
     ops,
-    storyIds: [...reusedStoryIds, ...appended.usIds],
+    featureIds: [...reusedFeatureIds, ...appended.feIds],
+    acCount: acCount + appended.acCount,
     trCount: trCount + appended.trCount,
   };
 }
@@ -541,7 +706,7 @@ export function reconcileStories(
 /**
  * Diff the desired BR set against the generated BR rows already on disk in
  * prd.md §8, and splice the delta. Echoed generated BR ids are updated in
- * place (status/owner + story link re-rendered); generated BRs the model
+ * place (status/owner + feature link re-rendered); generated BRs the model
  * omits are removed; everything else appends via the generate-mode insert
  * path with a freshly allocated id per row.
  *
@@ -583,8 +748,8 @@ export function reconcileBusinessReqs(
       desiredBrIds.add(echoId);
       const metaIndex = metaIndexOf(existing);
       const end = metaIndex !== null ? metaIndex + 1 : existing.lineIndex + 1;
-      const meta = d.storyUsId
-        ? `<!-- ${echoId}: story=${d.storyUsId}, origin=generated -->`
+      const meta = d.featureId
+        ? `<!-- ${echoId}: feature=${d.featureId}, origin=generated -->`
         : `<!-- ${echoId}: origin=generated -->`;
       const block = [
         renderReqRow(
@@ -634,9 +799,9 @@ export function reconcileBusinessReqs(
   for (const d of inserts) {
     const index = businessReqInsertIndex(lines);
     if (index === null) break; // no §8 section to write into — caller reports the failure
-    const brId = nextFreeId(collectExistingIds(lines.join('\n'), '').br, 'BR');
-    const meta = d.storyUsId
-      ? `<!-- ${brId}: story=${d.storyUsId}, origin=generated -->`
+    const brId = nextFreeId(collectExistingIds(lines.join('\n'), '', '').br, 'BR');
+    const meta = d.featureId
+      ? `<!-- ${brId}: feature=${d.featureId}, origin=generated -->`
       : `<!-- ${brId}: origin=generated -->`;
     lines = insertAfter(lines, index, [
       renderReqRow(brId, cleanPriority(d.priority), 'draft', 'BA', cleanRowText(d.text, 300)),

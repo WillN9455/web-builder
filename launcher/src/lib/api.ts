@@ -603,7 +603,7 @@ export type RequirementsGenerationStatus = {
   error?: string;
   // Row counts — while generating these are "what has landed so far"; the
   // banner reports live counts, and the done banner reports final rows.
-  result?: { storiesGenerated: number; brsGenerated: number; trsGenerated: number };
+  result?: { featuresGenerated: number; brsGenerated: number; trsGenerated: number; acsGenerated: number };
   // Fix #3 — how this/last run ran: 'reconcile' diffs against existing
   // origin=generated rows (echo = keep/update, omitted = removed). Absent on
   // pre-reconcile states — treated as 'generate'.
@@ -643,6 +643,7 @@ export async function triggerRequirementsGeneration(
 // ── /api/projects/:id/requirements (Requirements tab, screen 15) ───────────
 
 import type {
+  AcStatus,
   ReqOwner,
   ReqPriority,
   ReqStatus,
@@ -655,11 +656,21 @@ import type {
 // consumed here; the serialized response shapes are re-declared below (the
 // wire format strips the parser's internal geometry).
 export type {
+  AcStatus,
   ReqOwner,
   ReqPriority,
   ReqStatus,
   ReqType,
 } from '../../server/requirements-model';
+
+export type AcItem = {
+  id: string; // AC-001
+  // Legacy rows (origin=null meta) can parse without a met/unmet segment;
+  // the PATCH handler refuses to touch them until a status is set.
+  status: AcStatus | null;
+  text: string;
+  origin: 'manual' | 'generated' | null;
+};
 
 export type RequirementItem = {
   id: string; // BR-001 / TR-001
@@ -668,32 +679,34 @@ export type RequirementItem = {
   status: ReqStatus | null;
   owner: ReqOwner | null;
   text: string;
-  // Story link (item 2.7): BRs can be linked to a story via a meta comment;
-  // TRs always carry their block's usId. null = unassigned (BR) / null (TR
-  // before the parse stamp) — see RequirementItem.storyUsId.
-  storyUsId: string | null;
+  // Feature link (redesign §4): BRs carry `feature=FE-NN` from their meta
+  // comment; TRs always carry their block's feId. null = unassigned (BR
+  // only — a TR is never homeless).
+  featureId: string | null;
   // Origin tag (item 2.6): manual = BA wrote it via the UI; generated = an
   // agent wrote it; null = legacy row predating the marker.
   origin: 'manual' | 'generated' | null;
 };
 
-export type StoryItem = {
-  usId: string; // US-01
+export type FeatureItem = {
+  feId: string; // FE-01
   title: string;
-  asA: string | null;
-  iWantTo: string | null;
-  soThat: string | null;
+  description: string;
+  // Background-doc traceability link (redesign §7), e.g.
+  // "user-journeys.md §3". null = no link recorded.
+  source: string | null;
   priority: ReqPriority | null;
   status: ReqStatus | null;
   owner: ReqOwner | null;
-  // QA-2: stories carry their own origin tag (manual vs generated).
+  // QA-2: features carry their own origin tag (manual vs generated).
   // null on legacy blocks; the UI renders null as manual.
   origin: 'manual' | 'generated' | null;
+  acs: AcItem[];
   reqs: RequirementItem[];
 };
 
 export type RequirementsResponse = {
-  stories: StoryItem[];
+  features: FeatureItem[];
   businessReqs: RequirementItem[];
   // 'no-prd' → the project has no PRD/ folder yet; the tab renders its
   // friendly empty state and no add affordances (AC-4).
@@ -703,17 +716,24 @@ export type RequirementsResponse = {
   parseError?: string;
 };
 
-export type StoryInput = {
+export type FeatureInput = {
   title: string;
-  asA: string;
-  iWantTo: string;
-  soThat: string;
+  description: string;
+  // null = no source link (the server stores null for an empty string).
+  source: string | null;
   priority: ReqPriority;
   status: ReqStatus;
   owner: ReqOwner;
 };
 
-export type StoryPatch = Partial<StoryInput>;
+export type FeaturePatch = Partial<FeatureInput>;
+
+export type AcInput = {
+  text: string;
+  status: AcStatus;
+};
+
+export type AcPatch = Partial<AcInput>;
 
 export type RequirementInput = {
   type: ReqType;
@@ -724,6 +744,11 @@ export type RequirementInput = {
 };
 
 export type RequirementPatch = Partial<Omit<RequirementInput, 'type'>> & { type?: ReqType };
+
+// Migration endpoint (redesign decision 3): converts each existing US-NN
+// story block into a FE-NN feature block (one-time, idempotent — a second
+// run reports migrated: 0).
+export type MigrateResponse = { ok: true; migrated: number };
 
 export class RequirementsValidationError extends Error {
   errors: Record<string, string>;
@@ -777,25 +802,25 @@ export async function fetchRequirements(idOrSlug: string): Promise<RequirementsR
   return reqFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/requirements`);
 }
 
-export type CreateStoryResponse = { ok: true; story: StoryItem };
+export type CreateFeatureResponse = { ok: true; feature: FeatureItem };
 
-export async function createStory(idOrSlug: string, input: StoryInput): Promise<CreateStoryResponse> {
-  return reqFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/stories`, {
+export async function createFeature(idOrSlug: string, input: FeatureInput): Promise<CreateFeatureResponse> {
+  return reqFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/features`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),
   });
 }
 
-export type UpdateStoryResponse = { ok: true; story: StoryItem };
+export type UpdateFeatureResponse = { ok: true; feature: FeatureItem };
 
-export async function updateStory(
+export async function updateFeature(
   idOrSlug: string,
-  usId: string,
-  patch: Partial<StoryInput>,
-): Promise<UpdateStoryResponse> {
+  feId: string,
+  patch: FeaturePatch,
+): Promise<UpdateFeatureResponse> {
   return reqFetch(
-    `/api/projects/${encodeURIComponent(idOrSlug)}/stories/${encodeURIComponent(usId)}`,
+    `/api/projects/${encodeURIComponent(idOrSlug)}/features/${encodeURIComponent(feId)}`,
     {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -804,27 +829,71 @@ export async function updateStory(
   );
 }
 
-export async function deleteStory(idOrSlug: string, usId: string): Promise<{ ok: true; usId: string }> {
+export async function deleteFeature(idOrSlug: string, feId: string): Promise<{ ok: true; feId: string }> {
   return reqFetch(
-    `/api/projects/${encodeURIComponent(idOrSlug)}/stories/${encodeURIComponent(usId)}`,
+    `/api/projects/${encodeURIComponent(idOrSlug)}/features/${encodeURIComponent(feId)}`,
     { method: 'DELETE' },
   );
 }
 
 export type CreateRequirementResponse = { ok: true; requirement: RequirementItem };
 
+// Feature-first add (redesign §6): the feature is in the URL path — there is
+// no feature picker in the body. BRs land in prd.md §8 with a
+// `feature=FE-NN` meta link; TRs land inside the feature block.
 export async function createRequirement(
   idOrSlug: string,
-  usId: string,
+  feId: string,
   input: RequirementInput,
 ): Promise<CreateRequirementResponse> {
   return reqFetch(
-    `/api/projects/${encodeURIComponent(idOrSlug)}/stories/${encodeURIComponent(usId)}/requirements`,
+    `/api/projects/${encodeURIComponent(idOrSlug)}/features/${encodeURIComponent(feId)}/requirements`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
     },
+  );
+}
+
+export type CreateAcResponse = { ok: true; ac: AcItem };
+
+export async function createAc(
+  idOrSlug: string,
+  feId: string,
+  input: AcInput,
+): Promise<CreateAcResponse> {
+  return reqFetch(
+    `/api/projects/${encodeURIComponent(idOrSlug)}/features/${encodeURIComponent(feId)}/acceptance-criteria`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    },
+  );
+}
+
+export type UpdateAcResponse = { ok: true; ac: AcItem };
+
+export async function updateAc(
+  idOrSlug: string,
+  acId: string,
+  patch: AcPatch,
+): Promise<UpdateAcResponse> {
+  return reqFetch(
+    `/api/projects/${encodeURIComponent(idOrSlug)}/acceptance-criteria/${encodeURIComponent(acId)}`,
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch),
+    },
+  );
+}
+
+export async function deleteAc(idOrSlug: string, acId: string): Promise<{ ok: true; id: string }> {
+  return reqFetch(
+    `/api/projects/${encodeURIComponent(idOrSlug)}/acceptance-criteria/${encodeURIComponent(acId)}`,
+    { method: 'DELETE' },
   );
 }
 
@@ -834,14 +903,13 @@ export async function updateRequirement(
   idOrSlug: string,
   reqId: string,
   patch: RequirementPatch,
-  // QA-10: storyUsId disambiguates duplicate ids across stories once two
-  // stories both have a TR-001. The UI always passes it (every
-  // RequirementItem carries the field), the server scopes locateReq to it.
-  storyUsId?: string | null,
+  // QA-10: feId disambiguates duplicate ids across features once two
+  // features both have a TR-001 (or BR-001 — BR pools are per-feature). The
+  // UI always passes it (every RequirementItem carries the field), the
+  // server scopes locateReq to it.
+  feId?: string | null,
 ): Promise<UpdateRequirementResponse> {
-  const qs = storyUsId !== undefined && storyUsId !== null
-    ? `?storyUsId=${encodeURIComponent(storyUsId)}`
-    : '';
+  const qs = feId !== undefined && feId !== null ? `?feId=${encodeURIComponent(feId)}` : '';
   return reqFetch(
     `/api/projects/${encodeURIComponent(idOrSlug)}/requirements/${encodeURIComponent(reqId)}${qs}`,
     {
@@ -856,11 +924,9 @@ export async function updateRequirementStatus(
   idOrSlug: string,
   reqId: string,
   status: ReqStatus,
-  storyUsId?: string | null,
+  feId?: string | null,
 ): Promise<UpdateRequirementResponse> {
-  const qs = storyUsId !== undefined && storyUsId !== null
-    ? `?storyUsId=${encodeURIComponent(storyUsId)}`
-    : '';
+  const qs = feId !== undefined && feId !== null ? `?feId=${encodeURIComponent(feId)}` : '';
   return reqFetch(
     `/api/projects/${encodeURIComponent(idOrSlug)}/requirements/${encodeURIComponent(reqId)}/status${qs}`,
     {
@@ -874,13 +940,21 @@ export async function updateRequirementStatus(
 export async function deleteRequirement(
   idOrSlug: string,
   reqId: string,
-  storyUsId?: string | null,
+  feId?: string | null,
 ): Promise<{ ok: true; id: string }> {
-  const qs = storyUsId !== undefined && storyUsId !== null
-    ? `?storyUsId=${encodeURIComponent(storyUsId)}`
-    : '';
+  const qs = feId !== undefined && feId !== null ? `?feId=${encodeURIComponent(feId)}` : '';
   return reqFetch(
     `/api/projects/${encodeURIComponent(idOrSlug)}/requirements/${encodeURIComponent(reqId)}${qs}`,
     { method: 'DELETE' },
   );
+}
+
+// One-time story→feature migration (redesign decision 3). The server is
+// idempotent — a project with no stories left reports migrated: 0.
+export async function migrateRequirements(idOrSlug: string): Promise<MigrateResponse> {
+  return reqFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/requirements/migrate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  });
 }
