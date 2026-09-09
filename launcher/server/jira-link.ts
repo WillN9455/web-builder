@@ -7,7 +7,7 @@
 
 import crypto from 'node:crypto';
 
-import type { Express } from 'express';
+import type { Request, Response, Application } from 'express';
 import { db } from './db.js';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -99,7 +99,7 @@ function validateCreateInput(input: Partial<JiraLinkCreateInput>): string | null
 
 // ── Route handlers ─────────────────────────────────────────────────────────
 
-function handleGetLink(req: Express.Request, res: Express.Response): void {
+function handleGetLink(req: Request, res: Response): void {
   const projectId = parseProjectId(req.params.projectId);
   if (projectId === null) {
     res.status(400).json({ error: 'Valid project ID is required.' });
@@ -118,7 +118,7 @@ function handleGetLink(req: Express.Request, res: Express.Response): void {
   res.json({ link: serializeLink(link) });
 }
 
-function handlePostTestConnection(req: Express.Request, res: Express.Response): void {
+function handlePostTestConnection(req: Request, res: Response): void {
   const projectId = parseProjectId(req.params.projectId);
   if (projectId === null) {
     res.status(400).json({ error: 'Valid project ID is required.' });
@@ -142,7 +142,7 @@ function handlePostTestConnection(req: Express.Request, res: Express.Response): 
   });
 }
 
-function handlePostLink(req: Express.Request, res: Express.Response): void {
+function handlePostLink(req: Request, res: Response): void {
   const projectId = parseProjectId(req.params.projectId);
   if (projectId === null) {
     res.status(400).json({ error: 'Valid project ID is required.' });
@@ -179,7 +179,7 @@ function handlePostLink(req: Express.Request, res: Express.Response): void {
   res.status(201).json({ link: serializeLink(link) });
 }
 
-function handlePatchLink(req: Express.Request, res: Express.Response): void {
+function handlePatchLink(req: Request, res: Response): void {
   const projectId = parseProjectId(req.params.projectId);
   if (projectId === null) {
     res.status(400).json({ error: 'Valid project ID is required.' });
@@ -250,7 +250,7 @@ function handlePatchLink(req: Express.Request, res: Express.Response): void {
   res.json({ link: serializeLink(link) });
 }
 
-function handleDeleteLink(req: Express.Request, res: Express.Response): void {
+function handleDeleteLink(req: Request, res: Response): void {
   const projectId = parseProjectId(req.params.projectId);
   if (projectId === null) {
     res.status(400).json({ error: 'Valid project ID is required.' });
@@ -281,7 +281,7 @@ function parseProjectId(idOrSlug: string): number | null {
   return row ? row.id : null;
 }
 
-export function registerJiraLinkRoutes(app: Express.Application): void {
+export function registerJiraLinkRoutes(app: Application): void {
   const prefix = '/api/projects/:projectId/jira/link';
 
   app.get(prefix, handleGetLink);
