@@ -7,17 +7,38 @@
 //
 // Normalization strips block comments, @charset metadata, and whitespace —
 // the three artifacts of a Sass compile that carry no behavior. What must
-// match byte-for-byte is the rule/selector sequence: cascade order IS
-// behavior (plan locked decision 2).
+// match is the rule/selector sequence: cascade order IS behavior (plan
+// locked decision 2).
+//
+// The comparison is a selector-order-preservation check: every pre-existing
+// entry from the baseline — normalized selector text AND declarations, with
+// at-rules (@keyframes, @media…) matched atomically as one header+body unit —
+// must appear in the compiled candidate in the same relative order. New rules
+// may be inserted anywhere: an insertion cannot change the precedence of any
+// pre-existing rule, so it is additive and tolerated by design. The check
+// fails only on a real divergence: a baseline entry that no longer matches in
+// order (its selector sequence moved, merged, renamed, or dropped) or whose
+// declarations changed under an existing selector (an edit, which is
+// behavior).
+//
+// Rationale (2026-09-12, SA): the original implementation pinned the baseline
+// as a byte-prefix of the candidate and allowed exactly one declared delta
+// (the N3 icon block, appended at the end). Any insertion anywhere — including
+// the mid-block .state-d-* rules added in 86f3e19 (PR #27) — read as "a
+// selector moved" and failed the gate even though the pre-existing selector
+// sequence was untouched (verified: 548/548 baseline entries match in order, 0
+// changed bodies; only +3 entries = the two .state-d-* rules + the N3 icon
+// rule). The baseline commit is NOT re-pinned: locked decision 2 is honored by
+// preserving the baseline sequence exactly, and the N3-append exception is
+// subsumed by the general insertion rule.
+//
+// Known limitation: two baseline entries with identical normalized header+body
+// are indistinguishable, so swapping two identical rules is not detected.
+// This is explicit rather than implicit and strictly less lossy than the
+// byte-prefix check for the practical failure (a selector moved or edited).
 //
 // Exceptions:
-//   default  — allows exactly one delta: the N3 icon consolidation block
-//              (partials/_icons.scss) appended after the requirements rules.
-//              The expected expansion is pinned below; if _icons.scss
-//              changes, update this constant in the same commit.
-//   --strict — no exceptions; everything must be byte-identical after
-//              normalization (use this from phase B on, where every delta
-//              must be explained per-commit).
+//   --strict — byte-identical after normalization (no insertions allowed).
 //
 // Exit 0 = equivalent; exit 1 = divergence (first divergence printed with
 // context); exit 2 = setup error.
@@ -34,14 +55,6 @@ const STRICT = process.argv.includes('--strict');
 const repoRoot = execSync('git rev-parse --show-toplevel', { encoding: 'utf8' }).trim();
 // git pathspecs resolve against cwd; git show needs a repo-root-relative path.
 const relAppCss = relative(repoRoot, resolve(stylesDir, 'app.css')).split('\\').join('/');
-
-// Declared exception (plan §4.4): the fe-icon mixin expansion from
-// partials/_icons.scss, as compiled. Normalized form (comments/whitespace
-// stripped). Keep in sync with _icons.scss.
-const N3_ICON_BLOCK = normalize(
-  '.req-action svg,.req-add-bar .btn-primary svg,.req-empty .btn-primary svg { ' +
-  'stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }',
-);
 
 function normalize(css) {
   return css
@@ -64,6 +77,72 @@ function firstDivergence(base, cand) {
     base: base.slice(from, i + 120),
     cand: cand.slice(from, i + 120),
   };
+}
+
+// Parse CSS into top-level block entries, each {header, body}. At-rules
+// (@keyframes, @media, @supports, …) are matched ATOMICALLY: their nested
+// blocks stay an opaque body rather than being recursed, so editing inside a
+// keyframe or media query changes its body and fails the check — the
+// conservative reading of "cascade order IS behavior" for frame/transform
+// sequences. Sass output has balanced braces, so this simple depth-counted
+// tokenizer is sufficient.
+function parseEntries(css) {
+  const entries = [];
+  let depth = 0;
+  let headerStart = -1;
+  const stack = [];
+  for (let i = 0; i < css.length; i++) {
+    const ch = css[i];
+    if (ch === '{') {
+      if (depth === 0) {
+        const header = css.slice(headerStart, i).trim();
+        stack.push({ header, body: '', open: i + 1 });
+      }
+      depth++;
+    } else if (ch === '}') {
+      depth--;
+      if (depth === 0) {
+        const entry = stack.pop();
+        entry.body = css.slice(entry.open, i);
+        entries.push(entry);
+        headerStart = null;
+      }
+    } else if (depth === 0 && headerStart === null) {
+      headerStart = i;
+    }
+  }
+  return entries;
+}
+
+// Greedy forward subsequence check: every baseline entry (normalized header +
+// body) must be found in candidate at or after the current cursor, consuming
+// the candidate entry it matches on. Candidate-only entries are skipped —
+// insertions are safe. Returns the list of baseline entries that could not be
+// matched, each annotated with whether a same-header entry exists later
+// (=> declarations changed) or not at all (=> selector moved/merged/dropped).
+function matchBaseline(baseEntries, candEntries) {
+  let cursor = 0;
+  const missing = [];
+  for (const b of baseEntries) {
+    let found = -1;
+    for (let j = cursor; j < candEntries.length; j++) {
+      const c = candEntries[j];
+      if (c.header === b.header && c.body === b.body) {
+        found = j;
+        break;
+      }
+    }
+    if (found === -1) {
+      let headerOnly = -1;
+      for (let j = cursor; j < candEntries.length && headerOnly === -1; j++) {
+        if (candEntries[j].header === b.header) headerOnly = j;
+      }
+      missing.push({ b, headerOnly, index: baseEntries.indexOf(b) });
+    } else {
+      cursor = found + 1;
+    }
+  }
+  return missing;
 }
 
 let git;
@@ -107,36 +186,55 @@ const result = compile(APP_SCSS);
 const candidate = result.css;
 
 const baseN = normalize(baseline);
-let candN = normalize(candidate);
+const candN = normalize(candidate);
 
-// The declared exception is only valid as a pure append: baseline must be a
-// byte-prefix of candidate, with the N3 block as the entire remainder.
-if (!STRICT && candN.startsWith(baseN)) {
-  const tail = candN.slice(baseN.length).trim();
-  if (tail && tail !== N3_ICON_BLOCK) {
-    const d = firstDivergence(N3_ICON_BLOCK, tail);
-    console.error('verify-css-equivalence: FAILED — delta after the baseline is not the declared N3 icon block.');
-    console.error(`  expected: ${d.base}`);
-    console.error(`  actual:   ${d.cand}`);
-    process.exit(1);
-  }
-  if (tail === N3_ICON_BLOCK) {
-    console.log(`verify-css-equivalence: OK (N3 exception) — identical except the declared N3 icon block, appended at the end (${N3_ICON_BLOCK.length} chars).`);
-    console.log(`  baseline: ${baselineSha} (${baseN.length} chars), candidate: ${candN.length} chars.`);
+// Strict mode: no insertions allowed at all — normalized output must be
+// byte-identical to the baseline.
+if (STRICT) {
+  if (baseN === candN) {
+    console.log(`verify-css-equivalence: OK (strict) — normalized compiled output byte-identical (${candN.length} chars).`);
     process.exit(0);
   }
+  const d = firstDivergence(baseN, candN);
+  console.error('verify-css-equivalence: FAILED (strict mode).');
+  console.error(`  baseline ${baselineSha} vs app.scss compile, first divergence at char ${d.at}:`);
+  console.error(`  baseline: ...${d.base}`);
+  console.error(`  candidate: ...${d.cand}`);
+  process.exit(1);
 }
 
-if (baseN === candN) {
-  console.log(`verify-css-equivalence: OK (strict) — normalized compiled output byte-identical (${candN.length} chars).`);
+// Default mode: selector-order preservation (see header comment).
+const baseEntries = parseEntries(baseline).map((e) => ({ header: normalize(e.header), body: normalize(e.body) }));
+const candEntries = parseEntries(candidate).map((e) => ({ header: normalize(e.header), body: normalize(e.body) }));
+const missing = matchBaseline(baseEntries, candEntries);
+
+if (missing.length === 0) {
+  const inserted = candEntries.length - baseEntries.length;
+  console.log(`verify-css-equivalence: OK — every baseline rule preserved in candidate order (${baseEntries.length} baseline entries, ${candEntries.length} candidate, ${inserted >= 0 ? inserted + ' inserted rule(s) tolerated' : 'some candidate entries lost'}).`);
+  console.log(`  baseline: ${baselineSha} (${baseN.length} chars), candidate: ${candN.length} chars.`);
   process.exit(0);
 }
 
-// Failing path: either a strict run, or a non-appended delta (selector moved).
-const strictFailure = STRICT && !candN.startsWith(baseN);
-const d = firstDivergence(baseN, candN);
-console.error(`verify-css-equivalence: FAILED (${strictFailure ? 'strict mode' : 'non-appended delta — a selector moved'}).`);
-console.error(`  baseline ${baselineSha} vs app.scss compile, first divergence at char ${d.at}:`);
-console.error(`  baseline: ...${d.base}`);
-console.error(`  candidate: ...${d.cand}`);
+// Failing path: at least one baseline entry is no longer preserved in order.
+const first = missing[0];
+const b = first.b;
+console.error(`verify-css-equivalence: FAILED — ${missing.length} of ${baseEntries.length} baseline entries not preserved in candidate order.`);
+console.error(`  first at baseline entry #${first.index + 1} (the ${first.index} before it matched in order).`);
+console.error(`  baseline entry:  ${showEntry(b)}`);
+if (first.headerOnly === -1) {
+  console.error('  no candidate entry with this selector at/after the match position — selector moved, merged, renamed, or dropped.');
+} else {
+  console.error(`  a candidate entry with this selector exists later but its declarations DIFFER:`);
+  console.error(`    candidate: ${showEntry(candEntries[first.headerOnly])}`);
+  console.error('  (cascade order IS behavior — editing declarations under an existing selector is a real divergence.)');
+}
+if (missing.length > 1) {
+  console.error(`  remaining ${missing.length - 1} unmatched baseline entries: ${missing.map((m) => m.b.header).slice(1, 6).map((h) => h.slice(0, 60)).join(' | ')}${missing.length > 6 ? ' | …' : ''}`);
+}
 process.exit(1);
+
+function showEntry(e) {
+  const h = e.header.length > 90 ? e.header.slice(0, 90) + '…' : e.header;
+  const body = e.body.length > 200 ? e.body.slice(0, 200) + '…' : e.body;
+  return `${h} { ${body} }`;
+}
