@@ -346,7 +346,11 @@ async function runRequirementsJob(projectId: number): Promise<void> {
           // Fresh read at section start — nothing else writes during a run
           // (the transition routes 409 while a run is active), so reading
           // before the model call is equivalent to reading after.
-          const features = fs.readFileSync(featuresPath, 'utf-8');
+          // A project whose generation has never run has no features.md
+          // (it is not part of the 17-artifact scaffold). Reading it as ''
+          // splices cleanly — the splice creates the file. Same guard as the
+          // reconcile sectionsDone read above.
+          const features = fs.existsSync(featuresPath) ? fs.readFileSync(featuresPath, 'utf-8') : '';
           const existingGenFeatures = isReconcile
             ? parseFeatures(features).features.filter((f) => f.origin === 'generated')
             : [];

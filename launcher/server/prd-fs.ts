@@ -101,6 +101,18 @@ export async function atomicWritePrd(filePath: string, content: string): Promise
   });
 }
 
+// features.md (the FE-NN block container, requirements-redesign) is created
+// on demand: a project whose requirements generation has never run has no
+// file, and every feature-mutating route needs one to exist. An empty file
+// splices cleanly (the append paths pad and append blocks), so bootstrapping
+// with '' makes manual feature editing work before/without generation —
+// including on projects whose PRD/ predates the redesign.
+export async function ensureFeaturesFile(featuresPath: string): Promise<void> {
+  if (!fs.existsSync(featuresPath)) {
+    await atomicWritePrd(featuresPath, '');
+  }
+}
+
 // The only files the Requirements routes may ever touch (R1 containment —
 // the filenames come from these constants, never from the request).
 export type PrdFile = 'prd.md' | 'user-journeys.md' | 'features.md';

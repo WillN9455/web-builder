@@ -1420,6 +1420,71 @@ async function main(): Promise<void> {
     eq('reopen-all: partial reopen → reopened 5', r.body?.reopened, 5);
     r = await reqFetch(`/api/projects/${mixedSlug}/ba-workspace/files`);
     eq('reopen-all: mixed fixture now all Draft', r.body?.files?.map((f: any) => f.status), BA_ARTIFACTS.map(() => 'draft'));
+
+    // ── features.md on-demand bootstrap + auto-reconcile on the completing
+    // re-approval (requirements-redesign live-test fixes). The mixed fixture
+    // carries only the 17 artifacts — no features.md — so its Requirements
+    // routes exercise the bootstrap path end to end. ──
+    const mixedFeaturesPath = path.join(mixedDir, 'PRD', 'features.md');
+    fs.rmSync(mixedFeaturesPath, { force: true });
+
+    // Bootstrap on tab load: GET /requirements backfills a missing
+    // features.md for a project whose PRD exists but has never generated.
+    r = await reqFetch(`/api/projects/${mixedSlug}/requirements`);
+    check('bootstrap: GET /requirements → 200', r.status === 200);
+    check('bootstrap: GET /requirements creates features.md', fs.existsSync(mixedFeaturesPath));
+
+    // Bootstrap on mutation: a project without features.md can still add its
+    // first manual feature (the old route 409ed "features.md does not exist").
+    fs.rmSync(mixedFeaturesPath, { force: true });
+    r = await json(`/api/projects/${mixedSlug}/features`, 'POST', {
+      title: 'First manual feature',
+      description: 'Added before any generation run — proves the on-demand bootstrap.',
+      source: null,
+      priority: 'should',
+      status: 'draft',
+      owner: 'BA',
+    });
+    check('bootstrap: POST feature on no-features.md project → 201', r.status === 201);
+    check('bootstrap: POST feature created features.md with the block', fs.existsSync(mixedFeaturesPath) && fs.readFileSync(mixedFeaturesPath, 'utf-8').includes('### FE-01'));
+
+    // Auto-reconcile on the completing re-approval. The transition route
+    // starts a run only when: context confirmed, the transition lands the
+    // 17th Approved, the last run is done, and its inputs changed since
+    // (artifactsChanged). The mixed fixture is not confirmed after reopen-all
+    // — seed ba_context + statuses via direct SQL (the API cannot reach these
+    // states without edited_since_send). ──
+    const runSql = (label: string, js: string): string => {
+      const scriptPath = path.join(tmp, `sql-${label}.mts`);
+      fs.writeFileSync(scriptPath, `import { db } from './server/db.js';\n${js}\n`);
+      return execFileSync(path.join(LAUNCHER, 'node_modules', '.bin', 'tsx'), [scriptPath], { cwd: LAUNCHER }).toString();
+    };
+    runSql(
+      'autotrig-setup',
+      `const info = db.prepare("UPDATE ba_artifacts_status SET status = 'approved' WHERE project_id = ${seedIds.mixed}").run();\n` +
+        `const ctx = db.prepare("INSERT INTO ba_context (project_id, confirmed, confirmed_at) VALUES (?, 1, datetime('now'))").run(${seedIds.mixed});\n` +
+        `console.log('SQL_OK ' + info.changes + ' ' + ctx.changes);\n`,
+    );
+    // Negative: completing re-approval on a done run with NO flag → no run
+    // starts (the done-guard still applies; the manual button stays the path).
+    const setFile = (name: string, status: string) =>
+      runSql(`set-${name.replace(/\.md/, '')}`, `db.prepare("UPDATE ba_artifacts_status SET status = '${status}' WHERE project_id = ${seedIds.mixed} AND filename = '${name}'").run();\nconsole.log('SQL_OK');\n`);
+    setFile('personas.md', 'in_review');
+    writeGenState(seedIds.mixed, {});
+    r = await json(`/api/projects/${mixedSlug}/ba-workspace/files/personas.md/transition`, 'POST', { to: 'approved' });
+    eq('autotrig: completing re-approval without flag → 200 approved', [r.body?.ok, r.body?.status, r.body?.generationStarted], [true, 'approved', false]);
+    eq('autotrig: no run started without flag', readGenState(seedIds.mixed)?.state, 'done');
+
+    // Positive: same transition with done + artifactsChanged → reconcile run
+    // starts server-side (Will's flow: revert → re-approve → auto-regen).
+    setFile('glossary.md', 'in_review');
+    writeGenState(seedIds.mixed, { artifactsChanged: true });
+    r = await json(`/api/projects/${mixedSlug}/ba-workspace/files/glossary.md/transition`, 'POST', { to: 'approved' });
+    eq('autotrig: completing re-approval with flag → generationStarted', [r.body?.ok, r.body?.status, r.body?.generationStarted], [true, 'approved', true]);
+    const autoRunFailed = await waitForGenState(seedIds.mixed, (s) => s.state === 'failed', 'autotrig: waiting for run');
+    check('autotrig: auto-started run reached terminal state (dead OLLAMA_HOST)', autoRunFailed === true);
+    eq('autotrig: auto-started run is reconcile', readGenState(seedIds.mixed)?.mode, 'reconcile');
+    eq('autotrig: auto-started run keeps artifactsChanged=true', readGenState(seedIds.mixed)?.artifactsChanged, true);
   } finally {
     child.kill('SIGTERM');
     await new Promise((res) => setTimeout(res, 300));

@@ -61,7 +61,7 @@ import {
   type ReqType,
 } from './requirements-model.js';
 import { getProjectRow, prdDir } from './ba-workspace.js';
-import { atomicWritePrd, prdFilePath } from './prd-fs.js';
+import { atomicWritePrd, ensureFeaturesFile, prdFilePath } from './prd-fs.js';
 
 // Route-param ID grammars — validated before any lookup (containment: the ID
 // is a lookup key, never a path).
@@ -243,7 +243,7 @@ export function registerRequirementsRoutes(app: express.Express): void {
   // GET /requirements — list features (with their AC- and TR- rows) plus
   // unassigned BR rows. Missing/unreadable PRD/ is a 200 with the `no-prd`
   // empty state, never a 500 (AC-10).
-  app.get('/api/projects/:id/requirements', (req, res) => {
+  app.get('/api/projects/:id/requirements', async (req, res) => {
     const row = getProjectRow(req.params.id);
     if (!row) {
       res.status(404).json({ error: 'Not found' });
@@ -256,6 +256,11 @@ export function registerRequirementsRoutes(app: express.Express): void {
       res.json({ features: [], businessReqs: [], source: 'no-prd' });
       return;
     }
+    // Backfill on tab load: a PRD that predates the features redesign has no
+    // features.md — bootstrap it so the tab and its mutations work without a
+    // generation run first. Only when a PRD exists (the no-prd empty state
+    // above stays untouched for brand-new projects).
+    await ensureFeaturesFile(featuresPath);
     const prd = readPrdFile(prdPath);
     const features = readPrdFile(featuresPath);
     const parsed = parseRequirements(prd.text, features.text);
@@ -282,10 +287,9 @@ export function registerRequirementsRoutes(app: express.Express): void {
       return;
     }
     const featuresPath = prdFilePath(prdDir(row), 'features.md');
-    if (!fs.existsSync(featuresPath)) {
-      res.status(409).json({ error: 'features.md does not exist yet — it is created with the PRD scaffold' });
-      return;
-    }
+    // Bootstrap instead of 409ing — an empty features.md splices cleanly, so
+    // the first manual feature works on any project (generated or not).
+    await ensureFeaturesFile(featuresPath);
     const validation = validateFeatureInput(req.body);
     if (!validation.ok) {
       res.status(422).json({ errors: validation.errors });
@@ -354,10 +358,7 @@ export function registerRequirementsRoutes(app: express.Express): void {
       return;
     }
     const featuresPath = prdFilePath(prdDir(row), 'features.md');
-    if (!fs.existsSync(featuresPath)) {
-      res.status(404).json({ error: 'features.md does not exist' });
-      return;
-    }
+    await ensureFeaturesFile(featuresPath);
     const { text } = readPrdFile(featuresPath);
     const feature = parseFeatures(text).features.find((f) => f.feId === req.params.feId);
     if (!feature) {
@@ -607,11 +608,9 @@ export function registerRequirementsRoutes(app: express.Express): void {
       });
       return;
     }
-    // TR → the feature's block in features.md.
-    if (!fs.existsSync(featuresPath)) {
-      res.status(409).json({ error: 'features.md does not exist yet — it is created with the PRD scaffold' });
-      return;
-    }
+    // TR → the feature's block in features.md (bootstrapped on demand — see
+    // ensureFeaturesFile).
+    await ensureFeaturesFile(featuresPath);
     const { text } = readPrdFile(featuresPath);
     const prdForParse = fs.existsSync(prdPath) ? readPrdFile(prdPath).text : '';
     const feature = parseRequirements(prdForParse, text).features.find((f) => f.feId === req.params.feId);
@@ -678,10 +677,7 @@ export function registerRequirementsRoutes(app: express.Express): void {
     const dir = prdDir(row);
     const prdPath = prdFilePath(dir, 'prd.md');
     const featuresPath = prdFilePath(dir, 'features.md');
-    if (!fs.existsSync(featuresPath)) {
-      res.status(409).json({ error: 'features.md does not exist yet — it is created with the PRD scaffold' });
-      return;
-    }
+    await ensureFeaturesFile(featuresPath);
     const { text } = readPrdFile(featuresPath);
     const prdForParse = fs.existsSync(prdPath) ? readPrdFile(prdPath).text : '';
     const feature = parseRequirements(prdForParse, text).features.find((f) => f.feId === req.params.feId);
@@ -730,10 +726,7 @@ export function registerRequirementsRoutes(app: express.Express): void {
     const dir = prdDir(row);
     const prdPath = prdFilePath(dir, 'prd.md');
     const featuresPath = prdFilePath(dir, 'features.md');
-    if (!fs.existsSync(featuresPath)) {
-      res.status(404).json({ error: 'features.md does not exist' });
-      return;
-    }
+    await ensureFeaturesFile(featuresPath);
     const { text } = readPrdFile(featuresPath);
     const prdForParse = fs.existsSync(prdPath) ? readPrdFile(prdPath).text : '';
     const parsed = parseRequirements(prdForParse, text);
@@ -798,10 +791,7 @@ export function registerRequirementsRoutes(app: express.Express): void {
     const dir = prdDir(row);
     const prdPath = prdFilePath(dir, 'prd.md');
     const featuresPath = prdFilePath(dir, 'features.md');
-    if (!fs.existsSync(featuresPath)) {
-      res.status(404).json({ error: 'features.md does not exist' });
-      return;
-    }
+    await ensureFeaturesFile(featuresPath);
     const { text } = readPrdFile(featuresPath);
     const prdForParse = fs.existsSync(prdPath) ? readPrdFile(prdPath).text : '';
     const parsed = parseRequirements(prdForParse, text);
