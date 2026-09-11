@@ -5,6 +5,11 @@
 // button (AC-5). Delete is no longer a form affordance — it lives in a
 // confirmation modal opened from the row trash icon (refinement batch
 // item 2.9).
+//
+// Requirements redesign (slices 1-3): the former "user story" form is now the
+// FEATURE form — features (FE-NN) are the spec containers that group ACs,
+// BRs and TRs. Stories become a derived artifact owned by the sprint board
+// workstream and are no longer created here.
 
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -18,11 +23,11 @@ import {
   type ReqStatus,
 } from '../../../server/requirements-model';
 
-export type StoryFormValues = {
+export type FeatureFormValues = {
   title: string;
-  asA: string;
-  iWantTo: string;
-  soThat: string;
+  description: string;
+  // Empty string means "no source link" — the server stores null.
+  source: string;
   priority: ReqPriority;
   status: ReqStatus;
   owner: ReqOwner;
@@ -36,14 +41,14 @@ export type ReqFormValues = {
   owner: ReqOwner;
 };
 
-export type FormValues = StoryFormValues | ReqFormValues;
+export type FormValues = FeatureFormValues | ReqFormValues;
 
 export type InlineFormProps<V extends FormValues> = {
   mode: 'add' | 'edit';
-  kind: 'story' | 'req';
-  formId: string; // "new US-07" / "US-01" — the stable ID only, never an invented actor/time
+  kind: 'feature' | 'req';
+  formId: string; // "new FE-07" / "FE-01" — the stable ID only
   initial: V;
-  heading: React.ReactNode; // "User story" / "Requirement in US-01"
+  heading: React.ReactNode; // "Feature" / "Requirement in FE-01"
   errors: Record<string, string>;
   submitting: boolean;
   onDirtyChange?: (dirty: boolean) => void;
@@ -127,21 +132,21 @@ export function InlineForm<V extends FormValues>(props: InlineFormProps<V>) {
       onValuesChange?.(next);
       return next;
     });
-  const isStory = kind === 'story';
-  const sv = values as StoryFormValues;
+  const isFeature = kind === 'feature';
+  const fv = values as FeatureFormValues;
   const rv = values as ReqFormValues;
 
   // QA-8: in EDIT mode, the form only validates and submits the fields the
-  // user actually changed. A legacy story whose As-a/I-want-to/So-that
-  // body is empty can't satisfy the add-mode min lengths, so submitting the
-  // loaded values verbatim fails before the server is ever contacted.
-  // `isChanged(key)` compares the live value to the initial value (string
-  // compare for text, strict-equal for selects).
+  // user actually changed. A feature whose description is short can't
+  // satisfy the add-mode min lengths, so submitting the loaded values
+  // verbatim fails before the server is ever contacted. `isChanged(key)`
+  // compares the live value to the initial value (string compare for text,
+  // strict-equal for selects).
   // `keyof FormValues` resolves to the union of both subtypes' keys, which
-// collapses to just the shared fields (priority/status/owner). Cast the
-// keys we care about to the broader string-keyed record shape so the
-// helpers can read any field by name.
-const initialStr = (k: string): string => {
+  // collapses to just the shared fields (priority/status/owner). Cast the
+  // keys we care about to the broader string-keyed record shape so the
+  // helpers can read any field by name.
+  const initialStr = (k: string): string => {
     const v = (initial as unknown as Record<string, unknown>)[k];
     return typeof v === 'string' ? v : '';
   };
@@ -160,11 +165,14 @@ const initialStr = (k: string): string => {
   // In edit mode, untouched fields bypass validation entirely (the server
   // ignores fields the PATCH doesn't include).
   const clientErrors: Record<string, string> = {};
-  if (isStory) {
-    if (mode !== 'edit' || isChanged('title')) checkLength('title', sv.title, LIMITS.storyTitle.min, LIMITS.storyTitle.max, clientErrors);
-    if (mode !== 'edit' || isChanged('asA')) checkLength('asA', sv.asA, LIMITS.asA.min, LIMITS.asA.max, clientErrors);
-    if (mode !== 'edit' || isChanged('iWantTo')) checkLength('iWantTo', sv.iWantTo, LIMITS.iWantTo.min, LIMITS.iWantTo.max, clientErrors);
-    if (mode !== 'edit' || isChanged('soThat')) checkLength('soThat', sv.soThat, LIMITS.soThat.min, LIMITS.soThat.max, clientErrors);
+  if (isFeature) {
+    if (mode !== 'edit' || isChanged('title')) checkLength('title', fv.title, LIMITS.featureTitle.min, LIMITS.featureTitle.max, clientErrors);
+    if (mode !== 'edit' || isChanged('description')) checkLength('description', fv.description, LIMITS.description.min, LIMITS.description.max, clientErrors);
+    // Source is optional (server stores null when empty) — only validate
+    // when the user actually typed something.
+    if (fv.source.trim() !== '' && (mode !== 'edit' || isChanged('source'))) {
+      checkLength('source', fv.source, LIMITS.source.min, LIMITS.source.max, clientErrors);
+    }
   } else {
     if (mode !== 'edit' || isChanged('text')) checkLength('text', rv.text, LIMITS.reqText.min, LIMITS.reqText.max, clientErrors);
   }
@@ -221,7 +229,7 @@ const initialStr = (k: string): string => {
     <form
       className={`add-form mode-${mode}`}
       role="form"
-      aria-label={`${mode === 'add' ? 'Add' : 'Edit'} ${isStory ? 'user story' : 'requirement'}`}
+      aria-label={`${mode === 'add' ? 'Add' : 'Edit'} ${isFeature ? 'feature' : 'requirement'}`}
       onSubmit={submit}
       onKeyDown={(e) => {
         if (e.key === 'Escape') {
@@ -245,16 +253,16 @@ const initialStr = (k: string): string => {
         </div>
       )}
 
-      {isStory ? (
+      {isFeature ? (
         <>
           <div className="grid-2">
             <div className="field span-2">
-              <label htmlFor="rf-title">Story title <span className="req-mark">*</span></label>
+              <label htmlFor="rf-title">Feature title <span className="req-mark">*</span></label>
               <input
                 ref={setFirstField}
                 id="rf-title"
                 type="text"
-                value={sv.title}
+                value={fv.title}
                 placeholder="Short verb-led title (4–120 chars)"
                 aria-invalid={invalid('title')}
                 aria-describedby="err-title"
@@ -265,52 +273,38 @@ const initialStr = (k: string): string => {
             </div>
           </div>
           <div className="grid-2" style={{ marginTop: 12 }}>
-            <div className="field">
-              <label htmlFor="rf-asa"><b>As a</b> <span className="req-mark">*</span></label>
-              {/* TODO(personas): the mockup datalist offers personas.md role names,
-                  but no endpoint reads personas yet — free text only, no invented
-                  options (plan §2). */}
-              <input
-                id="rf-asa"
-                type="text"
-                value={sv.asA}
-                placeholder="household owner"
-                aria-invalid={invalid('asA')}
-                aria-describedby="err-asA"
-                onChange={(e) => set({ asA: e.target.value })}
-                onBlur={() => markTouched('asA')}
+            <div className="field span-2">
+              <label htmlFor="rf-desc">Description <span className="req-mark">*</span></label>
+              <textarea
+                id="rf-desc"
+                rows={3}
+                value={fv.description}
+                placeholder="Problem statement / overview, 4–1000 chars"
+                aria-invalid={invalid('description')}
+                aria-describedby="err-description"
+                onChange={(e) => set({ description: e.target.value })}
+                onBlur={() => markTouched('description')}
               />
-              {fieldErr('asA')}
-            </div>
-            <div className="field">
-              <label htmlFor="rf-iwant"><b>I want to</b> <span className="req-mark">*</span></label>
-              <input
-                id="rf-iwant"
-                type="text"
-                value={sv.iWantTo}
-                placeholder="Action + object, 4–200 chars"
-                aria-invalid={invalid('iWantTo')}
-                aria-describedby="err-iWantTo"
-                onChange={(e) => set({ iWantTo: e.target.value })}
-                onBlur={() => markTouched('iWantTo')}
-              />
-              {fieldErr('iWantTo')}
+              {fieldErr('description')}
             </div>
           </div>
           <div className="grid-2" style={{ marginTop: 12 }}>
             <div className="field span-2">
-              <label htmlFor="rf-sothat"><b>So that</b> <span className="req-mark">*</span></label>
+              <label htmlFor="rf-source">Source link <span className="opt-mark">(optional)</span></label>
+              {/* Background-doc traceability (redesign §7): e.g.
+                  "user-journeys.md §3". Left empty the feature simply has no
+                  source link — the server stores null. */}
               <input
-                id="rf-sothat"
+                id="rf-source"
                 type="text"
-                value={sv.soThat}
-                placeholder="Outcome / benefit, 4–200 chars"
-                aria-invalid={invalid('soThat')}
-                aria-describedby="err-soThat"
-                onChange={(e) => set({ soThat: e.target.value })}
-                onBlur={() => markTouched('soThat')}
+                value={fv.source}
+                placeholder="Background doc + section, e.g. user-journeys.md §3 (2–200 chars)"
+                aria-invalid={invalid('source')}
+                aria-describedby="err-source"
+                onChange={(e) => set({ source: e.target.value })}
+                onBlur={() => markTouched('source')}
               />
-              {fieldErr('soThat')}
+              {fieldErr('source')}
             </div>
           </div>
         </>
@@ -358,13 +352,13 @@ const initialStr = (k: string): string => {
       )}
 
       <div className="grid-3" style={{ marginTop: 12 }}>
-        {/* Add mode's initial status offers only the two story-starting
-            states the mockup's add form shows (Draft / In review); edit mode
-            offers current + machine-allowed targets. */}
+        {/* Add mode's initial status offers only the two starting states
+            (Draft / In review); edit mode offers current + machine-allowed
+            targets. */}
         <div className="field">
-          <label htmlFor="rf-status">{mode === 'add' ? (isStory ? 'Initial story status' : 'Status') : 'Status'} <span className="req-mark">*</span></label>
+          <label htmlFor="rf-status">{mode === 'add' && isFeature ? 'Initial feature status' : 'Status'} <span className="req-mark">*</span></label>
           <select id="rf-status" value={rv.status} onChange={(e) => set({ status: e.target.value as ReqStatus })}>
-            {(mode === 'add' && isStory
+            {(mode === 'add' && isFeature
               ? (['draft', 'in_review'] as ReqStatus[])
               : ([...REQ_STATUSES] as ReqStatus[])
             ).map((s) => (
@@ -380,18 +374,18 @@ const initialStr = (k: string): string => {
             ))}
           </select>
         </div>
-        {!isStory && <div className="field" aria-hidden="true" />}
+        {!isFeature && <div className="field" aria-hidden="true" />}
       </div>
 
       <div className="field-row">
         <div className="help">
-          {isStory
+          {isFeature
             ? mode === 'add'
-              ? <>New <code>{formId.replace(/^new /, '')}</code> will be appended to <code>user-journeys.md</code>.</>
-              : <>Updates the <code>{formId}</code> block in <code>user-journeys.md</code>.</>
+              ? <>New <code>{formId.replace(/^new /, '')}</code> will be appended to <code>features.md</code>.</>
+              : <>Updates the <code>{formId}</code> block in <code>features.md</code>.</>
             : mode === 'add'
-              ? <>Lands in <code>prd.md</code> §8 (BR) or the story block (TR) on save.</>
-              : <>Updates <code>{formId}</code> in <code>prd.md</code> §8 or its story block.</>}
+              ? <>Lands in the <code>{formId.replace(/^new /, '')}</code> feature block in <code>features.md</code> on save.</>
+              : <>Updates <code>{formId}</code> in its feature block in <code>features.md</code>.</>}
         </div>
         <button type="button" className="btn btn-ghost" onClick={onCancel} disabled={submitting}>
           Cancel
@@ -403,7 +397,7 @@ const initialStr = (k: string): string => {
             </>
           ) : (
             <>
-              {mode === 'add' ? (isStory ? 'Create user story' : 'Create requirement') : 'Save changes'}
+              {mode === 'add' ? (isFeature ? 'Create feature' : 'Create requirement') : 'Save changes'}
             </>
           )}
         </button>

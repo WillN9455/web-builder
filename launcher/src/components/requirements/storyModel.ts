@@ -2,13 +2,23 @@
 // next-ID preview. Pure, unit-testable. The status machine + vocabularies
 // come from server/requirements-model.ts (the shared grammar module) so the
 // dropdown can never drift from the server.
+//
+// Requirements redesign (slices 1-3): features (FE-NN) are the grouping
+// containers — stories are a derived artifact owned by the sprint board
+// workstream and no longer exist in this tab. Decision 6r: features carry no
+// acceptance criteria — ACs live on generated user stories (Run 2), so there
+// is no AC state anywhere in this tab.
 
 import {
   nextFreeId,
   statusLabel,
   type ReqStatus,
 } from '../../../server/requirements-model';
-import type { RequirementsResponse, RequirementItem, StoryItem } from '../../lib/api';
+import type {
+  RequirementsResponse,
+  RequirementItem,
+  FeatureItem,
+} from '../../lib/api';
 
 // ── Filter state (AC-3) ────────────────────────────────────────────────────
 
@@ -22,27 +32,49 @@ export type FilterState = {
 
 export const EMPTY_FILTER: FilterState = { type: 'all', statuses: [], query: '' };
 
-// Which InlineForm is open. One at a time across the whole screen (spec UX);
-// `usId: null` for BR rows (they live in prd.md §8, not inside a story).
+// Which InlineForm is open. One at a time across the whole screen (spec UX).
+// - add-req targets a specific feature (the form mounts under its block);
+//   edit-req additionally carries the reqId. The feature anchor is what the
+//   API path needs (createRequirement is feature-scoped in the URL) and what
+//   QA-10's ?feId= disambiguator needs on edit/delete/status mutations.
 export type FormState =
-  | { mode: 'add'; kind: 'story' }
-  | { mode: 'edit'; kind: 'story'; usId: string }
-  | { mode: 'add'; kind: 'req'; usId: string }
-  | { mode: 'edit'; kind: 'req'; reqId: string; usId: string | null };
+  | { mode: 'add'; kind: 'feature' }
+  | { mode: 'edit'; kind: 'feature'; feId: string }
+  | { mode: 'add'; kind: 'req'; feId: string }
+  // Edit-req keeps feId nullable: unassigned BRs (no home feature) are still
+  // editable — the ?feId= disambiguator is simply omitted, exactly as the
+  // pre-redesign usId-null path worked.
+  | { mode: 'edit'; kind: 'req'; reqId: string; feId: string | null };
 
 // ── Stage-banner totals (LEGEND: re-derived on every render, no statics) ───
 
-export type ReqTotals = { business: number; technical: number; blocked: number; total: number };
+export type ReqTotals = {
+  features: number;
+  business: number;
+  technical: number;
+  blocked: number;
+  total: number;
+};
 
-// Blocked = requirements OR stories currently in blocked/returned (LEGEND).
+// Blocked = features OR requirements currently in blocked/returned (LEGEND).
 export function deriveTotals(data: RequirementsResponse): ReqTotals {
-  const business = data.businessReqs.length;
-  const technical = data.stories.reduce((n, s) => n + s.reqs.length, 0);
   const isBlocked = (st: ReqStatus | null) => st === 'blocked' || st === 'returned';
-  const blocked =
-    data.businessReqs.filter((r) => isBlocked(r.status)).length +
-    data.stories.reduce((n, s) => n + (s.reqs.filter((r) => isBlocked(r.status)).length + (isBlocked(s.status) ? 1 : 0)), 0);
-  return { business, technical, blocked, total: business + technical };
+  let business = 0;
+  let technical = 0;
+  let blocked = data.features.filter((f) => isBlocked(f.status)).length;
+  for (const f of data.features) {
+    for (const r of f.reqs) {
+      if (r.type === 'BR') business += 1;
+      else technical += 1;
+      if (isBlocked(r.status)) blocked += 1;
+    }
+  }
+  business += data.businessReqs.length;
+  for (const r of data.businessReqs) {
+    if (isBlocked(r.status)) blocked += 1;
+  }
+  const total = data.features.length + business + technical;
+  return { features: data.features.length, business, technical, blocked, total };
 }
 
 // ── Filtering (client-side over the parsed list — plan §0b) ────────────────
@@ -54,7 +86,7 @@ function reqMatchesQuery(req: RequirementItem, q: string): boolean {
 export function applyFilters(
   data: RequirementsResponse,
   filter: FilterState,
-): { businessReqs: RequirementItem[]; stories: StoryItem[] } {
+): { features: FeatureItem[]; businessReqs: RequirementItem[] } {
   const q = filter.query.trim().toLowerCase();
   const statusSet = new Set(filter.statuses);
   const typeFor = (t: 'BR' | 'TR') =>
@@ -64,27 +96,28 @@ export function applyFilters(
   const businessReqs = data.businessReqs.filter(
     (r) => typeFor('BR') && statusFor(r.status) && (!q || reqMatchesQuery(r, q)),
   );
-  const stories = data.stories
-    .map((story) => {
-      // QA-12: each row's own type decides inclusion — a story can hold both
-      // BRs (linked from prd.md §8) and TRs, and the Technical filter must
-      // hide the linked BRs without hiding the TRs in the same block.
-      const rows = story.reqs.filter(
+  const features = data.features
+    .map((feature) => {
+      // QA-12 carries over: each row's own type decides inclusion — a
+      // feature block can hold both BRs and TRs, and the Technical filter
+      // must hide the BRs without hiding the TRs in the same block.
+      const rows = feature.reqs.filter(
         (r) => typeFor(r.type) && statusFor(r.status) && (!q || reqMatchesQuery(r, q)),
       );
-      // The story itself matches search on its own text; status/type chips
-      // apply to rows only (a story has no type of its own).
+      // The feature itself matches search on its own text; status chips
+      // apply to the feature itself (it has a ReqStatus) but not its type
+      // (it has none).
       const selfMatch =
         (!q ||
-          [story.title, story.asA, story.iWantTo, story.soThat, story.usId]
+          [feature.title, feature.description, feature.feId]
             .filter(Boolean)
             .some((t) => (t as string).toLowerCase().includes(q))) &&
-        (q || statusSet.size === 0 || (story.status !== null && statusSet.has(story.status)));
+        (q || statusSet.size === 0 || (feature.status !== null && statusSet.has(feature.status)));
       if (!selfMatch && rows.length === 0) return null;
-      return { ...story, reqs: rows };
+      return { ...feature, reqs: rows };
     })
-    .filter((s): s is StoryItem => s !== null);
-  return { businessReqs, stories };
+    .filter((f): f is FeatureItem => f !== null);
+  return { features, businessReqs };
 }
 
 // ── Status → mockup dot class ──────────────────────────────────────────────
@@ -112,32 +145,22 @@ export { statusLabel };
 // Same allocator as the server, run against the client's live copy — the
 // preview is advisory only; the server re-derives the real ID on write.
 
-export function nextStoryIdPreview(stories: { usId: string }[]): string {
-  return nextFreeId(stories.map((s) => s.usId), 'US');
+export function nextFeatureIdPreview(features: { feId: string }[]): string {
+  return nextFreeId(features.map((f) => f.feId), 'FE');
 }
 
-// QA-10: per-story ID preview. The form's add-req flow passes the story
-// usId (the add form is mounted under a specific story's head). For an
-// add-req BR we scope to the story's linked BRs; for unassigned BRs we
-// fall back to the global pool; for TRs we scope to that story's TRs.
-// `storyUsId === null` means "unassigned BR pool".
+// QA-10 carry-over: per-feature ID preview. Add-req forms mount under a
+// specific feature's block, so BR pools scope to that feature's linked BRs
+// and TR pools to that feature's TRs. (Unassigned BRs keep the global
+// unassigned pool — they aren't created from inside a feature block.)
 export function nextReqIdPreview(
   type: 'BR' | 'TR',
   data: RequirementsResponse,
-  storyUsId: string | null | undefined,
+  feId: string,
 ): string {
-  if (type === 'TR') {
-    if (!storyUsId) return nextFreeId([], 'TR');
-    const story = data.stories.find((s) => s.usId === storyUsId);
-    const ids = story ? story.reqs.filter((r) => r.type === 'TR').map((r) => r.id) : [];
-    return nextFreeId(ids, 'TR');
-  }
-  // BR: scope to the story's linked BRs, or to the global unassigned pool.
-  const linkedIds = storyUsId
-    ? data.stories
-        .flatMap((s) => s.reqs)
-        .filter((r) => r.type === 'BR' && r.storyUsId === storyUsId)
-        .map((r) => r.id)
-    : data.businessReqs.filter((r) => r.storyUsId === null).map((r) => r.id);
-  return nextFreeId(linkedIds, 'BR');
+  const feature = data.features.find((f) => f.feId === feId);
+  const ids = feature
+    ? feature.reqs.filter((r) => r.type === type).map((r) => r.id)
+    : [];
+  return nextFreeId(ids, type);
 }

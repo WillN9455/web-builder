@@ -1,16 +1,20 @@
-// Requirements tab — the 8 CRUD endpoints (requirements.html v5.3 `#spec`,
-// API section — non-negotiable). Every mutation writes back to the project's
-// on-disk PRD/prd.md (§8, BR- rows) and PRD/user-journeys.md (per-story
-// blocks, TR- rows) via surgical line splices: the file is never
+// Requirements tab — the feature-first API (requirements redesign slices 1–3,
+// design/requirements-redesign.md). Features (FE-NN) are the grouping
+// container: feature blocks in PRD/features.md carry technical requirements
+// (TR-) and per-feature metadata (source link, priority/status/owner);
+// business requirements (BR-) live in PRD/prd.md §8 and link to a feature via
+// a `feature=FE-01` marker. Features carry no acceptance criteria (decision
+// 6r: ACs are authored on user stories at story generation, Run 2). Every
+// mutation writes back via surgical line splices: the file is never
 // re-serialized, so content outside the edited scope stays byte-identical
 // after a save (AC-9, verified by scripts/verify-requirements.ts).
 //
 // Security notes (framework shared/skills/security.md):
 // - The project is resolved by id-or-slug from the DB (shared with #18's
 //   ba-workspace); folder_path comes from the row, never from the request.
-// - Only prd.md / user-journeys.md inside the resolved PRD/ dir are ever
-//   touched (R1 containment). Route-param IDs are validated against the
-//   grammar and used for lookup only — never for path construction.
+// - Only prd.md / user-journeys.md / features.md inside the resolved PRD/ dir
+//   are ever touched (R1 containment). Route-param IDs are validated against
+//   the grammar and used for lookup only — never for path construction.
 // - Every mutation re-reads the target file immediately before splicing.
 // - Writes land atomically (.tmp + rename) via prd-fs.atomicWritePrd, so a
 //   crash never leaves a PRD half-updated (spec SEC), and every write
@@ -28,37 +32,37 @@ import {
   allowedTransitions,
   businessReqInsertIndex,
   collectExistingIds,
+  featureReferencesId,
+  featureReqInsertIndex,
   insertAfter,
   isReqStatus,
   isReqType,
-  liveReqIds,
+  migrateStoriesToFeatures,
   nextFreeId,
-  parseStories,
+  parseFeatures,
   parseRequirements,
+  renderFeatureBlock,
   renderReqRow,
-  renderStoryBlock,
   spliceLine,
-  storyReferencesId,
-  storyReqInsertIndex,
+  validateFeatureInput,
+  validateFeaturePatch,
   validateReqInput,
   validateReqPatch,
-  validateStoryInput,
-  validateStoryPatch,
+  type FeatureRow,
   type ParseResult,
   type ReqOwner,
   type ReqPriority,
   type ReqRow,
   type ReqStatus,
   type ReqType,
-  type StoryRow,
 } from './requirements-model.js';
 import { getProjectRow, prdDir } from './ba-workspace.js';
-import { atomicWritePrd, prdFilePath } from './prd-fs.js';
+import { atomicWritePrd, ensureFeaturesFile, prdFilePath } from './prd-fs.js';
 
 // Route-param ID grammars — validated before any lookup (containment: the ID
 // is a lookup key, never a path).
 const REQ_ID_RE = /^(?:BR|TR)-\d{3}$/;
-const US_ID_RE = /^US-\d{2,}$/;
+const FE_ID_RE = /^FE-\d{2,}$/;
 
 // ── Serialization (internal geometry never leaves the server) ──────────────
 
@@ -70,35 +74,27 @@ function serializeReq(r: ReqRow) {
     status: r.status,
     owner: r.owner,
     text: r.text,
-    // Only meaningful for BRs; TRs always carry their block's usId (set by
-    // the parse step). The UI uses this to label the row in the right
-    // group without re-parsing the file.
-    storyUsId: r.storyUsId,
-    // 'manual' = BA wrote it via the UI; 'generated' = an agent wrote it;
-    // null = legacy row, predates the marker.
+    // Only meaningful for BRs (read from the `feature=FE-NN` marker); TRs
+    // always carry their block's feId (stamped by the parse step). The UI
+    // uses this to label the row in the right group without re-parsing.
+    featureId: r.featureId,
     origin: r.origin,
   };
 }
 
-function serializeStory(s: StoryRow) {
+function serializeFeature(f: FeatureRow) {
   return {
-    usId: s.usId,
-    title: s.title,
-    asA: s.asA,
-    iWantTo: s.iWantTo,
-    soThat: s.soThat,
-    priority: s.priority,
-    status: s.status,
-    owner: s.owner,
-    // QA-2: stories carry their own origin tag; null renders as manual in
-    // the UI (per the §5 Q1 resolution Will approved — overrides the
-    // 2026-09-03 Flag-1 wording).
-    origin: s.origin,
-    reqs: s.reqs.map(serializeReq),
+    feId: f.feId,
+    title: f.title,
+    description: f.description,
+    source: f.source,
+    priority: f.priority,
+    status: f.status,
+    owner: f.owner,
+    origin: f.origin,
+    reqs: f.reqs.map(serializeReq),
   };
 }
-
-type ProjectRow = { id: number; name: string; slug: string; folder_path: string };
 
 // ── Shared helpers ─────────────────────────────────────────────────────────
 
@@ -110,7 +106,7 @@ function readPrdFile(filePath: string): { text: string; ok: boolean } {
   }
 }
 
-// The status machine, applied to a row/story whose parsed status may be null
+// The status machine, applied to a row/feature whose parsed status may be null
 // (a metadata-less legacy row has no machine state to violate — setting a
 // status becomes the new baseline; plan §2).
 function transitionAllowed(current: ReqStatus | null, next: ReqStatus): boolean {
@@ -124,10 +120,13 @@ function deleteMarker(note?: string): string {
   return `<!-- deleted ${new Date().toISOString().slice(0, 10)} by BA${note ? ` (${note})` : ''} -->`;
 }
 
-// Strike one requirement row in place: `- TR-001 | …` → `- ~~TR-001 | …~~`,
-// with the delete marker on its own line directly after (both files' parsers
-// treat a struck row as soft-deleted and exclude it from the list).
-function strikeRow(lines: string[], row: ReqRow): { lines: string[]; markerAfter: number } {
+// Strike one row in place: `- TR-001 | …` → `- ~~TR-001 | …~~`, with the delete
+// marker on its own line directly after (the parsers treat a struck row as
+// soft-deleted and exclude it from the list).
+function strikeRow<T extends { lineIndex: number; raw: string }>(
+  lines: string[],
+  row: T,
+): { lines: string[]; markerAfter: number } {
   const inner = row.raw.trim().replace(/^[-*+]\s+/, '');
   return { lines: spliceLine(lines, row.lineIndex, `- ~~${inner}~~`), markerAfter: row.lineIndex };
 }
@@ -141,62 +140,63 @@ function applyInsertions(lines: string[], ops: { after: number; lines: string[] 
   return out;
 }
 
-// Locate a requirement across the two files. TR- rows live inside story
-// blocks (their owner story matters for the delete guard); a soft-deleted
-// story's rows are absent from the parse and 404 like anything unknown.
+// Locate a requirement across the two files. TR- rows and linked BR- rows live
+// inside feature blocks (their owner feature matters for the delete guard and
+// the type-move); a soft-deleted feature's rows are absent from the parse and
+// 404 like anything unknown.
 //
-// QA-10: when the caller knows the story (the UI tracks storyUsId on every
-// row), `scopeUsId` narrows the search to that story's rows. Unassigned BRs
-// live in `parsed.businessReqs` and form their own null-scope pool. Once
-// two stories both carry a `TR-001`, scopeUsId is the only way to tell
-// them apart — omitting it falls back to "first match wins" so legacy
-// callers and the verify suite keep working. The UI should always pass
-// the row's storyUsId once duplicate display ids exist.
+// QA-10: when the caller knows the feature (the UI tracks feId on every row),
+// `scopeFeId` narrows the search to that feature's rows. Unassigned BRs live
+// in `parsed.businessReqs` and form their own null-scope pool. Once two
+// features both carry a `TR-001`, scopeFeId is the only way to tell them
+// apart — omitting it falls back to "first match wins" so legacy callers and
+// the verify suite keep working. The UI should always pass the row's feId once
+// duplicate display ids exist.
 function locateReq(
   parsed: ParseResult,
   reqId: string,
-  scopeUsId: string | null | undefined,
-): { file: 'prd.md' | 'user-journeys.md'; row: ReqRow; ownerStory: StoryRow | null } | null {
-  if (scopeUsId === null) {
+  scopeFeId: string | null | undefined,
+): { file: 'prd.md' | 'features.md'; row: ReqRow; ownerFeature: FeatureRow | null } | null {
+  if (scopeFeId === null) {
     // Caller is asking for an unassigned BR specifically.
     const br = parsed.businessReqs.find((r) => r.id === reqId);
-    if (br) return { file: 'prd.md', row: br, ownerStory: null };
+    if (br) return { file: 'prd.md', row: br, ownerFeature: null };
     return null;
   }
-  if (scopeUsId) {
-    const story = parsed.stories.find((s) => s.usId === scopeUsId);
-    if (!story) return null;
+  if (scopeFeId) {
+    const feature = parsed.features.find((f) => f.feId === scopeFeId);
+    if (!feature) return null;
     // QA-14: map the file by row type, never by which find() matched. The
-    // parser puts linked BRs INSIDE story.reqs, so an untyped find would
-    // return a BR stamped as user-journeys.md — the PATCH/DELETE then struck
-    // user-journeys.md at the row's prd.md line index (the real row survived
-    // and a phantom strike landed in journeys). BRs always live in prd.md;
-    // TRs always live in their story block in user-journeys.md.
-    const row = story.reqs.find((r) => r.id === reqId);
+    // parser puts linked BRs INSIDE feature.reqs, so an untyped find would
+    // return a BR stamped as features.md — the PATCH/DELETE then struck
+    // features.md at the row's prd.md line index (the real row survived and a
+    // phantom strike landed in features.md). BRs always live in prd.md; TRs
+    // always live in their feature block in features.md.
+    const row = feature.reqs.find((r) => r.id === reqId);
     if (row) {
-      return { file: row.type === 'BR' ? 'prd.md' : 'user-journeys.md', row, ownerStory: story };
+      return { file: row.type === 'BR' ? 'prd.md' : 'features.md', row, ownerFeature: feature };
     }
     return null;
   }
   // Unscoped lookup — preserve the legacy "first match" behaviour so the
   // status-only PATCH and the verify suite keep working on legacy files.
   const br = parsed.businessReqs.find((r) => r.id === reqId);
-  if (br) return { file: 'prd.md', row: br, ownerStory: null };
-  for (const story of parsed.stories) {
-    const row = story.reqs.find((r) => r.id === reqId);
+  if (br) return { file: 'prd.md', row: br, ownerFeature: null };
+  for (const feature of parsed.features) {
+    const row = feature.reqs.find((r) => r.id === reqId);
     // QA-14: same file-by-type rule as the scoped branch — unscoped callers
     // can hit linked BRs too.
-    if (row) return { file: row.type === 'BR' ? 'prd.md' : 'user-journeys.md', row, ownerStory: story };
+    if (row) return { file: row.type === 'BR' ? 'prd.md' : 'features.md', row, ownerFeature: feature };
   }
   return null;
 }
 
-// The delete guard's reference rule (spec VALID): other stories' text that
+// The delete guard's reference rule (spec VALID): other features' text that
 // mentions the ID — the owner's own block doesn't count.
-function referencingStories(parsed: ParseResult, reqId: string, ownerUsId: string | null): string[] {
-  return parsed.stories
-    .filter((s) => s.usId !== ownerUsId && storyReferencesId(s, reqId))
-    .map((s) => s.usId);
+function referencingFeatures(parsed: ParseResult, reqId: string, ownerFeId: string | null): string[] {
+  return parsed.features
+    .filter((f) => f.feId !== ownerFeId && featureReferencesId(f, reqId))
+    .map((f) => f.feId);
 }
 
 // Merged row values for re-rendering; a field the patch didn't set and that
@@ -222,9 +222,10 @@ function mergedReqValues(
 // ── Routes ─────────────────────────────────────────────────────────────────
 
 export function registerRequirementsRoutes(app: express.Express): void {
-  // GET /requirements — list stories + their BR/TR rows. Missing/unreadable
-  // PRD/ is a 200 with the `no-prd` empty state, never a 500 (AC-10).
-  app.get('/api/projects/:id/requirements', (req, res) => {
+  // GET /requirements — list features (with their AC- and TR- rows) plus
+  // unassigned BR rows. Missing/unreadable PRD/ is a 200 with the `no-prd`
+  // empty state, never a 500 (AC-10).
+  app.get('/api/projects/:id/requirements', async (req, res) => {
     const row = getProjectRow(req.params.id);
     if (!row) {
       res.status(404).json({ error: 'Not found' });
@@ -232,76 +233,82 @@ export function registerRequirementsRoutes(app: express.Express): void {
     }
     const dir = prdDir(row);
     const prdPath = prdFilePath(dir, 'prd.md');
-    const journeysPath = prdFilePath(dir, 'user-journeys.md');
-    if (!fs.existsSync(prdPath) && !fs.existsSync(journeysPath)) {
-      res.json({ stories: [], businessReqs: [], source: 'no-prd' });
+    const featuresPath = prdFilePath(dir, 'features.md');
+    if (!fs.existsSync(prdPath) && !fs.existsSync(featuresPath)) {
+      res.json({ features: [], businessReqs: [], source: 'no-prd' });
       return;
     }
+    // Backfill on tab load: a PRD that predates the features redesign has no
+    // features.md — bootstrap it so the tab and its mutations work without a
+    // generation run first. Only when a PRD exists (the no-prd empty state
+    // above stays untouched for brand-new projects).
+    await ensureFeaturesFile(featuresPath);
     const prd = readPrdFile(prdPath);
-    const journeys = readPrdFile(journeysPath);
-    const parsed = parseRequirements(prd.text, journeys.text);
+    const features = readPrdFile(featuresPath);
+    const parsed = parseRequirements(prd.text, features.text);
     const unreadable =
-      (!prd.ok && fs.existsSync(prdPath)) || (!journeys.ok && fs.existsSync(journeysPath));
+      (!prd.ok && fs.existsSync(prdPath)) || (!features.ok && fs.existsSync(featuresPath));
     const parseError = unreadable
       ? 'One of the PRD files could not be read; its requirements are hidden until it is readable.'
       : parsed.parseError;
     res.json({
-      stories: parsed.stories.map(serializeStory),
+      features: parsed.features.map(serializeFeature),
       businessReqs: parsed.businessReqs.map(serializeReq),
       source: 'ok',
       ...(parseError ? { parseError } : {}),
     });
   });
 
-  // POST /stories — append a new US-NN block (story-first add flow, AC-4).
-  app.post('/api/projects/:id/stories', async (req, res) => {
+  // POST /features — append a new FE-NN feature block (feature-first add flow;
+  // no AC section — decision 6r, ACs belong to user stories authored at story
+  // generation).
+  app.post('/api/projects/:id/features', async (req, res) => {
     const row = getProjectRow(req.params.id);
     if (!row) {
       res.status(404).json({ error: 'Not found' });
       return;
     }
-    const journeysPath = prdFilePath(prdDir(row), 'user-journeys.md');
-    if (!fs.existsSync(journeysPath)) {
-      res.status(409).json({ error: 'user-journeys.md does not exist yet — it is created with the PRD scaffold' });
-      return;
-    }
-    const validation = validateStoryInput(req.body);
+    const featuresPath = prdFilePath(prdDir(row), 'features.md');
+    // Bootstrap instead of 409ing — an empty features.md splices cleanly, so
+    // the first manual feature works on any project (generated or not).
+    await ensureFeaturesFile(featuresPath);
+    const validation = validateFeatureInput(req.body);
     if (!validation.ok) {
       res.status(422).json({ errors: validation.errors });
       return;
     }
     // Re-read immediately before splicing — the write is built from the file
     // as it exists this instant, not from the GET's snapshot.
-    const { text } = readPrdFile(journeysPath);
-    // Story IDs allocate from every heading ever written (soft-deleted
-    // included) — a deleted story's ID is never reused.
-    const usId = nextFreeId(collectExistingIds('', text).us, 'US');
+    const { text } = readPrdFile(featuresPath);
+    // Feature IDs allocate from every heading ever written (soft-deleted
+    // included) — a deleted feature's ID is never reused.
+    const feId = nextFreeId(collectExistingIds('', '', text).fe, 'FE');
     let lines = text.split('\n');
     if (lines.length === 0 || lines[lines.length - 1].trim() !== '') lines.push('');
-    lines.push(...renderStoryBlock({ usId, ...validation.value }).split('\n'));
+    lines.push(...renderFeatureBlock({ feId, ...validation.value, trs: [] }).split('\n'));
     try {
-      await atomicWritePrd(journeysPath, lines.join('\n'));
+      await atomicWritePrd(featuresPath, lines.join('\n'));
     } catch {
       res.status(500).json({ error: 'Could not write PRD file' });
       return;
     }
     res.status(201).json({
       ok: true,
-      story: serializeStory({
-        usId,
+      feature: serializeFeature({
+        feId,
         title: validation.value.title,
-        asA: validation.value.asA,
-        iWantTo: validation.value.iWantTo,
-        soThat: validation.value.soThat,
+        description: validation.value.description,
+        source: validation.value.source,
         priority: validation.value.priority,
         status: validation.value.status,
         owner: validation.value.owner,
         // QA-2: every POST stamps origin=manual — the BA is the only writer
-        // today; the future auto-draft will stamp origin=generated.
+        // today; the future BA auto-draft job will stamp origin=generated.
         origin: 'manual',
         reqs: [],
         headingLine: -1,
         metaLine: null,
+        sourceLine: null,
         bodyLine: null,
         blockEnd: -1,
         deleted: false,
@@ -309,37 +316,39 @@ export function registerRequirementsRoutes(app: express.Express): void {
     });
   });
 
-  // PATCH /stories/:usId — title / As-a / I-want-to / So-that / story-status.
-  app.patch('/api/projects/:id/stories/:usId', async (req, res) => {
+  // PATCH /features/:feId — title / description / source / priority / status /
+  // owner. The metadata comment (priority/status/owner/origin) is re-rendered
+  // in place; a legacy block that never had a meta or source comment gets the
+  // missing lines inserted together in ONE op (see the fresh-block note below),
+  // and a source cleared to null becomes an empty `<!-- source: -->` comment —
+  // same line count, parser reads it as no source (surgical splice, AC-9).
+  app.patch('/api/projects/:id/features/:feId', async (req, res) => {
     const row = getProjectRow(req.params.id);
     if (!row) {
       res.status(404).json({ error: 'Not found' });
       return;
     }
-    if (!US_ID_RE.test(req.params.usId)) {
-      res.status(400).json({ error: 'Invalid story id' });
+    if (!FE_ID_RE.test(req.params.feId)) {
+      res.status(400).json({ error: 'Invalid feature id' });
       return;
     }
-    const validation = validateStoryPatch(req.body);
+    const validation = validateFeaturePatch(req.body);
     if (!validation.ok) {
       res.status(422).json({ errors: validation.errors });
       return;
     }
-    const journeysPath = prdFilePath(prdDir(row), 'user-journeys.md');
-    if (!fs.existsSync(journeysPath)) {
-      res.status(404).json({ error: 'user-journeys.md does not exist' });
-      return;
-    }
-    const { text } = readPrdFile(journeysPath);
-    const story = parseStories(text).stories.find((s) => s.usId === req.params.usId);
-    if (!story) {
-      res.status(404).json({ error: `Unknown story ${req.params.usId}` });
+    const featuresPath = prdFilePath(prdDir(row), 'features.md');
+    await ensureFeaturesFile(featuresPath);
+    const { text } = readPrdFile(featuresPath);
+    const feature = parseFeatures(text).features.find((f) => f.feId === req.params.feId);
+    if (!feature) {
+      res.status(404).json({ error: `Unknown feature ${req.params.feId}` });
       return;
     }
     const value = validation.value;
-    if (value.status && !transitionAllowed(story.status, value.status)) {
+    if (value.status && !transitionAllowed(feature.status, value.status)) {
       res.status(422).json({
-        errors: { status: `Cannot move ${story.usId} from ${story.status} to ${value.status}` },
+        errors: { status: `Cannot move ${feature.feId} from ${feature.status} to ${value.status}` },
       });
       return;
     }
@@ -347,128 +356,170 @@ export function registerRequirementsRoutes(app: express.Express): void {
     let lines = text.split('\n');
     const insertions: { after: number; lines: string[] }[] = [];
     if (value.title) {
-      lines = spliceLine(lines, story.headingLine, `### ${story.usId} — ${value.title}`);
+      lines = spliceLine(lines, feature.headingLine, `### ${feature.feId} — ${value.title}`);
     }
-    if (value.asA !== undefined || value.iWantTo !== undefined || value.soThat !== undefined) {
-      const asA = value.asA ?? story.asA ?? '';
-      const iWantTo = value.iWantTo ?? story.iWantTo ?? '';
-      const soThat = value.soThat ?? story.soThat ?? '';
-      const sentence = `**As a** ${asA}, **I want to** ${iWantTo}, **so that** ${soThat}.`;
-      if (story.bodyLine !== null) {
-        lines = spliceLine(lines, story.bodyLine, sentence);
-      } else {
-        insertions.push({ after: story.metaLine ?? story.headingLine, lines: [sentence] });
-      }
-    }
+
+    // The feature metadata comment — always re-rendered whole (parseFeatureMeta
+    // tolerates partial comments, but the write is the canonical form).
+    let meta: string | null = null;
     if (value.priority !== undefined || value.status !== undefined || value.owner !== undefined) {
-      // Partial meta comment — only the keys that have a value are written;
-      // parseStoryMeta tolerates partial comments on the next read.
       const parts: string[] = [];
-      const priority = value.priority ?? story.priority;
-      const status = value.status ?? story.status;
-      const owner = value.owner ?? story.owner;
-      // QA-2: stories carry their own origin tag. A legacy block has no
+      const priority = value.priority ?? feature.priority;
+      const status = value.status ?? feature.status;
+      const owner = value.owner ?? feature.owner;
+      // QA-2: features carry their own origin tag. A legacy block has no
       // origin in its meta comment; the first PATCH that touches the meta
-      // block stamps origin=manual so the tag starts rendering. Future
-      // BA auto-draft writes origin=generated.
-      const origin: 'manual' | 'generated' = story.origin ?? 'manual';
+      // stamps origin=manual so the tag starts rendering. Future BA
+      // auto-draft writes origin=generated.
+      const origin: 'manual' | 'generated' = feature.origin ?? 'manual';
       if (priority) parts.push(`priority=${priority}`);
       if (status) parts.push(`status=${status}`);
       if (owner) parts.push(`owner=${owner}`);
       parts.push(`origin=${origin}`);
-      if (parts.length > 0) {
-        const meta = `<!-- story: ${parts.join(' ')} -->`;
-        if (story.metaLine !== null) {
-          lines = spliceLine(lines, story.metaLine, meta);
-        } else {
-          insertions.push({ after: story.headingLine, lines: [meta] });
-        }
+      meta = `<!-- feature: ${parts.join(' ')} -->`;
+      if (feature.metaLine !== null) {
+        lines = spliceLine(lines, feature.metaLine, meta);
       }
     }
+
+    // The source comment (decision 7). null clears it; a cleared line becomes
+    // an empty `<!-- source: -->` comment so the block geometry is unchanged.
+    let source: string | null = null;
+    if (value.source !== undefined) {
+      source = value.source === null ? '<!-- source: -->' : `<!-- source: ${value.source} -->`;
+      if (feature.sourceLine !== null) {
+        lines = spliceLine(lines, feature.sourceLine, source);
+      }
+    }
+
+    // Description body — spliced in place when the block has one, else part of
+    // the fresh-insertion block below.
+    if (value.description !== undefined) {
+      if (feature.bodyLine !== null) {
+        lines = spliceLine(lines, feature.bodyLine, value.description);
+      }
+    }
+
+    // Fresh inserts (comments/body the block never had) batch into ONE op so
+    // equal anchors can't stack in the wrong order: applyInsertions' desc sort
+    // is stable, and a single block sidesteps the question entirely. The anchor
+    // is the topmost fresh element's resting place: meta at the heading, source
+    // under the meta comment, description under the source comment.
+    const fresh: string[] = [];
+    if (meta && feature.metaLine === null) fresh.push(meta);
+    if (source && feature.sourceLine === null) fresh.push(source);
+    if (value.description !== undefined && feature.bodyLine === null) fresh.push(value.description);
+    if (fresh.length > 0) {
+      const anchor =
+        meta && feature.metaLine === null
+          ? feature.headingLine
+          : source && feature.sourceLine === null
+            ? feature.metaLine ?? feature.headingLine
+            : feature.sourceLine ?? feature.metaLine ?? feature.headingLine;
+      insertions.push({ after: anchor, lines: fresh });
+    }
+
     lines = applyInsertions(lines, insertions);
     try {
-      await atomicWritePrd(journeysPath, lines.join('\n'));
+      await atomicWritePrd(featuresPath, lines.join('\n'));
     } catch {
       res.status(500).json({ error: 'Could not write PRD file' });
       return;
     }
     res.json({
       ok: true,
-      story: serializeStory({
-        ...story,
-        title: value.title ?? story.title,
-        asA: value.asA ?? story.asA,
-        iWantTo: value.iWantTo ?? story.iWantTo,
-        soThat: value.soThat ?? story.soThat,
-        priority: value.priority ?? story.priority,
-        status: value.status ?? story.status,
-        owner: value.owner ?? story.owner,
-        // QA-2: a PATCH that touches the meta comment stamps origin so
-        // the tag starts rendering; preserve it otherwise.
-        origin: story.origin ?? 'manual',
+      feature: serializeFeature({
+        ...feature,
+        title: value.title ?? feature.title,
+        description: value.description !== undefined ? value.description : feature.description,
+        source: value.source !== undefined ? value.source : feature.source,
+        priority: value.priority ?? feature.priority,
+        status: value.status ?? feature.status,
+        owner: value.owner ?? feature.owner,
+        // QA-2: a PATCH that touches the meta comment stamps origin so the
+        // tag starts rendering; preserve it otherwise.
+        origin: feature.origin ?? 'manual',
       }),
     });
   });
 
-  // DELETE /stories/:usId — soft-delete the block: strike its requirement
-  // rows, add the delete marker, leave everything recoverable on disk.
-  app.delete('/api/projects/:id/stories/:usId', async (req, res) => {
+  // DELETE /features/:feId — soft-delete the block: feature marker after the
+  // heading, TR rows struck inside features.md, linked BR rows struck in
+  // prd.md. Everything stays recoverable on disk (30-day seam).
+  app.delete('/api/projects/:id/features/:feId', async (req, res) => {
     const row = getProjectRow(req.params.id);
     if (!row) {
       res.status(404).json({ error: 'Not found' });
       return;
     }
-    if (!US_ID_RE.test(req.params.usId)) {
-      res.status(400).json({ error: 'Invalid story id' });
+    if (!FE_ID_RE.test(req.params.feId)) {
+      res.status(400).json({ error: 'Invalid feature id' });
       return;
     }
-    const journeysPath = prdFilePath(prdDir(row), 'user-journeys.md');
-    if (!fs.existsSync(journeysPath)) {
-      res.status(404).json({ error: 'user-journeys.md does not exist' });
+    const dir = prdDir(row);
+    const prdPath = prdFilePath(dir, 'prd.md');
+    const featuresPath = prdFilePath(dir, 'features.md');
+    const prd = readPrdFile(prdPath);
+    const features = readPrdFile(featuresPath);
+    const parsed = parseRequirements(prd.text, features.text);
+    const feature = parsed.features.find((f) => f.feId === req.params.feId);
+    if (!feature) {
+      res.status(404).json({ error: `Unknown feature ${req.params.feId}` });
       return;
     }
-    const { text } = readPrdFile(journeysPath);
-    const story = parseStories(text).stories.find((s) => s.usId === req.params.usId);
-    if (!story) {
-      res.status(404).json({ error: `Unknown story ${req.params.usId}` });
-      return;
-    }
-    const lines0 = text.split('\n');
-    let lines = lines0;
-    const ops: { after: number; lines: string[] }[] = [
-      { after: story.headingLine, lines: [deleteMarker()] },
+
+    const marker = deleteMarker();
+    let prdLines = prd.text.split('\n');
+    let featureLines = features.text.split('\n');
+    const prdOps: { after: number; lines: string[] }[] = [];
+    const featOps: { after: number; lines: string[] }[] = [
+      // Feature-level delete marker as the block's first content line — the
+      // parser treats a leading delete comment as a soft-deleted feature and
+      // excludes the whole block from the list.
+      { after: feature.headingLine, lines: [marker] },
     ];
-    for (const r of story.reqs) {
-      const struck = strikeRow(lines, r);
-      lines = struck.lines;
-      ops.push({ after: struck.markerAfter, lines: [deleteMarker()] });
+    let prdChanged = false;
+    for (const r of feature.reqs) {
+      // QA-14: strike by the row's real home file — BRs in prd.md, TRs in the
+      // feature block in features.md.
+      if (r.type === 'BR') {
+        const struck = strikeRow(prdLines, r);
+        prdLines = struck.lines;
+        prdOps.push({ after: struck.markerAfter, lines: [marker] });
+        prdChanged = true;
+      } else {
+        const struck = strikeRow(featureLines, r);
+        featureLines = struck.lines;
+        featOps.push({ after: struck.markerAfter, lines: [marker] });
+      }
     }
-    // Insertions descending so the strike replacements' indexes stay valid.
-    lines = applyInsertions(lines, ops);
     try {
-      await atomicWritePrd(journeysPath, lines.join('\n'));
+      if (prdChanged) {
+        await atomicWritePrd(prdPath, applyInsertions(prdLines, prdOps).join('\n'));
+      }
+      await atomicWritePrd(featuresPath, applyInsertions(featureLines, featOps).join('\n'));
     } catch {
       res.status(500).json({ error: 'Could not write PRD file' });
       return;
     }
-    res.json({ ok: true, usId: story.usId });
+    res.json({ ok: true, feId: feature.feId });
   });
 
-  // POST /stories/:usId/requirements — story-first add (spec VALID: the story
-  // is in the path; a body `story` field is rejected, not silently honored).
-  app.post('/api/projects/:id/stories/:usId/requirements', async (req, res) => {
+  // POST /features/:feId/requirements — feature-first add (the feature is in
+  // the path; a body `feature` field is rejected, not silently honored).
+  app.post('/api/projects/:id/features/:feId/requirements', async (req, res) => {
     const row = getProjectRow(req.params.id);
     if (!row) {
       res.status(404).json({ error: 'Not found' });
       return;
     }
-    if (!US_ID_RE.test(req.params.usId)) {
-      res.status(400).json({ error: 'Invalid story id' });
+    if (!FE_ID_RE.test(req.params.feId)) {
+      res.status(400).json({ error: 'Invalid feature id' });
       return;
     }
-    if (req.body?.story !== undefined) {
+    if (req.body?.feature !== undefined) {
       res.status(422).json({
-        errors: { story: 'Requirements attach to the story in the URL path — story-first, no picker' },
+        errors: { feature: 'Requirements attach to the feature in the URL path — feature-first, no picker' },
       });
       return;
     }
@@ -479,8 +530,9 @@ export function registerRequirementsRoutes(app: express.Express): void {
     }
     const value = validation.value;
     const dir = prdDir(row);
+    const prdPath = prdFilePath(dir, 'prd.md');
+    const featuresPath = prdFilePath(dir, 'features.md');
     if (value.type === 'BR') {
-      const prdPath = prdFilePath(dir, 'prd.md');
       if (!fs.existsSync(prdPath)) {
         res.status(409).json({ error: 'prd.md does not exist yet — it is created with the PRD scaffold' });
         return;
@@ -492,31 +544,28 @@ export function registerRequirementsRoutes(app: express.Express): void {
         res.status(409).json({ error: 'prd.md has no §8 section to write business requirements into' });
         return;
       }
-      // QA-10: per-story BR allocation. A BR linked to US-1 gets the
-      // next free BR-NNN relative to that story's existing linked BRs
-      // (so US-1 and US-2 can both have BR-001). Unassigned BRs keep
-      // their own shared pool — they don't belong to any story, so a
-      // global pool is the only sensible allocator for them.
-      const journeysForBrScope = fs.existsSync(prdFilePath(dir, 'user-journeys.md'))
-        ? readPrdFile(prdFilePath(dir, 'user-journeys.md')).text
+      // QA-10: per-feature BR allocation. A BR linked to FE-1 gets the next
+      // free BR-NNN relative to that feature's existing linked BRs (so FE-1
+      // and FE-2 can both have BR-001). Unassigned BRs keep their own shared
+      // pool — they don't belong to any feature, so a global pool is the only
+      // sensible allocator for them.
+      const featuresForBrScope = fs.existsSync(featuresPath)
+        ? readPrdFile(featuresPath).text
         : '';
-      const parsedScope = parseRequirements(text, journeysForBrScope);
-      const storyLink = req.params.usId;
-      // Linked BRs live in parsedScope.stories[*].reqs; unassigned live
-      // in parsedScope.businessReqs (with storyUsId === null). Pull both
-      // and filter by the story scope.
-      const linkedIds = parsedScope.stories
-        .flatMap((s) => s.reqs)
-        .filter((r) => r.type === 'BR' && r.storyUsId === storyLink)
-        .map((r) => r.id);
+      const parsedScope = parseRequirements(text, featuresForBrScope);
+      const linkedIds =
+        parsedScope.features
+          .find((f) => f.feId === req.params.feId)
+          ?.reqs.filter((r) => r.type === 'BR')
+          .map((r) => r.id) ?? [];
       const id = nextFreeId(linkedIds, 'BR');
-      // Always link a BR to its creating story — refinement batch item 2.7.
-      // The link lives as `<!-- BR-NNN: story=US-NN, origin=manual -->` directly
-      // after the row so the next parse reads it. origin=manual is the BA's
-      // stamp today; the future BA auto-draft job will write origin=generated
-      // (item 2.6 — this commit only ships the marker plumbing).
+      // Always link a BR to its creating feature (requirements-redesign §4).
+      // The link lives as `<!-- BR-NNN: feature=FE-NN, origin=manual -->`
+      // directly after the row so the next parse reads it. origin=manual is
+      // the BA's stamp today; the future BA auto-draft job will write
+      // origin=generated (this commit only ships the marker plumbing).
       const row1 = renderReqRow(id, value.priority, value.status, value.owner, value.text);
-      const meta = `<!-- ${id}: story=${req.params.usId}, origin=manual -->`;
+      const meta = `<!-- ${id}: feature=${req.params.feId}, origin=manual -->`;
       const lines = insertAfter(prdLines, idx, [row1, meta]);
       try {
         await atomicWritePrd(prdPath, lines.join('\n'));
@@ -533,54 +582,61 @@ export function registerRequirementsRoutes(app: express.Express): void {
           status: value.status,
           owner: value.owner,
           text: value.text,
-          storyUsId: req.params.usId,
+          featureId: req.params.feId,
           origin: 'manual',
         },
       });
       return;
     }
-    // TR → the story's block in user-journeys.md.
-    const journeysPath = prdFilePath(dir, 'user-journeys.md');
-    if (!fs.existsSync(journeysPath)) {
-      res.status(409).json({ error: 'user-journeys.md does not exist yet — it is created with the PRD scaffold' });
+    // TR → the feature's block in features.md (bootstrapped on demand — see
+    // ensureFeaturesFile).
+    await ensureFeaturesFile(featuresPath);
+    const { text } = readPrdFile(featuresPath);
+    const prdForParse = fs.existsSync(prdPath) ? readPrdFile(prdPath).text : '';
+    const feature = parseRequirements(prdForParse, text).features.find((f) => f.feId === req.params.feId);
+    if (!feature) {
+      res.status(404).json({ error: `Unknown feature ${req.params.feId}` });
       return;
     }
-    const { text } = readPrdFile(journeysPath);
-    const story = parseStories(text).stories.find((s) => s.usId === req.params.usId);
-    if (!story) {
-      res.status(404).json({ error: `Unknown story ${req.params.usId}` });
-      return;
-    }
-    // QA-10: per-story TR allocation. Allocate from THIS story's existing
-    // TR ids only — so US-1 and US-2 can both have TR-001. Storage is
-    // already per-story (TR rows live inside their block on disk); the
-    // change is allocation, not storage.
-    const storyTrIds = story.reqs.filter((r) => r.type === 'TR').map((r) => r.id);
-    const id = nextFreeId(storyTrIds, 'TR');
+    // QA-10: per-feature TR allocation. Allocate from THIS feature's existing
+    // TR ids only — so FE-1 and FE-2 can both have TR-001. Storage is already
+    // per-feature (TR rows live inside their block on disk); the change is
+    // allocation, not storage.
+    const featureTrIds = feature.reqs.filter((r) => r.type === 'TR').map((r) => r.id);
+    const id = nextFreeId(featureTrIds, 'TR');
     // QA-2: TRs stamp origin=manual on POST — pairs with the BR origin
     // marker, parser reads it via TR_META_RE one line look-ahead.
     const newRow = renderReqRow(id, value.priority, value.status, value.owner, value.text);
     const trMeta = `<!-- ${id}: origin=manual -->`;
-    const journeyLines = text.split('\n');
+    const lines = text.split('\n');
     // QA-5: pass the raw lines so the helper can skip past the previous
-    // row's trailing meta comment (otherwise a second POST inserts the
-    // new [row, marker] pair between the previous TR and its marker,
-    // detaching the previous TR's origin marker on re-parse).
-    const lines = insertAfter(journeyLines, storyReqInsertIndex(story, journeyLines), [newRow, trMeta]);
+    // row's trailing meta comment (otherwise a second POST inserts the new
+    // [row, marker] pair between the previous TR and its marker, detaching
+    // the previous TR's origin marker on re-parse).
+    const out = insertAfter(lines, featureReqInsertIndex(feature, lines), [newRow, trMeta]);
     try {
-      await atomicWritePrd(journeysPath, lines.join('\n'));
+      await atomicWritePrd(featuresPath, out.join('\n'));
     } catch {
       res.status(500).json({ error: 'Could not write PRD file' });
       return;
     }
     res.status(201).json({
       ok: true,
-      requirement: { id, type: 'TR', priority: value.priority, status: value.status, owner: value.owner, text: value.text, origin: 'manual' as const },
+      requirement: {
+        id,
+        type: 'TR',
+        priority: value.priority,
+        status: value.status,
+        owner: value.owner,
+        text: value.text,
+        featureId: req.params.feId,
+        origin: 'manual' as const,
+      },
     });
   });
 
   // PATCH /requirements/:reqId — text / priority / owner / status (+ type as
-  // a move: BR lives in prd.md §8, TR lives in the story block, so a type
+  // a move: BR lives in prd.md §8, TR lives in the feature block, so a type
   // change strikes the old row and lands a new one in the other file under a
   // freshly allocated ID of the new prefix — the old ID is never edited in
   // place into a vocabulary it doesn't carry).
@@ -601,20 +657,24 @@ export function registerRequirementsRoutes(app: express.Express): void {
     }
     const dir = prdDir(row);
     const prdPath = prdFilePath(dir, 'prd.md');
-    const journeysPath = prdFilePath(dir, 'user-journeys.md');
+    const featuresPath = prdFilePath(dir, 'features.md');
     const prd = readPrdFile(prdPath);
-    const journeys = readPrdFile(journeysPath);
-    const parsed = parseRequirements(prd.text, journeys.text);
-    // QA-10: the UI always sends `storyUsId` on PATCH/DELETE so duplicate
-    // ids across stories resolve to the right row. The query param is
-    // optional — legacy callers and the verify suite still work without it.
-    const scopeUsId = typeof req.query.storyUsId === 'string' ? req.query.storyUsId : null;
-    const located = locateReq(parsed, req.params.reqId, scopeUsId);
+    const features = readPrdFile(featuresPath);
+    const parsed = parseRequirements(prd.text, features.text);
+    // QA-10: the UI always sends `feId` on PATCH/DELETE so duplicate ids
+    // across features resolve to the right row. The query param is optional —
+    // legacy callers and the verify suite still work without it.
+    const scopeFeId = typeof req.query.feId === 'string' ? req.query.feId : undefined;
+    if (scopeFeId && !FE_ID_RE.test(scopeFeId)) {
+      res.status(400).json({ error: 'Invalid feature id' });
+      return;
+    }
+    const located = locateReq(parsed, req.params.reqId, scopeFeId);
     if (!located) {
       res.status(404).json({ error: `Unknown requirement ${req.params.reqId}` });
       return;
     }
-    const { row: reqRow, ownerStory } = located;
+    const { row: reqRow, ownerFeature } = located;
     const value = validation.value;
 
     // Type move (spec VALID: type is BR|TR; the plan's PATCH table lists it).
@@ -638,46 +698,52 @@ export function registerRequirementsRoutes(app: express.Express): void {
     // are written, so untouched content stays byte-identical on disk (AC-9).
     type Op = { after: number; lines: string[] };
     const prdLines = prd.text.split('\n');
-    const journeyLines = journeys.text.split('\n');
-    const files: Record<'prd.md' | 'user-journeys.md', { path: string; lines: string[]; ops: Op[] }> = {
-      'prd.md': { path: prdPath, lines: prdLines, ops: [] },
-      'user-journeys.md': { path: journeysPath, lines: journeyLines, ops: [] },
+    const featureLines = features.text.split('\n');
+    // `changed` is set explicitly at every mutation site — never inferred from
+    // reference identity. The legacy-origin stamp below uses an in-place
+    // `lines.splice`, which keeps the same array reference as the split above
+    // while still mutating it, so a reference-identity skip would drop a real
+    // write (Review B2).
+    const files: Record<'prd.md' | 'features.md', { path: string; lines: string[]; ops: Op[]; changed: boolean }> = {
+      'prd.md': { path: prdPath, lines: prdLines, ops: [], changed: false },
+      'features.md': { path: featuresPath, lines: featureLines, ops: [], changed: false },
     };
 
     if (targetType) {
       // Strike the old row (soft-delete marker notes the move), allocate the
       // new ID from the live rows of the target prefix, land the new row in
       // its home file.
-      const home = reqRow.type === 'BR' ? 'prd.md' : 'user-journeys.md';
+      const home = reqRow.type === 'BR' ? 'prd.md' : 'features.md';
       const struck = strikeRow(files[home].lines, reqRow);
       files[home].lines = struck.lines;
+      files[home].changed = true;
       files[home].ops.push({
         after: struck.markerAfter,
-        lines: [deleteMarker(`moved to ${targetType === 'BR' ? 'prd.md §8' : 'the story block'}`)],
+        lines: [deleteMarker(`moved to ${targetType === 'BR' ? 'prd.md §8' : 'the feature block'}`)],
       });
-      // QA-10: scope the new id to the row's owning story (TR) or its
-      // linked-story pool (BR) — duplicate-safe across stories. BR rows
-      // live in parsedScope.stories[*].reqs after parseRequirements
+      // QA-10: scope the new id to the row's owning feature (TR) or its
+      // linked-feature pool (BR) — duplicate-safe across features. BR rows
+      // live in parsedScope.features[*].reqs after parseRequirements
       // distributes them, so filter there for the BR branch.
-      const reparse = parseRequirements(files['prd.md'].lines.join('\n'), files['user-journeys.md'].lines.join('\n'));
+      const reparse = parseRequirements(files['prd.md'].lines.join('\n'), files['features.md'].lines.join('\n'));
       const scopeIds =
         targetType === 'TR'
-          ? reparse.stories
-              .find((s) => s.usId === (ownerStory?.usId ?? null))
+          ? reparse.features
+              .find((f) => f.feId === (ownerFeature?.feId ?? null))
               ?.reqs.filter((r) => r.type === 'TR')
               .map((r) => r.id) ?? []
-          : reparse.stories
-              .flatMap((s) => s.reqs)
-              .filter((r) => r.type === 'BR' && r.storyUsId === ownerStory?.usId)
+          : reparse.features
+              .flatMap((f) => f.reqs)
+              .filter((r) => r.type === 'BR' && r.featureId === ownerFeature?.feId)
               .map((r) => r.id);
       const newId = nextFreeId(scopeIds, targetType as 'BR' | 'TR');
       const newRow = renderReqRow(newId, merged.priority, merged.status, merged.owner, merged.text);
-      // QA-10: a type move that lands a BR inside a story's pool must
-      // carry the story link in its meta comment, just like POST does
+      // QA-10: a type move that lands a BR inside a feature's pool must
+      // carry the feature link in its meta comment, just like POST does
       // — otherwise the new BR becomes an unassigned row.
       const newMeta =
-        targetType === 'BR' && ownerStory
-          ? `<!-- ${newId}: story=${ownerStory.usId}, origin=manual -->`
+        targetType === 'BR' && ownerFeature
+          ? `<!-- ${newId}: feature=${ownerFeature.feId}, origin=manual -->`
           : `<!-- ${newId}: origin=manual -->`;
       if (targetType === 'BR') {
         const idx = businessReqInsertIndex(files['prd.md'].lines);
@@ -686,20 +752,29 @@ export function registerRequirementsRoutes(app: express.Express): void {
           return;
         }
         files['prd.md'].ops.push({ after: idx, lines: [newRow, newMeta] });
-      } else if (ownerStory) {
+        files['prd.md'].changed = true;
+      } else if (ownerFeature) {
         // QA-5: pass the in-flight lines so the helper skips past the
         // previous row's trailing meta comment when inserting the new pair.
-        files['user-journeys.md'].ops.push({ after: storyReqInsertIndex(ownerStory, files['user-journeys.md'].lines), lines: [newRow, newMeta] });
+        files['features.md'].ops.push({
+          after: featureReqInsertIndex(ownerFeature, files['features.md'].lines),
+          lines: [newRow, newMeta],
+        });
+        files['features.md'].changed = true;
       } else {
-        // A TR whose owning story is gone (soft-deleted mid-flight) — refuse
-        // rather than land the row in an unknown block.
-        res.status(404).json({ error: `The story owning ${reqRow.id} no longer exists` });
+        // No owning feature: either an unassigned BR being re-typed to TR, or
+        // a TR whose feature was soft-deleted mid-flight. Both refuse rather
+        // than land a TR outside a feature block.
+        res.status(404).json({
+          error: `Cannot move ${reqRow.id} to a technical requirement — TR rows must live inside a feature block and no owning feature is resolvable`,
+        });
         return;
       }
     } else {
       const updated = renderReqRow(reqRow.id, merged.priority, merged.status, merged.owner, merged.text);
-      const home = reqRow.type === 'BR' ? 'prd.md' : 'user-journeys.md';
+      const home = reqRow.type === 'BR' ? 'prd.md' : 'features.md';
       files[home].lines = spliceLine(files[home].lines, reqRow.lineIndex, updated);
+      files[home].changed = true;
       // QA-2: editing a legacy row (origin=null) stamps origin=manual so
       // the dot starts rendering. The marker is glued to the row — the
       // parser's meta-comment look-ahead skips blank lines so a separator
@@ -719,7 +794,7 @@ export function registerRequirementsRoutes(app: express.Express): void {
     }
 
     for (const f of Object.values(files)) {
-      if (f.ops.length === 0 && f.lines === (f === files['prd.md'] ? prdLines : journeyLines)) continue;
+      if (!f.changed) continue;
       try {
         await atomicWritePrd(f.path, applyInsertions(f.lines, f.ops).join('\n'));
       } catch {
@@ -727,16 +802,21 @@ export function registerRequirementsRoutes(app: express.Express): void {
         return;
       }
     }
+    // Serialize through the same shape the GET uses — a type move re-homes
+    // the row under the owning feature (TR) or keeps the BR link (BR), and a
+    // legacy-row edit's origin stamp is reflected (see the meta insert above).
     res.json({
       ok: true,
-      requirement: {
-        id: reqRow.id,
+      requirement: serializeReq({
+        ...reqRow,
         type: targetType ?? reqRow.type,
         priority: merged.priority,
         status: merged.status,
         owner: merged.owner,
         text: merged.text,
-      },
+        featureId: targetType === 'TR' ? (ownerFeature?.feId ?? null) : reqRow.featureId,
+        origin: reqRow.origin ?? 'manual',
+      }),
     });
   });
 
@@ -757,13 +837,17 @@ export function registerRequirementsRoutes(app: express.Express): void {
     }
     const dir = prdDir(row);
     const prdPath = prdFilePath(dir, 'prd.md');
-    const journeysPath = prdFilePath(dir, 'user-journeys.md');
+    const featuresPath = prdFilePath(dir, 'features.md');
     const prd = readPrdFile(prdPath);
-    const journeys = readPrdFile(journeysPath);
-    const parsed = parseRequirements(prd.text, journeys.text);
-    // QA-10: storyUsId query param disambiguates duplicate ids across stories.
-    const scopeUsId = typeof req.query.storyUsId === 'string' ? req.query.storyUsId : null;
-    const located = locateReq(parsed, req.params.reqId, scopeUsId);
+    const features = readPrdFile(featuresPath);
+    const parsed = parseRequirements(prd.text, features.text);
+    // QA-10: feId query param disambiguates duplicate ids across features.
+    const scopeFeId = typeof req.query.feId === 'string' ? req.query.feId : undefined;
+    if (scopeFeId && !FE_ID_RE.test(scopeFeId)) {
+      res.status(400).json({ error: 'Invalid feature id' });
+      return;
+    }
+    const located = locateReq(parsed, req.params.reqId, scopeFeId);
     if (!located) {
       res.status(404).json({ error: `Unknown requirement ${req.params.reqId}` });
       return;
@@ -792,36 +876,23 @@ export function registerRequirementsRoutes(app: express.Express): void {
       reqRow.owner as ReqOwner,
       reqRow.text,
     );
-    if (reqRow.type === 'BR') {
-      try {
-        await atomicWritePrd(prdPath, spliceLine(prd.text.split('\n'), reqRow.lineIndex, updated).join('\n'));
-      } catch {
-        res.status(500).json({ error: 'Could not write PRD file' });
-        return;
-      }
-    } else {
-      try {
-        await atomicWritePrd(journeysPath, spliceLine(journeys.text.split('\n'), reqRow.lineIndex, updated).join('\n'));
-      } catch {
-        res.status(500).json({ error: 'Could not write PRD file' });
-        return;
-      }
+    const file = reqRow.type === 'BR' ? 'prd.md' : 'features.md';
+    const path = file === 'prd.md' ? prdPath : featuresPath;
+    const src = file === 'prd.md' ? prd : features;
+    try {
+      await atomicWritePrd(path, spliceLine(src.text.split('\n'), reqRow.lineIndex, updated).join('\n'));
+    } catch {
+      res.status(500).json({ error: 'Could not write PRD file' });
+      return;
     }
     res.json({
       ok: true,
-      requirement: {
-        id: reqRow.id,
-        type: reqRow.type,
-        priority: reqRow.priority,
-        status: next,
-        owner: reqRow.owner,
-        text: reqRow.text,
-      },
+      requirement: serializeReq({ ...reqRow, status: next }),
     });
   });
 
   // DELETE /requirements/:reqId — soft-delete with the spec's guard: an
-  // approved/done requirement that another story references is kept with a
+  // approved/done requirement that another feature references is kept with a
   // 409 explaining the dependency (AC-11).
   app.delete('/api/projects/:id/requirements/:reqId', async (req, res) => {
     const row = getProjectRow(req.params.id);
@@ -835,20 +906,24 @@ export function registerRequirementsRoutes(app: express.Express): void {
     }
     const dir = prdDir(row);
     const prdPath = prdFilePath(dir, 'prd.md');
-    const journeysPath = prdFilePath(dir, 'user-journeys.md');
+    const featuresPath = prdFilePath(dir, 'features.md');
     const prd = readPrdFile(prdPath);
-    const journeys = readPrdFile(journeysPath);
-    const parsed = parseRequirements(prd.text, journeys.text);
-    // QA-10: storyUsId query param disambiguates duplicate ids across stories.
-    const scopeUsId = typeof req.query.storyUsId === 'string' ? req.query.storyUsId : null;
-    const located = locateReq(parsed, req.params.reqId, scopeUsId);
+    const features = readPrdFile(featuresPath);
+    const parsed = parseRequirements(prd.text, features.text);
+    // QA-10: feId query param disambiguates duplicate ids across features.
+    const scopeFeId = typeof req.query.feId === 'string' ? req.query.feId : undefined;
+    if (scopeFeId && !FE_ID_RE.test(scopeFeId)) {
+      res.status(400).json({ error: 'Invalid feature id' });
+      return;
+    }
+    const located = locateReq(parsed, req.params.reqId, scopeFeId);
     if (!located) {
       res.status(404).json({ error: `Unknown requirement ${req.params.reqId}` });
       return;
     }
-    const { row: reqRow, ownerStory, file } = located;
+    const { row: reqRow, ownerFeature, file } = located;
     if (reqRow.status === 'approved' || reqRow.status === 'done') {
-      const referencedBy = referencingStories(parsed, reqRow.id, ownerStory?.usId ?? null);
+      const referencedBy = referencingFeatures(parsed, reqRow.id, ownerFeature?.feId ?? null);
       if (referencedBy.length > 0) {
         res.status(409).json({
           error: `Cannot delete ${reqRow.id} — it is ${reqRow.status} and referenced by ${referencedBy.join(', ')}`,
@@ -857,8 +932,8 @@ export function registerRequirementsRoutes(app: express.Express): void {
         return;
       }
     }
-    const filePath = file === 'prd.md' ? prdPath : journeysPath;
-    const lines = (file === 'prd.md' ? prd : journeys).text.split('\n');
+    const filePath = file === 'prd.md' ? prdPath : featuresPath;
+    const lines = (file === 'prd.md' ? prd : features).text.split('\n');
     const struck = strikeRow(lines, reqRow);
     const out = insertAfter(struck.lines, struck.markerAfter, [deleteMarker()]);
     try {
@@ -868,5 +943,45 @@ export function registerRequirementsRoutes(app: express.Express): void {
       return;
     }
     res.json({ ok: true, id: reqRow.id });
+  });
+
+  // POST /requirements/migrate — one-shot story→feature migration (decision 3):
+  // every live US-NN block in user-journeys.md becomes an FE-NN block in
+  // features.md, BR links re-point `story=` → `feature=`, and the story blocks
+  // are soft-deleted. Idempotent — re-running self-heals; a no-op returns
+  // `migrated: 0` when no live stories remain.
+  app.post('/api/projects/:id/requirements/migrate', async (req, res) => {
+    const row = getProjectRow(req.params.id);
+    if (!row) {
+      res.status(404).json({ error: 'Not found' });
+      return;
+    }
+    const dir = prdDir(row);
+    const prdPath = prdFilePath(dir, 'prd.md');
+    const journeysPath = prdFilePath(dir, 'user-journeys.md');
+    const featuresPath = prdFilePath(dir, 'features.md');
+    const prd = fs.existsSync(prdPath) ? readPrdFile(prdPath).text : '';
+    const journeys = fs.existsSync(journeysPath) ? readPrdFile(journeysPath).text : '';
+    const features = fs.existsSync(featuresPath) ? readPrdFile(featuresPath).text : '';
+    const result = migrateStoriesToFeatures(prd, journeys, features);
+    if (!result) {
+      res.json({ ok: true, migrated: 0 });
+      return;
+    }
+    try {
+      // Write order features.md → prd.md → journeys.md; a crash between the
+      // writes self-heals on the next run (the US→FE map is derived from
+      // already-migrated features' `<!-- source: migrated from US-NN -->`).
+      // prd.md is only re-written when it exists and its re-links changed.
+      await atomicWritePrd(featuresPath, result.featuresText);
+      if (fs.existsSync(prdPath) && result.prdText !== prd) {
+        await atomicWritePrd(prdPath, result.prdText);
+      }
+      await atomicWritePrd(journeysPath, result.journeysText);
+    } catch {
+      res.status(500).json({ error: 'Could not write PRD file' });
+      return;
+    }
+    res.json({ ok: true, migrated: result.migrated });
   });
 }

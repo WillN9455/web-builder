@@ -19,7 +19,7 @@ import path from 'node:path';
 import { db } from './db.js';
 import { readGenerationState, retryBaGeneration, type BaGeneration } from './ba-draft.js';
 import { readIdeaSummary, retryIdeaSummary } from './idea-summary.js';
-import { atomicWritePrd } from './prd-fs.js';
+import { atomicWritePrd, ensureFeaturesFile, prdFilePath } from './prd-fs.js';
 import { triggerRequirementsGeneration, calculateElapsedMs, REQ_GEN_SECTIONS } from './agent-invoker.js';
 import { readReqGenState, writeReqGenState } from './req-gen-state.js';
 import { fileHasGeneratedRows } from './req-gen-splice.js';
@@ -282,7 +282,7 @@ function countPrdApprovalBlockers(prdPath: string): number {
 // origin=generated rows still exist on disk (the reconcile's input). Without
 // rows there is nothing to reconcile — the plain trigger path applies.
 function generatedRowsExist(dir: string): boolean {
-  for (const name of ['user-journeys.md', 'prd.md']) {
+  for (const name of ['user-journeys.md', 'prd.md', 'features.md']) {
     try {
       if (fileHasGeneratedRows(fs.readFileSync(path.join(dir, name), 'utf-8'))) return true;
     } catch {
@@ -424,6 +424,42 @@ export function registerBaWorkspaceRoutes(app: express.Express): void {
   });
 
   // POST /files/:filename/transition — one step of the state machine.
+  // Fix #3 — an approved artifact reverting is a generation-input change, so
+  // the next completing re-approval should re-run generation. Two shapes:
+  // - a completed run exists → set artifactsChanged on it (pending/generating
+  //   states are excluded by the caller's mid-run 409; a FAILED run keeps its
+  //   own artifactsChanged=true from the failed reconcile).
+  // - NO state file at all → a never-run project: context confirmed before
+  //   the redesign shipped, so the new generator has never run here (legacy
+  //   projects 12/15 in the live data). Both the flag write and the
+  //   re-approval trigger key on a done state, so without this seed the whole
+  //   auto-reconcile path is inert — revert → re-approve silently updates
+  //   nothing. Seed a minimal done state carrying the flag; the run it starts
+  //   is reconcile-mode, which degrades safely to a fresh generate because
+  //   with zero origin=generated rows the reconcile prompts degrade to the
+  //   plain generate prompts (agent-invoker.ts, both the features and BR
+  //   calls gate the reconcile prompt on existing rows being non-empty).
+  function markArtifactsChanged(projectId: number): void {
+    const gen = readReqGenState(projectId);
+    if (gen?.state === 'done') {
+      writeReqGenState(projectId, { ...gen, artifactsChanged: true });
+      return;
+    }
+    if (gen) return; // pending/generating/failed — leave the run's own bookkeeping
+    writeReqGenState(projectId, {
+      state: 'done',
+      generated: 0,
+      total: 0,
+      currentSection: null,
+      startedAt: Date.now(),
+      lastHeartbeatAt: Date.now(),
+      error: null,
+      sectionsDone: [],
+      artifactsChanged: true,
+      mode: 'generate',
+    });
+  }
+
   app.post('/api/projects/:id/ba-workspace/files/:filename/transition', (req, res) => {
     const row = getProjectRow(req.params.id);
     if (!row) {
@@ -470,8 +506,8 @@ export function registerBaWorkspaceRoutes(app: express.Express): void {
         error: 'Requirements generation is running — wait for it to finish before reopening',
       });
     }
-    if (current === 'approved' && to !== 'approved' && existingGen?.state === 'done') {
-      writeReqGenState(row.id, { ...existingGen, artifactsChanged: true });
+    if (current === 'approved' && to !== 'approved') {
+      markArtifactsChanged(row.id);
     }
     db.prepare(
       `INSERT INTO ba_artifacts_status (project_id, filename, status, updated_at)
@@ -492,7 +528,34 @@ export function registerBaWorkspaceRoutes(app: express.Express): void {
             ? 'Set back to Draft'
             : 'Approved';
     logActivity(row.id, who, `${verb}: ${filename}`, 'milestone');
-    res.json({ ok: true, filename, status: to });
+
+    // Requirements redesign — auto-reconcile. When the approval that completes
+    // the 17-file set lands on a project with a completed run whose inputs
+    // changed since (artifactsChanged), re-approval IS the fix for the
+    // staleness — start the reconcile run here instead of leaving the
+    // "Regenerate requirements" button as the only path. Best-effort: a
+    // refusal (already running, gate re-check failed) is a silent no-op — the
+    // client still shows the stale card and can trigger manually.
+    let generationStarted = false;
+    if (to === 'approved') {
+      const ctx = contextRow(row.id);
+      const gen = readReqGenState(row.id);
+      const statuses = readStatuses(row.id);
+      if (
+        ctx?.confirmed &&
+        gen?.state === 'done' &&
+        gen.artifactsChanged === true &&
+        BA_ARTIFACTS.every((f) => (statuses.get(f) ?? 'draft') === 'approved')
+      ) {
+        try {
+          const result = triggerRequirementsGeneration(row.id);
+          generationStarted = result.ok;
+        } catch {
+          // trigger is sync and guarded; failure keeps the manual path
+        }
+      }
+    }
+    res.json({ ok: true, filename, status: to, generationStarted });
   });
 
   // GET /files/:filename/comments — review thread.
@@ -634,7 +697,7 @@ export function registerBaWorkspaceRoutes(app: express.Express): void {
   // when all 17 allowlisted artifacts exist and are approved; a re-POST after
   // confirmation is an idempotent no-op. The unlock never re-arms: once
   // confirmed, un-approving a file only flips contextChangedSinceConfirm.
-  app.post('/api/projects/:id/background/confirm-context', (req, res) => {
+  app.post('/api/projects/:id/background/confirm-context', async (req, res) => {
     const row = getProjectRow(req.params.id);
     if (!row) {
       res.status(404).json({ error: 'Not found' });
@@ -663,6 +726,11 @@ export function registerBaWorkspaceRoutes(app: express.Express): void {
        ON CONFLICT(project_id) DO UPDATE SET confirmed = 1,
          confirmed_at = datetime('now')`,
     ).run(row.id);
+    // features.md is NOT part of the 17-artifact scaffold (created only by
+    // generation or migration) — bootstrap it here so a confirmed project's
+    // Requirements tab and "Add feature" work before the first generation
+    // run. An empty file splices cleanly.
+    await ensureFeaturesFile(prdFilePath(dir, 'features.md'));
     logActivity(row.id, 'BA', 'Confirmed project context — Sprint, Design, Build, QA unlocked', 'milestone');
     res.json({ ok: true, contextConfirmed: true, alreadyConfirmed: false });
   });
@@ -700,9 +768,8 @@ export function registerBaWorkspaceRoutes(app: express.Express): void {
       // mark the generated rows stale so the confirmed card offers
       // "Regenerate requirements" and the next trigger reconciles instead of
       // duplicating. (Mid-run reverts are excluded by the 409 above.)
-      if (existing?.state === 'done') {
-        writeReqGenState(row.id, { ...existing, artifactsChanged: true });
-      }
+      // markArtifactsChanged also seeds the never-run case — see the helper.
+      markArtifactsChanged(row.id);
     }
     res.json({ ok: true, reopened });
   });

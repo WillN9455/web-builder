@@ -41,7 +41,7 @@ export type ReqGenState = {
   // Sections a previous failed run completed (see agent-invoker.ts) — a
   // retry generates only the missing ones instead of duplicating rows.
   sectionsDone?: string[];
-  result?: { storiesGenerated: number; brsGenerated: number; trsGenerated: number };
+  result?: { featuresGenerated: number; brsGenerated: number; trsGenerated: number };
   // Set by the artifact-status routes when an approved artifact reverts after
   // a completed generation (per-file "Send back to Draft" or reopen-all).
   // Cleared only when a run finishes 'done' — a FAILED run keeps it true so

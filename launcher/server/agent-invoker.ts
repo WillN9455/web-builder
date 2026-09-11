@@ -1,9 +1,9 @@
 // Requirements-generation invocation — triggers the BA Agent to auto-generate
-// user stories (with their TR rows) + business requirements from approved
+// feature specs (each with AC + TR rows) + business requirements from approved
 // Project Background artifacts, splicing them into the canonical Requirements
 // surfaces via requirements-model's insert helpers (req-gen-splice.ts):
-//   - story blocks + TR rows → user-journeys.md (same write surface as
-//     POST /stories — append-only, existing blocks byte-identical)
+//   - feature blocks (ACs + TRs inside) → features.md (same write surface as
+//     POST /features — append-only, existing blocks byte-identical)
 //   - BR rows → prd.md §8 (after the last existing row's trailing meta)
 // The targets are members of the 17-artifact approval gate, so regeneration
 // by file replacement would destroy approved content — splicing is the whole
@@ -15,22 +15,23 @@ import path from 'node:path';
 import { readReqGenState, writeReqGenState } from './req-gen-state.js';
 import {
   BUSINESS_SECTION,
+  FEATURES_SECTION,
+  fileHasGeneratedRows as fileTextHasGeneratedRows,
   reconcileBusinessReqs,
+  reconcileFeatures,
   reconcileSectionsDone,
-  reconcileStories,
   requireRows,
   REQ_GEN_SECTIONS,
   spliceBusinessReqs,
-  spliceStories,
-  STORIES_SECTION,
+  spliceFeatures,
   type DesiredBr,
-  type DesiredStory,
+  type DesiredFeature,
   type DesiredTr,
   type GenBr,
-  type GenStory,
+  type GenFeature,
 } from './req-gen-splice.js';
 import { getProjectRow, resolveProjectFolder, readStatuses, BA_ARTIFACTS, type ProjectRow } from './ba-workspace.js';
-import { parseBusinessReqs, parseStories, type ReqRow, type StoryRow } from './requirements-model.js';
+import { parseBusinessReqs, parseFeatures, type FeatureRow, type ReqRow } from './requirements-model.js';
 import { atomicWritePrd, prdFilePath } from './prd-fs.js';
 import { db } from './db.js';
 import { MODEL, OLLAMA } from './intake.js';
@@ -170,18 +171,18 @@ export function triggerRequirementsGeneration(projectId: number): TriggerResult 
 
 function fileHasGeneratedRows(filePath: string): boolean {
   try {
-    return fs.existsSync(filePath) && /origin=generated/.test(fs.readFileSync(filePath, 'utf-8'));
+    return fs.existsSync(filePath) && fileTextHasGeneratedRows(fs.readFileSync(filePath, 'utf-8'));
   } catch {
     return true; // can't prove the rows are gone — fail safe against duplication
   }
 }
 
-// Any persisted origin=generated marker (story meta, TR meta, or BR meta)
+// Any persisted origin=generated marker (feature/AC/TR meta, or BR meta)
 // means generated rows are still present on disk.
 function hasGeneratedRows(row: ProjectRow): boolean {
   const dir = path.join(resolveProjectFolder(row), 'PRD');
   return (
-    fileHasGeneratedRows(path.join(dir, 'user-journeys.md')) ||
+    fileHasGeneratedRows(path.join(dir, 'features.md')) ||
     fileHasGeneratedRows(path.join(dir, 'prd.md'))
   );
 }
@@ -243,7 +244,7 @@ async function runRequirementsJob(projectId: number): Promise<void> {
   }
 
   const prdDirPath = path.join(resolveProjectFolder(row), 'PRD');
-  const journeysPath = prdFilePath(prdDirPath, 'user-journeys.md');
+  const featuresPath = prdFilePath(prdDirPath, 'features.md');
   const prdPath = prdFilePath(prdDirPath, 'prd.md');
 
   const existing = readReqGenState(projectId);
@@ -273,9 +274,9 @@ async function runRequirementsJob(projectId: number): Promise<void> {
   // Bidirectional resume reconcile (pure fn in req-gen-splice.ts): rows on
   // disk ⇒ done even if the crash lost the marker (retry must not re-run the
   // section — nextFreeId would duplicate); marked but rows deleted ⇒
-  // regenerate. Also rehydrates the generated story ids so a BR-only retry
+  // regenerate. Also rehydrates the generated feature ids so a BR-only retry
   // still links its BRs. A reconcile run bypasses the resume *decision* but
-  // keeps the story-id rehydration: its seed set below starts EMPTY because
+  // keeps the feature-id rehydration: its seed set below starts EMPTY because
   // rows on disk are its INPUT, not evidence of completion — every section
   // always runs ("pass through all" is the reconcile contract), and seeding
   // the completion set from disk would classify a run whose first section
@@ -283,7 +284,7 @@ async function runRequirementsJob(projectId: number): Promise<void> {
   // artifactsChanged → stale flag lost on a failed reconcile).
   const isReconcile = existing.mode === 'reconcile';
   const reconciled = reconcileSectionsDone(
-    fs.existsSync(journeysPath) ? fs.readFileSync(journeysPath, 'utf-8') : '',
+    fs.existsSync(featuresPath) ? fs.readFileSync(featuresPath, 'utf-8') : '',
     fs.existsSync(prdPath) ? fs.readFileSync(prdPath, 'utf-8') : '',
     isReconcile ? [] : (existing.sectionsDone ?? []),
   );
@@ -307,17 +308,17 @@ async function runRequirementsJob(projectId: number): Promise<void> {
     } catch { /* heartbeat is best-effort */ }
   }, HEARTBEAT_MS);
 
-  // US ids for BR linking: rehydrated from the previous run's generated
-  // stories when the stories section carried over, else filled by this run's
-  // stories section. A reconcile run REPLACES this with the post-reconcile
-  // desired-order ids (reconcileStories returns the full set). Local to this
+  // Feature ids for BR linking: rehydrated from the previous run's generated
+  // features when the features section carried over, else filled by this run's
+  // features section. A reconcile run REPLACES this with the post-reconcile
+  // desired-order ids (reconcileFeatures returns the full set). Local to this
   // run: concurrent runs for different projects must not cross-link.
-  let storyIds: string[] = [...reconciled.storyIds];
+  let featureIds: string[] = [...reconciled.featureIds];
   // Written into EVERY persisted state write below (entry, completion,
   // terminal) so the phase-aware banner shows live row counts mid-run — a
   // generating run's result is "what has landed so far", not just the
   // finished run's counts.
-  const result = { storiesGenerated: 0, brsGenerated: 0, trsGenerated: 0 };
+  const result = { featuresGenerated: 0, brsGenerated: 0, trsGenerated: 0 };
   let lastError: string | null = null;
 
   try {
@@ -339,30 +340,34 @@ async function runRequirementsJob(projectId: number): Promise<void> {
       });
 
       try {
-        if (section === STORIES_SECTION) {
+        if (section === FEATURES_SECTION) {
           // Fresh read at section start — nothing else writes during a run
           // (the transition routes 409 while a run is active), so reading
           // before the model call is equivalent to reading after.
-          const journeys = fs.readFileSync(journeysPath, 'utf-8');
-          const existingGenStories = isReconcile
-            ? parseStories(journeys).stories.filter((s) => s.origin === 'generated')
+          // A project whose generation has never run has no features.md
+          // (it is not part of the 17-artifact scaffold). Reading it as ''
+          // splices cleanly — the splice creates the file. Same guard as the
+          // reconcile sectionsDone read above.
+          const features = fs.existsSync(featuresPath) ? fs.readFileSync(featuresPath, 'utf-8') : '';
+          const existingGenFeatures = isReconcile
+            ? parseFeatures(features).features.filter((f) => f.origin === 'generated')
             : [];
-          if (isReconcile && existingGenStories.length > 0) {
+          if (isReconcile && existingGenFeatures.length > 0) {
             // Reconcile path: the model returns the FULL desired set (echoed
             // ids stay, omitted ids are removed, new ones are appended).
             // Unchanged content outside touched scopes stays byte-identical
             // (the AC-9 bar); a zero-diff result writes nothing.
-            const { entries, keepUsIds } = await callModelStoriesReconcile(context, existingGenStories);
-            const rec = reconcileStories(journeys, entries, keepUsIds);
-            if (rec.text !== journeys) {
+            const { entries, keepFeIds } = await callModelFeaturesReconcile(context, existingGenFeatures);
+            const rec = reconcileFeatures(features, entries, keepFeIds);
+            if (rec.text !== features) {
               // Direct write — atomicWritePrd takes the PRD lock itself. PR
               // #26 round-4 bug: wrapping it in an outer withPrdLock on the
               // SAME path was a nested same-key acquire that queued behind
               // its own slot forever (non-reentrant mutex, deadlock).
-              await atomicWritePrd(journeysPath, rec.text);
+              await atomicWritePrd(featuresPath, rec.text);
             }
-            storyIds = rec.storyIds;
-            result.storiesGenerated = rec.ops.added + rec.ops.updated;
+            featureIds = rec.featureIds;
+            result.featuresGenerated = rec.ops.added + rec.ops.updated;
             result.trsGenerated = rec.trCount;
           } else {
             // requireRows: a call that yields zero parseable rows must FAIL
@@ -370,27 +375,27 @@ async function runRequirementsJob(projectId: number): Promise<void> {
             // retry would skip it forever, generating nothing. (Reconcile
             // skips this only when NO generated rows exist — that degenerate
             // case is plain generation and keeps the same protection.)
-            const stories = requireRows(await callModelStories(context), 'user stories');
-            const spliced = spliceStories(journeys, stories);
-            if (spliced.usIds.length !== stories.length) {
-              throw new Error('Story splice inserted fewer blocks than the model generated');
+            const feats = requireRows(await callModelFeatures(context), 'features');
+            const spliced = spliceFeatures(features, feats);
+            if (spliced.feIds.length !== feats.length) {
+              throw new Error('Feature splice inserted fewer blocks than the model generated');
             }
             // Same round-4 fix: atomicWritePrd locks; never nest withPrdLock.
-            await atomicWritePrd(journeysPath, spliced.text);
-            storyIds.push(...spliced.usIds);
-            result.storiesGenerated = spliced.usIds.length;
+            await atomicWritePrd(featuresPath, spliced.text);
+            featureIds.push(...spliced.feIds);
+            result.featuresGenerated = spliced.feIds.length;
             result.trsGenerated = spliced.trCount;
           }
         } else {
           const prd = fs.readFileSync(prdPath, 'utf-8');
-          // FRESH read: in reconcile mode this reflects the stories section's
+          // FRESH read: in reconcile mode this reflects the features section's
           // post-reconcile file, so BR linking resolves against the final
-          // story set.
+          // feature set.
           const existingGenBrs = isReconcile
             ? parseBusinessReqs(prd).rows.filter((r) => r.origin === 'generated')
             : [];
           if (isReconcile && existingGenBrs.length > 0) {
-            const { entries, keepBrIds } = await callModelBusinessReqsReconcile(context, storyIds, existingGenBrs);
+            const { entries, keepBrIds } = await callModelBusinessReqsReconcile(context, featureIds, existingGenBrs);
             const rec = reconcileBusinessReqs(prd, entries, keepBrIds);
             if (rec.text !== prd) {
               // Same round-4 fix: atomicWritePrd locks; never nest withPrdLock.
@@ -398,8 +403,8 @@ async function runRequirementsJob(projectId: number): Promise<void> {
             }
             result.brsGenerated = rec.ops.added + rec.ops.updated;
           } else {
-            const brs = requireRows(await callModelBusinessReqs(context, storyIds), 'business requirements');
-            const spliced = spliceBusinessReqs(prd, brs, storyIds);
+            const brs = requireRows(await callModelBusinessReqs(context, featureIds), 'business requirements');
+            const spliced = spliceBusinessReqs(prd, brs, featureIds);
             if (spliced.brIds.length !== brs.length) {
               // businessReqInsertIndex found no §8 to write into — nothing
               // landed, so failing the section is safe (no partial insert).
@@ -479,26 +484,29 @@ function modelSystemPrompt(): string {
   );
 }
 
-async function callModelStories(context: string): Promise<GenStory[]> {
+async function callModelFeatures(context: string): Promise<GenFeature[]> {
+  // Decision 6r: features carry no acceptance criteria — ACs are authored on
+  // each generated user story in Run 2 (sprint board workstream). Run 1 asks
+  // for features + TRs only.
   const user =
     `## Context (all approved artifacts)\n\n${context}\n\n## Task\n\n` +
-    `Write the user stories for this project. Respond with JSON: ` +
-    `{"stories":[{"title":"short story title","asA":"role","iWantTo":"capability","soThat":"benefit",` +
-    `"priority":"must|should|could","trs":[{"text":"technical requirement supporting this story",` +
-    `"priority":"must|should|could"}]}]}\n\n` +
-    `Include 5-10 stories covering the happy paths and the main failure paths. ` +
-    `Each story needs at least one technical requirement.`;
+    `Write the feature specs for this project. A feature is a user-facing capability. Respond with JSON: ` +
+    `{"features":[{"title":"short feature title","description":"what the feature does and why","source":"user-journeys.md §3",` +
+    `"priority":"must|should|could"` +
+    `,"trs":[{"text":"technical requirement supporting this feature","priority":"must|should|could"}]}]}\n\n` +
+    `Include 5-10 features covering the happy paths and the main failure paths. ` +
+    `Each feature needs at least one technical requirement. ` +
+    `"source" is optional: a path (doc + section) into the approved artifacts that grounds the feature.`;
   const parsed = await callModelJson(user);
-  const rawStories = Array.isArray(parsed?.stories) ? parsed.stories : [];
-  const stories: GenStory[] = [];
-  for (const s of rawStories) {
-    if (!s || typeof s !== 'object') continue;
-    const o = s as Record<string, unknown>;
+  const rawFeatures = Array.isArray(parsed?.features) ? parsed.features : [];
+  const features: GenFeature[] = [];
+  for (const f of rawFeatures) {
+    if (!f || typeof f !== 'object') continue;
+    const o = f as Record<string, unknown>;
     const title = str(o.title);
-    const asA = str(o.asA);
-    const iWantTo = str(o.iWantTo);
-    const soThat = str(o.soThat);
-    if (!title || !asA || !iWantTo || !soThat) continue; // incomplete story → skipped, not half-inserted
+    const description = str(o.description);
+    if (!title || !description) continue; // incomplete feature → skipped, not half-inserted
+    const source = str(o.source) || null;
     const trs = Array.isArray(o.trs)
       ? o.trs
           .map((t) =>
@@ -508,21 +516,21 @@ async function callModelStories(context: string): Promise<GenStory[]> {
           )
           .filter((t): t is { text: string; priority: unknown } => !!t && !!t.text)
       : [];
-    stories.push({ title, asA, iWantTo, soThat, priority: o.priority, trs });
+    features.push({ title, description, source, priority: o.priority, trs });
   }
-  return stories;
+  return features;
 }
 
-async function callModelBusinessReqs(context: string, storyIds: string[]): Promise<GenBr[]> {
-  const storyList = storyIds.length
-    ? `\n\nThe following user stories were just generated (index → id): ` +
-      storyIds.map((id, i) => `${i} → ${id}`).join(', ') +
-      `\nLink each business requirement to the story it serves via "storyIndex" (the number before the arrow), or null when it serves none.`
+async function callModelBusinessReqs(context: string, featureIds: string[]): Promise<GenBr[]> {
+  const featureList = featureIds.length
+    ? `\n\nThe following features were just generated (index → id): ` +
+      featureIds.map((id, i) => `${i} → ${id}`).join(', ') +
+      `\nLink each business requirement to the feature it serves via "featureIndex" (the number before the arrow), or null when it serves none.`
     : '';
   const user =
     `## Context (all approved artifacts)\n\n${context}\n\n## Task\n\n` +
     `Write the business requirements for this project — testable statements grouped by functional area. ` +
-    `Respond with JSON: {"requirements":[{"text":"requirement text","priority":"must|should|could","storyIndex":null}]}${storyList}`;
+    `Respond with JSON: {"requirements":[{"text":"requirement text","priority":"must|should|could","featureIndex":null}]}${featureList}`;
   const parsed = await callModelJson(user);
   const rawReqs = Array.isArray(parsed?.requirements) ? parsed.requirements : [];
   const brs: GenBr[] = [];
@@ -531,10 +539,10 @@ async function callModelBusinessReqs(context: string, storyIds: string[]): Promi
     const o = r as Record<string, unknown>;
     const text = str(o.text);
     if (!text) continue;
-    const idx = o.storyIndex;
-    const storyIndex =
-      typeof idx === 'number' && Number.isInteger(idx) && idx >= 0 && idx < storyIds.length ? idx : null;
-    brs.push({ text, priority: o.priority, storyIndex });
+    const idx = o.featureIndex;
+    const featureIndex =
+      typeof idx === 'number' && Number.isInteger(idx) && idx >= 0 && idx < featureIds.length ? idx : null;
+    brs.push({ text, priority: o.priority, featureIndex });
   }
   return brs;
 }
@@ -542,57 +550,58 @@ async function callModelBusinessReqs(context: string, storyIds: string[]): Promi
 // ── Reconcile-mode calls ────────────────────────────────────────────────────
 // The model sees the CURRENT generated rows and returns the FULL desired set:
 // echoed ids stay (reused or revised), omitted ids are removed, id-less
-// entries are new. It never writes grammar — reconcileStories/
+// entries are new. It never writes grammar — reconcileFeatures/
 // reconcileBusinessReqs own ids, ids allocation and file text.
 
-function renderExistingStoryForPrompt(s: StoryRow): string {
-  const trs = s.reqs
+function renderExistingFeatureForPrompt(f: FeatureRow): string {
+  const trs = f.reqs
     .map((r) => `  - ${r.id} [${r.priority}]: ${r.text}`)
     .join('\n');
-  return `${s.usId} [${s.priority}]: As a ${s.asA}, I want to ${s.iWantTo}, so that ${s.soThat}.${trs ? `\n${trs}` : ''}`;
+  return `${f.feId} [${f.priority}]: ${f.title} — ${f.description}${f.source ? `\n  source: ${f.source}` : ''}` +
+    `${trs ? `\n${trs}` : ''}`;
 }
 
-async function callModelStoriesReconcile(
+async function callModelFeaturesReconcile(
   context: string,
-  existing: StoryRow[],
-): Promise<{ entries: DesiredStory[]; keepUsIds: string[] }> {
+  existing: FeatureRow[],
+): Promise<{ entries: DesiredFeature[]; keepFeIds: string[] }> {
   const current =
     existing.length
-      ? `\n\n## Current generated user stories (id → current definition)\n\n` +
-        existing.map(renderExistingStoryForPrompt).join('\n\n') +
-        `\n\n## Task\n\nReconcile these user stories against the context above. Return the FULL desired set as JSON: ` +
-        `{"stories":[{"usId":"US-01","title":"short story title","asA":"role","iWantTo":"capability","soThat":"benefit",` +
-        `"priority":"must|should|could","trs":[{"trId":"TR-001","text":"technical requirement","priority":"must|should|could"}]}]}\n` +
-        `- Echo "usId" (and each TR's "trId") for a story you are keeping — unchanged or revised. Keep ids stable unless the story's meaning changed.\n` +
-        `- Omit a story (or a TR inside one) to REMOVE it — removal is expected when the updated artifacts no longer support it. Removing all stories is valid.\n` +
-        `- A new story or TR has no id.\n` +
-        `- Echo ONLY ids from the generated list above — human-authored stories are managed by people, never touch them.\n` +
-        `- Every previously generated story is reconsidered: keep, update, remove, or add as the context requires.`
+      ? `\n\n## Current generated features (id → current definition, with TRs)\n\n` +
+        existing.map(renderExistingFeatureForPrompt).join('\n\n') +
+        `\n\n## Task\n\nReconcile these features against the context above. Return the FULL desired set as JSON: ` +
+        `{"features":[{"feId":"FE-01","title":"short feature title","description":"what the feature does and why",` +
+        `"source":"user-journeys.md §3","priority":"must|should|could",` +
+        `"trs":[{"trId":"TR-001","text":"technical requirement","priority":"must|should|could"}]}]}\n` +
+        `- Echo "feId" (and each TR's "trId") for a feature you are keeping — unchanged or revised. Keep ids stable unless the meaning changed.\n` +
+        `- Omit a feature (or a TR inside one) to REMOVE it — removal is expected when the updated artifacts no longer support it. Removing all features is valid.\n` +
+        `- A new feature or TR has no id.\n` +
+        `- Echo ONLY ids from the generated list above — human-authored features are managed by people, never touch them.\n` +
+        `- Every previously generated feature is reconsidered: keep, update, remove, or add as the context requires.`
       : '';
   const user =
     `## Context (all approved artifacts)\n\n${context}\n\n## Task\n\n` +
-    `Write the user stories for this project. Respond with JSON: ` +
-    `{"stories":[{"title":"short story title","asA":"role","iWantTo":"capability","soThat":"benefit",` +
-    `"priority":"must|should|could","trs":[{"text":"technical requirement supporting this story",` +
-    `"priority":"must|should|could"}]}]}` + current;
+    `Write the feature specs for this project. Respond with JSON: ` +
+    `{"features":[{"title":"short feature title","description":"what the feature does and why","source":"user-journeys.md §3",` +
+    `"priority":"must|should|could"` +
+    `,"trs":[{"text":"technical requirement supporting this feature","priority":"must|should|could"}]}]}` + current;
   const parsed = await callModelJson(user);
-  const rawStories = Array.isArray(parsed?.stories) ? parsed.stories : [];
-  const entries: DesiredStory[] = [];
+  const rawFeatures = Array.isArray(parsed?.features) ? parsed.features : [];
+  const entries: DesiredFeature[] = [];
   // Echoed ids are recorded even when their entry is skipped for
   // incompleteness — one garbled entry must not silently delete an existing
   // generated row (the reconcile keeps every echoed id that still parses).
-  const keepUsIds: string[] = [];
-  for (const s of rawStories) {
-    if (!s || typeof s !== 'object') continue;
-    const o = s as Record<string, unknown>;
-    const usId = str(o.usId);
-    if (usId) keepUsIds.push(usId);
+  const keepFeIds: string[] = [];
+  for (const f of rawFeatures) {
+    if (!f || typeof f !== 'object') continue;
+    const o = f as Record<string, unknown>;
+    const feId = str(o.feId);
+    if (feId) keepFeIds.push(feId);
     const title = str(o.title);
-    const asA = str(o.asA);
-    const iWantTo = str(o.iWantTo);
-    const soThat = str(o.soThat);
+    const description = str(o.description);
     // Same completeness bar as generate mode: an incomplete entry is dropped.
-    if (!title || !asA || !iWantTo || !soThat) continue;
+    if (!title || !description) continue;
+    const source = str(o.source) || null;
     const trs = Array.isArray(o.trs)
       ? o.trs
           .map((t) =>
@@ -602,42 +611,42 @@ async function callModelStoriesReconcile(
           )
           .filter((t): t is DesiredTr => !!t && !!t.text)
       : [];
-    entries.push({ usId: usId || null, title, asA, iWantTo, soThat, priority: o.priority, trs });
+    entries.push({ feId: feId || null, title, description, source, priority: o.priority, trs });
   }
-  return { entries, keepUsIds };
+  return { entries, keepFeIds };
 }
 
 function renderExistingBrForPrompt(r: ReqRow): string {
-  return `${r.id}${r.storyUsId ? ` (serves ${r.storyUsId})` : ''} [${r.priority}]: ${r.text}`;
+  return `${r.id}${r.featureId ? ` (serves ${r.featureId})` : ''} [${r.priority}]: ${r.text}`;
 }
 
 async function callModelBusinessReqsReconcile(
   context: string,
-  storyIds: string[],
+  featureIds: string[],
   existing: ReqRow[],
 ): Promise<{ entries: DesiredBr[]; keepBrIds: string[] }> {
-  const storyList = storyIds.length
-    ? `\n\nThe post-reconcile user stories (index → id): ` +
-      storyIds.map((id, i) => `${i} → ${id}`).join(', ') +
-      `\nLink each business requirement to the story it serves via "storyIndex" (the number before the arrow), or null when it serves none.`
+  const featureList = featureIds.length
+    ? `\n\nThe post-reconcile features (index → id): ` +
+      featureIds.map((id, i) => `${i} → ${id}`).join(', ') +
+      `\nLink each business requirement to the feature it serves via "featureIndex" (the number before the arrow), or null when it serves none.`
     : '';
   const current =
     existing.length
       ? `\n\n## Current generated business requirements (id → current definition)\n\n` +
         existing.map(renderExistingBrForPrompt).join('\n') +
         `\n\n## Task\n\nReconcile these business requirements against the context above. Return the FULL desired set as JSON: ` +
-        `{"requirements":[{"brId":"BR-001","text":"requirement text","priority":"must|should|could","storyIndex":null}]}\n` +
+        `{"requirements":[{"brId":"BR-001","text":"requirement text","priority":"must|should|could","featureIndex":null}]}\n` +
         `- Echo "brId" for a requirement you are keeping — unchanged or revised.\n` +
         `- Omit a requirement to REMOVE it — removal is expected when the updated artifacts no longer support it. Removing all is valid.\n` +
         `- A new requirement has no id.\n` +
         `- Echo ONLY ids from the generated list above — human-authored requirements are managed by people, never touch them.\n` +
         `- Every previously generated requirement is reconsidered: keep, update, remove, or add as the context requires.` +
-        storyList
+        featureList
       : '';
   const user =
     `## Context (all approved artifacts)\n\n${context}\n\n## Task\n\n` +
     `Write the business requirements for this project — testable statements grouped by functional area. ` +
-    `Respond with JSON: {"requirements":[{"text":"requirement text","priority":"must|should|could","storyIndex":null}]}${current}`;
+    `Respond with JSON: {"requirements":[{"text":"requirement text","priority":"must|should|could","featureIndex":null}]}${current}`;
   const parsed = await callModelJson(user);
   const rawReqs = Array.isArray(parsed?.requirements) ? parsed.requirements : [];
   const entries: DesiredBr[] = [];
@@ -649,14 +658,14 @@ async function callModelBusinessReqsReconcile(
     if (brId) keepBrIds.push(brId);
     const text = str(o.text);
     if (!text) continue;
-    const idx = o.storyIndex;
-    const storyIndex =
-      typeof idx === 'number' && Number.isInteger(idx) && idx >= 0 && idx < storyIds.length ? idx : null;
+    const idx = o.featureIndex;
+    const featureIndex =
+      typeof idx === 'number' && Number.isInteger(idx) && idx >= 0 && idx < featureIds.length ? idx : null;
     entries.push({
       brId: brId || null,
       text,
       priority: o.priority,
-      storyUsId: storyIndex === null ? null : (storyIds[storyIndex] ?? null),
+      featureId: featureIndex === null ? null : (featureIds[featureIndex] ?? null),
     });
   }
   return { entries, keepBrIds };
