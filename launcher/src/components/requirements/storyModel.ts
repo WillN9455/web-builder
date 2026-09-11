@@ -5,7 +5,9 @@
 //
 // Requirements redesign (slices 1-3): features (FE-NN) are the grouping
 // containers — stories are a derived artifact owned by the sprint board
-// workstream and no longer exist in this tab.
+// workstream and no longer exist in this tab. Decision 6r: features carry no
+// acceptance criteria — ACs live on generated user stories (Run 2), so there
+// is no AC state anywhere in this tab.
 
 import {
   nextFreeId,
@@ -42,15 +44,12 @@ export type FormState =
   // Edit-req keeps feId nullable: unassigned BRs (no home feature) are still
   // editable — the ?feId= disambiguator is simply omitted, exactly as the
   // pre-redesign usId-null path worked.
-  | { mode: 'edit'; kind: 'req'; reqId: string; feId: string | null }
-  | { mode: 'add'; kind: 'ac'; feId: string }
-  | { mode: 'edit'; kind: 'ac'; feId: string; acId: string };
+  | { mode: 'edit'; kind: 'req'; reqId: string; feId: string | null };
 
 // ── Stage-banner totals (LEGEND: re-derived on every render, no statics) ───
 
 export type ReqTotals = {
   features: number;
-  acs: number;
   business: number;
   technical: number;
   blocked: number;
@@ -58,15 +57,12 @@ export type ReqTotals = {
 };
 
 // Blocked = features OR requirements currently in blocked/returned (LEGEND).
-// ACs have no blocked state (met/unmet only) so they don't contribute.
 export function deriveTotals(data: RequirementsResponse): ReqTotals {
   const isBlocked = (st: ReqStatus | null) => st === 'blocked' || st === 'returned';
-  let acs = 0;
   let business = 0;
   let technical = 0;
   let blocked = data.features.filter((f) => isBlocked(f.status)).length;
   for (const f of data.features) {
-    acs += f.acs.length;
     for (const r of f.reqs) {
       if (r.type === 'BR') business += 1;
       else technical += 1;
@@ -77,18 +73,14 @@ export function deriveTotals(data: RequirementsResponse): ReqTotals {
   for (const r of data.businessReqs) {
     if (isBlocked(r.status)) blocked += 1;
   }
-  const total = data.features.length + acs + business + technical;
-  return { features: data.features.length, acs, business, technical, blocked, total };
+  const total = data.features.length + business + technical;
+  return { features: data.features.length, business, technical, blocked, total };
 }
 
 // ── Filtering (client-side over the parsed list — plan §0b) ────────────────
 
 function reqMatchesQuery(req: RequirementItem, q: string): boolean {
   return req.text.toLowerCase().includes(q) || req.id.toLowerCase().includes(q);
-}
-
-function acMatchesQuery(text: string, id: string, q: string): boolean {
-  return text.toLowerCase().includes(q) || id.toLowerCase().includes(q);
 }
 
 export function applyFilters(
@@ -112,12 +104,6 @@ export function applyFilters(
       const rows = feature.reqs.filter(
         (r) => typeFor(r.type) && statusFor(r.status) && (!q || reqMatchesQuery(r, q)),
       );
-      // ACs respond to search text only — they have no type or status
-      // vocabulary the chips filter on (met/unmet is not a ReqStatus).
-      const acs =
-        q || filter.statuses.length > 0
-          ? feature.acs.filter((a) => acMatchesQuery(a.text, a.id, q))
-          : feature.acs;
       // The feature itself matches search on its own text; status chips
       // apply to the feature itself (it has a ReqStatus) but not its type
       // (it has none).
@@ -127,13 +113,8 @@ export function applyFilters(
             .filter(Boolean)
             .some((t) => (t as string).toLowerCase().includes(q))) &&
         (q || statusSet.size === 0 || (feature.status !== null && statusSet.has(feature.status)));
-      // When only the AC list matches (search typed, no row matches), keep
-      // the block visible with its ACs so the hit isn't invisible.
-      if (!selfMatch && rows.length === 0) {
-        if (q && acs.length > 0) return { ...feature, acs, reqs: rows };
-        return null;
-      }
-      return { ...feature, acs, reqs: rows };
+      if (!selfMatch && rows.length === 0) return null;
+      return { ...feature, reqs: rows };
     })
     .filter((f): f is FeatureItem => f !== null);
   return { features, businessReqs };

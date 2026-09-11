@@ -2,7 +2,7 @@
 //
 // The generation job (agent-invoker.ts) parses model output into the row
 // inputs below, then this module inserts them into the canonical surfaces —
-// feature blocks (with their AC + TR rows inside the block) appended to
+// feature blocks (with their TR rows inside the block) appended to
 // features.md, BR rows inserted into prd.md §8 — using the exact renderers
 // and insert-index helpers the manual CRUD routes use (requirements-model.ts).
 // Content outside the inserted scopes is byte-identical to the input: that is
@@ -15,13 +15,13 @@
 // "generated" origin tag. No new marker format is introduced.
 //
 // File-of-record (QA-14): BRs ALWAYS land in prd.md §8, linked to their
-// feature by `<!-- BR-NNN: feature=FE-NN, origin=generated -->`; ACs and TRs
-// always land inside their feature block in features.md. The file a row
-// splices into is chosen by row type, never by which find() matched.
+// feature by `<!-- BR-NNN: feature=FE-NN, origin=generated -->`; TRs always
+// land inside their feature block in features.md. The file a row splices
+// into is chosen by row type, never by which find() matched.
 //
 // IDs are allocated HERE, never by the model — nextFreeId continues the
 // on-disk sequence, so the model's text can never collide with an existing
-// FE/AC/BR/TR id.
+// FE/BR/TR id.
 
 import {
   businessReqInsertIndex,
@@ -31,12 +31,10 @@ import {
   nextFreeId,
   parseBusinessReqs,
   parseFeatures,
-  renderAcRow,
   renderFeatureBlock,
   renderReqRow,
 } from './requirements-model.js';
 import type {
-  AcStatus,
   FeatureRow,
   ReqOwner,
   ReqPriority,
@@ -102,10 +100,6 @@ export function reconcileSectionsDone(
   return { sectionsDone: [...sectionsDone], featureIds };
 }
 
-export type GenAc = {
-  text: string;
-};
-
 export type GenFeature = {
   title: string;
   description: string;
@@ -113,7 +107,6 @@ export type GenFeature = {
   source: string | null;
   // Raw model output — cleaned via cleanPriority at render time.
   priority: unknown;
-  acs: GenAc[];
   trs: { text: string; priority: unknown }[];
 };
 
@@ -141,26 +134,27 @@ function cleanPriority(raw: unknown): ReqPriority {
 }
 
 /**
- * Append generated feature blocks (each with its AC + TR rows inside the
- * block) to features.md. Appending is the same write surface as POST
- * /features — existing blocks are untouched, byte for byte.
+ * Append generated feature blocks (each with its TR rows inside the block)
+ * to features.md. Appending is the same write surface as POST /features —
+ * existing blocks are untouched, byte for byte.
  *
  * Returns the spliced file text plus the allocated FE ids (in generation
- * order) and the AC/TR row counts, for the job's progress + result counts.
+ * order) and the TR row count, for the job's progress + result counts.
+ * Features carry no ACs (decision 6r): those are authored on user stories at
+ * story generation (Run 2).
  */
 export function spliceFeatures(
   featuresText: string,
   features: GenFeature[],
-): { text: string; feIds: string[]; acCount: number; trCount: number } {
+): { text: string; feIds: string[]; trCount: number } {
   const lines = featuresText.split('\n');
   const feIds: string[] = [];
-  let acCount = 0;
   let trCount = 0;
 
   // All ids for one block are pre-allocated before the block is emitted
   // (renderFeatureBlock needs them up-front), so per-block allocations must
   // also see the ids already allocated for THIS block — allocating against
-  // only the on-disk snapshot would give two ACs/TRs in the same block the
+  // only the on-disk snapshot would give two TRs in the same block the
   // same id. The snapshot re-scan already covers previous blocks (they were
   // appended to `lines`).
   const onDiskIds = () => collectExistingIds('', '', lines.join('\n'));
@@ -173,17 +167,6 @@ export function spliceFeatures(
     if (!title || !description) continue;
 
     const feId = nextFreeId(onDiskIds().fe, 'FE');
-
-    const acs: { id: string; status: AcStatus; text: string; origin: 'generated' }[] = [];
-    const allocatedAcs: string[] = [];
-    for (const ac of feature.acs) {
-      const text = cleanRowText(ac.text, 500);
-      if (!text) continue; // a bare ID with no text isn't a row (parser skips it)
-      const id = nextFreeId([...onDiskIds().ac, ...allocatedAcs], 'AC');
-      allocatedAcs.push(id);
-      acs.push({ id, status: 'unmet', text, origin: 'generated' });
-      acCount++;
-    }
 
     const trs: {
       id: string;
@@ -219,7 +202,6 @@ export function spliceFeatures(
       status: 'draft',
       owner: 'BA',
       origin: 'generated',
-      acs,
       trs,
     }).split('\n');
 
@@ -229,7 +211,7 @@ export function spliceFeatures(
     feIds.push(feId);
   }
 
-  return { text: lines.join('\n'), feIds, acCount, trCount };
+  return { text: lines.join('\n'), feIds, trCount };
 }
 
 /**
@@ -296,10 +278,10 @@ export function requireRows<T>(rows: T[], section: string): T[] {
 // which requires rows (requireRows).
 //
 // Manual content is never touched: manual/legacy features and rows are not
-// update or removal candidates, and manual AC/TR rows living inside an UPDATED
+// update or removal candidates, and manual TR rows living inside an UPDATED
 // generated block (plus that block's soft-deleted rows — the 30-day recovery
 // seam, and the delete-marker comments that pair with them) re-render after
-// the desired AC/TR rows instead of being clobbered. Known limitation: a
+// the desired TR rows instead of being clobbered. Known limitation: a
 // REMOVED generated block still takes its manual rows with it — the block is
 // the unit. A regenerated (rewritten) block also clobbers BA text edits to
 // its generated rows: there is no edit baseline to merge against.
@@ -312,12 +294,6 @@ export type DesiredTr = {
   priority: unknown;
 };
 
-export type DesiredAc = {
-  /** Echoed AC- id to reuse (must belong to the same generated feature); null or unknown = new row. */
-  acId: string | null;
-  text: string;
-};
-
 export type DesiredFeature = {
   /** Echoed FE- id to reuse (generated features only); null or unknown = new feature. */
   feId: string | null;
@@ -327,7 +303,6 @@ export type DesiredFeature = {
   source: string | null;
   // Raw model output — cleaned via cleanRowText/cleanPriority at render time.
   priority: unknown;
-  acs: DesiredAc[];
   trs: DesiredTr[];
 };
 
@@ -350,7 +325,6 @@ const STRUCK_ROW_RE = /^[-*+]\s*~~\s*((?:BR|TR|AC)-\d{3})[\s\S]*~~\s*$/;
 const ROW_META_LINE_RE = /^<!--\s*((?:BR|TR|AC)-\d{3}):\s*(.*?)\s*-->$/;
 const DELETED_LINE_RE = /^<!--\s*deleted\s+/i;
 const FE_ID_RE = /^FE-\d{2,}$/;
-const AC_ID_RE = /^AC-\d{3}$/;
 const TR_ID_RE = /^TR-\d{3}$/;
 const BR_ID_RE = /^BR-\d{3}$/;
 
@@ -384,14 +358,18 @@ function normalizedText(block: string[]): string {
 }
 
 // Manual rows + soft-deleted rows + their delete-marker comments inside one
-// feature block, in file order — re-rendered after the desired AC/TR rows on
+// feature block, in file order — re-rendered after the desired TR rows on
 // UPDATE so BA-owned content inside a generated block survives the rewrite.
 // Struck rows are invisible to parseFeatures (recovery seam) and manual rows
 // carry no origin stamp, so both are found by scanning the block's raw lines.
+// Legacy AC rows (decision 6r: features no longer carry ACs) are handled by
+// raw-line scan too — unstamped/manual rows are preserved as pass-through
+// content, `origin=generated` rows drop with the rewrite.
+const AC_ROW_LINE_RE = /^[-*+]\s+AC-\d{3}\s*(?:\|(.*))?$/;
+const AC_SECTION_LINE_RE = /^##\s+Acceptance Criteria\s*$/i;
+const GENERATED_META_RE = /^<!--\s*(?:BR|TR|AC)-\d{3}:\s*origin=generated\s*-->$/;
+
 function preservedBlockLines(lines: string[], feature: FeatureRow): string[] {
-  const manualAcIds = new Set(
-    feature.acs.filter((a) => a.origin !== 'generated').map((a) => a.id),
-  );
   const manualReqIds = new Set(
     feature.reqs.filter((r) => r.origin !== 'generated').map((r) => r.id),
   );
@@ -407,14 +385,21 @@ function preservedBlockLines(lines: string[], feature: FeatureRow): string[] {
       }
       continue;
     }
-    const acRow = feature.acs.find((a) => manualAcIds.has(a.id) && a.lineIndex === i);
-    if (acRow) {
-      out.push(lines[i]);
+    if (AC_SECTION_LINE_RE.test(trimmed)) continue; // the legacy heading drops with the rewrite
+    if (AC_ROW_LINE_RE.test(trimmed)) {
       const meta = nextNonBlank(lines, i + 1, feature.blockEnd);
-      if (meta && ROW_META_LINE_RE.test(meta.line.trim()) && meta.line.includes(acRow.id)) {
-        out.push(lines[meta.index]);
-        i = meta.index;
+      if (meta && ROW_META_LINE_RE.test(meta.line.trim())) {
+        // A stamped row survives only when it isn't generated-owned; the
+        // meta travels with it so the pass-through stays byte-stable.
+        if (!GENERATED_META_RE.test(meta.line.trim())) {
+          out.push(lines[i], lines[meta.index]);
+          i = meta.index;
+        } else {
+          i = meta.index; // generated row + its meta both drop
+        }
+        continue;
       }
+      out.push(lines[i]); // unstamped row — preserved, no meta to carry
       continue;
     }
     const row = feature.reqs.find((r) => manualReqIds.has(r.id) && r.lineIndex === i);
@@ -436,43 +421,16 @@ function renderDesiredFeatureBlock(
   feId: string,
   d: DesiredFeature,
   existing: FeatureRow | null,
-  acOwner: Map<
-    string,
-    { feId: string; generated: boolean; raw: string; status: AcStatus | null }
-  >,
   trOwner: Map<
     string,
     { feId: string; generated: boolean; raw: string; status: ReqStatus | null; owner: ReqOwner | null }
   >,
   preserved: string[],
-  allocAc: () => string,
   allocTr: () => string,
-): { block: string[]; acsChanged: number; trsChanged: number } {
-  // Desired ACs, then desired TRs — renderFeatureBlock emits both inside the
-  // block (its `## Acceptance Criteria` section anchor is always present,
-  // even when empty) and stamps each row's origin meta itself.
-  const acs: { id: string; status: AcStatus; text: string; origin: 'generated' }[] = [];
-  let acsChanged = 0;
-  for (const ac of d.acs) {
-    const text = cleanRowText(ac.text, 500);
-    if (!text) continue; // a bare ID with no text isn't a row (parser skips it)
-    const echo = ac.acId && AC_ID_RE.test(ac.acId) ? acOwner.get(ac.acId) : undefined;
-    let id: string;
-    let status: AcStatus = 'unmet';
-    let raw: string | null = null;
-    if (echo && echo.feId === feId && echo.generated) {
-      id = ac.acId as string;
-      status = echo.status ?? 'unmet';
-      raw = echo.raw;
-    } else {
-      id = allocAc();
-      acsChanged++; // a non-echoed row inside an updated block is a new row
-    }
-    const row = renderAcRow(id, status, text);
-    if (raw !== null && row.trim() !== raw.trim()) acsChanged++;
-    acs.push({ id, status, text, origin: 'generated' });
-  }
-
+): { block: string[]; trsChanged: number } {
+  // Desired TRs — renderFeatureBlock emits them inside the block and stamps
+  // each row's origin meta itself. Features carry no ACs (decision 6r); any
+  // legacy AC rows worth keeping ride along via `preserved`.
   const trs: {
     id: string;
     priority: ReqPriority;
@@ -522,24 +480,23 @@ function renderDesiredFeatureBlock(
     status: existing?.status ?? 'draft',
     owner: existing?.owner ?? 'BA',
     origin: 'generated',
-    acs,
     trs,
   }).split('\n');
   block.push(...preserved);
-  return { block, acsChanged, trsChanged };
+  return { block, trsChanged };
 }
 
 /**
  * Diff the desired feature set against the generated feature blocks already
  * on disk in features.md, and splice the delta. Echoed generated FE ids are
- * updated in place (status/owner preserved, manual AC/TR rows and struck rows
+ * updated in place (status/owner preserved, manual TR rows and struck rows
  * re-rendered); generated features the model omits are removed; everything
  * else appends via spliceFeatures. Manual/legacy blocks are never candidates.
  *
  * Returns the reconciled text (the input unchanged when nothing differs —
  * the caller skips the write), the ops counts, the post-reconcile generated
- * feature ids in DESIRED order (reused first, appended after), and the
- * AC/TR counts (changed + appended rows) for the job's result counts.
+ * feature ids in DESIRED order (reused first, appended after), and the TR
+ * count (changed + appended rows) for the job's result counts.
  */
 export function reconcileFeatures(
   featuresText: string,
@@ -549,31 +506,18 @@ export function reconcileFeatures(
   text: string;
   ops: ReconcileOps;
   featureIds: string[];
-  acCount: number;
   trCount: number;
 } {
   const lines = featuresText.split('\n');
   const parsed = parseFeatures(featuresText);
   const byFeId = new Map(parsed.features.map((f) => [f.feId, f]));
-  // Block-wide AC/TR ownership — an echoed id may only be reused inside its
+  // Block-wide TR ownership — an echoed id may only be reused inside its
   // own generated feature block; every other echo is a new row.
-  const acOwner = new Map<
-    string,
-    { feId: string; generated: boolean; raw: string; status: AcStatus | null }
-  >();
   const trOwner = new Map<
     string,
     { feId: string; generated: boolean; raw: string; status: ReqStatus | null; owner: ReqOwner | null }
   >();
   for (const feature of parsed.features) {
-    for (const ac of feature.acs) {
-      acOwner.set(ac.id, {
-        feId: feature.feId,
-        generated: ac.origin === 'generated',
-        raw: ac.raw,
-        status: ac.status,
-      });
-    }
     for (const row of feature.reqs) {
       if (row.type === 'TR') {
         trOwner.set(row.id, {
@@ -591,20 +535,13 @@ export function reconcileFeatures(
   const ops: ReconcileOps = { added: 0, updated: 0, removed: 0 };
   const reusedFeatureIds: string[] = [];
   const desiredFeIds = new Set<string>();
-  const allocatedAcs: string[] = [];
   const allocatedTrs: string[] = [];
-  let acCount = 0;
   let trCount = 0;
   const adds: GenFeature[] = [];
 
   // Ids for newly added rows accumulate in allocated* so two echoes inside
   // the same planning pass never collide (the on-disk snapshot can't see
   // them — nothing has been spliced yet).
-  const allocAc = (): string => {
-    const id = nextFreeId([...collectExistingIds('', '', lines.join('\n')).ac, ...allocatedAcs], 'AC');
-    allocatedAcs.push(id);
-    return id;
-  };
   const allocTr = (): string => {
     const id = nextFreeId([...collectExistingIds('', '', lines.join('\n')).tr, ...allocatedTrs], 'TR');
     allocatedTrs.push(id);
@@ -632,14 +569,12 @@ export function reconcileFeatures(
     if (echoId && existing && existing.origin === 'generated' && !desiredFeIds.has(echoId)) {
       desiredFeIds.add(echoId);
       reusedFeatureIds.push(echoId);
-      const { block, acsChanged, trsChanged } = renderDesiredFeatureBlock(
+      const { block, trsChanged } = renderDesiredFeatureBlock(
         echoId,
         d,
         existing,
-        acOwner,
         trOwner,
         preservedBlockLines(lines, existing),
-        allocAc,
         allocTr,
       );
       const start = existing.headingLine;
@@ -647,7 +582,6 @@ export function reconcileFeatures(
       if (normalizedText(block) !== normalizedText(lines.slice(start, end))) {
         plan.push({ start, end, block });
         ops.updated++;
-        acCount += acsChanged;
         trCount += trsChanged;
       }
       continue;
@@ -658,7 +592,6 @@ export function reconcileFeatures(
       description,
       source: d.source,
       priority: d.priority,
-      acs: d.acs,
       trs: d.trs,
     });
   }
@@ -677,7 +610,7 @@ export function reconcileFeatures(
   }
 
   if (plan.length === 0 && adds.length === 0) {
-    return { text: featuresText, ops, featureIds: reusedFeatureIds, acCount: 0, trCount: 0 };
+    return { text: featuresText, ops, featureIds: reusedFeatureIds, trCount: 0 };
   }
 
   // Apply plan ranges in DESCENDING order — every range indexes the ORIGINAL
@@ -689,7 +622,7 @@ export function reconcileFeatures(
   }
 
   // Appends reuse the generate-mode splice verbatim — ids are allocated
-  // against the already-mutated lines, so pre-allocated AC/TR ids can't
+  // against the already-mutated lines, so pre-allocated TR ids can't
   // collide. spliceFeatures returns no ops object (generate mode counts
   // differently), so the reconcile ops must count the appends themselves.
   const appended = spliceFeatures(lines.join('\n'), adds);
@@ -698,7 +631,6 @@ export function reconcileFeatures(
     text: appended.text,
     ops,
     featureIds: [...reusedFeatureIds, ...appended.feIds],
-    acCount: acCount + appended.acCount,
     trCount: trCount + appended.trCount,
   };
 }

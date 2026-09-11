@@ -24,11 +24,9 @@ import {
   REQ_GEN_SECTIONS,
   spliceBusinessReqs,
   spliceFeatures,
-  type DesiredAc,
   type DesiredBr,
   type DesiredFeature,
   type DesiredTr,
-  type GenAc,
   type GenBr,
   type GenFeature,
 } from './req-gen-splice.js';
@@ -320,7 +318,7 @@ async function runRequirementsJob(projectId: number): Promise<void> {
   // terminal) so the phase-aware banner shows live row counts mid-run — a
   // generating run's result is "what has landed so far", not just the
   // finished run's counts.
-  const result = { featuresGenerated: 0, brsGenerated: 0, trsGenerated: 0, acsGenerated: 0 };
+  const result = { featuresGenerated: 0, brsGenerated: 0, trsGenerated: 0 };
   let lastError: string | null = null;
 
   try {
@@ -370,7 +368,6 @@ async function runRequirementsJob(projectId: number): Promise<void> {
             }
             featureIds = rec.featureIds;
             result.featuresGenerated = rec.ops.added + rec.ops.updated;
-            result.acsGenerated = rec.acCount;
             result.trsGenerated = rec.trCount;
           } else {
             // requireRows: a call that yields zero parseable rows must FAIL
@@ -387,7 +384,6 @@ async function runRequirementsJob(projectId: number): Promise<void> {
             await atomicWritePrd(featuresPath, spliced.text);
             featureIds.push(...spliced.feIds);
             result.featuresGenerated = spliced.feIds.length;
-            result.acsGenerated = spliced.acCount;
             result.trsGenerated = spliced.trCount;
           }
         } else {
@@ -489,14 +485,17 @@ function modelSystemPrompt(): string {
 }
 
 async function callModelFeatures(context: string): Promise<GenFeature[]> {
+  // Decision 6r: features carry no acceptance criteria — ACs are authored on
+  // each generated user story in Run 2 (sprint board workstream). Run 1 asks
+  // for features + TRs only.
   const user =
     `## Context (all approved artifacts)\n\n${context}\n\n## Task\n\n` +
-    `Write the feature specs for this project. A feature is a user-facing capability with acceptance criteria. Respond with JSON: ` +
+    `Write the feature specs for this project. A feature is a user-facing capability. Respond with JSON: ` +
     `{"features":[{"title":"short feature title","description":"what the feature does and why","source":"user-journeys.md §3",` +
-    `"priority":"must|should|could","acs":[{"text":"acceptance criterion"}]` +
+    `"priority":"must|should|could"` +
     `,"trs":[{"text":"technical requirement supporting this feature","priority":"must|should|could"}]}]}\n\n` +
     `Include 5-10 features covering the happy paths and the main failure paths. ` +
-    `Each feature needs at least one acceptance criterion and at least one technical requirement. ` +
+    `Each feature needs at least one technical requirement. ` +
     `"source" is optional: a path (doc + section) into the approved artifacts that grounds the feature.`;
   const parsed = await callModelJson(user);
   const rawFeatures = Array.isArray(parsed?.features) ? parsed.features : [];
@@ -508,15 +507,6 @@ async function callModelFeatures(context: string): Promise<GenFeature[]> {
     const description = str(o.description);
     if (!title || !description) continue; // incomplete feature → skipped, not half-inserted
     const source = str(o.source) || null;
-    const acs = Array.isArray(o.acs)
-      ? o.acs
-          .map((a) =>
-            a && typeof a === 'object' && str((a as Record<string, unknown>).text)
-              ? { text: str((a as Record<string, unknown>).text) }
-              : null,
-          )
-          .filter((a): a is GenAc => !!a && !!a.text)
-      : [];
     const trs = Array.isArray(o.trs)
       ? o.trs
           .map((t) =>
@@ -526,7 +516,7 @@ async function callModelFeatures(context: string): Promise<GenFeature[]> {
           )
           .filter((t): t is { text: string; priority: unknown } => !!t && !!t.text)
       : [];
-    features.push({ title, description, source, priority: o.priority, acs, trs });
+    features.push({ title, description, source, priority: o.priority, trs });
   }
   return features;
 }
@@ -564,14 +554,11 @@ async function callModelBusinessReqs(context: string, featureIds: string[]): Pro
 // reconcileBusinessReqs own ids, ids allocation and file text.
 
 function renderExistingFeatureForPrompt(f: FeatureRow): string {
-  const acs = f.acs
-    .map((a) => `  - ${a.id} [${a.status}]: ${a.text}`)
-    .join('\n');
   const trs = f.reqs
     .map((r) => `  - ${r.id} [${r.priority}]: ${r.text}`)
     .join('\n');
   return `${f.feId} [${f.priority}]: ${f.title} — ${f.description}${f.source ? `\n  source: ${f.source}` : ''}` +
-    `${acs ? `\n${acs}` : ''}${trs ? `\n${trs}` : ''}`;
+    `${trs ? `\n${trs}` : ''}`;
 }
 
 async function callModelFeaturesReconcile(
@@ -580,16 +567,15 @@ async function callModelFeaturesReconcile(
 ): Promise<{ entries: DesiredFeature[]; keepFeIds: string[] }> {
   const current =
     existing.length
-      ? `\n\n## Current generated features (id → current definition, with ACs and TRs)\n\n` +
+      ? `\n\n## Current generated features (id → current definition, with TRs)\n\n` +
         existing.map(renderExistingFeatureForPrompt).join('\n\n') +
         `\n\n## Task\n\nReconcile these features against the context above. Return the FULL desired set as JSON: ` +
         `{"features":[{"feId":"FE-01","title":"short feature title","description":"what the feature does and why",` +
         `"source":"user-journeys.md §3","priority":"must|should|could",` +
-        `"acs":[{"acId":"AC-001","text":"acceptance criterion"}],` +
         `"trs":[{"trId":"TR-001","text":"technical requirement","priority":"must|should|could"}]}]}\n` +
-        `- Echo "feId" (and each AC's "acId" and TR's "trId") for a feature you are keeping — unchanged or revised. Keep ids stable unless the meaning changed.\n` +
-        `- Omit a feature (or an AC/TR inside one) to REMOVE it — removal is expected when the updated artifacts no longer support it. Removing all features is valid.\n` +
-        `- A new feature, AC, or TR has no id.\n` +
+        `- Echo "feId" (and each TR's "trId") for a feature you are keeping — unchanged or revised. Keep ids stable unless the meaning changed.\n` +
+        `- Omit a feature (or a TR inside one) to REMOVE it — removal is expected when the updated artifacts no longer support it. Removing all features is valid.\n` +
+        `- A new feature or TR has no id.\n` +
         `- Echo ONLY ids from the generated list above — human-authored features are managed by people, never touch them.\n` +
         `- Every previously generated feature is reconsidered: keep, update, remove, or add as the context requires.`
       : '';
@@ -597,7 +583,7 @@ async function callModelFeaturesReconcile(
     `## Context (all approved artifacts)\n\n${context}\n\n## Task\n\n` +
     `Write the feature specs for this project. Respond with JSON: ` +
     `{"features":[{"title":"short feature title","description":"what the feature does and why","source":"user-journeys.md §3",` +
-    `"priority":"must|should|could","acs":[{"text":"acceptance criterion"}]` +
+    `"priority":"must|should|could"` +
     `,"trs":[{"text":"technical requirement supporting this feature","priority":"must|should|could"}]}]}` + current;
   const parsed = await callModelJson(user);
   const rawFeatures = Array.isArray(parsed?.features) ? parsed.features : [];
@@ -616,15 +602,6 @@ async function callModelFeaturesReconcile(
     // Same completeness bar as generate mode: an incomplete entry is dropped.
     if (!title || !description) continue;
     const source = str(o.source) || null;
-    const acs = Array.isArray(o.acs)
-      ? o.acs
-          .map((a) =>
-            a && typeof a === 'object'
-              ? { acId: str((a as Record<string, unknown>).acId) || null, text: str((a as Record<string, unknown>).text) }
-              : null,
-          )
-          .filter((a): a is DesiredAc => !!a && !!a.text)
-      : [];
     const trs = Array.isArray(o.trs)
       ? o.trs
           .map((t) =>
@@ -634,7 +611,7 @@ async function callModelFeaturesReconcile(
           )
           .filter((t): t is DesiredTr => !!t && !!t.text)
       : [];
-    entries.push({ feId: feId || null, title, description, source, priority: o.priority, acs, trs });
+    entries.push({ feId: feId || null, title, description, source, priority: o.priority, trs });
   }
   return { entries, keepFeIds };
 }

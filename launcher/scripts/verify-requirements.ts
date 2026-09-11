@@ -12,7 +12,7 @@
 // #18/#19) — this is a plain assert-and-exit script so it also runs in CI.
 
 import { spawn, execFileSync } from 'node:child_process';
-import { collectExistingIds, nextFreeId, parseRequirements } from '../server/requirements-model.js';
+import { collectExistingIds, nextFreeId, parseRequirements, parseStories } from '../server/requirements-model.js';
 import {
   fileHasGeneratedRows,
   reconcileBusinessReqs,
@@ -253,7 +253,13 @@ async function main(): Promise<void> {
     eq('businessReqs = 3 (incl. the legacy BR-004)', r.body.businessReqs?.length, 3);
     eq('features = 2', r.body.features?.length, 2);
     eq('FE-01 carries TR-001', r.body.features?.[0]?.reqs?.map((x: any) => x.id), ['TR-001']);
-    eq('FE-01 carries AC-001', r.body.features?.[0]?.acs?.map((a: any) => a.id), ['AC-001']);
+    // Decision 6r: features carry no acceptance criteria — ACs are authored on
+    // generated user stories (Run 2). The fixture's legacy AC-001 row must
+    // neither crash the GET nor surface as feature state; the FE-01 payload
+    // carries only its TR.
+    check('FE-01 payload carries no acs field (decision 6r)', !('acs' in (r.body.features?.[0] ?? {})));
+    eq('FE-01 carries only TR-001', r.body.features?.[0]?.reqs?.map((x: any) => x.id), ['TR-001']);
+    eq('feature rows expose exactly the 6r fields', Object.keys(r.body.features?.[0] ?? {}).sort(), ['description', 'feId', 'origin', 'owner', 'priority', 'reqs', 'source', 'status', 'title']);
 
     r = await reqFetch(`/api/projects/${emptySlug}/requirements`);
     check('GET no-prd → 200 with no-prd empty state (AC-10)', r.status === 200 && r.body.source === 'no-prd');
@@ -848,7 +854,6 @@ async function main(): Promise<void> {
         description: 'Lenders can see when a borrowed tool is due back and mark it returned.',
         source: 'user-journeys.md §3',
         priority: 'must',
-        acs: [{ text: 'The return view must show the due-back date for every active loan.' }],
         trs: [{ text: 'Persist a due-back date with each loan.', priority: 'must' }],
       },
       {
@@ -856,30 +861,37 @@ async function main(): Promise<void> {
         description: 'Neighbors receive a weekly digest of overdue items so nothing slips.',
         source: null,
         priority: 'should',
-        acs: [],
         trs: [{ text: 'Queue the digest email weekly.', priority: 'should' }],
       },
     ];
 
     // Gap-fill id math against the pristine snapshots: FE ids continue from the
-    // fixture's FE-01/FE-02, ACs from AC-001, TRs from TR-001, BRs from the §8
-    // pool (BR-001/002/004 → the allocator fills the BR-003 gap). All computed,
-    // never hardcoded.
+    // fixture's FE-01/FE-02, TRs from TR-001, BRs from the §8 pool
+    // (BR-001/002/004 → the allocator fills the BR-003 gap). All computed,
+    // never hardcoded. (Decision 6r: no AC id pool — ACs are story-level.)
     const idsBefore = collectExistingIds(prd0, '', features0);
     const nextFe = nextFreeId(idsBefore.fe, 'FE');
     const nextFe2 = nextFreeId([...idsBefore.fe, nextFe], 'FE');
-    const nextAc = nextFreeId(idsBefore.ac, 'AC');
     const nextTr = nextFreeId(idsBefore.tr, 'TR');
     const nextBr = nextFreeId(idsBefore.br, 'BR');
 
     const splicedF = spliceFeatures(features0, genFeatures);
     eq('spliceFeatures: allocates the next two FE ids', splicedF.feIds, [nextFe, nextFe2]);
-    check('spliceFeatures: counts 1 AC + 2 TRs', splicedF.acCount === 1 && splicedF.trCount === 2);
+    check('spliceFeatures: counts 2 TRs (no ACs — decision 6r)', splicedF.trCount === 2 && !('acCount' in splicedF));
     check(
       'spliceFeatures: leaves the manual fixture blocks untouched',
       splicedF.text.startsWith('# Features') &&
         splicedF.text.includes('### FE-01 — List an item for lending') &&
         splicedF.text.includes('### FE-02 — Reserve an item'),
+    );
+    // Decision 6r pass-through: the appended blocks carry no AC section, and
+    // the manual fixture's legacy AC-001 content rides along byte-stable —
+    // the splice never touches blocks it doesn't rewrite.
+    check('spliceFeatures: generated blocks carry no AC section', !/##\s+Acceptance Criteria/i.test(splicedF.text.split(`### ${nextFe}`)[1] ?? ''));
+    check(
+      'spliceFeatures: legacy AC-001 row + meta pass through byte-stable',
+      splicedF.text.includes('- AC-001 | met | The list form must expose title, photo, condition, and pickup window.') &&
+        splicedF.text.includes('<!-- AC-001: origin=manual -->'),
     );
 
     const genBrs = [
@@ -897,10 +909,12 @@ async function main(): Promise<void> {
     const newFeature = parsed.features.find((f) => f.feId === fe0);
     check('generated feature block parses with origin=generated', newFeature?.origin === 'generated');
     check('generated feature keeps its source link', newFeature?.source === 'user-journeys.md §3');
-    eq(
-      'generated AC allocated next, status=unmet, origin=generated',
-      [newFeature?.acs?.[0]?.id, newFeature?.acs?.[0]?.status, newFeature?.acs?.[0]?.origin],
-      [nextAc, 'unmet', 'generated'],
+    check(
+      'generated feature parses with no AC section (decision 6r)',
+      !splicedF.text
+        .split(`### ${fe0}`)[1]
+        ?.split('### ')[0]
+        ?.includes('Acceptance Criteria'),
     );
     const newTr = newFeature?.reqs?.find((x) => x.type === 'TR');
     eq('generated TR lands in-block with the next id', [newTr?.id, newTr?.featureId], [nextTr, fe0]);
@@ -956,7 +970,6 @@ async function main(): Promise<void> {
         description: f.description ?? '',
         source: f.source,
         priority: f.priority,
-        acs: f.acs.map((a) => ({ acId: a.id, text: a.text })),
         trs: f.reqs
           .filter((x) => x.type === 'TR')
           .map((t) => ({ trId: t.id, text: t.text, priority: t.priority })),
@@ -998,7 +1011,7 @@ async function main(): Promise<void> {
     const rcAdd = reconcileFeatures(splicedF.text, [
       echoFeature(fe0),
       echoFeature(fe1),
-      { feId: null, title: 'Lend out a shared drill', description: 'Manual add from the retry pass.', source: null, priority: 'could', acs: [], trs: [] },
+      { feId: null, title: 'Lend out a shared drill', description: 'Manual add from the retry pass.', source: null, priority: 'could', trs: [] },
     ]);
     check('reconcile add: unknown desired appends a new block', rcAdd.ops.added === 1 && rcAdd.ops.updated === 0 && rcAdd.ops.removed === 0);
     eq(
@@ -1063,7 +1076,7 @@ async function main(): Promise<void> {
 
     const rcUnknown = reconcileFeatures(splicedF.text, [
       echoFeature(fe0),
-      { feId: 'FE-99', title: 'Unknown id lands as an add', description: 'An id that matches no existing block cannot echo.', source: null, priority: 'could', acs: [], trs: [] },
+      { feId: 'FE-99', title: 'Unknown id lands as an add', description: 'An id that matches no existing block cannot echo.', source: null, priority: 'could', trs: [] },
     ]);
     check('reconcile unknown id: appends, never echoes', rcUnknown.ops.added === 1 && rcUnknown.ops.updated === 0 && rcUnknown.ops.removed === 1);
     check(
@@ -1082,6 +1095,85 @@ async function main(): Promise<void> {
     check(
       'reconcile garbled: silently skipped, byte-identical',
       rcGarbled.text === splicedF.text && rcGarbled.ops.added === 0 && rcGarbled.ops.updated === 0 && rcGarbled.ops.removed === 0,
+    );
+
+    // ── Decision 6r: feature blocks never carry an AC section ──
+    // A pre-6r generated block that still holds a legacy `## Acceptance
+    // Criteria` section is rewritten under the story-level model: the legacy
+    // heading drops, the origin=generated AC row + its meta drop (generated
+    // content the model now authors on user stories), and a MANUAL AC row —
+    // committed BA content — is preserved byte-stable inside the block.
+    const legacyAcBlock = [
+      '# Features',
+      '',
+      '### FE-50 — Legacy AC carrier',
+      '<!-- feature: priority=must status=draft owner=BA origin=generated -->',
+      '',
+      'Pre-6r generated block with a feature-level AC section.',
+      '',
+      '## Acceptance Criteria',
+      '',
+      '- AC-500 | met | Manual legacy AC row survives the rewrite.',
+      '<!-- AC-500: origin=manual -->',
+      '',
+      '- AC-501 | unmet | Generated legacy AC row drops.',
+      '<!-- AC-501: origin=generated -->',
+      '',
+      '- TR-500 | must | draft | BA | Legacy TR row.',
+      '<!-- TR-500: origin=generated -->',
+      '',
+    ].join('\n');
+    const rcLegacyAc = reconcileFeatures(legacyAcBlock, [
+      {
+        feId: 'FE-50',
+        title: 'Legacy AC carrier',
+        description: 'Pre-6r generated block with a feature-level AC section.',
+        source: null,
+        priority: 'must',
+        trs: [{ trId: 'TR-500', text: 'Legacy TR row.', priority: 'must' }],
+      },
+    ]);
+    check('6r rewrite: legacy AC heading drops', !/##\s+Acceptance Criteria/i.test(rcLegacyAc.text));
+    check('6r rewrite: generated AC row + meta drop', !rcLegacyAc.text.includes('AC-501'));
+    check(
+      '6r rewrite: manual AC row preserved byte-stable',
+      rcLegacyAc.text.includes('- AC-500 | met | Manual legacy AC row survives the rewrite.') &&
+        rcLegacyAc.text.includes('<!-- AC-500: origin=manual -->'),
+    );
+    check('6r rewrite: the block still parses with its TR', parseRequirements('', rcLegacyAc.text).features[0]?.reqs?.[0]?.id === 'TR-500');
+
+    // Story-level AC round-trip (Run 2 target shape): a generated user story
+    // in user-journeys.md carries its own `## Acceptance Criteria` section,
+    // and the story parser tolerates it — the AC lines are neither collected
+    // into story state nor disruptive, so a Run 2 story write-back can
+    // round-trip the block byte-stably.
+    const storyWithAcs = [
+      '# User journeys',
+      '',
+      '### US-01 — Track a borrowed tool return',
+      '<!-- story: priority=must status=draft owner=BA origin=generated -->',
+      '',
+      '**As a** lender, **I want to** see due-back dates, **so that** nothing slips.',
+      '',
+      '## Acceptance Criteria',
+      '',
+      '- AC-001 | unmet | The return view shows the due-back date for every active loan.',
+      '',
+      '- TR-001 | must | draft | BA | Persist a due-back date with each loan.',
+      '<!-- TR-001: origin=generated -->',
+      '',
+    ].join('\n');
+    const parsedStory = parseStories(storyWithAcs);
+    check(
+      '6r stories: generated story with its own AC section parses',
+      parsedStory.stories.length === 1 &&
+        parsedStory.stories[0]?.usId === 'US-01' &&
+        parsedStory.stories[0]?.origin === 'generated' &&
+        parsedStory.stories[0]?.reqs?.[0]?.id === 'TR-001',
+    );
+    check(
+      '6r stories: AC lines survive parse pass-through verbatim',
+      storyWithAcs.includes('- AC-001 | unmet | The return view shows the due-back date for every active loan.'),
     );
 
     const echoBr = (brId: string) => {
@@ -1272,11 +1364,6 @@ async function main(): Promise<void> {
       '<!-- feature: priority=must status=draft owner=BA origin=generated -->',
       '',
       'Synthetic generated feature block for the staleness walk.',
-      '',
-      '## Acceptance Criteria',
-      '',
-      '- AC-900 | met | Synthetic generated AC row.',
-      '<!-- AC-900: origin=generated -->',
       '',
       '- TR-900 | must | draft | BA | Synthetic generated TR row.',
       '<!-- TR-900: origin=generated -->',

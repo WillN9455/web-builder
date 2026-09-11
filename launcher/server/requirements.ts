@@ -1,12 +1,13 @@
 // Requirements tab — the feature-first API (requirements redesign slices 1–3,
 // design/requirements-redesign.md). Features (FE-NN) are the grouping
-// container: feature blocks in PRD/features.md carry acceptance criteria
-// (AC-NNN), technical requirements (TR-), and per-feature metadata (source
-// link, priority/status/owner); business requirements (BR-) live in PRD/prd.md
-// §8 and link to a feature via a `feature=FE-01` marker. Every mutation
-// writes back via surgical line splices: the file is never re-serialized, so
-// content outside the edited scope stays byte-identical after a save (AC-9,
-// verified by scripts/verify-requirements.ts).
+// container: feature blocks in PRD/features.md carry technical requirements
+// (TR-) and per-feature metadata (source link, priority/status/owner);
+// business requirements (BR-) live in PRD/prd.md §8 and link to a feature via
+// a `feature=FE-01` marker. Features carry no acceptance criteria (decision
+// 6r: ACs are authored on user stories at story generation, Run 2). Every
+// mutation writes back via surgical line splices: the file is never
+// re-serialized, so content outside the edited scope stays byte-identical
+// after a save (AC-9, verified by scripts/verify-requirements.ts).
 //
 // Security notes (framework shared/skills/security.md):
 // - The project is resolved by id-or-slug from the DB (shared with #18's
@@ -31,7 +32,6 @@ import {
   allowedTransitions,
   businessReqInsertIndex,
   collectExistingIds,
-  featureAcInsertIndex,
   featureReferencesId,
   featureReqInsertIndex,
   insertAfter,
@@ -41,17 +41,13 @@ import {
   nextFreeId,
   parseFeatures,
   parseRequirements,
-  renderAcRow,
   renderFeatureBlock,
   renderReqRow,
   spliceLine,
-  validateAcInput,
-  validateAcPatch,
   validateFeatureInput,
   validateFeaturePatch,
   validateReqInput,
   validateReqPatch,
-  type AcRow,
   type FeatureRow,
   type ParseResult,
   type ReqOwner,
@@ -67,20 +63,8 @@ import { atomicWritePrd, ensureFeaturesFile, prdFilePath } from './prd-fs.js';
 // is a lookup key, never a path).
 const REQ_ID_RE = /^(?:BR|TR)-\d{3}$/;
 const FE_ID_RE = /^FE-\d{2,}$/;
-const AC_ID_RE = /^AC-\d{3}$/;
 
 // ── Serialization (internal geometry never leaves the server) ──────────────
-
-function serializeAc(a: AcRow) {
-  return {
-    id: a.id,
-    status: a.status,
-    text: a.text,
-    // 'manual' = BA wrote it via the UI; 'generated' = an agent wrote it;
-    // null = legacy row, predates the marker.
-    origin: a.origin,
-  };
-}
 
 function serializeReq(r: ReqRow) {
   return {
@@ -108,7 +92,6 @@ function serializeFeature(f: FeatureRow) {
     status: f.status,
     owner: f.owner,
     origin: f.origin,
-    acs: f.acs.map(serializeAc),
     reqs: f.reqs.map(serializeReq),
   };
 }
@@ -139,8 +122,7 @@ function deleteMarker(note?: string): string {
 
 // Strike one row in place: `- TR-001 | …` → `- ~~TR-001 | …~~`, with the delete
 // marker on its own line directly after (the parsers treat a struck row as
-// soft-deleted and exclude it from the list). Works for requirement rows and
-// acceptance-criteria rows alike (both carry lineIndex + raw).
+// soft-deleted and exclude it from the list).
 function strikeRow<T extends { lineIndex: number; raw: string }>(
   lines: string[],
   row: T,
@@ -278,8 +260,8 @@ export function registerRequirementsRoutes(app: express.Express): void {
   });
 
   // POST /features — append a new FE-NN feature block (feature-first add flow;
-  // the `## Acceptance Criteria` section is always created empty inside the
-  // block, so the section anchor exists for AC inserts — decision 6).
+  // no AC section — decision 6r, ACs belong to user stories authored at story
+  // generation).
   app.post('/api/projects/:id/features', async (req, res) => {
     const row = getProjectRow(req.params.id);
     if (!row) {
@@ -303,7 +285,7 @@ export function registerRequirementsRoutes(app: express.Express): void {
     const feId = nextFreeId(collectExistingIds('', '', text).fe, 'FE');
     let lines = text.split('\n');
     if (lines.length === 0 || lines[lines.length - 1].trim() !== '') lines.push('');
-    lines.push(...renderFeatureBlock({ feId, ...validation.value, acs: [], trs: [] }).split('\n'));
+    lines.push(...renderFeatureBlock({ feId, ...validation.value, trs: [] }).split('\n'));
     try {
       await atomicWritePrd(featuresPath, lines.join('\n'));
     } catch {
@@ -323,12 +305,10 @@ export function registerRequirementsRoutes(app: express.Express): void {
         // QA-2: every POST stamps origin=manual — the BA is the only writer
         // today; the future BA auto-draft job will stamp origin=generated.
         origin: 'manual',
-        acs: [],
         reqs: [],
         headingLine: -1,
         metaLine: null,
         sourceLine: null,
-        acHeadingLine: null,
         bodyLine: null,
         blockEnd: -1,
         deleted: false,
@@ -495,7 +475,7 @@ export function registerRequirementsRoutes(app: express.Express): void {
     const featOps: { after: number; lines: string[] }[] = [
       // Feature-level delete marker as the block's first content line — the
       // parser treats a leading delete comment as a soft-deleted feature and
-      // excludes the whole block (AC rows included) from the list.
+      // excludes the whole block from the list.
       { after: feature.headingLine, lines: [marker] },
     ];
     let prdChanged = false;
@@ -653,169 +633,6 @@ export function registerRequirementsRoutes(app: express.Express): void {
         origin: 'manual' as const,
       },
     });
-  });
-
-  // POST /features/:feId/acceptance-criteria — add an AC row to the feature's
-  // `## Acceptance Criteria` section (decision 6). When the block has no AC
-  // section yet, the heading and the first AC row are created together.
-  app.post('/api/projects/:id/features/:feId/acceptance-criteria', async (req, res) => {
-    const row = getProjectRow(req.params.id);
-    if (!row) {
-      res.status(404).json({ error: 'Not found' });
-      return;
-    }
-    if (!FE_ID_RE.test(req.params.feId)) {
-      res.status(400).json({ error: 'Invalid feature id' });
-      return;
-    }
-    const validation = validateAcInput(req.body);
-    if (!validation.ok) {
-      res.status(422).json({ errors: validation.errors });
-      return;
-    }
-    const value = validation.value;
-    const dir = prdDir(row);
-    const prdPath = prdFilePath(dir, 'prd.md');
-    const featuresPath = prdFilePath(dir, 'features.md');
-    await ensureFeaturesFile(featuresPath);
-    const { text } = readPrdFile(featuresPath);
-    const prdForParse = fs.existsSync(prdPath) ? readPrdFile(prdPath).text : '';
-    const feature = parseRequirements(prdForParse, text).features.find((f) => f.feId === req.params.feId);
-    if (!feature) {
-      res.status(404).json({ error: `Unknown feature ${req.params.feId}` });
-      return;
-    }
-    // AC ids allocate globally across the file (every block's AC- rows).
-    const id = nextFreeId(collectExistingIds('', '', text).ac, 'AC');
-    const newRow = renderAcRow(id, value.status, value.text);
-    const acMeta = `<!-- ${id}: origin=manual -->`;
-    const lines = text.split('\n');
-    const idx = featureAcInsertIndex(feature, lines);
-    // If the block never got an AC heading, create the section + first row
-    // together (insertAfter supplies the blank separator under the body).
-    const fresh = feature.acHeadingLine === null ? ['## Acceptance Criteria', newRow, acMeta] : [newRow, acMeta];
-    const out = insertAfter(lines, idx, fresh);
-    try {
-      await atomicWritePrd(featuresPath, out.join('\n'));
-    } catch {
-      res.status(500).json({ error: 'Could not write PRD file' });
-      return;
-    }
-    res.status(201).json({
-      ok: true,
-      ac: { id, status: value.status, text: value.text, origin: 'manual' },
-    });
-  });
-
-  // PATCH /acceptance-criteria/:acId — text / met-unmet status.
-  app.patch('/api/projects/:id/acceptance-criteria/:acId', async (req, res) => {
-    const row = getProjectRow(req.params.id);
-    if (!row) {
-      res.status(404).json({ error: 'Not found' });
-      return;
-    }
-    if (!AC_ID_RE.test(req.params.acId)) {
-      res.status(400).json({ error: 'Invalid acceptance-criteria id' });
-      return;
-    }
-    const validation = validateAcPatch(req.body);
-    if (!validation.ok) {
-      res.status(422).json({ errors: validation.errors });
-      return;
-    }
-    const dir = prdDir(row);
-    const prdPath = prdFilePath(dir, 'prd.md');
-    const featuresPath = prdFilePath(dir, 'features.md');
-    await ensureFeaturesFile(featuresPath);
-    const { text } = readPrdFile(featuresPath);
-    const prdForParse = fs.existsSync(prdPath) ? readPrdFile(prdPath).text : '';
-    const parsed = parseRequirements(prdForParse, text);
-    let ac: AcRow | null = null;
-    for (const f of parsed.features) {
-      const found = f.acs.find((a) => a.id === req.params.acId);
-      if (found) {
-        ac = found;
-        break;
-      }
-    }
-    if (!ac) {
-      res.status(404).json({ error: `Unknown acceptance criterion ${req.params.acId}` });
-      return;
-    }
-    const value = validation.value;
-    const status = value.status ?? ac.status;
-    if (!status) {
-      res.status(422).json({
-        errors: { status: 'Required — this legacy row has no status; set one to convert it' },
-      });
-      return;
-    }
-    const updatedText = value.text ?? ac.text;
-    const updated = renderAcRow(ac.id, status, updatedText);
-    let lines = spliceLine(text.split('\n'), ac.lineIndex, updated);
-    // QA-2: editing a legacy row (origin=null) stamps origin=manual so the
-    // dot starts rendering. The marker is glued to the row.
-    if (ac.origin === null) {
-      const meta = `<!-- ${ac.id}: origin=manual -->`;
-      const insertAt = ac.lineIndex + 1;
-      const next = lines[insertAt];
-      if (next === '' || next === undefined) {
-        lines = spliceLine(lines, insertAt, meta);
-      } else {
-        lines.splice(insertAt, 0, meta);
-      }
-    }
-    try {
-      await atomicWritePrd(featuresPath, lines.join('\n'));
-    } catch {
-      res.status(500).json({ error: 'Could not write PRD file' });
-      return;
-    }
-    res.json({
-      ok: true,
-      ac: { id: ac.id, status, text: updatedText, origin: ac.origin ?? 'manual' },
-    });
-  });
-
-  // DELETE /acceptance-criteria/:acId — soft-delete: strike the row + marker.
-  app.delete('/api/projects/:id/acceptance-criteria/:acId', async (req, res) => {
-    const row = getProjectRow(req.params.id);
-    if (!row) {
-      res.status(404).json({ error: 'Not found' });
-      return;
-    }
-    if (!AC_ID_RE.test(req.params.acId)) {
-      res.status(400).json({ error: 'Invalid acceptance-criteria id' });
-      return;
-    }
-    const dir = prdDir(row);
-    const prdPath = prdFilePath(dir, 'prd.md');
-    const featuresPath = prdFilePath(dir, 'features.md');
-    await ensureFeaturesFile(featuresPath);
-    const { text } = readPrdFile(featuresPath);
-    const prdForParse = fs.existsSync(prdPath) ? readPrdFile(prdPath).text : '';
-    const parsed = parseRequirements(prdForParse, text);
-    let ac: AcRow | null = null;
-    for (const f of parsed.features) {
-      const found = f.acs.find((a) => a.id === req.params.acId);
-      if (found) {
-        ac = found;
-        break;
-      }
-    }
-    if (!ac) {
-      res.status(404).json({ error: `Unknown acceptance criterion ${req.params.acId}` });
-      return;
-    }
-    const struck = strikeRow(text.split('\n'), ac);
-    const out = insertAfter(struck.lines, struck.markerAfter, [deleteMarker()]);
-    try {
-      await atomicWritePrd(featuresPath, out.join('\n'));
-    } catch {
-      res.status(500).json({ error: 'Could not write PRD file' });
-      return;
-    }
-    res.json({ ok: true, id: ac.id });
   });
 
   // PATCH /requirements/:reqId — text / priority / owner / status (+ type as

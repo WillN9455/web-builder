@@ -9,10 +9,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useOutletContext, useParams } from 'react-router-dom';
 import {
-  createAc,
   createFeature,
   createRequirement,
-  deleteAc,
   deleteFeature,
   deleteRequirement,
   fetchRequirements,
@@ -20,11 +18,9 @@ import {
   triggerRequirementsGeneration,
   RequirementsDeleteGuardError,
   RequirementsValidationError,
-  updateAc,
   updateFeature,
   updateRequirement,
   updateRequirementStatus,
-  type AcItem,
   type RequirementsResponse,
   type RequirementsGenerationStatus,
   type RequirementItem,
@@ -32,11 +28,9 @@ import {
   type FeaturePatch,
   type ReqStatus,
 } from '../../lib/api';
-import { nextFreeId } from '../../../server/requirements-model';
 import type { ProjectOutletContext } from '../ProjectDetailScreen';
 import { ConfirmDialog } from '../ConfirmDialog';
 import { InlineForm, type FormValues, type FeatureFormValues, type ReqFormValues } from './InlineForm';
-import { AcForm, type AcFormValues } from './AcForm';
 import { FilterBar } from './FilterBar';
 import { FeatureGroup } from './FeatureGroup';
 import { ReqRow } from './ReqRow';
@@ -66,11 +60,11 @@ function truncate(s: string, max: number): string {
 
 // A delete target describes what the modal is about to strike. The trash
 // icons on rows/features open the modal directly (refinement batch item 2.9).
-// Unlike stories, features strike cleanly (their reqs/ACs live inside the
-// block), so no linked-referencer escape hatch is needed here.
+// Features strike cleanly (their linked reqs live inside the block), so no
+// linked-referencer escape hatch is needed here. (Decision 6r: no AC delete
+// targets — features carry no acceptance criteria.)
 type DeleteTarget =
   | { kind: 'feature'; feId: string; trigger: HTMLElement | null; label: string; copy: string }
-  | { kind: 'ac'; acId: string; trigger: HTMLElement | null; label: string; copy: string }
   | {
       kind: 'req';
       reqId: string;
@@ -100,8 +94,6 @@ const DEFAULT_REQ_VALUES: ReqFormValues = {
   owner: 'BA',
 };
 
-const DEFAULT_AC_VALUES: AcFormValues = { text: '', status: 'unmet' };
-
 export function RequirementsScreen() {
   const { id } = useParams();
   const { project, onRequirementsCount } = useOutletContext<ProjectOutletContext>();
@@ -114,7 +106,7 @@ export function RequirementsScreen() {
   const [filter, setFilter] = useState<FilterState>(EMPTY_FILTER);
   const [form, setForm] = useState<FormState | null>(null);
   // Live values of the open form (drives the next-ID preview's type segment).
-  const [formValues, setFormValues] = useState<(FormValues | AcFormValues) | null>(null);
+  const [formValues, setFormValues] = useState<FormValues | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -141,8 +133,7 @@ export function RequirementsScreen() {
   const noticeTimer = useRef<number | null>(null);
   const [featureStatusPending, setFeatureStatusPending] = useState<string | null>(null);
   const [reqStatusPending, setReqStatusPending] = useState<string | null>(null);
-  const [acPendingId, setAcPendingId] = useState<string | null>(null);
-  // In-flight BA Agent auto‑generation of features / ACs / BR / TR.
+  // In-flight BA Agent auto‑generation of features / BR / TR.
   const [reqGenStatus, setReqGenStatus] = useState<RequirementsGenerationStatus | null>(null);
 
   useEffect(() => {
@@ -180,7 +171,7 @@ export function RequirementsScreen() {
   }, [idOrSlug]);
 
   // When a generation run finishes, the rows behind this screen changed on
-  // disk — refetch so the new features/ACs/BR/TR appear without a remount.
+  // disk — refetch so the new features/BR/TR appear without a remount.
   // Only the generating → done transition refetches; an initial read that is
   // already 'done' is covered by the mount-time load().
   const prevGenStatus = useRef<string | null>(null);
@@ -335,11 +326,6 @@ export function RequirementsScreen() {
     owner: req.owner ?? 'BA',
   });
 
-  const acValuesFrom = (ac: AcItem): AcFormValues => ({
-    text: ac.text,
-    status: ac.status ?? 'unmet',
-  });
-
   const handleError = useCallback(
     (e: unknown) => {
       if (e instanceof RequirementsValidationError) {
@@ -352,7 +338,7 @@ export function RequirementsScreen() {
   );
 
   const submitForm = useCallback(
-    async (values: FormValues | AcFormValues) => {
+    async (values: FormValues) => {
       if (!form || !idOrSlug) return;
       setSubmitting(true);
       try {
@@ -378,7 +364,7 @@ export function RequirementsScreen() {
               data?.features.find((f) => f.feId === form.feId) ?? {
                 feId: form.feId, title: '', description: '', source: null,
                 priority: 'must', status: 'draft', owner: 'BA', origin: 'manual',
-                acs: [], reqs: [],
+                reqs: [],
               } as FeatureItem,
             );
             const patch: FeaturePatch = {};
@@ -433,25 +419,6 @@ export function RequirementsScreen() {
             await updateRequirement(idOrSlug, form.reqId, patch, form.feId);
             showNotice({ kind: 'success', text: `${form.reqId} updated` });
           }
-        } else {
-          const v = values as AcFormValues;
-          if (form.mode === 'add') {
-            await createAc(idOrSlug, form.feId, { text: v.text, status: v.status });
-            showNotice({ kind: 'success', text: `Criterion added to ${form.feId}` });
-          } else {
-            // QA-8 for ACs: only changed fields. (AC ids are unique across
-            // the file, so no feId scoping is needed on the PATCH path.)
-            const initial = acValuesFrom(
-              data?.features.flatMap((f) => f.acs).find((a) => a.id === form.acId) ?? {
-                id: form.acId, text: '', status: 'unmet', origin: null,
-              } as AcItem,
-            );
-            const patch: Partial<AcFormValues> = {};
-            if (v.text !== initial.text) patch.text = v.text;
-            if (v.status !== initial.status) patch.status = v.status;
-            await updateAc(idOrSlug, form.acId, patch);
-            showNotice({ kind: 'success', text: `${form.acId} updated` });
-          }
         }
         closeForm();
         await load();
@@ -465,8 +432,8 @@ export function RequirementsScreen() {
   );
 
   // Trash icons open the modal directly (refinement batch item 2.9). The
-  // helpers below build the right DeleteTarget for a feature, an AC, or a
-  // req. The modal itself owns the focus trap and busy state; we just hold
+  // helpers below build the right DeleteTarget for a feature or a req. The
+  // modal itself owns the focus trap and busy state; we just hold
   // the target and a ref to the trigger so focus can return on close.
   const openDeleteForFeature = useCallback((feature: FeatureItem) => {
     const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -478,20 +445,6 @@ export function RequirementsScreen() {
       trigger,
       label: `Delete ${feature.feId}${summary}`,
       copy: `Deleting ${feature.feId} strikes the block and its rows in features.md — the ID is never reused.`,
-    });
-    setDeleteGuardMsg(null);
-  }, []);
-
-  const openDeleteForAc = useCallback((ac: AcItem) => {
-    const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const summary = ac.text ? ` — ${truncate(ac.text, 60)}` : '';
-    deleteTriggerRef.current = trigger;
-    setDeleteTarget({
-      kind: 'ac',
-      acId: ac.id,
-      trigger,
-      label: `Delete ${ac.id}${summary}`,
-      copy: `Deleting ${ac.id} strikes the row in features.md — the marker keeps a 30-day recovery seam.`,
     });
     setDeleteGuardMsg(null);
   }, []);
@@ -533,9 +486,6 @@ export function RequirementsScreen() {
       if (deleteTarget.kind === 'feature') {
         await deleteFeature(idOrSlug, deleteTarget.feId);
         showNotice({ kind: 'success', text: `${deleteTarget.feId} deleted (struck in features.md)` });
-      } else if (deleteTarget.kind === 'ac') {
-        await deleteAc(idOrSlug, deleteTarget.acId);
-        showNotice({ kind: 'success', text: `${deleteTarget.acId} deleted (struck in features.md)` });
       } else {
         // QA-10: pass feId (may be null for unassigned BRs) so the server
         // scopes locateReq to the right row once duplicate ids exist.
@@ -623,37 +573,6 @@ export function RequirementsScreen() {
     [idOrSlug, reloadQuiet, showNotice],
   );
 
-  const changeAcStatus = useCallback(
-    async (ac: AcItem, next: 'met' | 'unmet') => {
-      if (!idOrSlug) return;
-      setAcPendingId(ac.id);
-      setData((d) =>
-        d
-          ? {
-              ...d,
-              features: d.features.map((f) => ({
-                ...f,
-                acs: f.acs.map((a) => (a.id === ac.id ? { ...a, status: next } : a)),
-              })),
-            }
-          : d,
-      );
-      try {
-        await updateAc(idOrSlug, ac.id, { status: next });
-        await reloadQuiet();
-      } catch (e) {
-        await reloadQuiet();
-        showNotice({
-          kind: 'error',
-          text: e instanceof Error ? e.message : `Could not update ${ac.id} status`,
-        });
-      } finally {
-        setAcPendingId(null);
-      }
-    },
-    [idOrSlug, reloadQuiet, showNotice],
-  );
-
   // ── Derived render data ────────────────────────────────────────────────────
 
   const formIdLine = useMemo(() => {
@@ -668,25 +587,22 @@ export function RequirementsScreen() {
         const type = (formValues as ReqFormValues | null)?.type ?? 'TR';
         return `new requirement · auto-assigned as ${nextReqIdPreview(type, data, form.feId)}`;
       }
-      const acs = data.features.find((f) => f.feId === form.feId)?.acs ?? [];
-      return `new criterion · auto-assigned as ${nextFreeId(acs.map((a) => a.id), 'AC')}`;
+      // (Decision 6r: no add-AC form — features carry no acceptance criteria.)
     }
     if (form.mode === 'edit') {
       if (form.kind === 'feature') return form.feId;
-      if (form.kind === 'req') return form.reqId;
-      return form.acId;
+      return form.reqId;
     }
     return '';
   }, [form, data, formValues]);
 
   // Initial values are read at mount (the forms capture them once); the key
   // below guarantees a remount whenever the form target changes.
-  const formInitial: FormValues | AcFormValues | null = useMemo(() => {
+  const formInitial: FormValues | null = useMemo(() => {
     if (!form || !data) return null;
     if (form.mode === 'add') {
       if (form.kind === 'feature') return DEFAULT_FEATURE_VALUES;
-      if (form.kind === 'req') return { ...DEFAULT_REQ_VALUES, type: 'TR' };
-      return DEFAULT_AC_VALUES;
+      return { ...DEFAULT_REQ_VALUES, type: 'TR' };
     }
     if (form.kind === 'feature') {
       const feature = data.features.find((f) => f.feId === form.feId);
@@ -706,8 +622,7 @@ export function RequirementsScreen() {
       const req = feature?.reqs.find((r) => r.id === form.reqId);
       return req ? reqValuesFrom(req) : null;
     }
-    const ac = data.features.flatMap((f) => f.acs).find((a) => a.id === form.acId);
-    return ac ? acValuesFrom(ac) : null;
+    return null;
   }, [form, data]);
 
   // ── States ─────────────────────────────────────────────────────────────────
@@ -769,17 +684,16 @@ export function RequirementsScreen() {
 
   // ── The form slot (refinement batch items 2.7 + 2.8) ──
   // Slots: 'top' = the add-feature form under the add bar; a feature's feId
-  // = edit-feature / add-req / add-ac form under that feature's head; a
-  // reqId = edit-req form rendered directly under that specific ReqRow; an
-  // acId = edit-ac form rendered directly under that specific AC row.
+  // = edit-feature / add-req form under that feature's head; a reqId =
+  // edit-req form rendered directly under that specific ReqRow. (Decision
+  // 6r: no add-ac / edit-ac slots — features carry no acceptance criteria.)
 
   const renderForm = (slot: 'top' | string) => {
     if (!form || !formInitial) return null;
     // Slot match (refinement batch items 2.7 + 2.8 + QA-1):
     //  - add-feature → top bar only
-    //  - edit-feature / add-req / add-ac → the feature's head slot
+    //  - edit-feature / add-req → the feature's head slot
     //  - edit-req → the per-row slot (carries the req id)
-    //  - edit-ac → the per-row slot (carries the ac id)
     const belongsHere =
       form.mode === 'add' && form.kind === 'feature'
         ? slot === 'top'
@@ -787,25 +701,8 @@ export function RequirementsScreen() {
           ? slot === form.feId
           : form.mode === 'add'
             ? slot === form.feId
-            : form.kind === 'req'
-              ? slot === form.reqId
-              : slot === form.acId;
+            : slot === form.reqId;
     if (!belongsHere) return null;
-    if (form.kind === 'ac') {
-      return (
-        <AcForm
-          key={`${form.kind}-${form.mode}-${slot}-${form.mode === 'edit' ? form.acId : 'new'}`}
-          formId={formIdLine}
-          initial={formInitial as AcFormValues}
-          errors={formErrors}
-          submitting={submitting}
-          onDirtyChange={setDirty}
-          onValuesChange={setFormValues}
-          onSubmit={(v) => void submitForm(v)}
-          onCancel={closeForm}
-        />
-      );
-    }
     return (
       <InlineForm
         key={`${form.kind}-${form.mode}-${slot}-${form.kind === 'req' && form.mode === 'edit' ? form.reqId : ''}`}
@@ -885,8 +782,8 @@ export function RequirementsScreen() {
           <b>BA Agent generating features and requirements</b> —{' '}
           {reqGenStatus.result && reqGenStatus.result.featuresGenerated > 0 ? (
             <>
-              wrote {reqGenStatus.result.featuresGenerated} features ({reqGenStatus.result.acsGenerated}{' '}
-              acceptance criteria) · now generating {reqGenStatus.currentSection ?? 'requirements'} —{' '}
+              wrote {reqGenStatus.result.featuresGenerated} features · now generating{' '}
+              {reqGenStatus.currentSection ?? 'requirements'} —{' '}
               {reqGenStatus.progress.generated} of {reqGenStatus.progress.total} steps done.
             </>
           ) : reqGenStatus.sectionStartedAt ? (
@@ -960,7 +857,7 @@ export function RequirementsScreen() {
                   <h2>No requirements yet</h2>
                   <p>
                     Start with a <b>feature</b> — once one exists you can add BR / TR
-                    requirements and acceptance criteria to it from inside that feature's header.
+                    requirements to it from inside that feature's header.
                   </p>
                   <button type="button" className="btn btn-primary" aria-label="Add your first feature" onClick={() => openForm({ mode: 'add', kind: 'feature' })}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" aria-hidden="true"><path d="M12 5v14 M5 12h14"/></svg>
@@ -977,8 +874,7 @@ export function RequirementsScreen() {
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v8 M8 12h8"/></svg>
                     <span>
                       <b>BA controls.</b> Start with a <b>feature</b> — once a feature exists you
-                      can add BR / TR requirements and acceptance criteria to it from inside
-                      that feature's header.
+                      can add BR / TR requirements to it from inside that feature's header.
                     </span>
                   </div>
                   <button type="button" className="btn btn-primary" aria-label="Add a new feature" onClick={() => openForm({ mode: 'add', kind: 'feature' })}>
@@ -1042,27 +938,17 @@ export function RequirementsScreen() {
                         ? renderForm(reqId)
                         : null
                     }
-                    editFormForAc={(acId) =>
-                      form && form.kind === 'ac' && form.mode === 'edit' && form.feId === feature.feId
-                        ? renderForm(acId)
-                        : null
-                    }
                     flash={false}
                     statusPendingFeature={featureStatusPending === feature.feId}
                     statusPendingReqId={reqStatusPending}
-                    acPendingId={acPendingId}
                     onEditFeature={() => openForm({ mode: 'edit', kind: 'feature', feId: feature.feId })}
                     onAddReq={() => openForm({ mode: 'add', kind: 'req', feId: feature.feId })}
-                    onAddAc={() => openForm({ mode: 'add', kind: 'ac', feId: feature.feId })}
                     // Delete is a direct modal (item 2.9), not a two-step form strip.
                     onDeleteFeature={() => openDeleteForFeature(feature)}
                     onFeatureStatus={(next) => void changeFeatureStatus(feature, next)}
                     onReqEdit={(req) => openForm({ mode: 'edit', kind: 'req', reqId: req.id, feId: feature.feId })}
                     onReqDelete={(req) => openDeleteForReq(req, req.featureId)}
                     onReqStatus={(req, next) => void changeReqStatus(req, next)}
-                    onAcEdit={(ac) => openForm({ mode: 'edit', kind: 'ac', feId: feature.feId, acId: ac.id })}
-                    onAcDelete={(ac) => openDeleteForAc(ac)}
-                    onAcStatus={(ac, next) => void changeAcStatus(ac, next)}
                   />
                 ))}
 

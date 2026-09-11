@@ -603,7 +603,7 @@ export type RequirementsGenerationStatus = {
   error?: string;
   // Row counts — while generating these are "what has landed so far"; the
   // banner reports live counts, and the done banner reports final rows.
-  result?: { featuresGenerated: number; brsGenerated: number; trsGenerated: number; acsGenerated: number };
+  result?: { featuresGenerated: number; brsGenerated: number; trsGenerated: number };
   // Fix #3 — how this/last run ran: 'reconcile' diffs against existing
   // origin=generated rows (echo = keep/update, omitted = removed). Absent on
   // pre-reconcile states — treated as 'generate'.
@@ -643,7 +643,6 @@ export async function triggerRequirementsGeneration(
 // ── /api/projects/:id/requirements (Requirements tab, screen 15) ───────────
 
 import type {
-  AcStatus,
   ReqOwner,
   ReqPriority,
   ReqStatus,
@@ -656,21 +655,11 @@ import type {
 // consumed here; the serialized response shapes are re-declared below (the
 // wire format strips the parser's internal geometry).
 export type {
-  AcStatus,
   ReqOwner,
   ReqPriority,
   ReqStatus,
   ReqType,
 } from '../../server/requirements-model';
-
-export type AcItem = {
-  id: string; // AC-001
-  // Legacy rows (origin=null meta) can parse without a met/unmet segment;
-  // the PATCH handler refuses to touch them until a status is set.
-  status: AcStatus | null;
-  text: string;
-  origin: 'manual' | 'generated' | null;
-};
 
 export type RequirementItem = {
   id: string; // BR-001 / TR-001
@@ -701,7 +690,6 @@ export type FeatureItem = {
   // QA-2: features carry their own origin tag (manual vs generated).
   // null on legacy blocks; the UI renders null as manual.
   origin: 'manual' | 'generated' | null;
-  acs: AcItem[];
   reqs: RequirementItem[];
 };
 
@@ -727,13 +715,6 @@ export type FeatureInput = {
 };
 
 export type FeaturePatch = Partial<FeatureInput>;
-
-export type AcInput = {
-  text: string;
-  status: AcStatus;
-};
-
-export type AcPatch = Partial<AcInput>;
 
 export type RequirementInput = {
   type: ReqType;
@@ -853,47 +834,6 @@ export async function createRequirement(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
     },
-  );
-}
-
-export type CreateAcResponse = { ok: true; ac: AcItem };
-
-export async function createAc(
-  idOrSlug: string,
-  feId: string,
-  input: AcInput,
-): Promise<CreateAcResponse> {
-  return reqFetch(
-    `/api/projects/${encodeURIComponent(idOrSlug)}/features/${encodeURIComponent(feId)}/acceptance-criteria`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input),
-    },
-  );
-}
-
-export type UpdateAcResponse = { ok: true; ac: AcItem };
-
-export async function updateAc(
-  idOrSlug: string,
-  acId: string,
-  patch: AcPatch,
-): Promise<UpdateAcResponse> {
-  return reqFetch(
-    `/api/projects/${encodeURIComponent(idOrSlug)}/acceptance-criteria/${encodeURIComponent(acId)}`,
-    {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(patch),
-    },
-  );
-}
-
-export async function deleteAc(idOrSlug: string, acId: string): Promise<{ ok: true; id: string }> {
-  return reqFetch(
-    `/api/projects/${encodeURIComponent(idOrSlug)}/acceptance-criteria/${encodeURIComponent(acId)}`,
-    { method: 'DELETE' },
   );
 }
 

@@ -1,7 +1,7 @@
 // Requirements tab — the data model behind `PRD/prd.md` §8 (business reqs),
-// `PRD/features.md` (feature blocks with acceptance criteria + technical
-// reqs), and the legacy story blocks in `PRD/user-journeys.md` (migrated to
-// features by `migrateStoriesToFeatures`).
+// `PRD/features.md` (feature blocks with technical reqs), and the legacy
+// story blocks in `PRD/user-journeys.md` (migrated to features by
+// `migrateStoriesToFeatures`).
 //
 // This module is PURE: no fs, no db, no express. The grammar lives here so
 // both the parser and the write-back splices share one implementation, and so
@@ -9,16 +9,14 @@
 // the client components import the same state machine so the status dropdown
 // can never drift from the server's machine (one grammar, two consumers).
 //
-// Grammar (requirements redesign, design/requirements-redesign.md §3-§4):
+// Grammar (requirements redesign §3-§4; decision 6r — acceptance criteria
+// belong to user stories, authored at story generation, never to features):
 //
 //   ### FE-01 — List an item for lending
 //   <!-- feature: priority=must status=approved owner=BA origin=manual -->
 //   <!-- source: user-journeys.md §3 -->
 //   Household owners can list an item for lending so that neighbors can borrow it.
 //
-//   ## Acceptance Criteria
-//   - AC-001 | met | The list form persists the listing with photo + condition
-//   <!-- AC-001: origin=manual -->
 //   - TR-001 | should | draft | DEV | Persist listing with photo + condition
 //   <!-- TR-001: origin=manual -->
 //
@@ -34,6 +32,10 @@
 //   Struck-through (`~~…~~`) rows with a delete comment parse as soft-deleted
 //   and are excluded from the list (the row stays on disk for the 30-day
 //   recovery seam — no purge job exists, plan §2).
+// - Legacy `## Acceptance Criteria` sections inside feature blocks (decision
+//   6, pre-6r) pass through byte-stable: the parser counts them as committed
+//   content (freezing the block's delete-marker position) but collects no
+//   rows — ACs belong to stories, not features.
 
 // ── Canonical vocabularies (spec STATE / VALID sections — 8 statuses) ──────
 
@@ -57,8 +59,9 @@ export type ReqOwner = (typeof REQ_OWNERS)[number];
 
 export type ReqType = 'BR' | 'TR';
 
-// Acceptance-criteria statuses (feature-level, requirements redesign §4).
-// Deliberately NOT the 8-status machine — an AC is either met or unmet.
+// Acceptance-criteria statuses (story-level, requirements redesign decision
+// 6r). Deliberately NOT the 8-status machine — an AC is either met or unmet.
+// Story-level only: features carry no ACs (Run 2 authors them on stories).
 export const AC_STATUSES = ['met', 'unmet'] as const;
 export type AcStatus = (typeof AC_STATUSES)[number];
 
@@ -154,8 +157,10 @@ export type ReqRow = {
   raw: string;
 };
 
-// One acceptance-criteria row inside a feature block (requirements redesign
-// §4). `lineIndex` points at the row's raw line in features.md.
+// One acceptance-criteria row inside a user-story block (requirements
+// redesign decision 6r — authored at story generation, Run 2). Not parsed
+// from feature blocks: features carry no ACs. `lineIndex` points at the
+// row's raw line in user-journeys.md.
 export type AcRow = {
   id: string; // AC-001
   status: AcStatus | null;
@@ -176,13 +181,11 @@ export type FeatureRow = {
   // Origin tag (QA-2): manual = BA wrote the feature; generated = an agent
   // wrote it; null = legacy block predating the meta-comment extension.
   origin: 'manual' | 'generated' | null;
-  acs: AcRow[];
   reqs: ReqRow[]; // TR- rows + linked BR- rows
   // Block geometry in features.md (0-based line indexes):
   headingLine: number; // the `### FE-NN …` heading
   metaLine: number | null; // the `<!-- feature: … -->` comment, when present
   sourceLine: number | null; // the `<!-- source: … -->` comment, when present
-  acHeadingLine: number | null; // the `## Acceptance Criteria` heading
   bodyLine: number | null; // the description paragraph, when present
   blockEnd: number; // exclusive — first line after the block
   deleted: boolean; // soft-deleted (excluded from the list)
@@ -233,6 +236,9 @@ const FE_HEADING_RE = /^###\s+(FE-\d{2,})\s*[—–-]\s*(.+)$/;
 const FE_META_RE = /^<!--\s*feature:\s*(.*?)\s*-->$/;
 const FE_DELETED_RE = /^<!--\s*deleted\s+/i;
 const SOURCE_META_RE = /^<!--\s*source:\s*(.*?)\s*-->$/;
+// Legacy AC rows (decision 6, pre-6r feature blocks). The parser keeps these
+// regexes only for pass-through + content-freeze semantics — no AcRow is
+// collected from feature blocks (decision 6r: ACs belong to stories).
 const AC_SECTION_RE = /^##\s+Acceptance Criteria\s*$/i;
 const AC_ROW_RE = /^[-*+]\s+(AC-\d{3})\s*(?:\|(.*))?$/;
 const AC_DELETED_RE = /^[-*+]\s*~~\s*(AC-\d{3})[\s\S]*~~\s*$/;
@@ -263,22 +269,6 @@ function parseRowSegments(segs: string[]): Pick<ReqRow, 'priority' | 'status' | 
     return { priority, status, owner, text: '' };
   }
   return { priority: null, status: null, owner: null, text: textOf(segs) };
-}
-
-// AC rows carry `status | text` (met/unmet), not the priority|status|owner
-// triple of BR/TR rows. A row with no recognizable status degrades to a
-// status-less row (`—` default) rather than being dropped.
-function parseAcRow(segs: string[]): { status: AcStatus | null; text: string } {
-  const textOf = (parts: string[]) => parts.join('|').trim();
-  if (segs.length >= 2) {
-    const [st] = segs;
-    const status = isAcStatus(st) ? st : null;
-    const text = textOf(segs.slice(1));
-    if (text) return { status, text };
-    if (!status) return { status: null, text: textOf(segs) };
-    return { status, text: '' };
-  }
-  return { status: null, text: textOf(segs) };
 }
 
 // `priority=must status=approved owner=BA origin=manual` inside the feature
@@ -336,9 +326,6 @@ const BR_META_RE = /^<!--\s*(BR-\d{3}):\s*(.*?)\s*-->$/;
 // origin=generated). Pairs one-to-one with BR_META_RE — same grammar,
 // different prefix.
 const TR_META_RE = /^<!--\s*(TR-\d{3}):\s*(.*?)\s*-->$/;
-
-// Same shape for AC rows inside a feature block.
-const AC_META_RE = /^<!--\s*(AC-\d{3}):\s*(.*?)\s*-->$/;
 
 // Split a `<!-- BR-NNN: k=v, k=v -->` body into key/value pairs. Unknown keys
 // are ignored silently so this stays forward-compatible with new markers.
@@ -429,7 +416,10 @@ export function parseBusinessReqs(prd: string): { rows: ReqRow[]; parseError: st
   return { rows, parseError: null };
 }
 
-// Parse features.md into feature blocks with their AC- and TR- rows.
+// Parse features.md into feature blocks with their TR- rows. Features carry
+// no ACs (decision 6r — ACs belong to user stories, authored at story
+// generation). Legacy `## Acceptance Criteria` sections pass through
+// byte-stable: counted as committed content but no rows are collected.
 export function parseFeatures(features: string): { features: FeatureRow[]; parseError: string | null } {
   const lines = features.split('\n');
   const out: FeatureRow[] = [];
@@ -446,12 +436,10 @@ export function parseFeatures(features: string): { features: FeatureRow[]; parse
       status: null,
       owner: null,
       origin: null,
-      acs: [],
       reqs: [],
       headingLine: start,
       metaLine: null,
       sourceLine: null,
-      acHeadingLine: null,
       bodyLine: null,
       blockEnd: lines.length,
       deleted: false,
@@ -463,7 +451,6 @@ export function parseFeatures(features: string): { features: FeatureRow[]; parse
     // heading; the DELETE-requirements endpoint writes its marker directly
     // after a struck row, which is NOT a feature delete.
     let seenFirstContent = false;
-    let inAcSection = false;
     for (let i = start + 1; i < lines.length; i++) {
       const line = lines[i];
       if (/^###\s+FE-/.test(line.trim())) {
@@ -487,86 +474,52 @@ export function parseFeatures(features: string): { features: FeatureRow[]; parse
         feature.deleted = true;
         continue;
       }
-      if (AC_SECTION_RE.test(trimmed)) {
-        feature.acHeadingLine = i;
-        inAcSection = true;
+      // Legacy AC content (decision 6, pre-6r feature blocks): the `## Acceptance
+      // Criteria` heading, live AC rows, and struck AC rows all pass through
+      // byte-stable — they count as committed content (freezing the feature
+      // delete-marker position) but no rows are collected (decision 6r: ACs
+      // belong to stories, not features).
+      if (AC_SECTION_RE.test(trimmed) || AC_ROW_RE.test(trimmed) || AC_DELETED_RE.test(trimmed)) {
         seenFirstContent = true;
         continue;
       }
-      if (inAcSection) {
-        // AC row (AC-) — struck rows are skipped but still count as content.
-        if (AC_DELETED_RE.test(trimmed)) {
-          seenFirstContent = true;
-          continue;
-        }
-        const am = trimmed.match(AC_ROW_RE);
-        if (am) {
-          const fields = parseAcRow(am[2] ? am[2].split('|').map((s) => s.trim()) : []);
-          if (fields.text) {
-            // Look one line ahead for the row's metadata comment (origin).
-            let origin: 'manual' | 'generated' | null = null;
-            for (let j = i + 1; j < lines.length; j++) {
-              const candidate = lines[j];
-              if (candidate.trim() === '') continue;
-              const cm = candidate.trim().match(AC_META_RE);
-              if (cm && cm[1] === am[1]) {
-                origin = parseOriginMeta(cm[2]).origin;
-              }
-              break;
-            }
-            feature.acs.push({
-              id: am[1],
-              status: fields.status,
-              text: fields.text,
-              origin,
-              lineIndex: i,
-              raw: line,
-            });
-            seenFirstContent = true;
-          }
-          continue;
-        }
-        // TR rows live inside the feature block, after the AC section.
-        if (DELETED_ROW_RE.test(trimmed)) {
-          seenFirstContent = true;
-          continue;
-        }
-        const rm = trimmed.match(REQ_ROW_RE);
-        if (rm && rm[1].startsWith('TR-')) {
-          const fields = parseRowSegments(rm[2] ? rm[2].split('|').map((s) => s.trim()) : []);
-          if (fields.text) {
-            let origin: 'manual' | 'generated' | null = null;
-            for (let j = i + 1; j < lines.length; j++) {
-              const candidate = lines[j];
-              if (candidate.trim() === '') continue;
-              const cm = candidate.trim().match(TR_META_RE);
-              if (cm && cm[1] === rm[1]) {
-                origin = parseOriginMeta(cm[2]).origin;
-              }
-              break;
-            }
-            feature.reqs.push({
-              id: rm[1],
-              type: 'TR',
-              ...fields,
-              // TRs implicitly live in their feature block; the featureId is
-              // the block's heading id, set after parseFeatures collects them.
-              featureId: null,
-              origin,
-              lineIndex: i,
-              raw: line,
-            });
-            seenFirstContent = true;
-          }
-          continue;
-        }
-        // Anything else inside the AC section: unknown content — passes
-        // through untouched (we never rewrite whole blocks).
+      // TR rows live inside the feature block.
+      if (DELETED_ROW_RE.test(trimmed)) {
+        seenFirstContent = true;
         continue;
       }
-      // Not in the AC section yet: a BR/TR row here — struck or not — is
-      // still committed content: it freezes the feature-delete position
-      // (item B2) exactly as it does inside the AC section.
+      const rm = trimmed.match(REQ_ROW_RE);
+      if (rm && rm[1].startsWith('TR-')) {
+        const fields = parseRowSegments(rm[2] ? rm[2].split('|').map((s) => s.trim()) : []);
+        if (fields.text) {
+          // Look one line ahead for the row's metadata comment (origin).
+          let origin: 'manual' | 'generated' | null = null;
+          for (let j = i + 1; j < lines.length; j++) {
+            const candidate = lines[j];
+            if (candidate.trim() === '') continue;
+            const cm = candidate.trim().match(TR_META_RE);
+            if (cm && cm[1] === rm[1]) {
+              origin = parseOriginMeta(cm[2]).origin;
+            }
+            break;
+          }
+          feature.reqs.push({
+            id: rm[1],
+            type: 'TR',
+            ...fields,
+            // TRs implicitly live in their feature block; the featureId is
+            // the block's heading id, set after parseFeatures collects them.
+            featureId: null,
+            origin,
+            lineIndex: i,
+            raw: line,
+          });
+          seenFirstContent = true;
+        }
+        continue;
+      }
+      // A BR row here — struck or not — is still committed content: it
+      // freezes the feature-delete position (item B2).
       if (REQ_ROW_RE.test(trimmed) || DELETED_ROW_RE.test(trimmed)) seenFirstContent = true;
       // The description paragraph is the first non-meta, non-heading,
       // non-row content line.
@@ -744,15 +697,11 @@ export function renderReqRow(
   return `- ${id} | ${priority} | ${status} | ${owner} | ${text}`;
 }
 
-export function renderAcRow(id: string, status: AcStatus, text: string): string {
-  return `- ${id} | ${status} | ${text}`;
-}
-
 // A feature block exactly as the grammar draws it — appended to features.md
 // on POST /features. QA-2: features stamp origin=manual on first write; PATCH
 // preserves the existing origin (or stamps manual when the caller explicitly
-// sets it). The `## Acceptance Criteria` section is always emitted (even
-// when empty) so the block's section anchor exists for AC inserts.
+// sets it). No `## Acceptance Criteria` section (decision 6r: ACs belong to
+// user stories, authored at story generation — never to features).
 export function renderFeatureBlock(input: {
   feId: string;
   title: string;
@@ -762,7 +711,6 @@ export function renderFeatureBlock(input: {
   status: ReqStatus;
   owner: ReqOwner;
   origin?: 'manual' | 'generated';
-  acs: { id: string; status: AcStatus; text: string; origin?: 'manual' | 'generated' }[];
   trs: { id: string; priority: ReqPriority; status: ReqStatus; owner: ReqOwner; text: string; origin?: 'manual' | 'generated' }[];
 }): string {
   const lines = [
@@ -771,11 +719,6 @@ export function renderFeatureBlock(input: {
   ];
   if (input.source) lines.push(`<!-- source: ${input.source} -->`);
   lines.push(input.description);
-  lines.push('', '## Acceptance Criteria');
-  for (const ac of input.acs) {
-    lines.push(renderAcRow(ac.id, ac.status, ac.text));
-    lines.push(`<!-- ${ac.id}: origin=${ac.origin ?? 'manual'} -->`);
-  }
   for (const tr of input.trs) {
     lines.push(renderReqRow(tr.id, tr.priority, tr.status, tr.owner, tr.text));
     lines.push(`<!-- ${tr.id}: origin=${tr.origin ?? 'manual'} -->`);
@@ -785,9 +728,9 @@ export function renderFeatureBlock(input: {
 
 // ── ID allocation (spec DATA section) ──────────────────────────────────────
 // Lowest free number, never renumbered on delete. `prefix` is 'BR' | 'TR' |
-// 'US' | 'FE' | 'AC'; ids are zero-padded to 3 (BR/TR/AC) or 2 (US/FE) digits.
+// 'US' | 'FE'; ids are zero-padded to 3 (BR/TR) or 2 (US/FE) digits.
 
-export function nextFreeId(existingIds: string[], prefix: 'BR' | 'TR' | 'US' | 'FE' | 'AC'): string {
+export function nextFreeId(existingIds: string[], prefix: 'BR' | 'TR' | 'US' | 'FE'): string {
   const width = prefix === 'US' || prefix === 'FE' ? 2 : 3;
   const used = new Set<number>();
   for (const id of existingIds) {
@@ -806,7 +749,6 @@ export const LIMITS = {
   featureTitle: { min: 4, max: 120 },
   description: { min: 4, max: 1000 },
   source: { min: 2, max: 200 },
-  acText: { min: 4, max: 500 },
   reqText: { min: 10, max: 500 },
 } as const;
 
@@ -905,44 +847,6 @@ export function validateFeaturePatch(
   if (body?.owner !== undefined) {
     if (isReqOwner(body.owner)) value.owner = body.owner;
     else errors.owner = 'Must be BA | SA | DEV | QA';
-  }
-  if (Object.keys(errors).length > 0) return { ok: false, errors };
-  if (Object.keys(value).length === 0) return { ok: false, errors: { _: 'Nothing to update' } };
-  return { ok: true, value };
-}
-
-export type AcInput = {
-  text: string;
-  status: AcStatus;
-};
-
-export function validateAcInput(
-  body: Record<string, unknown> | undefined,
-): { ok: true; value: AcInput } | { ok: false; errors: FieldErrors } {
-  const errors: FieldErrors = {};
-  const text = checkField(errors, 'text', body?.text, LIMITS.acText);
-  const status = isAcStatus(body?.status) ? body.status : null;
-  if (!status) errors.status = 'Must be met | unmet';
-  if (Object.keys(errors).length > 0 || text === null || !status) {
-    return { ok: false, errors };
-  }
-  return { ok: true, value: { text, status } };
-}
-
-export type AcPatch = Partial<AcInput>;
-
-export function validateAcPatch(
-  body: Record<string, unknown> | undefined,
-): { ok: true; value: AcPatch } | { ok: false; errors: FieldErrors } {
-  const errors: FieldErrors = {};
-  const value: AcPatch = {};
-  if (body?.text !== undefined) {
-    const v = checkField(errors, 'text', body.text, LIMITS.acText);
-    if (v !== null) value.text = v;
-  }
-  if (body?.status !== undefined) {
-    if (isAcStatus(body.status)) value.status = body.status;
-    else errors.status = 'Must be met | unmet';
   }
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   if (Object.keys(value).length === 0) return { ok: false, errors: { _: 'Nothing to update' } };
@@ -1071,13 +975,12 @@ export function businessReqInsertIndex(prdLines: string[]): number | null {
 
 // Where a new TR row lands inside a feature block: after the block's last
 // requirement row (or, after QA-5, after that row's trailing meta comment),
-// else after the block's last AC row (or its trailing meta), else right under
-// the AC section heading (or the body/meta/heading when the block has no AC
-// section yet — new rows belong below the prose, not above it). Skipping the
-// trailing meta is essential: without it, the next POST inserts between the
-// previous TR and its `<!-- TR-NNN: origin=manual -->` marker, the marker's id
-// no longer matches the row above it on re-parse, and the previous TR's
-// origin reads as null on disk.
+// else right under the block's description (or the body/meta/heading when the
+// block has no description — new rows belong below the prose, not above it).
+// Skipping the trailing meta is essential: without it, the next POST inserts
+// between the previous TR and its `<!-- TR-NNN: origin=manual -->` marker, the
+// marker's id no longer matches the row above it on re-parse, and the previous
+// TR's origin reads as null on disk.
 export function featureReqInsertIndex(feature: FeatureRow, lines?: string[]): number {
   const lastReq = feature.reqs[feature.reqs.length - 1];
   if (lastReq) {
@@ -1086,35 +989,13 @@ export function featureReqInsertIndex(feature: FeatureRow, lines?: string[]): nu
     }
     return lastReq.lineIndex;
   }
-  const lastAc = feature.acs[feature.acs.length - 1];
-  if (lastAc) {
-    if (lines) {
-      return markerIndexAfter(lines, lastAc.lineIndex, Infinity, AC_META_RE, lastAc.id);
-    }
-    return lastAc.lineIndex;
-  }
-  return feature.acHeadingLine ?? feature.bodyLine ?? feature.metaLine ?? feature.headingLine;
-}
-
-// Where a new AC row lands inside a feature block: after the block's last AC
-// row (or its trailing meta), else right under the AC section heading (or the
-// body/meta/heading when the block has no AC section yet — the route creates
-// the section when acHeadingLine is null).
-export function featureAcInsertIndex(feature: FeatureRow, lines?: string[]): number {
-  const lastAc = feature.acs[feature.acs.length - 1];
-  if (lastAc) {
-    if (lines) {
-      return markerIndexAfter(lines, lastAc.lineIndex, Infinity, AC_META_RE, lastAc.id);
-    }
-    return lastAc.lineIndex;
-  }
-  return feature.acHeadingLine ?? feature.bodyLine ?? feature.metaLine ?? feature.headingLine;
+  return feature.bodyLine ?? feature.metaLine ?? feature.headingLine;
 }
 
 // Scan forward from `after` for the next non-blank line that matches
 // `metaRe` (whose capture group 1 matches `expectedId` when supplied).
-// Returns that line's index when found, otherwise `after`. Used by the
-// two insert helpers above to keep trailing meta comments glued to their
+// Returns that line's index when found, otherwise `after`. Used by
+// featureReqInsertIndex to keep trailing meta comments glued to their
 // owning row.
 function markerIndexAfter(
   lines: string[],
@@ -1135,13 +1016,12 @@ function markerIndexAfter(
 
 // A feature's ID referenced in another feature's free text (the delete guard's
 // reference rule, plan §2): the ID appears as a word in the feature's title,
-// description, AC text, or any of its requirement rows' text.
+// description, or any of its requirement rows' text.
 export function featureReferencesId(feature: FeatureRow, reqId: string): boolean {
   if (feature.feId === reqId) return false;
   const haystacks = [
     feature.title,
     feature.description ?? '',
-    ...feature.acs.map((a) => a.text),
     ...feature.reqs.map((r) => r.text),
   ];
   return haystacks.some((h) => h.includes(reqId));
@@ -1158,11 +1038,10 @@ export function collectExistingIds(
   prd: string,
   journeys: string,
   features: string,
-): { br: string[]; tr: string[]; fe: string[]; ac: string[] } {
+): { br: string[]; tr: string[]; fe: string[] } {
   const br: string[] = [];
   const tr: string[] = [];
   const fe: string[] = [];
-  const ac: string[] = [];
   const rowScan = (text: string) => {
     for (const line of text.split('\n')) {
       const m = line.trim().match(REQ_ROW_RE);
@@ -1176,12 +1055,8 @@ export function collectExistingIds(
   for (const line of features.split('\n')) {
     const m = line.trim().match(/^###\s+(FE-\d{2,})/);
     if (m) fe.push(m[1]);
-    const am = line.trim().match(AC_ROW_RE);
-    if (am) ac.push(am[1]);
-    const dm = line.trim().match(AC_DELETED_RE);
-    if (dm) ac.push(dm[1]);
   }
-  return { br, tr, fe, ac };
+  return { br, tr, fe };
 }
 
 // ── Live-ID variants for allocation ────────────────────────────────────────
@@ -1283,7 +1158,6 @@ export function migrateStoriesToFeatures(
         status: story.status ?? 'draft',
         owner: story.owner ?? 'BA',
         origin: story.origin ?? 'manual',
-        acs: [],
         trs: story.reqs.map((tr) => ({
           id: tr.id,
           priority: tr.priority ?? 'should',

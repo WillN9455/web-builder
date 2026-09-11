@@ -2,17 +2,17 @@
 // Reuses the mockup's `.story` block vocabulary: head (FE-NN id pill, origin
 // chip, title, description, source link, actions incl. status dropdown +
 // Add requirement + Add criterion) followed by the feature's `.req-list`
-// holding ACs first, then linked BRs and TRs. Per plan §8 slices 1-3 the ACs
-// and requirements live INSIDE the feature block; user stories are a derived
-// artifact owned by the sprint board workstream.
+// holding linked BRs and TRs. Per plan §8 slices 1-3 requirements live INSIDE
+// the feature block; per decision 6r features carry NO acceptance criteria —
+// ACs are authored on each generated user story (Run 2, sprint board
+// workstream).
 //
 // CSS note: verify:css-equivalence pins the compiled stylesheet against the
 // pre-split baseline, so this component intentionally reuses only existing
 // classes (.story/.req/.add-form vocabulary) — no new selectors.
 
-import { Fragment } from 'react';
 import { statusLabel, type ReqStatus } from '../../../server/requirements-model';
-import type { RequirementItem, FeatureItem, AcItem } from '../../lib/api';
+import type { RequirementItem, FeatureItem } from '../../lib/api';
 import { ReqRow } from './ReqRow';
 import { StatusDropdown } from './StatusDropdown';
 import type { FormState } from './storyModel';
@@ -24,24 +24,16 @@ type Props = {
   // Per-row edit slot (edit-req). Maps reqId → form node; null/undefined
   // means no form under that row.
   editFormFor?: (reqId: string) => React.ReactNode | null;
-  // Per-row edit slot for AC rows (edit-ac) — same pattern as editFormFor,
-  // mapped by acId.
-  editFormForAc?: (acId: string) => React.ReactNode | null;
   flash?: boolean; // scroll-and-flash target (delete-guard "Open referencing feature")
   statusPendingFeature?: boolean;
   statusPendingReqId?: string | null;
-  acPendingId?: string | null; // AC row whose status toggle is in flight
   onEditFeature: () => void;
   onAddReq: () => void;
-  onAddAc: () => void;
   onDeleteFeature: () => void;
   onFeatureStatus: (next: ReqStatus) => void;
   onReqEdit: (req: RequirementItem) => void;
   onReqDelete: (req: RequirementItem) => void;
   onReqStatus: (req: RequirementItem, next: ReqStatus) => void;
-  onAcEdit: (ac: AcItem) => void;
-  onAcDelete: (ac: AcItem) => void;
-  onAcStatus: (ac: AcItem, next: 'met' | 'unmet') => void;
 };
 
 const PRIORITY_LABELS: Record<string, string> = {
@@ -56,39 +48,28 @@ export function FeatureGroup({
   openForm,
   renderForm,
   editFormFor,
-  editFormForAc,
   flash,
   statusPendingFeature,
   statusPendingReqId,
-  acPendingId,
   onEditFeature,
   onAddReq,
-  onAddAc,
   onDeleteFeature,
   onFeatureStatus,
   onReqEdit,
   onReqDelete,
   onReqStatus,
-  onAcEdit,
-  onAcDelete,
-  onAcStatus,
 }: Props) {
-  // Feature-level forms only: edit-feature and add-req/add-ac. Edit-req and
-  // edit-ac moved to per-row slots below. The add-feature form lives at the
-  // top level of the screen.
+  // Feature-level forms only: edit-feature and add-req. Edit-req moved to
+  // per-row slots below. The add-feature form lives at the top level of the
+  // screen. (Decision 6r: no AC forms — features carry no acceptance
+  // criteria; ACs belong to generated user stories.)
   const showForm =
     openForm != null &&
     ((openForm.kind === 'feature' &&
       openForm.mode === 'edit' &&
       openForm.feId === feature.feId) ||
-      ((openForm.kind === 'req' || openForm.kind === 'ac') &&
+      (openForm.kind === 'req' &&
         openForm.mode === 'add' &&
-        openForm.feId === feature.feId) ||
-      // Edit-ac slots at the feature level too — the form node itself is
-      // rendered under the matching AC row below, but the mount/discard
-      // decision (one form open at a time) is made here.
-      (openForm.kind === 'ac' &&
-        openForm.mode === 'edit' &&
         openForm.feId === feature.feId));
 
   // QA-2: features carry their own origin tag; null renders as manual
@@ -142,10 +123,6 @@ export function FeatureGroup({
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" aria-hidden="true"><path d="M12 5v14 M5 12h14"/></svg>
               Add requirement
             </button>
-            <button className="btn btn-ghost" type="button" aria-label={`Add an acceptance criterion to ${feature.feId}`} onClick={onAddAc}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" aria-hidden="true"><path d="M12 5v14 M5 12h14"/></svg>
-              Add criterion
-            </button>
             <StatusDropdown
               status={feature.status}
               label={`${feature.feId} feature status, currently ${statusLabel(feature.status ?? 'draft')}`}
@@ -160,88 +137,17 @@ export function FeatureGroup({
         </div>
         <div className="story-meta">
           <span className="story-count">
-            {feature.reqs.length} reqs · {feature.acs.length} ACs
+            {feature.reqs.length} reqs
           </span>
         </div>
       </div>
       {showForm && renderForm?.()}
-      {(feature.acs.length > 0 || feature.reqs.length > 0) && (
+      {feature.reqs.length > 0 && (
         <div className="req-list" role="list">
-          {/* ACs first (they gate the feature), then the QA-9 linked-req sort:
-              BRs before TRs, stable within group. Disk order is untouched —
-              the move is purely a render-side decision. */}
-          {feature.acs.map((ac) => {
-            const pending = acPendingId === ac.id;
-            const editAcFormNode =
-              openForm != null &&
-              openForm.kind === 'ac' &&
-              openForm.mode === 'edit' &&
-              openForm.feId === feature.feId &&
-              openForm.acId === ac.id
-                ? editFormForAc?.(ac.id) ?? null
-                : null;
-            return (
-              <Fragment key={ac.id}>
-              <div className={`req ${pending ? 'req-pending' : ''}`} role="listitem">
-                <div className="req-id">
-                  <span>{ac.id}</span>
-                  {(() => {
-                    const o = ac.origin ?? 'manual';
-                    return (
-                      <span
-                        className={`req-origin-chip req-origin-${o}`}
-                        title={`${ac.id} was written by the ${o === 'generated' ? 'agent' : 'BA'}`}
-                      >
-                        <span className="req-origin-dot" aria-hidden="true" />
-                        {o === 'generated' ? 'Generated' : 'Manual'}
-                      </span>
-                    );
-                  })()}
-                </div>
-                <div className="req-text">{ac.text}</div>
-                <div className="req-type">AC</div>
-                <div className="req-prio" aria-hidden="true" />
-                {/* met/unmet is not a ReqStatus (no blocked/draft machine) —
-                    it renders as plain text and toggles via the action. */}
-                <div className="req-owner">{ac.status === 'met' ? 'Met' : 'Unmet'}</div>
-                <div className="req-actions">
-                  <button
-                    className="req-action"
-                    type="button"
-                    aria-label={`Edit acceptance criterion ${ac.id}`}
-                    title="Edit criterion"
-                    onClick={() => onAcEdit(ac)}
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 20h4l10-10-4-4L4 16z M14 6l4 4"/></svg>
-                  </button>
-                  <button
-                    className="req-action"
-                    type="button"
-                    aria-label={`${ac.status === 'met' ? 'Mark unmet' : 'Mark met'} — ${ac.id}`}
-                    title={ac.status === 'met' ? 'Mark unmet' : 'Mark met'}
-                    onClick={() => onAcStatus(ac, ac.status === 'met' ? 'unmet' : 'met')}
-                  >
-                    {ac.status === 'met' ? (
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 3v18h18 M7 14l4-5 3 3 5-7"/></svg>
-                    ) : (
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
-                    )}
-                  </button>
-                  <button
-                    className="req-action danger"
-                    type="button"
-                    aria-label={`Delete acceptance criterion ${ac.id}`}
-                    title="Delete criterion"
-                    onClick={() => onAcDelete(ac)}
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13"/></svg>
-                  </button>
-                </div>
-              </div>
-              {editAcFormNode}
-              </Fragment>
-            );
-          })}
+          {/* QA-9 linked-req sort: BRs before TRs, stable within group. Disk
+              order is untouched — the move is purely a render-side decision.
+              (Decision 6r: no AC rows here — those render on user-story
+              blocks in the sprint board workstream.) */}
           {[...feature.reqs]
             .sort((a, b) => (a.type === b.type ? 0 : a.type === 'BR' ? -1 : 1))
             .map((req) => (
