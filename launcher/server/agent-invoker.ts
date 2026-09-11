@@ -15,16 +15,22 @@ import path from 'node:path';
 import { readReqGenState, writeReqGenState } from './req-gen-state.js';
 import {
   BUSINESS_SECTION,
+  reconcileBusinessReqs,
   reconcileSectionsDone,
+  reconcileStories,
   requireRows,
   REQ_GEN_SECTIONS,
   spliceBusinessReqs,
   spliceStories,
   STORIES_SECTION,
+  type DesiredBr,
+  type DesiredStory,
+  type DesiredTr,
   type GenBr,
   type GenStory,
 } from './req-gen-splice.js';
 import { getProjectRow, resolveProjectFolder, readStatuses, BA_ARTIFACTS, type ProjectRow } from './ba-workspace.js';
+import { parseBusinessReqs, parseStories, type ReqRow, type StoryRow } from './requirements-model.js';
 import { atomicWritePrd, prdFilePath } from './prd-fs.js';
 import { db } from './db.js';
 import { MODEL, OLLAMA } from './intake.js';
@@ -95,8 +101,12 @@ export function triggerRequirementsGeneration(projectId: number): TriggerResult 
     return { ok: false, error: 'Already running' };
   }
   // A completed run 409s rather than silently duplicating rows — unless the
-  // user deleted every generated row, in which case regenerating is safe.
-  if (existing && existing.state === 'done' && hasGeneratedRows(row)) {
+  // user deleted every generated row, or an approved artifact reverted since
+  // the run finished (artifactsChanged, set by the transition routes), in
+  // which case the next run runs in reconcile mode: diff against the existing
+  // origin=generated rows instead of appending duplicates.
+  const reconcile = Boolean(existing?.artifactsChanged);
+  if (existing && existing.state === 'done' && hasGeneratedRows(row) && !reconcile) {
     return {
       ok: false,
       error: 'Requirements already generated — delete the generated rows to regenerate.',
@@ -105,9 +115,15 @@ export function triggerRequirementsGeneration(projectId: number): TriggerResult 
 
   // Init state (the trigger owns state init — routes must not pre-write).
   // A failed run's completed sections carry over so the retry only generates
-  // the missing ones (no duplicated rows); a done run starts fresh.
+  // the missing ones (no duplicated rows); a done run starts fresh. A
+  // reconcile run always starts fresh — "pass through all" is the contract
+  // (every section reconsiders the full desired set, not just missing ones).
+  // A failed reconcile retry also re-enters reconcile: the flag below keeps
+  // `artifactsChanged` true on the failed state, so this must not depend on
+  // the previous run's state being 'done'.
+  const reconcileMode = reconcile;
   const sectionsDone =
-    existing && existing.state === 'failed' ? (existing.sectionsDone ?? []) : [];
+    !reconcileMode && existing && existing.state === 'failed' ? (existing.sectionsDone ?? []) : [];
   writeReqGenState(projectId, {
     state: 'pending',
     generated: 0,
@@ -117,20 +133,34 @@ export function triggerRequirementsGeneration(projectId: number): TriggerResult 
     lastHeartbeatAt: Date.now(),
     error: null,
     sectionsDone,
+    // Carry the stale flag through the run — every mid-run write spreads the
+    // last persisted state, so dropping it here would lose it on a failed
+    // run (only terminal 'done' clears it explicitly, below).
+    artifactsChanged: reconcileMode,
+    // Persisted so the status route can label the run and a crashed job's
+    // retry (failed state) still knows how it was running.
+    mode: reconcileMode ? 'reconcile' : 'generate',
   });
 
   running.add(projectId);
   void runRequirementsJob(projectId)
     .catch((err) => {
       console.error('[agent-invoker] req-gen job crashed:', err);
+      // Spread the job's last persisted write so mode + artifactsChanged
+      // survive a crash — a retry must resume the same mode, and a reconcile
+      // run must stay re-triggerable from the confirmed card (a failed run
+      // never clears the flag; only terminal 'done' does).
+      const last = readReqGenState(projectId);
+      const done = last?.sectionsDone ?? sectionsDone;
       writeReqGenState(projectId, {
+        ...last,
         state: 'failed',
-        generated: sectionsDone.length,
+        generated: done.length,
         total: REQ_GEN_SECTIONS.length,
         currentSection: null,
-        startedAt: Date.now(),
+        startedAt: last?.startedAt ?? Date.now(),
         error: 'Generation crashed — retry to continue.',
-        sectionsDone,
+        sectionsDone: done,
       });
     })
     .finally(() => running.delete(projectId));
@@ -244,15 +274,24 @@ async function runRequirementsJob(projectId: number): Promise<void> {
   // disk ⇒ done even if the crash lost the marker (retry must not re-run the
   // section — nextFreeId would duplicate); marked but rows deleted ⇒
   // regenerate. Also rehydrates the generated story ids so a BR-only retry
-  // still links its BRs.
+  // still links its BRs. A reconcile run bypasses the resume *decision* but
+  // keeps the story-id rehydration: its seed set below starts EMPTY because
+  // rows on disk are its INPUT, not evidence of completion — every section
+  // always runs ("pass through all" is the reconcile contract), and seeding
+  // the completion set from disk would classify a run whose first section
+  // failed as done (set pre-populated full → done write → clears
+  // artifactsChanged → stale flag lost on a failed reconcile).
+  const isReconcile = existing.mode === 'reconcile';
   const reconciled = reconcileSectionsDone(
     fs.existsSync(journeysPath) ? fs.readFileSync(journeysPath, 'utf-8') : '',
     fs.existsSync(prdPath) ? fs.readFileSync(prdPath, 'utf-8') : '',
-    existing.sectionsDone ?? [],
+    isReconcile ? [] : (existing.sectionsDone ?? []),
   );
-  const sectionsDone = new Set<string>(reconciled.sectionsDone);
-  const todo = REQ_GEN_SECTIONS.filter((s) => !sectionsDone.has(s));
-  if (todo.length === 0) {
+  const sectionsDone = new Set<string>(isReconcile ? [] : reconciled.sectionsDone);
+  const todo = isReconcile
+    ? [...REQ_GEN_SECTIONS]
+    : REQ_GEN_SECTIONS.filter((s) => !sectionsDone.has(s));
+  if (!isReconcile && todo.length === 0) {
     writeReqGenState(projectId, { ...existing, state: 'done', currentSection: null, error: null });
     return;
   }
@@ -270,9 +309,10 @@ async function runRequirementsJob(projectId: number): Promise<void> {
 
   // US ids for BR linking: rehydrated from the previous run's generated
   // stories when the stories section carried over, else filled by this run's
-  // stories section. Local to this run: concurrent runs for different
-  // projects must not cross-link.
-  const storyIds: string[] = [...reconciled.storyIds];
+  // stories section. A reconcile run REPLACES this with the post-reconcile
+  // desired-order ids (reconcileStories returns the full set). Local to this
+  // run: concurrent runs for different projects must not cross-link.
+  let storyIds: string[] = [...reconciled.storyIds];
   // Written into EVERY persisted state write below (entry, completion,
   // terminal) so the phase-aware banner shows live row counts mid-run — a
   // generating run's result is "what has landed so far", not just the
@@ -300,35 +340,75 @@ async function runRequirementsJob(projectId: number): Promise<void> {
 
       try {
         if (section === STORIES_SECTION) {
-          // requireRows: a call that yields zero parseable rows must FAIL the
-          // section — a silent empty advance would be marked done and retry
-          // would skip it forever, generating nothing.
-          const stories = requireRows(await callModelStories(context), 'user stories');
+          // Fresh read at section start — nothing else writes during a run
+          // (the transition routes 409 while a run is active), so reading
+          // before the model call is equivalent to reading after.
           const journeys = fs.readFileSync(journeysPath, 'utf-8');
-          const spliced = spliceStories(journeys, stories);
-          if (spliced.usIds.length !== stories.length) {
-            throw new Error('Story splice inserted fewer blocks than the model generated');
+          const existingGenStories = isReconcile
+            ? parseStories(journeys).stories.filter((s) => s.origin === 'generated')
+            : [];
+          if (isReconcile && existingGenStories.length > 0) {
+            // Reconcile path: the model returns the FULL desired set (echoed
+            // ids stay, omitted ids are removed, new ones are appended).
+            // Unchanged content outside touched scopes stays byte-identical
+            // (the AC-9 bar); a zero-diff result writes nothing.
+            const { entries, keepUsIds } = await callModelStoriesReconcile(context, existingGenStories);
+            const rec = reconcileStories(journeys, entries, keepUsIds);
+            if (rec.text !== journeys) {
+              // Direct write — atomicWritePrd takes the PRD lock itself. PR
+              // #26 round-4 bug: wrapping it in an outer withPrdLock on the
+              // SAME path was a nested same-key acquire that queued behind
+              // its own slot forever (non-reentrant mutex, deadlock).
+              await atomicWritePrd(journeysPath, rec.text);
+            }
+            storyIds = rec.storyIds;
+            result.storiesGenerated = rec.ops.added + rec.ops.updated;
+            result.trsGenerated = rec.trCount;
+          } else {
+            // requireRows: a call that yields zero parseable rows must FAIL
+            // the section — a silent empty advance would be marked done and
+            // retry would skip it forever, generating nothing. (Reconcile
+            // skips this only when NO generated rows exist — that degenerate
+            // case is plain generation and keeps the same protection.)
+            const stories = requireRows(await callModelStories(context), 'user stories');
+            const spliced = spliceStories(journeys, stories);
+            if (spliced.usIds.length !== stories.length) {
+              throw new Error('Story splice inserted fewer blocks than the model generated');
+            }
+            // Same round-4 fix: atomicWritePrd locks; never nest withPrdLock.
+            await atomicWritePrd(journeysPath, spliced.text);
+            storyIds.push(...spliced.usIds);
+            result.storiesGenerated = spliced.usIds.length;
+            result.trsGenerated = spliced.trCount;
           }
-          // Direct write — atomicWritePrd takes the PRD lock itself. PR #26
-          // round-4 bug: wrapping it in an outer withPrdLock on the SAME path
-          // was a nested same-key acquire that queued behind its own slot
-          // forever (non-reentrant mutex, deterministic self-deadlock).
-          await atomicWritePrd(journeysPath, spliced.text);
-          storyIds.push(...spliced.usIds);
-          result.storiesGenerated = spliced.usIds.length;
-          result.trsGenerated = spliced.trCount;
         } else {
-          const brs = requireRows(await callModelBusinessReqs(context, storyIds), 'business requirements');
           const prd = fs.readFileSync(prdPath, 'utf-8');
-          const spliced = spliceBusinessReqs(prd, brs, storyIds);
-          if (spliced.brIds.length !== brs.length) {
-            // businessReqInsertIndex found no §8 to write into — nothing
-            // landed, so failing the section is safe (no partial insert).
-            throw new Error('BR splice inserted fewer rows than the model generated — prd.md has no §8 section');
+          // FRESH read: in reconcile mode this reflects the stories section's
+          // post-reconcile file, so BR linking resolves against the final
+          // story set.
+          const existingGenBrs = isReconcile
+            ? parseBusinessReqs(prd).rows.filter((r) => r.origin === 'generated')
+            : [];
+          if (isReconcile && existingGenBrs.length > 0) {
+            const { entries, keepBrIds } = await callModelBusinessReqsReconcile(context, storyIds, existingGenBrs);
+            const rec = reconcileBusinessReqs(prd, entries, keepBrIds);
+            if (rec.text !== prd) {
+              // Same round-4 fix: atomicWritePrd locks; never nest withPrdLock.
+              await atomicWritePrd(prdPath, rec.text);
+            }
+            result.brsGenerated = rec.ops.added + rec.ops.updated;
+          } else {
+            const brs = requireRows(await callModelBusinessReqs(context, storyIds), 'business requirements');
+            const spliced = spliceBusinessReqs(prd, brs, storyIds);
+            if (spliced.brIds.length !== brs.length) {
+              // businessReqInsertIndex found no §8 to write into — nothing
+              // landed, so failing the section is safe (no partial insert).
+              throw new Error('BR splice inserted fewer rows than the model generated — prd.md has no §8 section');
+            }
+            // Same round-4 fix: atomicWritePrd locks; never nest withPrdLock.
+            await atomicWritePrd(prdPath, spliced.text);
+            result.brsGenerated = spliced.brIds.length;
           }
-          // Same round-4 fix: atomicWritePrd locks; never nest withPrdLock.
-          await atomicWritePrd(prdPath, spliced.text);
-          result.brsGenerated = spliced.brIds.length;
         }
         sectionsDone.add(section);
       } catch (err) {
@@ -359,6 +439,11 @@ async function runRequirementsJob(projectId: number): Promise<void> {
         error: null,
         result,
         sectionsDone: [...sectionsDone],
+        // The pre-run `existing` spread carries artifactsChanged: true — a
+        // completed reconcile/generate run has now absorbed the artifact
+        // changes, so the stale flag clears here and ONLY here (a failed run
+        // keeps it true so the reconcile stays re-triggerable).
+        artifactsChanged: false,
       });
     } else {
       writeReqGenState(projectId, {
@@ -371,6 +456,8 @@ async function runRequirementsJob(projectId: number): Promise<void> {
           'Generation finished with missing sections — retry generates only the missing ones.',
         result,
         sectionsDone: [...sectionsDone],
+        // artifactsChanged stays true via the spread — retry re-enters
+        // reconcile so the remaining sections still diff, not append.
       });
     }
   } finally {
@@ -450,6 +537,129 @@ async function callModelBusinessReqs(context: string, storyIds: string[]): Promi
     brs.push({ text, priority: o.priority, storyIndex });
   }
   return brs;
+}
+
+// ── Reconcile-mode calls ────────────────────────────────────────────────────
+// The model sees the CURRENT generated rows and returns the FULL desired set:
+// echoed ids stay (reused or revised), omitted ids are removed, id-less
+// entries are new. It never writes grammar — reconcileStories/
+// reconcileBusinessReqs own ids, ids allocation and file text.
+
+function renderExistingStoryForPrompt(s: StoryRow): string {
+  const trs = s.reqs
+    .map((r) => `  - ${r.id} [${r.priority}]: ${r.text}`)
+    .join('\n');
+  return `${s.usId} [${s.priority}]: As a ${s.asA}, I want to ${s.iWantTo}, so that ${s.soThat}.${trs ? `\n${trs}` : ''}`;
+}
+
+async function callModelStoriesReconcile(
+  context: string,
+  existing: StoryRow[],
+): Promise<{ entries: DesiredStory[]; keepUsIds: string[] }> {
+  const current =
+    existing.length
+      ? `\n\n## Current generated user stories (id → current definition)\n\n` +
+        existing.map(renderExistingStoryForPrompt).join('\n\n') +
+        `\n\n## Task\n\nReconcile these user stories against the context above. Return the FULL desired set as JSON: ` +
+        `{"stories":[{"usId":"US-01","title":"short story title","asA":"role","iWantTo":"capability","soThat":"benefit",` +
+        `"priority":"must|should|could","trs":[{"trId":"TR-001","text":"technical requirement","priority":"must|should|could"}]}]}\n` +
+        `- Echo "usId" (and each TR's "trId") for a story you are keeping — unchanged or revised. Keep ids stable unless the story's meaning changed.\n` +
+        `- Omit a story (or a TR inside one) to REMOVE it — removal is expected when the updated artifacts no longer support it. Removing all stories is valid.\n` +
+        `- A new story or TR has no id.\n` +
+        `- Echo ONLY ids from the generated list above — human-authored stories are managed by people, never touch them.\n` +
+        `- Every previously generated story is reconsidered: keep, update, remove, or add as the context requires.`
+      : '';
+  const user =
+    `## Context (all approved artifacts)\n\n${context}\n\n## Task\n\n` +
+    `Write the user stories for this project. Respond with JSON: ` +
+    `{"stories":[{"title":"short story title","asA":"role","iWantTo":"capability","soThat":"benefit",` +
+    `"priority":"must|should|could","trs":[{"text":"technical requirement supporting this story",` +
+    `"priority":"must|should|could"}]}]}` + current;
+  const parsed = await callModelJson(user);
+  const rawStories = Array.isArray(parsed?.stories) ? parsed.stories : [];
+  const entries: DesiredStory[] = [];
+  // Echoed ids are recorded even when their entry is skipped for
+  // incompleteness — one garbled entry must not silently delete an existing
+  // generated row (the reconcile keeps every echoed id that still parses).
+  const keepUsIds: string[] = [];
+  for (const s of rawStories) {
+    if (!s || typeof s !== 'object') continue;
+    const o = s as Record<string, unknown>;
+    const usId = str(o.usId);
+    if (usId) keepUsIds.push(usId);
+    const title = str(o.title);
+    const asA = str(o.asA);
+    const iWantTo = str(o.iWantTo);
+    const soThat = str(o.soThat);
+    // Same completeness bar as generate mode: an incomplete entry is dropped.
+    if (!title || !asA || !iWantTo || !soThat) continue;
+    const trs = Array.isArray(o.trs)
+      ? o.trs
+          .map((t) =>
+            t && typeof t === 'object'
+              ? { trId: str((t as Record<string, unknown>).trId) || null, text: str((t as Record<string, unknown>).text), priority: (t as Record<string, unknown>).priority }
+              : null,
+          )
+          .filter((t): t is DesiredTr => !!t && !!t.text)
+      : [];
+    entries.push({ usId: usId || null, title, asA, iWantTo, soThat, priority: o.priority, trs });
+  }
+  return { entries, keepUsIds };
+}
+
+function renderExistingBrForPrompt(r: ReqRow): string {
+  return `${r.id}${r.storyUsId ? ` (serves ${r.storyUsId})` : ''} [${r.priority}]: ${r.text}`;
+}
+
+async function callModelBusinessReqsReconcile(
+  context: string,
+  storyIds: string[],
+  existing: ReqRow[],
+): Promise<{ entries: DesiredBr[]; keepBrIds: string[] }> {
+  const storyList = storyIds.length
+    ? `\n\nThe post-reconcile user stories (index → id): ` +
+      storyIds.map((id, i) => `${i} → ${id}`).join(', ') +
+      `\nLink each business requirement to the story it serves via "storyIndex" (the number before the arrow), or null when it serves none.`
+    : '';
+  const current =
+    existing.length
+      ? `\n\n## Current generated business requirements (id → current definition)\n\n` +
+        existing.map(renderExistingBrForPrompt).join('\n') +
+        `\n\n## Task\n\nReconcile these business requirements against the context above. Return the FULL desired set as JSON: ` +
+        `{"requirements":[{"brId":"BR-001","text":"requirement text","priority":"must|should|could","storyIndex":null}]}\n` +
+        `- Echo "brId" for a requirement you are keeping — unchanged or revised.\n` +
+        `- Omit a requirement to REMOVE it — removal is expected when the updated artifacts no longer support it. Removing all is valid.\n` +
+        `- A new requirement has no id.\n` +
+        `- Echo ONLY ids from the generated list above — human-authored requirements are managed by people, never touch them.\n` +
+        `- Every previously generated requirement is reconsidered: keep, update, remove, or add as the context requires.` +
+        storyList
+      : '';
+  const user =
+    `## Context (all approved artifacts)\n\n${context}\n\n## Task\n\n` +
+    `Write the business requirements for this project — testable statements grouped by functional area. ` +
+    `Respond with JSON: {"requirements":[{"text":"requirement text","priority":"must|should|could","storyIndex":null}]}${current}`;
+  const parsed = await callModelJson(user);
+  const rawReqs = Array.isArray(parsed?.requirements) ? parsed.requirements : [];
+  const entries: DesiredBr[] = [];
+  const keepBrIds: string[] = [];
+  for (const r of rawReqs) {
+    if (!r || typeof r !== 'object') continue;
+    const o = r as Record<string, unknown>;
+    const brId = str(o.brId);
+    if (brId) keepBrIds.push(brId);
+    const text = str(o.text);
+    if (!text) continue;
+    const idx = o.storyIndex;
+    const storyIndex =
+      typeof idx === 'number' && Number.isInteger(idx) && idx >= 0 && idx < storyIds.length ? idx : null;
+    entries.push({
+      brId: brId || null,
+      text,
+      priority: o.priority,
+      storyUsId: storyIndex === null ? null : (storyIds[storyIndex] ?? null),
+    });
+  }
+  return { entries, keepBrIds };
 }
 
 function str(v: unknown): string {

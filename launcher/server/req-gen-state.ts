@@ -42,6 +42,15 @@ export type ReqGenState = {
   // retry generates only the missing ones instead of duplicating rows.
   sectionsDone?: string[];
   result?: { storiesGenerated: number; brsGenerated: number; trsGenerated: number };
+  // Set by the artifact-status routes when an approved artifact reverts after
+  // a completed generation (per-file "Send back to Draft" or reopen-all).
+  // Cleared only when a run finishes 'done' — a FAILED run keeps it true so
+  // the reconcile stays re-triggerable from the confirmed card.
+  artifactsChanged?: boolean;
+  // How the current/last run ran: 'generate' (fresh, splice-append) or
+  // 'reconcile' (diff against existing origin=generated rows). Absent on
+  // pre-reconcile states — treated as 'generate'.
+  mode?: 'generate' | 'reconcile';
 };
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

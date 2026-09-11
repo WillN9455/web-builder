@@ -14,6 +14,7 @@ import {
   fetchBaFiles,
   fetchBaIdea,
   fetchBaOpenQuestions,
+  reopenAllBaFiles,
   retryBaGeneration,
   saveBaFile,
   triggerRequirementsGeneration,
@@ -143,6 +144,33 @@ export function ProjectBackgroundScreen() {
   const [notice, setNotice] = useState<Notice | null>(null);
   const [pendingSelect, setPendingSelect] = useState<string | null>(null);
   const treeTriggerRef = useRef<HTMLDivElement>(null);
+  // Bulk "send all back to Draft" on the confirmed State D card — one atomic
+  // server-side UPDATE flips every Approved artifact back to Draft. Confirmed
+  // first via the dialog below; the trigger ref is the button itself so focus
+  // returns to it on close (ConfirmDialog triggerRef contract).
+  const [pendingReopenAll, setPendingReopenAll] = useState(false);
+  const [reopening, setReopening] = useState(false);
+  const reopenAllTriggerRef = useRef<HTMLButtonElement>(null);
+  // Per-file "Send back to Draft" on the confirmed State D card's list rows —
+  // same AC-27 approved → draft transition, one file at a time. The per-row
+  // trigger refs live in a map (17 buttons); the dialog's triggerRef points
+  // at the row whose dialog is open, so focus returns there on close.
+  const [pendingReopenFile, setPendingReopenFile] = useState<string | null>(null);
+  const [reopeningFile, setReopeningFile] = useState(false);
+  const reopenFileTriggerRefs = useRef(new Map<string, HTMLButtonElement | null>());
+  const reopenFileDialogTriggerRef = useRef<HTMLElement | null>(null);
+  // The gate card's "← Back to artifacts" — show the full workspace again
+  // (tree + read-only approved artifacts). The card is one toggle away via
+  // the workspace's "← Project context ready" button, so the state lives here
+  // where it survives the card's unmount (it previously lived in
+  // ContextReadyView, whose `return null` blanked the screen).
+  const [viewingArtifacts, setViewingArtifacts] = useState(false);
+  // Fix #3 — "Regenerate requirements" on the confirmed State D card, offered
+  // when the last completed generation is stale (an approved artifact
+  // reverted since it finished). The trigger call is the action itself: the
+  // server runs it in reconcile mode (updates/removes/adds against the
+  // existing generated rows) — no confirm dialog needed.
+  const [regenerating, setRegenerating] = useState(false);
 
   // AC-29 — resolve the open file from the tree's full identity, not just the
   // server payload: the synthesized Idea band never appears in filesData.files,
@@ -369,6 +397,81 @@ export function ProjectBackgroundScreen() {
     }
   }, [id, refreshAfterMutation, selectedFile, showNotice]);
 
+  // Bulk reopen — the confirmed State D card's "Send all back to Draft". One
+  // atomic server-side UPDATE (reopen-all route) flips every Approved artifact
+  // back to Draft; the workspace returns via contextReady flipping false, and
+  // the server's contextChangedSinceConfirm warning appears. 409 (requirements
+  // generation mid-run) surfaces as an error notice.
+  const handleReopenAll = useCallback(async () => {
+    setReopening(true);
+    try {
+      await reopenAllBaFiles(id ?? '');
+      // Reopen only flips statuses — bodies on disk are untouched, so the
+      // in-memory body stays accurate. loadFiles refreshes the tree and flips
+      // contextReady back to false, which returns the workspace.
+      await loadFiles();
+      showNotice({
+        kind: 'success',
+        text: 'All approved artifacts are back in Draft — they are open for editing again.',
+      });
+    } catch (err) {
+      showNotice({
+        kind: 'error',
+        text: err instanceof Error ? err.message : 'Could not send the artifacts back to Draft',
+      });
+    } finally {
+      setReopening(false);
+    }
+  }, [id, loadFiles, showNotice]);
+
+  // Per-file reopen — the confirmed State D card's row-level "Send back to
+  // Draft". Same route + transition the AC-27 editor button uses (approved →
+  // draft); a single revert flips contextReady false and returns the
+  // workspace with its review flow, leaving the other 16 approvals intact.
+  const handleReopenFile = useCallback(
+    async (filename: string) => {
+      setReopeningFile(true);
+      try {
+        await transitionBaFile(id ?? '', filename, 'draft');
+        // Status flip only — the body on disk is untouched, so the in-memory
+        // body (if a file was open earlier) stays accurate.
+        await loadFiles();
+        showNotice({
+          kind: 'success',
+          text: `${filename} is back in Draft — send it for SA review and re-approve it.`,
+        });
+      } catch (err) {
+        showNotice({
+          kind: 'error',
+          text: err instanceof Error ? err.message : 'Could not send the artifact back to Draft',
+        });
+      } finally {
+        setReopeningFile(false);
+      }
+    },
+    [id, loadFiles, showNotice],
+  );
+
+  // Ref registration for the 17 per-row reopen buttons (the dialog's focus
+  // restore reads the map entry for the row that opened it).
+  const registerReopenFileRef = useCallback(
+    (filename: string) => (el: HTMLButtonElement | null) => {
+      reopenFileTriggerRefs.current.set(filename, el);
+    },
+    [],
+  );
+
+  const openReopenFileDialog = useCallback((filename: string) => {
+    reopenFileDialogTriggerRef.current = reopenFileTriggerRefs.current.get(filename) ?? null;
+    setPendingReopenFile(filename);
+  }, []);
+
+  // Leaving the gate (revert/confirm/reload) must not park the user in the
+  // artifacts view of a workspace that no longer qualifies for the card.
+  useEffect(() => {
+    if (!filesData?.contextReady) setViewingArtifacts(false);
+  }, [filesData?.contextReady]);
+
   const handleConfirmContext = useCallback(async () => {
     setBusy(true);
     try {
@@ -409,6 +512,33 @@ export function ProjectBackgroundScreen() {
       setBusy(false);
     }
   }, [id, loadFiles, onContextConfirmed, showNotice]);
+
+  // Fix #3 — regenerate stale requirements in reconcile mode. Unlike the
+  // confirm-then-trigger pair, the trigger call is the whole action: the
+  // server's reconcile path updates/removes/adds against the existing
+  // generated rows. A 409 (mid-run, or rows deleted since) surfaces as an
+  // error notice per the baFetch convention — never a success-shaped payload.
+  const handleRegenerateRequirements = useCallback(async () => {
+    setRegenerating(true);
+    try {
+      const triggerResult = await triggerRequirementsGeneration(id ?? '');
+      const running = !!triggerResult.alreadyRunning;
+      showNotice({
+        kind: 'success',
+        text: running
+          ? 'Requirements generation already in progress — the reconcile will resume when it finishes.'
+          : 'Regenerating requirements — the BA Agent will reconcile against the previously generated stories and requirements.',
+      });
+      await loadFiles();
+    } catch (err) {
+      showNotice({
+        kind: 'error',
+        text: err instanceof Error ? err.message : 'Could not regenerate requirements',
+      });
+    } finally {
+      setRegenerating(false);
+    }
+  }, [id, loadFiles, showNotice]);
 
   // ── Shell-level states ───────────────────────────────────────────────────
 
@@ -470,9 +600,12 @@ export function ProjectBackgroundScreen() {
   }));
 
   // State D — the gate card replaces the workspace when every artifact is
-  // approved. After confirmation it stays up in its confirmed variant until
-  // "← Back to artifacts" is used (ContextReadyView's local state).
-  if (filesData?.contextReady) {
+  // approved. "← Back to artifacts" flips viewingArtifacts: the workspace
+  // renders below (approved artifacts are read-only there — AC-30), and the
+  // card comes back via the workspace's "← Project context ready" button.
+  if (filesData?.contextReady && !viewingArtifacts) {
+    const reopenFileTitle =
+      filesData.files.find((f) => f.filename === pendingReopenFile)?.title ?? 'This artifact';
     return (
       <>
         {notice && <NoticeBar notice={notice} />}
@@ -483,6 +616,50 @@ export function ProjectBackgroundScreen() {
           busy={busy}
           error={notice?.kind === 'error' ? notice.text : null}
           onConfirm={handleConfirmContext}
+          onBackToArtifacts={() => setViewingArtifacts(true)}
+          onReopenAll={() => setPendingReopenAll(true)}
+          reopening={reopening}
+          reopenAllTriggerRef={reopenAllTriggerRef}
+          onReopenFile={openReopenFileDialog}
+          reopeningFile={reopeningFile}
+          registerReopenFileRef={registerReopenFileRef}
+          requirementsStale={filesData.requirementsStale}
+          onRegenerate={() => void handleRegenerateRequirements()}
+          regenerating={regenerating}
+        />
+        {/* Bulk reopen — the confirmed State D card's "Send all back to Draft".
+            Reverses all 17 approvals at once, so it confirms first (same
+            severity as the AC-27 per-file dialog). */}
+        <ConfirmDialog
+          open={pendingReopenAll}
+          title="Send all back to Draft?"
+          description="Every approved artifact returns to Draft and is open for editing again. You will need to send each one for SA review and get it approved again before the project context can be re-confirmed."
+          confirmLabel="Send all back to Draft"
+          cancelLabel="Keep approved"
+          triggerRef={reopenAllTriggerRef}
+          onClose={() => setPendingReopenAll(false)}
+          onConfirm={() => {
+            setPendingReopenAll(false);
+            void handleReopenAll();
+          }}
+        />
+        {/* Per-file reopen — the confirmed card's row-level "Send back to
+            Draft". Reverses one SA approval, so it confirms first (same
+            severity as the bulk + AC-27 dialogs). */}
+        <ConfirmDialog
+          open={pendingReopenFile !== null}
+          title="Send back to Draft?"
+          description={`"${reopenFileTitle}" is Approved. Setting it back to Draft re-opens it for editing — you will need to send it for SA review and get it approved again before the project context can be re-confirmed.`}
+          confirmLabel="Send back to Draft"
+          cancelLabel="Keep approved"
+          triggerRef={reopenFileDialogTriggerRef}
+          busy={reopeningFile}
+          onClose={() => setPendingReopenFile(null)}
+          onConfirm={() => {
+            const target = pendingReopenFile;
+            setPendingReopenFile(null);
+            if (target) void handleReopenFile(target);
+          }}
         />
       </>
     );
@@ -511,6 +688,16 @@ export function ProjectBackgroundScreen() {
             onClick={() => void handleRetryGeneration()}
           >
             Retry
+          </button>
+        </div>
+      )}
+
+      {/* State D card is one toggle away while every artifact is still
+          approved — "← Back to artifacts" landed here via viewingArtifacts. */}
+      {filesData?.contextReady && (
+        <div className="state-d-return-row">
+          <button type="button" className="btn btn-ghost" onClick={() => setViewingArtifacts(true)}>
+            ← Project context ready
           </button>
         </div>
       )}
