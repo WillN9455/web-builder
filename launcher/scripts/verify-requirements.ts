@@ -1572,6 +1572,42 @@ async function main(): Promise<void> {
     check('autotrig: auto-started run reached terminal state (dead OLLAMA_HOST)', autoRunFailed === true);
     eq('autotrig: auto-started run is reconcile', readGenState(seedIds.mixed)?.mode, 'reconcile');
     eq('autotrig: auto-started run keeps artifactsChanged=true', readGenState(seedIds.mixed)?.artifactsChanged, true);
+
+    // ── Never-run project (legacy): no req-gen state file at all. Will's
+    // fix-#3 live test hit exactly this shape — a project whose context was
+    // confirmed before the redesign shipped, so the new generator never ran
+    // and both the revert flag write and the re-approval trigger keyed on a
+    // done state that never existed. markArtifactsChanged now seeds a
+    // flag-carrying done state on the revert, and the completing re-approval
+    // starts a reconcile run that degrades to a fresh generate (no
+    // origin=generated rows to diff). ──
+    fs.rmSync(genStatePath(seedIds.mixed), { force: true });
+    eq('neverb-run: precheck — state file gone', readGenState(seedIds.mixed), null);
+    r = await reqFetch(`/api/projects/${mixedSlug}/ba-workspace/files`);
+    eq('neverb-run: precheck — personas.md approved', r.body?.files?.find((f: any) => f.filename === 'personas.md')?.status, 'approved');
+    r = await json(`/api/projects/${mixedSlug}/ba-workspace/files/personas.md/transition`, 'POST', { to: 'draft' });
+    eq('neverb-run: approved→draft with no state file → 200 draft', [r.body?.ok, r.body?.status], [true, 'draft']);
+    const seeded = readGenState(seedIds.mixed);
+    eq(
+      'neverb-run: revert seeds a done state carrying the flag',
+      [seeded?.state, seeded?.artifactsChanged, seeded?.mode, seeded?.generated, seeded?.total],
+      ['done', true, 'generate', 0, 0],
+    );
+    // Forward again through the real review path (draft → in_review →
+    // approved). AC-30 edit-gating is server-enforced, so mark the file
+    // edited first — same bar the UI's Edit+save sets.
+    runSql(
+      'neverb-edit',
+      `db.prepare("UPDATE ba_artifacts_status SET edited_since_send = 1 WHERE project_id = ${seedIds.mixed} AND filename = 'personas.md'").run();\nconsole.log('SQL_OK');\n`,
+    );
+    r = await json(`/api/projects/${mixedSlug}/ba-workspace/files/personas.md/transition`, 'POST', { to: 'in_review' });
+    eq('neverb-run: draft→in_review → 200', [r.body?.ok, r.body?.status], [true, 'in_review']);
+    r = await json(`/api/projects/${mixedSlug}/ba-workspace/files/personas.md/transition`, 'POST', { to: 'approved' });
+    eq('neverb-run: completing re-approval → generationStarted', [r.body?.ok, r.body?.status, r.body?.generationStarted], [true, 'approved', true]);
+    const neverbFailed = await waitForGenState(seedIds.mixed, (s) => s.state === 'failed', 'neverb-run: waiting for run');
+    check('neverb-run: auto-started run reached terminal state (dead OLLAMA_HOST)', neverbFailed === true);
+    eq('neverb-run: run ran in reconcile mode', readGenState(seedIds.mixed)?.mode, 'reconcile');
+    eq('neverb-run: flag kept after the failed run (re-triggerable)', readGenState(seedIds.mixed)?.artifactsChanged, true);
   } finally {
     child.kill('SIGTERM');
     await new Promise((res) => setTimeout(res, 300));

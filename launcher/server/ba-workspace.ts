@@ -424,6 +424,42 @@ export function registerBaWorkspaceRoutes(app: express.Express): void {
   });
 
   // POST /files/:filename/transition — one step of the state machine.
+  // Fix #3 — an approved artifact reverting is a generation-input change, so
+  // the next completing re-approval should re-run generation. Two shapes:
+  // - a completed run exists → set artifactsChanged on it (pending/generating
+  //   states are excluded by the caller's mid-run 409; a FAILED run keeps its
+  //   own artifactsChanged=true from the failed reconcile).
+  // - NO state file at all → a never-run project: context confirmed before
+  //   the redesign shipped, so the new generator has never run here (legacy
+  //   projects 12/15 in the live data). Both the flag write and the
+  //   re-approval trigger key on a done state, so without this seed the whole
+  //   auto-reconcile path is inert — revert → re-approve silently updates
+  //   nothing. Seed a minimal done state carrying the flag; the run it starts
+  //   is reconcile-mode, which degrades safely to a fresh generate because
+  //   with zero origin=generated rows the reconcile prompts degrade to the
+  //   plain generate prompts (agent-invoker.ts, both the features and BR
+  //   calls gate the reconcile prompt on existing rows being non-empty).
+  function markArtifactsChanged(projectId: number): void {
+    const gen = readReqGenState(projectId);
+    if (gen?.state === 'done') {
+      writeReqGenState(projectId, { ...gen, artifactsChanged: true });
+      return;
+    }
+    if (gen) return; // pending/generating/failed — leave the run's own bookkeeping
+    writeReqGenState(projectId, {
+      state: 'done',
+      generated: 0,
+      total: 0,
+      currentSection: null,
+      startedAt: Date.now(),
+      lastHeartbeatAt: Date.now(),
+      error: null,
+      sectionsDone: [],
+      artifactsChanged: true,
+      mode: 'generate',
+    });
+  }
+
   app.post('/api/projects/:id/ba-workspace/files/:filename/transition', (req, res) => {
     const row = getProjectRow(req.params.id);
     if (!row) {
@@ -470,8 +506,8 @@ export function registerBaWorkspaceRoutes(app: express.Express): void {
         error: 'Requirements generation is running — wait for it to finish before reopening',
       });
     }
-    if (current === 'approved' && to !== 'approved' && existingGen?.state === 'done') {
-      writeReqGenState(row.id, { ...existingGen, artifactsChanged: true });
+    if (current === 'approved' && to !== 'approved') {
+      markArtifactsChanged(row.id);
     }
     db.prepare(
       `INSERT INTO ba_artifacts_status (project_id, filename, status, updated_at)
@@ -732,9 +768,8 @@ export function registerBaWorkspaceRoutes(app: express.Express): void {
       // mark the generated rows stale so the confirmed card offers
       // "Regenerate requirements" and the next trigger reconciles instead of
       // duplicating. (Mid-run reverts are excluded by the 409 above.)
-      if (existing?.state === 'done') {
-        writeReqGenState(row.id, { ...existing, artifactsChanged: true });
-      }
+      // markArtifactsChanged also seeds the never-run case — see the helper.
+      markArtifactsChanged(row.id);
     }
     res.json({ ok: true, reopened });
   });
