@@ -12,6 +12,7 @@ import { registerBaWorkspaceRoutes, countBaArtifacts } from './ba-workspace.js';
 import { enqueueBaDraftJob } from './ba-draft.js';
 import { registerRequirementsRoutes } from './requirements.js';
 import { registerJiraLinkRoutes } from './jira-link.js';
+import { registerBoardRoutes } from './board.js';
 import {
   validateProjectDir,
   scaffoldProjectDir,
@@ -57,6 +58,10 @@ registerRequirementsRoutes(app);
 
 // Sprint tab — Jira link management (screen 6/6b Edit-Jira panel + disconnect).
 registerJiraLinkRoutes(app);
+
+// Sprint tab — Kanban board read-model (screen 6). Cards are stored locally
+// (kanban_card) with Jira as the source of truth via ~30s polling.
+registerBoardRoutes(app);
 
 // ── Types ──────────────────────────────────────────────────────────────────
 

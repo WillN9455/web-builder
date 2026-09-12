@@ -68,7 +68,12 @@ function serializeLink(row: JiraLinkRow): Record<string, unknown> {
 
 function formatRelative(ts: string | null): string {
   if (!ts) return 'never';
-  const diff = Math.floor((Date.now() - new Date(ts).getTime()) / 1000);
+  // The server writes datetime('now') — UTC with no offset — so parse the naive
+  // stamp as UTC. Parsing it as local time skews every banner by the machine's
+  // UTC offset (a just-synced link would read '10h ago' on UTC+10).
+  const tsMs = Date.parse(ts.replace(' ', 'T') + 'Z');
+  if (Number.isNaN(tsMs)) return 'never';
+  const diff = Math.max(0, Math.floor((Date.now() - tsMs) / 1000));
   if (diff < 60) return `${diff}s ago`;
   const mins = Math.floor(diff / 60);
   if (mins < 60) return `${mins}m ago`;
@@ -172,7 +177,7 @@ function handlePostLink(req: Request, res: Response): void {
   );
 
   // Update last_synced_at to now on first connect so the banner shows "just synced".
-  db.prepare('UPDATE jira_link SET sync_status = ?, last_synced_at = datetime("now") WHERE project_id = ?')
+  db.prepare("UPDATE jira_link SET sync_status = ?, last_synced_at = datetime('now') WHERE project_id = ?")
     .run('connected', projectId);
 
   const link = getLinkByProject(projectId)!;
@@ -235,7 +240,7 @@ function handlePatchLink(req: Request, res: Response): void {
   // Concurrent-edit guard: only update if the row hasn't changed since we
   // read it. The optimistic-lock column is last_synced_at.
   const optimisticTs = existing.last_synced_at;
-  updates.push('last_synced_at = datetime("now")');
+  updates.push("last_synced_at = datetime('now')");
 
   const sql = `UPDATE jira_link SET ${updates.join(', ')} WHERE project_id = ? AND last_synced_at = ?`;
   values.push(projectId, optimisticTs);
@@ -270,12 +275,18 @@ function handleDeleteLink(req: Request, res: Response): void {
 
 // ── Route registration ─────────────────────────────────────────────────────
 
-/** Parse a route-param ID (numeric or slug). Matches the launcher's routing convention. */
-function parseProjectId(idOrSlug: string): number | null {
-  const n = Number(idOrSlug);
-  if (!Number.isInteger(n) || n <= 0) return null;
+/**
+ * Parse a route-param ID (numeric or slug). Matches the launcher's routing
+ * convention: a bare numeric id resolves directly; anything else is tried as
+ * a project slug. The slug lookup must be reachable — an id guard that
+ * rejects non-numeric strings outright would make it dead code.
+ */
+export function parseProjectId(idOrSlug: string): number | null {
   // Accept numeric IDs directly.
-  if (db.prepare('SELECT 1 FROM project WHERE id = ?').get(n)) return n;
+  const n = Number(idOrSlug);
+  if (Number.isInteger(n) && n > 0 && db.prepare('SELECT 1 FROM project WHERE id = ?').get(n)) {
+    return n;
+  }
   // Also accept slugs — look them up in the project table.
   const row = db.prepare('SELECT id FROM project WHERE slug = ?').get(idOrSlug) as { id: number } | undefined;
   return row ? row.id : null;
