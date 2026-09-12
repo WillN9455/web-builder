@@ -11,6 +11,7 @@ import { migrate, db } from './db.js';
 import { registerBaWorkspaceRoutes, countBaArtifacts } from './ba-workspace.js';
 import { enqueueBaDraftJob } from './ba-draft.js';
 import { registerRequirementsRoutes } from './requirements.js';
+import { registerJiraLinkRoutes } from './jira-link.js';
 import {
   validateProjectDir,
   scaffoldProjectDir,
@@ -53,6 +54,9 @@ registerBaWorkspaceRoutes(app);
 // middleware exists in the launcher, so the seam is documented at the
 // registration site (plan §0c) — see server/requirements.ts for the full note.
 registerRequirementsRoutes(app);
+
+// Sprint tab — Jira link management (screen 6/6b Edit-Jira panel + disconnect).
+registerJiraLinkRoutes(app);
 
 // ── Types ──────────────────────────────────────────────────────────────────
 

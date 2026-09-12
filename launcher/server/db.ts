@@ -82,8 +82,18 @@ CREATE TABLE IF NOT EXISTS activity (
 
 CREATE TABLE IF NOT EXISTS jira_link (
   project_id      INTEGER PRIMARY KEY REFERENCES project(id) ON DELETE CASCADE,
-  jira_project_key TEXT NOT NULL,
-  jira_base_url    TEXT NOT NULL,
+  jira_project_key TEXT    NOT NULL,
+  jira_base_url    TEXT    NOT NULL,
+  account_email    TEXT    NOT NULL DEFAULT '',
+  api_token_hash   TEXT    NOT NULL DEFAULT '',
+  sync_direction   TEXT    NOT NULL DEFAULT 'two_way'
+                       CHECK (sync_direction IN
+                        ('two_way','launcher_to_jira','jira_to_launcher')),
+  auto_create      INTEGER NOT NULL DEFAULT 1 CHECK (auto_create IN (0,1)),
+  sync_status      TEXT    NOT NULL DEFAULT 'connected'
+                       CHECK (sync_status IN
+                        ('connected','stale','failed','offline')),
+  sync_error       TEXT,
   last_synced_at   TEXT
 );
 
@@ -211,6 +221,41 @@ export function migrateSchema(target: Database.Database): void {
     console.warn(
       '[db] added ba_artifacts_status.edited_since_send: Send gating needs the edit-complete flag (plan §9.5 AC-30)',
     );
+  }
+
+  // Sprint tab — jira_link columns added post-schema (sprint.html fields).
+  // CREATE TABLE IF NOT EXISTS is a no-op on existing tables; ALTER brings
+  // up columns idempotently. All defaults match the DDL so new rows align.
+  const jlCols = target.pragma('table_info(jira_link)') as { name: string }[];
+  if (!jlCols.some((c) => c.name === 'account_email')) {
+    target.exec(
+      "ALTER TABLE jira_link ADD COLUMN account_email TEXT NOT NULL DEFAULT ''",
+    );
+    console.warn('[db] added jira_link.account_email');
+  }
+  if (!jlCols.some((c) => c.name === 'api_token_hash')) {
+    target.exec("ALTER TABLE jira_link ADD COLUMN api_token_hash TEXT NOT NULL DEFAULT ''");
+    console.warn('[db] added jira_link.api_token_hash');
+  }
+  if (!jlCols.some((c) => c.name === 'sync_direction')) {
+    target.exec(
+      "ALTER TABLE jira_link ADD COLUMN sync_direction TEXT NOT NULL DEFAULT 'two_way'",
+    );
+    console.warn('[db] added jira_link.sync_direction');
+  }
+  if (!jlCols.some((c) => c.name === 'auto_create')) {
+    target.exec("ALTER TABLE jira_link ADD COLUMN auto_create INTEGER NOT NULL DEFAULT 1");
+    console.warn('[db] added jira_link.auto_create');
+  }
+  if (!jlCols.some((c) => c.name === 'sync_status')) {
+    target.exec(
+      "ALTER TABLE jira_link ADD COLUMN sync_status TEXT NOT NULL DEFAULT 'connected'",
+    );
+    console.warn('[db] added jira_link.sync_status');
+  }
+  if (!jlCols.some((c) => c.name === 'sync_error')) {
+    target.exec("ALTER TABLE jira_link ADD COLUMN sync_error TEXT");
+    console.warn('[db] added jira_link.sync_error');
   }
   for (const [name, ddl] of [
     ['project', PROJECT_TABLE_DDL],
