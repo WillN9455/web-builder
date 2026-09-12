@@ -22,7 +22,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // picks up the pinned workspace (CLAUDE.md §Workspace Root).
 export const REPO_ROOT = path.resolve(__dirname, "..", "..");
 
-export const MODEL = process.env.IDEA_MODEL ?? "qwen3.6:35b-extended";
+export const MODEL = process.env.IDEA_MODEL ?? "deepseek-v4-flash:0731:cloud";
 export const OLLAMA = process.env.OLLAMA_HOST ?? "http://127.0.0.1:11434";
 
 export const MAX_BODY_BYTES = 512 * 1024;

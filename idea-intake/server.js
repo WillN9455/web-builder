@@ -34,7 +34,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "public");
 const REPO_ROOT = path.resolve(__dirname, "..");
 
-const MODEL = process.env.IDEA_MODEL || "qwen3.6:35b-extended";
+const MODEL = process.env.IDEA_MODEL || "deepseek-v4-flash:0731:cloud";
 const OLLAMA = process.env.OLLAMA_HOST || "http://127.0.0.1:11434";
 const PORT = Number(process.env.PORT || 4310);
 
