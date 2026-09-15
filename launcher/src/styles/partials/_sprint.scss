@@ -1,0 +1,325 @@
+// Part of the order-preserving app.css split (plan §4). The @use chain in
+// app.scss IS the original rule order; do not reorder without running
+// scripts/verify-css-equivalence.mjs against a pre-split build.
+@use '../tokens';
+@use '../mixins';
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Sprint tab (sprint.html — screen 6 connected / 6b connect)
+   Ported from design/sprint.html. The mockup restyles several shared-named
+   classes (topbar, search, kbd, card) differently from the app's own rules —
+   per partials/README.md every such class is re-issued SCOPED under
+   .sprint-screen (additive), never redefined at top level. Classes the
+   mockup shares byte-identical with the app (.help, .btn-ghost, .input,
+   .btn-primary/-soft/-pill, .icon-btn, .pill, .empty + .empty-actions) are
+   NOT re-issued here; the shared definitions win.
+   Declared divergences: (1) the design ships its own `.empty` with identical
+   bytes — reuse shared `_empty-state.scss`; (2) banners (.banner-*) are
+   authored fresh on the `.error-banner` model — the mockup's single <style>
+   block has no banner rules; FR-2 copy governs text. Stepper labels map the
+   design's 7 visual stages onto the kanban_card 8-stage status field
+   (steps 1–2 done, 4 active, 5–7 review/shipped); the final step has no
+   connector bar.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── Sprint screen root ─────────────────────────────────────────────────── */
+.sprint-screen {
+  /* topbar — shared `_layout.scss .topbar` is gap:14 / h1 weight 600; the
+     mockup tightens the gap and bolds the h1 → scoped additive. */
+  .topbar { gap: 18px; }
+  .topbar h1 { font-weight: 700; }
+
+  /* search pill variant — shared `.search` is a bordered row; the mockup
+     renders it as a white pill. Scoped additive; shared `.search input`
+     ::placeholder carries over. */
+  .search {
+    flex: 1;
+    max-width: 540px;
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 16px;
+    background: tokens.$white;
+    border-radius: 999px;
+    border: 1px solid rgba(tokens.$navy, 0.08);
+    color: var(--ink-2);
+    font-size: 13.5px;
+    input { border: 0; outline: 0; flex: 1; background: transparent; color: var(--ink); font: inherit; }
+  }
+
+  .kbd { font-family: var(--font-mono); font-size: 11px; background: var(--lavender); color: var(--ink); padding: 2px 7px; border-radius: 6px; }
+
+  .card {
+    background: tokens.$white;
+    border-radius: var(--r-xl);
+    padding: 22px;
+  }
+  .card h3 {
+    font-size: 14px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--ink-2);
+    margin: 0 0 14px;
+  }
+
+  .help b { font-weight: 600; }
+
+  /* project header — authored fresh for the sprint screens (no shared app
+     equivalent). The design scopes it to these screens, so it's re-issued
+     scoped here rather than at top level. */
+  .proj-head {
+    display: flex; align-items: start; gap: 18px;
+    padding: 8px 4px 4px;
+  }
+  .proj-head .ico-lg {
+    width: 52px; height: 52px;
+    border-radius: 14px;
+    display: grid; place-items: center;
+    flex: none;
+  }
+  .proj-head h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.01em; }
+  .proj-head .one { color: var(--ink-2); font-size: 13.5px; margin-top: 2px; }
+  .proj-head .path { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-2); margin-top: 6px; display: inline-flex; align-items: center; gap: 4px; }
+  .proj-head .actions { margin-left: auto; display: flex; gap: 8px; }
+
+  /* stage label — the app's global .stage-pt (projects.scss) is a plain mono
+     12px label; the design renders it as a pill. Scoped additive override,
+     byte-matching design/sprint.html `.stage-pt`. */
+  .stage-pt {
+    font-size: 12px;
+    color: var(--ink-2);
+    font-family: var(--font-mono);
+    background: rgba(tokens.$navy, 0.05);
+    padding: 2px 8px;
+    border-radius: 6px;
+    display: inline-block;
+  }
+}
+
+/* ─── Code-agent status strip ─────────────────────────────────────────────── */
+.agent-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  background: rgba(tokens.$white, 0.5);
+  b { display: block; font-size: 13px; font-weight: 600; color: var(--ink); }
+  .agent-sub { font-size: 11.5px; color: var(--ink-2); }
+}
+.av { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 10px; font-weight: 700; }
+.av.a-c1 { background: var(--mint); color: var(--ink); }
+.av.a-c2 { background: var(--sky); color: var(--ink); }
+.av.a-c3 { background: var(--butter); color: var(--ink); }
+
+/* ─── Jira-sync banners (FR-2) — fresh on the .error-banner model ─────────── */
+.banner {
+  padding: 14px 18px;
+  border-radius: var(--r-md);
+  font-size: 13px;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  b { font-weight: 700; }
+  code { font-family: var(--font-mono); font-size: 12px; background: rgba(tokens.$navy, 0.06); padding: 1px 5px; border-radius: 5px; }
+}
+.banner-info   { background: rgba(tokens.$green, 0.12); border: 1px solid rgba(tokens.$green, 0.4); color: var(--ink); }
+.banner-stale  { background: rgba(tokens.$amber, 0.12); border: 1px solid rgba(tokens.$amber, 0.4); color: var(--ink); }
+.banner-failed { background: rgba(tokens.$rose, 0.12);  border: 1px solid rgba(tokens.$rose, 0.4);  color: tokens.$danger-ink; }
+.banner button {
+  border: 0; background: tokens.$white; color: var(--ink);
+  font-weight: 600; font-size: 12px;
+  padding: 6px 12px; border-radius: 999px;
+  border: 1px solid rgba(tokens.$navy, 0.12);
+  &:hover { background: rgba(tokens.$navy, 0.04); }
+}
+.banner-failed button {
+  color: tokens.$danger-ink;
+  border-color: rgba(tokens.$rose, 0.4);
+}
+
+/* ─── Progress stepper ─────────────────────────────────────────────────────── */
+.stepper {
+  display: flex; align-items: center;
+  background: tokens.$white;
+  border-radius: var(--r-xl);
+  padding: 14px 18px;
+  gap: 0;
+  overflow-x: auto;
+}
+.stepper .step {
+  display: flex; align-items: center; gap: 8px;
+  flex: 1; min-width: 0;
+}
+.stepper .step .num {
+  width: 26px; height: 26px; border-radius: 50%;
+  background: rgba(tokens.$navy, 0.08);
+  color: var(--ink-2);
+  display: grid; place-items: center;
+  font-size: 12px; font-weight: 700;
+  flex: none;
+}
+.stepper .step .lbl {
+  font-size: 12.5px; color: var(--ink-2); font-weight: 500;
+  white-space: nowrap;
+}
+.stepper .step .bar { flex: 1; height: 2px; background: rgba(tokens.$navy, 0.1); margin: 0 8px; }
+.stepper .step.done .num { background: var(--mint); color: var(--ink); }
+.stepper .step.done .num::after { content: "✓"; }
+.stepper .step.done .num b { display: none; }
+.stepper .step.active .num { background: var(--navy); color: tokens.$white; }
+.stepper .step.active .lbl { color: var(--ink); font-weight: 600; }
+.stepper .step.review .num { background: var(--butter); color: var(--ink); }
+.stepper .step.blocked .num { background: var(--blush); color: var(--rose); }
+.stepper .step.shipped .num { background: var(--navy); color: tokens.$white; }
+.stepper .step.shipped .num::after { content: "★"; }
+.stepper .step.done + .step .bar { background: var(--green); }
+.stepper .step.review + .step .bar { background: var(--amber); }
+.stepper .step.blocked + .step .bar { background: var(--rose); }
+
+/* ─── Kanban board ─────────────────────────────────────────────────────────── */
+.kanban {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+.kcol {
+  background: rgba(tokens.$white, 0.5);
+  border-radius: var(--r-md);
+  padding: 12px;
+  display: flex; flex-direction: column; gap: 10px;
+  min-height: 320px;
+}
+.khead {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; font-weight: 600; color: var(--ink-2);
+  text-transform: uppercase; letter-spacing: 0.05em;
+  padding: 0 2px 6px;
+  border-bottom: 1px dashed rgba(tokens.$navy, 0.12);
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .kcount {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    background: rgba(tokens.$navy, 0.08);
+    color: var(--ink-2);
+    padding: 1px 7px; border-radius: 999px;
+    font-size: 10px; text-transform: none; letter-spacing: 0;
+  }
+}
+.kcard {
+  background: tokens.$white;
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 4px 10px -6px rgba(tokens.$navy, 0.18);
+  border: 1px solid rgba(tokens.$navy, 0.04);
+  display: flex; flex-direction: column; gap: 6px;
+  font-size: 12.5px;
+}
+.kprio { width: 8px; height: 8px; border-radius: 50%; margin-left: auto; flex: none; }
+.kprio.high { background: var(--rose); }
+.kprio.med  { background: var(--amber); }
+.kprio.low  { background: var(--ink-3); }
+.krow { display: flex; align-items: center; gap: 8px; }
+.ktag {
+  font-family: var(--font-mono); font-size: 10px; font-weight: 600;
+  color: var(--navy);
+  background: rgba(tokens.$navy, 0.06);
+  padding: 2px 7px; border-radius: 5px;
+}
+.ktitle { font-size: 12.5px; font-weight: 500; color: var(--ink); line-height: 1.4; }
+.kfoot { display: flex; align-items: center; gap: 8px; margin-top: 4px; font-size: 11px; color: var(--ink-2); }
+.kagent {
+  width: 20px; height: 20px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 700; color: var(--ink);
+  flex: none;
+}
+.kagent.a-c1 { background: var(--mint); }
+.kagent.a-c2 { background: var(--sky); }
+.kagent.a-c3 { background: var(--butter); }
+.kpts { font-family: var(--font-mono); font-size: 10px; }
+.kprog { margin-left: auto; font-size: 10px; color: var(--ink-2); background: rgba(tokens.$navy, 0.05); padding: 1px 6px; border-radius: 5px; }
+.kcol-empty { font-size: 12px; color: var(--ink-3); padding: 8px 2px; font-style: italic; }
+
+/* ─── Setup (screen 6b — connect Jira) ─────────────────────────────────────── */
+.jira-gate {
+  display: flex; align-items: flex-start; gap: 12px;
+  background: var(--lavender);
+  border: 1px solid rgba(tokens.$purple, 0.25);
+  border-radius: 12px;
+  padding: 14px 16px;
+  font-size: 13px; color: var(--ink);
+  .ico { color: var(--purple); flex: none; margin-top: 1px; }
+  b { font-weight: 700; }
+  .sub { display: block; color: var(--ink-2); font-size: 12px; margin-top: 4px; }
+  .right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+}
+.setup-card {
+  background: tokens.$white;
+  border: 1px solid rgba(tokens.$navy, 0.08);
+  border-radius: 14px;
+  padding: 24px;
+  display: flex; flex-direction: column; gap: 16px;
+  max-width: 640px;
+}
+.setup-h {
+  display: flex; align-items: flex-start; gap: 14px;
+  .ico { width: 36px; height: 36px; border-radius: 10px; background: var(--butter); display: grid; place-items: center; color: var(--ink); flex: none; }
+  h3 { margin: 0; font-size: 16px; font-weight: 600; }
+  p { margin: 2px 0 0; font-size: 12px; color: var(--ink-2); }
+}
+.setup-row {
+  display: flex; flex-direction: column; gap: 8px;
+  font-size: 13px;
+}
+.setup-row + .setup-row { margin-top: 18px; }
+.setup-row label { color: var(--ink-2); font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+.setup-row .input { width: 100%; }
+.setup-row .input:disabled { color: var(--ink-2); background: rgba(tokens.$navy, 0.03); cursor: not-allowed; }
+.setup-row .help { margin-top: 6px; }
+.setup-actions { display: flex; gap: 8px; align-items: center; }
+.setup-help { font-size: 12px; color: var(--ink-2); line-height: 1.5; }
+.setup-help b { color: var(--ink); font-weight: 600; }
+.setup-divider { height: 1px; background: rgba(tokens.$navy, 0.08); margin: 4px 0; }
+
+/* ─── Edit-Jira panel (screen 6 — #jira-config-panel) ─────────────────────── */
+.config-card {
+  background: tokens.$white;
+  border: 1px solid rgba(tokens.$navy, 0.08);
+  border-radius: 14px;
+  padding: 24px;
+  display: flex; flex-direction: column; gap: 18px;
+}
+.config-card.readonly .setup-row .input { pointer-events: none; }
+.config-head {
+  display: flex; align-items: flex-start; gap: 14px;
+  .ico { width: 36px; height: 36px; border-radius: 10px; background: var(--mint); color: var(--green); display: grid; place-items: center; flex: none; }
+  .body h3 { margin: 0; font-size: 16px; font-weight: 600; }
+  .body p { margin: 2px 0 0; font-size: 12px; color: var(--ink-2); }
+  .close {
+    margin-left: auto;
+    width: 32px; height: 32px; border-radius: 999px;
+    background: rgba(tokens.$navy, 0.04);
+    color: var(--ink-2);
+    display: grid; place-items: center;
+    &:hover { background: rgba(tokens.$navy, 0.08); color: var(--ink); }
+  }
+}
+.config-foot {
+  display: flex; align-items: center; gap: 10px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(tokens.$navy, 0.08);
+  .left { font-size: 12px; color: var(--ink-2); b { color: var(--ink); font-weight: 600; } }
+  .right { margin-left: auto; display: flex; gap: 8px; }
+}
+.config-status {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11.5px; color: var(--ink-2);
+  background: rgba(tokens.$navy, 0.04);
+  padding: 4px 10px; border-radius: 999px;
+  margin-left: 4px;
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+}
+.config-status.stale .dot { background: var(--amber); }
+
+/* ─── Cog toggles ─────────────────────────────────────────────────────────── */
+.icon-btn[aria-pressed="true"] {
+  background: rgba(tokens.$navy, 0.1);
+  color: var(--ink);
+}
+
+/* ─── Disconnect confirm (fresh on the shared modal kit; no backdrop in the
+   mockup — SprintScreen renders the modal only while open, like other tabs) ─── */
