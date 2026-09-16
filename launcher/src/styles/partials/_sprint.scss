@@ -234,6 +234,12 @@
 .kprog { margin-left: auto; font-size: 10px; color: var(--ink-2); background: rgba(tokens.$navy, 0.05); padding: 1px 6px; border-radius: 5px; }
 .kcol-empty { font-size: 12px; color: var(--ink-3); padding: 8px 2px; font-style: italic; }
 
+/* ─── Backlog view (screen 6 — Board/Backlog toggle) — flat list of the same
+   cards, reusing the kanban card chrome so the two views stay visually one. ─── */
+.sprint-backlog {
+  display: flex; flex-direction: column; gap: 10px;
+}
+
 /* ─── Setup (screen 6b — connect Jira) ─────────────────────────────────────── */
 .jira-gate {
   display: flex; align-items: flex-start; gap: 12px;
@@ -314,6 +320,21 @@
   .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
 }
 .config-status.stale .dot { background: var(--amber); }
+
+/* ─── Add-issue inline form (screen 6) — grid of the shared setup-row fields ── */
+.sprint-add-form {
+  background: tokens.$white;
+  border: 1px solid rgba(tokens.$navy, 0.08);
+  border-radius: var(--r-md);
+  padding: 18px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 16px;
+  margin-bottom: 14px;
+  .setup-row + .setup-row { margin-top: 0; }
+  .setup-actions { grid-column: 1 / -1; }
+  .field-error { grid-column: 1 / -1; }
+}
 
 /* ─── Cog toggles ─────────────────────────────────────────────────────────── */
 .icon-btn[aria-pressed="true"] {

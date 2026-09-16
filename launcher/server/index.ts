@@ -13,6 +13,7 @@ import { enqueueBaDraftJob } from './ba-draft.js';
 import { registerRequirementsRoutes } from './requirements.js';
 import { registerJiraLinkRoutes } from './jira-link.js';
 import { registerBoardRoutes } from './board.js';
+import { registerStoryGenRoutes } from './story-gen.js';
 import {
   validateProjectDir,
   scaffoldProjectDir,
@@ -62,6 +63,11 @@ registerJiraLinkRoutes(app);
 // Sprint tab — Kanban board read-model (screen 6). Cards are stored locally
 // (kanban_card) with Jira as the source of truth via ~30s polling.
 registerBoardRoutes(app);
+
+// Sprint tab — BA Run 2 story generation + auto-created To-do cards (slice 4).
+// Mounted after the board routes — it reads + writes the same kanban_card and
+// prd.md/features.md surfaces Run 1 owns.
+registerStoryGenRoutes(app);
 
 // ── Types ──────────────────────────────────────────────────────────────────
 

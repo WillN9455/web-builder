@@ -102,7 +102,7 @@ export async function deleteProject(id: number | string): Promise<DeleteProjectR
 // src/lib/projectGate.ts); ba_artifact_count is the Project Background count
 // chip (null when the project's PRD/ dir can't be read → chip omitted).
 export type ProjectDetailResponse = {
-  project: Pick<Project, 'id' | 'name' | 'slug' | 'current_stage' | 'folder_path'> & {
+  project: Pick<Project, 'id' | 'name' | 'slug' | 'one_liner' | 'tile_color' | 'current_stage' | 'folder_path'> & {
     context_confirmed: boolean;
     ba_artifact_count: number | null;
   };
@@ -1068,5 +1068,42 @@ export function updateBoardCard(
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(patch),
+  });
+}
+
+// ── /api/projects/:id/stories (slice 4 — BA Run 2 story generation + Jira auto-create) ──
+//
+// Client for server/story-gen.ts. Generation writes user stories locally
+// (PRD/stories.md) and auto-creates one Jira issue per story via the connector,
+// persisting the issue-key ↔ story mapping locally. The trigger 409s when the
+// gate isn't met (context unconfirmed, requirements not fleshed out) — the
+// message surfaces verbatim via reqFetch's data.error path.
+
+export type StoryGenStatusState = 'idle' | 'generating' | 'done' | 'failed';
+
+export type StoryGenStatus = {
+  status: StoryGenStatusState;
+  progress: { generated: number; total: number };
+  currentSection?: string;
+  /** Epoch ms the active section started — the banner ticks an elapsed clock off this. */
+  sectionStartedAt?: number;
+  /** Surfaces why a run failed — the failed banner shows it. */
+  error?: string;
+  /** Final counts — stories written + Jira issues created (locally keyed). */
+  result?: { storiesGenerated: number; issuesCreated: number };
+};
+
+export async function fetchStoryGenStatus(idOrSlug: string): Promise<StoryGenStatus> {
+  return reqFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/stories/status`);
+}
+
+// Throws on failure per the reqFetch convention — a 409 (gate not met, already
+// running/generated) must surface as an error, never as a success-shaped
+// payload the caller can misread as "generation started".
+export async function triggerStoryGeneration(idOrSlug: string): Promise<{ ok: true }> {
+  return reqFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/stories/generate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
   });
 }

@@ -112,7 +112,9 @@ function countCards(projectId: number): Record<BoardColumn, number> {
 // numeric suffix already in use plus one. Generated server-side so the board
 // never trusts a client-supplied ticket id. Uses the linked Jira project key
 // when a connection exists, else the generic `SB` (Sprint Board) fallback.
-function nextTicketKey(project: { id: number }): string {
+// Exported for the story-gen job (slice 4) so it allocates keys through the
+// same single statement the board's own INSERT uses.
+export function nextTicketKey(project: { id: number }): string {
   const link = db
     .prepare('SELECT jira_project_key FROM jira_link WHERE project_id = ?')
     .get(project.id) as { jira_project_key: string } | undefined;

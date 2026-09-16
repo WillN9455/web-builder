@@ -188,8 +188,9 @@ function hasGeneratedRows(row: ProjectRow): boolean {
 }
 
 // ── Context assembly (approved artifacts as prompt context, PRD-weighted) ──
-
-function buildContext(row: ProjectRow): string | null {
+// Exported for the story-gen job (slice 4) — Run 2 derives user stories from
+// the same approved artifact set.
+export function buildContext(row: ProjectRow): string | null {
   try {
     const lines: string[] = [];
     const folder = resolveProjectFolder(row);
@@ -690,7 +691,11 @@ async function callModelJson(user: string): Promise<Record<string, unknown> | nu
   }
 }
 
-async function callOllama(system: string, user: string): Promise<string> {
+// The shared Ollama chat seam (streaming NDJSON accumulate; a hard timeout via
+// AbortSignal; a 404 remapped to a pull instruction). Exported for the
+// story-gen job (slice 4), which reuses the same client contract with a
+// Run-2 system prompt of its own.
+export async function callOllama(system: string, user: string): Promise<string> {
   const res = await fetch(OLLAMA + '/api/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

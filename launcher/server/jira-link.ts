@@ -147,6 +147,24 @@ function handlePostTestConnection(req: Request, res: Response): void {
   });
 }
 
+// The client contract (src/lib/api.ts JiraLinkInput) is camelCase; the DB
+// layer and these input types are snake_case. Normalize once at the route
+// boundary so both POST and PATCH see the same shape (board.ts reads its
+// camelCase body directly — the client naming is the convention).
+function normalizeBody(body: Record<string, unknown>): Record<string, unknown> {
+  const map: Record<string, string> = {
+    jiraProjectKey: 'jira_project_key',
+    jiraBaseUrl: 'jira_base_url',
+    accountEmail: 'account_email',
+    apiToken: 'api_token',
+    syncDirection: 'sync_direction',
+    autoCreate: 'auto_create',
+  };
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(body)) out[map[k] ?? k] = v;
+  return out;
+}
+
 function handlePostLink(req: Request, res: Response): void {
   const projectId = parseProjectId(req.params.projectId);
   if (projectId === null) {
@@ -154,7 +172,7 @@ function handlePostLink(req: Request, res: Response): void {
     return;
   }
 
-  const input: Partial<JiraLinkCreateInput> = req.body;
+  const input: Partial<JiraLinkCreateInput> = normalizeBody(req.body);
   const err = validateCreateInput(input);
   if (err) {
     res.status(422).json({ error: err });
@@ -198,7 +216,7 @@ function handlePatchLink(req: Request, res: Response): void {
   }
 
   // Partial validation — only validate fields that changed.
-  const input: Partial<JiraLinkPatchInput> = req.body;
+  const input: Partial<JiraLinkPatchInput> = normalizeBody(req.body);
   if (input.jira_project_key && !/^[A-Z][A-Z0-9]+$/.test(input.jira_project_key)) {
     res.status(422).json({ error: 'Project key must be 2–10 uppercase letters (e.g. TM, TEN).' });
     return;
