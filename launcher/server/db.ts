@@ -56,6 +56,27 @@ const STAGE_TABLE_DDL = `CREATE TABLE IF NOT EXISTS stage (
   meta         TEXT    NOT NULL DEFAULT '{}'  -- JSON
 )`;
 
+// Standalone for the same reason the other DDL consts are: migrateSchema
+// rebuilds jira_link when its on-disk CHECK predates the 'pending'
+// sync_status (SQLite can't ALTER a CHECK), so the canonical table def lives
+// here and is interpolated into SCHEMA.
+const JIRA_LINK_TABLE_DDL = `CREATE TABLE IF NOT EXISTS jira_link (
+  project_id      INTEGER PRIMARY KEY REFERENCES project(id) ON DELETE CASCADE,
+  jira_project_key TEXT    NOT NULL,
+  jira_base_url    TEXT    NOT NULL,
+  account_email    TEXT    NOT NULL DEFAULT '',
+  api_token_hash   TEXT    NOT NULL DEFAULT '',
+  sync_direction   TEXT    NOT NULL DEFAULT 'two_way'
+                       CHECK (sync_direction IN
+                        ('two_way','launcher_to_jira','jira_to_launcher')),
+  auto_create      INTEGER NOT NULL DEFAULT 1 CHECK (auto_create IN (0,1)),
+  sync_status      TEXT    NOT NULL DEFAULT 'pending'
+                       CHECK (sync_status IN
+                        ('connected','pending','stale','failed','offline')),
+  sync_error       TEXT,
+  last_synced_at   TEXT
+)`;
+
 const SCHEMA = `
 ${PROJECT_TABLE_DDL};
 
@@ -80,12 +101,7 @@ CREATE TABLE IF NOT EXISTS activity (
   ts         TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 
-CREATE TABLE IF NOT EXISTS jira_link (
-  project_id      INTEGER PRIMARY KEY REFERENCES project(id) ON DELETE CASCADE,
-  jira_project_key TEXT NOT NULL,
-  jira_base_url    TEXT NOT NULL,
-  last_synced_at   TEXT
-);
+${JIRA_LINK_TABLE_DDL};
 
 CREATE TABLE IF NOT EXISTS kanban_card (
   id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -212,6 +228,67 @@ export function migrateSchema(target: Database.Database): void {
       '[db] added ba_artifacts_status.edited_since_send: Send gating needs the edit-complete flag (plan §9.5 AC-30)',
     );
   }
+
+  // Sprint tab — jira_link columns added post-schema (sprint.html fields).
+  // CREATE TABLE IF NOT EXISTS is a no-op on existing tables; ALTER brings
+  // up columns idempotently. All defaults match the DDL so new rows align.
+  const jlCols = target.pragma('table_info(jira_link)') as { name: string }[];
+  if (!jlCols.some((c) => c.name === 'account_email')) {
+    target.exec(
+      "ALTER TABLE jira_link ADD COLUMN account_email TEXT NOT NULL DEFAULT ''",
+    );
+    console.warn('[db] added jira_link.account_email');
+  }
+  if (!jlCols.some((c) => c.name === 'api_token_hash')) {
+    target.exec("ALTER TABLE jira_link ADD COLUMN api_token_hash TEXT NOT NULL DEFAULT ''");
+    console.warn('[db] added jira_link.api_token_hash');
+  }
+  if (!jlCols.some((c) => c.name === 'sync_direction')) {
+    target.exec(
+      "ALTER TABLE jira_link ADD COLUMN sync_direction TEXT NOT NULL DEFAULT 'two_way'",
+    );
+    console.warn('[db] added jira_link.sync_direction');
+  }
+  if (!jlCols.some((c) => c.name === 'auto_create')) {
+    target.exec("ALTER TABLE jira_link ADD COLUMN auto_create INTEGER NOT NULL DEFAULT 1");
+    console.warn('[db] added jira_link.auto_create');
+  }
+  if (!jlCols.some((c) => c.name === 'sync_status')) {
+    target.exec(
+      "ALTER TABLE jira_link ADD COLUMN sync_status TEXT NOT NULL DEFAULT 'pending'",
+    );
+    console.warn('[db] added jira_link.sync_status');
+  }
+  if (!jlCols.some((c) => c.name === 'sync_error')) {
+    target.exec("ALTER TABLE jira_link ADD COLUMN sync_error TEXT");
+    console.warn('[db] added jira_link.sync_error');
+  }
+  // Copy-drop-rename rebuild (SQLite can't ALTER a CHECK constraint). Runs
+  // inside a transaction with foreign keys off; AUTOINCREMENT ids survive.
+  // columns null → SELECT * preserves the on-disk layout; a named column list
+  // is for tables whose on-disk column order can differ from the current DDL
+  // (ALTER-added columns append at the end).
+  const rebuildTable = (
+    name: string,
+    ddl: string,
+    columns: string[] | null,
+    why: string,
+  ): void => {
+    const tempName = `${name}__migrate`;
+    const createTemp = ddl.replace(/^CREATE TABLE IF NOT EXISTS \w+ /, `CREATE TABLE ${tempName} `);
+    const fkWasOn = (target.pragma('foreign_keys', { simple: true }) as number) === 1;
+    target.pragma('foreign_keys = OFF');
+    target.transaction(() => {
+      target.exec(createTemp);
+      const cols = columns ? columns.join(', ') : '*';
+      target.exec(columns ? `INSERT INTO ${tempName} (${cols}) SELECT ${cols} FROM ${name}` : `INSERT INTO ${tempName} SELECT * FROM ${name}`);
+      target.exec(`DROP TABLE ${name}`);
+      target.exec(`ALTER TABLE ${tempName} RENAME TO ${name}`);
+    })();
+    target.pragma(`foreign_keys = ${fkWasOn ? 'ON' : 'OFF'}`);
+    console.warn(`[db] rebuilt ${name} table: ${why}`);
+  };
+
   for (const [name, ddl] of [
     ['project', PROJECT_TABLE_DDL],
     ['stage', STAGE_TABLE_DDL],
@@ -220,23 +297,24 @@ export function migrateSchema(target: Database.Database): void {
       .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?")
       .get(name) as { sql: string | null } | undefined;
     if (!row?.sql || row.sql.includes("'Requirements'")) continue;
-    // Stored definition is stale (pre-'Requirements'). Rebuild it from the
-    // current DDL, preserving every row. AUTOINCREMENT ids survive: the
-    // INSERT ... SELECT carries the explicit ids, which advances
-    // sqlite_sequence to match.
-    const tempName = `${name}__migrate`;
-    const createTemp = ddl.replace(/^CREATE TABLE IF NOT EXISTS \w+ /, `CREATE TABLE ${tempName} `);
-    const fkWasOn = (target.pragma('foreign_keys', { simple: true }) as number) === 1;
-    target.pragma('foreign_keys = OFF');
-    target.transaction(() => {
-      target.exec(createTemp);
-      target.exec(`INSERT INTO ${tempName} SELECT * FROM ${name}`);
-      target.exec(`DROP TABLE ${name}`);
-      target.exec(`ALTER TABLE ${tempName} RENAME TO ${name}`);
-    })();
-    target.pragma(`foreign_keys = ${fkWasOn ? 'ON' : 'OFF'}`);
-    console.warn(
-      `[db] rebuilt ${name} table: on-disk CHECK predated the 'Requirements' stage key — migrated in place`,
+    rebuildTable(name, ddl, null, `on-disk CHECK predated the 'Requirements' stage key — migrated in place`);
+  }
+
+  // Sprint tab — jira_link.sync_status gained 'pending' (DR2 #4): an on-disk
+  // CHECK from before that change rejects every freshly-saved connection with a
+  // raw SQLite error (the exact 500 DR2 #2 flagged, on the CHECK side). Named
+  // columns because older DBs append ALTERed columns at the end.
+  const jlRow = target
+    .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'jira_link'")
+    .get() as { sql: string | null } | undefined;
+  if (jlRow?.sql && !jlRow.sql.includes("'pending'")) {
+    rebuildTable(
+      'jira_link',
+      JIRA_LINK_TABLE_DDL,
+      ['project_id', 'jira_project_key', 'jira_base_url', 'account_email',
+       'api_token_hash', 'sync_direction', 'auto_create', 'sync_status',
+       'sync_error', 'last_synced_at'],
+      `on-disk CHECK predated the 'pending' sync_status — migrated in place`,
     );
   }
 }

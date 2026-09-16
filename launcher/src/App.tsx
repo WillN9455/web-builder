@@ -4,6 +4,7 @@ import { NewIdeaScreen } from './components/NewIdeaScreen';
 import { ProjectDetailScreen, ProjectTabScreen } from './components/ProjectDetailScreen';
 import { ProjectBackgroundScreen } from './components/ProjectBackgroundScreen';
 import { RequirementsScreen } from './components/requirements/RequirementsScreen';
+import { SprintScreen } from './components/sprint/SprintScreen';
 
 // Single-column frame for the screens without the per-project menu. The
 // two-column `.app` grid (sidebar + main) only applies inside an open
@@ -37,6 +38,7 @@ export default function App() {
             `:tab` so they win the match. */}
         <Route path="background" element={<ProjectBackgroundScreen />} />
         <Route path="requirements" element={<RequirementsScreen />} />
+        <Route path="sprint" element={<SprintScreen />} />
         <Route path=":tab" element={<ProjectTabScreen />} />
       </Route>
       <Route path="*" element={<Navigate to="/projects" replace />} />

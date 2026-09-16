@@ -102,7 +102,7 @@ export async function deleteProject(id: number | string): Promise<DeleteProjectR
 // src/lib/projectGate.ts); ba_artifact_count is the Project Background count
 // chip (null when the project's PRD/ dir can't be read → chip omitted).
 export type ProjectDetailResponse = {
-  project: Pick<Project, 'id' | 'name' | 'slug' | 'current_stage' | 'folder_path'> & {
+  project: Pick<Project, 'id' | 'name' | 'slug' | 'one_liner' | 'tile_color' | 'current_stage' | 'folder_path'> & {
     context_confirmed: boolean;
     ba_artifact_count: number | null;
   };
@@ -752,6 +752,19 @@ export class RequirementsDeleteGuardError extends Error {
   }
 }
 
+// A GET Jira-link that finds nothing is a normal screen state (the Sprint tab
+// renders the connect-jira setup), not a failure. reqFetch doesn't expose the
+// HTTP status, so fetchJiraLink matches on the 404 copy the server sends
+// (server/jira-link.ts handleGetLink — 'No Jira connection found for this
+// project.'). The message is coupled ONLY here; SprintScreen branches on
+// instanceof, never on the string.
+export class JiraLinkNotFoundError extends Error {
+  constructor() {
+    super('No Jira connection found for this project.');
+    this.name = 'JiraLinkNotFoundError';
+  }
+}
+
 // Same offline-detection + error-extraction contract as baFetch, plus the
 // Requirements-specific error shapes: {errors} → validation, {referencedBy} →
 // delete guard.
@@ -893,6 +906,206 @@ export async function deleteRequirement(
 // idempotent — a project with no stories left reports migrated: 0.
 export async function migrateRequirements(idOrSlug: string): Promise<MigrateResponse> {
   return reqFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/requirements/migrate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  });
+}
+
+// ── Sprint tab (screen 6) — Jira link + board ───────────────────────────────
+//
+// Client for the server read-models in server/jira-link.ts and server/board.ts.
+// The link is a per-project single connection; a 404 means "not connected yet"
+// and renders the #s6b connect flow. Errors are server-authored strings (the
+// PATCH 409 optimistic-lock message, validation copy) and arrive verbatim via
+// reqFetch's data.error path — no client remapping.
+
+export type JiraSyncStatus = 'connected' | 'pending' | 'stale' | 'failed' | 'offline';
+export type JiraSyncDirection = 'two_way' | 'launcher_to_jira' | 'jira_to_launcher';
+
+export interface JiraLink {
+  projectId: number;
+  jiraProjectKey: string;
+  jiraBaseUrl: string;
+  accountEmail: string;
+  /** True when an API token is stored — the server never returns the hash. */
+  hasToken: boolean;
+  syncDirection: JiraSyncDirection;
+  autoCreate: boolean;
+  syncStatus: JiraSyncStatus;
+  syncError: string | null;
+  lastSyncedAt: string | null;
+  lastSyncedRelative: string;
+}
+
+export interface JiraLinkInput {
+  jiraProjectKey: string;
+  jiraBaseUrl: string;
+  accountEmail: string;
+  /** Plain-text token; hashed server-side before persist. */
+  apiToken: string;
+  syncDirection?: JiraSyncDirection;
+  autoCreate?: boolean;
+}
+
+/** PATCH subset — omitting apiToken keeps the stored token unchanged. */
+export type JiraLinkPatch = Partial<Omit<JiraLinkInput, 'syncDirection' | 'autoCreate'>> & {
+  syncDirection?: JiraSyncDirection;
+  autoCreate?: boolean;
+};
+
+export interface JiraLinkResponse {
+  link: JiraLink;
+}
+
+export interface JiraLinkTestResponse {
+  ok: boolean;
+  /** False while no real probe has run — the server has no Atlassian client
+   *  yet (DR2 #4). The UI must not claim "connection tested" on this. */
+  verified: boolean;
+  syncStatus: JiraSyncStatus;
+  projectKey: string;
+  baseUrl: string;
+  message: string;
+}
+
+export interface JiraLinkDeleteResponse {
+  deleted: true;
+  message: string;
+}
+
+/** Mirrors BoardCard in server/board.ts. */
+export interface BoardCard {
+  id: number;
+  projectId: number;
+  ticketKey: string;
+  title: string;
+  column: 'todo' | 'inprogress' | 'inreview' | 'done';
+  priority: 'high' | 'med' | 'low';
+  points: number;
+  assigneeAgent: string;
+  status: string;
+  updatedAt: string;
+}
+
+export interface BoardCardInput {
+  title: string;
+  column?: BoardCard['column'];
+  priority?: BoardCard['priority'];
+  points?: number;
+  assigneeAgent?: string;
+  status?: string;
+}
+
+export type BoardCardPatch = Partial<BoardCardInput>;
+
+export interface BoardResponse {
+  cards: BoardCard[];
+  counts: Record<BoardCard['column'], number>;
+}
+
+export interface BoardCardResponse {
+  card: BoardCard;
+}
+
+export async function fetchJiraLink(idOrSlug: string): Promise<JiraLinkResponse> {
+  try {
+    return await reqFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/jira/link`);
+  } catch (err) {
+    // A missing connection is a screen state, not an error: translate the
+    // server's 404 copy (server/jira-link.ts handleGetLink) into a marker the
+    // Sprint tab branches on with instanceof. Any other failure keeps its
+    // original Error so the dispatcher renders the retry screen.
+    if (err instanceof Error && err.message === 'No Jira connection found for this project.') {
+      throw new JiraLinkNotFoundError();
+    }
+    throw err;
+  }
+}
+
+export function createJiraLink(idOrSlug: string, input: JiraLinkInput): Promise<JiraLinkResponse> {
+  return reqFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/jira/link`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+}
+
+export function updateJiraLink(idOrSlug: string, patch: JiraLinkPatch): Promise<JiraLinkResponse> {
+  return reqFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/jira/link`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch),
+  });
+}
+
+export function deleteJiraLink(idOrSlug: string): Promise<JiraLinkDeleteResponse> {
+  return reqFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/jira/link`, {
+    method: 'DELETE',
+  });
+}
+
+export function testJiraLink(idOrSlug: string): Promise<JiraLinkTestResponse> {
+  return reqFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/jira/link/test`, {
+    method: 'POST',
+  });
+}
+
+export function fetchBoard(idOrSlug: string): Promise<BoardResponse> {
+  return reqFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/board`);
+}
+
+export function addBoardCard(idOrSlug: string, input: BoardCardInput): Promise<BoardCardResponse> {
+  return reqFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/board`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+}
+
+export function updateBoardCard(
+  idOrSlug: string,
+  cardId: number,
+  patch: BoardCardPatch,
+): Promise<BoardCardResponse> {
+  return reqFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/board/${encodeURIComponent(String(cardId))}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch),
+  });
+}
+
+// ── /api/projects/:id/stories (slice 4 — BA Run 2 story generation + Jira auto-create) ──
+//
+// Client for server/story-gen.ts. Generation writes user stories locally
+// (PRD/stories.md) and auto-creates one Jira issue per story via the connector,
+// persisting the issue-key ↔ story mapping locally. The trigger 409s when the
+// gate isn't met (context unconfirmed, requirements not fleshed out) — the
+// message surfaces verbatim via reqFetch's data.error path.
+
+export type StoryGenStatusState = 'idle' | 'generating' | 'done' | 'failed';
+
+export type StoryGenStatus = {
+  status: StoryGenStatusState;
+  progress: { generated: number; total: number };
+  currentSection?: string;
+  /** Epoch ms the active section started — the banner ticks an elapsed clock off this. */
+  sectionStartedAt?: number;
+  /** Surfaces why a run failed — the failed banner shows it. */
+  error?: string;
+  /** Final counts — stories written + Jira issues created (locally keyed). */
+  result?: { storiesGenerated: number; issuesCreated: number };
+};
+
+export async function fetchStoryGenStatus(idOrSlug: string): Promise<StoryGenStatus> {
+  return reqFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/stories/status`);
+}
+
+// Throws on failure per the reqFetch convention — a 409 (gate not met, already
+// running/generated) must surface as an error, never as a success-shaped
+// payload the caller can misread as "generation started".
+export async function triggerStoryGeneration(idOrSlug: string): Promise<{ ok: true }> {
+  return reqFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/stories/generate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({}),

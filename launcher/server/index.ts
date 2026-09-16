@@ -11,6 +11,9 @@ import { migrate, db } from './db.js';
 import { registerBaWorkspaceRoutes, countBaArtifacts } from './ba-workspace.js';
 import { enqueueBaDraftJob } from './ba-draft.js';
 import { registerRequirementsRoutes } from './requirements.js';
+import { registerJiraLinkRoutes } from './jira-link.js';
+import { registerBoardRoutes } from './board.js';
+import { registerStoryGenRoutes } from './story-gen.js';
 import {
   validateProjectDir,
   scaffoldProjectDir,
@@ -41,7 +44,31 @@ import {
 migrate();
 
 const app = express();
-app.use(cors());
+
+// CORS scoped to the Vite dev origin(s) (DR2 #3 — the prior reflect-any-origin
+// default exposed the jira_link token write and the Ollama story-gen trigger to
+// any web page that could reach the server). Same-origin fetches through the
+// Vite /api proxy send no Origin and stay allowed. LAUNCHER_WEB_PORT mirrors
+// vite.config.ts so custom dev pairs keep working.
+const DEV_WEB_PORT = Number(process.env.LAUNCHER_WEB_PORT ?? 5183);
+const DEV_CORS_ORIGINS = new Set([
+  `http://localhost:${DEV_WEB_PORT}`,
+  `http://127.0.0.1:${DEV_WEB_PORT}`,
+  `http://[::1]:${DEV_WEB_PORT}`,
+]);
+app.use(
+  cors({
+    origin: (origin, cb) => {
+      if (!origin || DEV_CORS_ORIGINS.has(origin)) {
+        cb(null, true);
+        return;
+      }
+      // Not a dev origin — do not advertise CORS headers (browser blocks the
+      // cross-origin read).
+      cb(null, false);
+    },
+  }),
+);
 app.use(express.json({ limit: '1mb' }));
 
 // BA Workspace — Project Background tab (screens 12–14 + State D gate).
@@ -53,6 +80,18 @@ registerBaWorkspaceRoutes(app);
 // middleware exists in the launcher, so the seam is documented at the
 // registration site (plan §0c) — see server/requirements.ts for the full note.
 registerRequirementsRoutes(app);
+
+// Sprint tab — Jira link management (screen 6/6b Edit-Jira panel + disconnect).
+registerJiraLinkRoutes(app);
+
+// Sprint tab — Kanban board read-model (screen 6). Cards are stored locally
+// (kanban_card) with Jira as the source of truth via ~30s polling.
+registerBoardRoutes(app);
+
+// Sprint tab — BA Run 2 story generation + auto-created To-do cards (slice 4).
+// Mounted after the board routes — it reads + writes the same kanban_card and
+// prd.md/features.md surfaces Run 1 owns.
+registerStoryGenRoutes(app);
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -1333,6 +1372,9 @@ app.use((err: unknown, _req: express.Request, res: express.Response, _next: expr
 });
 
 const PORT = Number(process.env.PORT ?? 5184);
-app.listen(PORT, () => {
-  console.log(`[api] Idea Hub API listening on http://localhost:${PORT}`);
+// Loopback-only (DR2 #3): the Vite dev proxy targets 127.0.0.1 (vite.config.ts),
+// so binding here keeps the dev pair working while closing the all-interfaces
+// surface to the LAN.
+app.listen(PORT, '127.0.0.1', () => {
+  console.log(`[api] Idea Hub API listening on http://127.0.0.1:${PORT}`);
 });
