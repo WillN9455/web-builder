@@ -274,9 +274,15 @@ export function SprintScreen() {
 
   const retrySync = useCallback(async () => {
     try {
-      await testJiraLink(idOrSlug);
+      const result = await testJiraLink(idOrSlug);
       await loadBoard();
-      showNotice({ kind: 'success', text: 'Connection tested — the board is up to date.' });
+      showNotice({
+        kind: 'success',
+        // DR2 #4 — the server can't verify yet; don't claim it can.
+        text: result.verified
+          ? 'Connection tested — the board is up to date.'
+          : 'Verification pending — Jira access will be probed when the connector lands (secrets design).',
+      });
     } catch (err) {
       showNotice({ kind: 'error', text: err instanceof Error ? err.message : 'Sync retry failed.' });
     }
@@ -328,12 +334,31 @@ export function SprintScreen() {
   }, [cards]);
 
   const stale = link ? linkAgeMs(link) > 120_000 : false;
+  const pendingLink = link?.syncStatus === 'pending';
   const bannerVariant =
     link?.syncStatus === 'failed' || link?.syncStatus === 'offline'
       ? 'failed'
-      : stale
-        ? 'stale'
-        : 'info';
+      : pendingLink
+        ? 'pending'
+        : stale
+          ? 'stale'
+          : 'info';
+
+  // Render-time guard on the "Open in Jira" href (defense in depth for rows
+  // saved before the server's http(s)+host/no-userinfo allowlist landed — DR2
+  // #1). Returns null when the stored base URL must not become an href.
+  const jiraBrowseUrl = useMemo(() => {
+    if (!link?.jiraBaseUrl) return null;
+    let parsed: URL;
+    try {
+      parsed = new URL(link.jiraBaseUrl);
+    } catch {
+      return null;
+    }
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
+    if (!parsed.host || parsed.username || parsed.password) return null;
+    return `${parsed.origin}/browse/${encodeURIComponent(link.jiraProjectKey)}`;
+  }, [link]);
 
   // ── Gate: Sprint is gated on project context confirmation. All hooks run
   //    above; the redirect renders below them (never an early return mid-hook).
@@ -588,6 +613,14 @@ export function SprintScreen() {
                 <b>Jira sync failed.</b>{' '}
                 {link.syncError ?? 'The connection is down — the board shows its last-known state.'}
               </div>
+            ) : bannerVariant === 'pending' ? (
+              <div>
+                {/* DR2 #4 — no real probe has run, so no claim that sync is
+                    live; the connector + verification land with decisions 1/5. */}
+                <b>Jira connection saved — verification pending.</b> Atlassian access hasn&rsquo;t
+                been probed yet; the board shows its locally-created tickets for now. A real
+                connectivity check (401/403/429) lands with the secrets design.
+              </div>
             ) : bannerVariant === 'stale' ? (
               <div>
                 {/* lastSyncedRelative already ends in "ago" (formatRelative) — no second "ago". */}
@@ -829,14 +862,24 @@ export function SprintScreen() {
               Open the linked <b>{link.jiraProjectKey}</b> project in Jira to manage backlogs, epics,
               and transitions there.
             </p>
-            <a
-              className="btn btn-ghost btn-pill"
-              href={`${link.jiraBaseUrl}/browse/${link.jiraProjectKey}`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Open in Jira ↗
-            </a>
+            {jiraBrowseUrl ? (
+              <a
+                className="btn btn-ghost btn-pill"
+                href={jiraBrowseUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Open in Jira ↗
+              </a>
+            ) : (
+              <span
+                className="btn btn-ghost btn-pill"
+                aria-disabled="true"
+                title="This connection's Base URL is not a safe http(s) URL — re-save it to enable Open in Jira."
+              >
+                Open in Jira
+              </span>
+            )}
           </div>
         </>
       )}

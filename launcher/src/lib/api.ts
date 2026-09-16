@@ -920,7 +920,7 @@ export async function migrateRequirements(idOrSlug: string): Promise<MigrateResp
 // PATCH 409 optimistic-lock message, validation copy) and arrive verbatim via
 // reqFetch's data.error path — no client remapping.
 
-export type JiraSyncStatus = 'connected' | 'stale' | 'failed' | 'offline';
+export type JiraSyncStatus = 'connected' | 'pending' | 'stale' | 'failed' | 'offline';
 export type JiraSyncDirection = 'two_way' | 'launcher_to_jira' | 'jira_to_launcher';
 
 export interface JiraLink {
@@ -960,6 +960,10 @@ export interface JiraLinkResponse {
 
 export interface JiraLinkTestResponse {
   ok: boolean;
+  /** False while no real probe has run — the server has no Atlassian client
+   *  yet (DR2 #4). The UI must not claim "connection tested" on this. */
+  verified: boolean;
+  syncStatus: JiraSyncStatus;
   projectKey: string;
   baseUrl: string;
   message: string;

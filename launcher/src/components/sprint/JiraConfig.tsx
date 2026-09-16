@@ -63,10 +63,20 @@ export function validateJiraFields(f: JiraFields, requireToken: boolean): JiraFi
   if (!f.baseUrl) {
     errs.baseUrl = 'Base URL is required.';
   } else {
+    let parsed: URL | null = null;
     try {
-      new URL(f.baseUrl);
+      parsed = new URL(f.baseUrl);
     } catch {
+      /* fall through — parsed stays null */
+    }
+    if (!parsed) {
       errs.baseUrl = 'Base URL must be a valid URL with protocol.';
+    } else if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      // Mirrors server validateBaseUrl (DR2 #1): javascript:/file:/data: and
+      // credentials-in-URL are rejected before any round trip.
+      errs.baseUrl = 'Base URL must use http or https — other schemes are not allowed.';
+    } else if (!parsed.host || parsed.username || parsed.password) {
+      errs.baseUrl = 'Base URL must not embed credentials — use the Account email / API token fields.';
     }
   }
   if (f.accountEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.accountEmail)) {
@@ -475,7 +485,9 @@ export function JiraConfigPanel({ idOrSlug, link, onClose, onSaved, onDisconnect
                 <span className="dot" aria-hidden="true" />
                 {phase === 'saved'
                   ? 'Saved'
-                  : `Last synced ${link.lastSyncedRelative} ago`}
+                  : link.syncStatus === 'pending'
+                    ? 'Verification pending'
+                    : `Last synced ${link.lastSyncedRelative}`}
               </span>
             </h3>
             <p>
@@ -546,7 +558,7 @@ export function JiraConfigPanel({ idOrSlug, link, onClose, onSaved, onDisconnect
             autoComplete="off"
             placeholder={link.hasToken ? '••••••••  (unchanged)' : 'Enter an API token'}
           />
-          <span id="jt2-help" className="help">Stored encrypted. Rotate at <b>id.atlassian.com/manage-profile/security/api-tokens</b>.</span>
+          <span id="jt2-help" className="help">Stored as a salted one-way hash — never plaintext. Rotate at <b>id.atlassian.com/manage-profile/security/api-tokens</b>.</span>
           {errors.apiToken && <span role="alert" className="field-error">{errors.apiToken}</span>}
         </div>
         <div className="setup-row">

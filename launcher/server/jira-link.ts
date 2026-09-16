@@ -2,8 +2,14 @@
 //
 // Per-project single link with CRUD + test-connection. All mutations are
 // scoped to the requesting project (project_id from route param matched against
-// the DB row, never from the request body). The stored API token is hashed
-// before write so the server never retains a plaintext secret.
+// the DB row, never from the request body). The stored API token is written as
+// a salted one-way hash so the server never retains a plaintext secret.
+//
+// Verification honesty (DR2 #4): the shipped server has no Atlassian client —
+// a one-way hash is unusable by a connector — so saves mark the link `pending`
+// and test-connection reports `verified: false`. Wiring a real probe (+ the
+// 401/403/429 mapping) depends on Will's A/B call on decisions 1/5 (AES-GCM at
+// rest vs local-only board); see the SA-R risk log in design/sprint-tab-build-plan.md.
 
 import crypto from 'node:crypto';
 
@@ -20,7 +26,7 @@ export interface JiraLinkRow {
   api_token_hash: string;
   sync_direction: 'two_way' | 'launcher_to_jira' | 'jira_to_launcher';
   auto_create: boolean;
-  sync_status: 'connected' | 'stale' | 'failed' | 'offline';
+  sync_status: 'connected' | 'pending' | 'stale' | 'failed' | 'offline';
   sync_error: string | null;
   last_synced_at: string | null;
 }
@@ -45,8 +51,50 @@ export interface JiraLinkPatchInput {
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
+// ── Input allowlists (DR2 #1/#2 — server is the trust boundary) ────────────
+
+const SYNC_DIRECTIONS = new Set(['two_way', 'launcher_to_jira', 'jira_to_launcher']);
+
+/**
+ * http(s) only, with a host and no embedded user:pass — rejects `javascript:`,
+ * `file:`, `data:` and every credentials-in-URL variant (security §3/§6; DR2
+ * #1). Returns an error string, or null when the URL is acceptable.
+ */
+export function validateBaseUrl(raw: unknown): string | null {
+  if (typeof raw !== 'string') return 'Base URL must be a text value.';
+  let parsed: URL;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    return 'Base URL must be a valid URL with protocol.';
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:')
+    return 'Base URL must use http or https — other schemes are not allowed.';
+  if (!parsed.host) return 'Base URL must include a host.';
+  if (parsed.username || parsed.password)
+    return 'Base URL must not embed credentials — use the Account email / API token fields.';
+  return null;
+}
+
+/** Coerce auto_create through {true, false, 1, 0}; anything else → null. */
+function coerceAutoCreate(v: unknown): boolean | null {
+  if (v === true || v === 1 || v === '1' || v === 'true') return true;
+  if (v === false || v === 0 || v === '0' || v === 'false') return false;
+  return null;
+}
+
+function isValidSyncDirection(v: unknown): v is JiraLinkCreateInput['sync_direction'] {
+  return typeof v === 'string' && SYNC_DIRECTIONS.has(v);
+}
+
+// Per-row salt (DR2 #5): defeats offline credential-stuffing from a DB dump.
+// The digest stays one-way — deciding whether the connector needs the
+// plaintext (AES-GCM at rest) or stays local-only is Will's A/B call (1/5).
+const TOKEN_SALT_BYTES = 16;
 function hashToken(token: string): string {
-  return crypto.createHash('sha256').update(token).digest('hex');
+  const salt = crypto.randomBytes(TOKEN_SALT_BYTES);
+  const digest = crypto.createHash('sha256').update(salt).update(token).digest('hex');
+  return `${salt.toString('hex')}:${digest}`;
 }
 
 function serializeLink(row: JiraLinkRow): Record<string, unknown> {
@@ -93,12 +141,17 @@ function validateCreateInput(input: Partial<JiraLinkCreateInput>): string | null
   if (!/^[A-Z][A-Z0-9]+$/.test(input.jira_project_key))
     return 'Project key must be 2–10 uppercase letters (e.g. TM, TEN).';
   if (!input.jira_base_url) return 'Base URL is required.';
-  try { new URL(input.jira_base_url); } catch { return 'Base URL must be a valid URL with protocol.'; }
+  const urlErr = validateBaseUrl(input.jira_base_url);
+  if (urlErr) return urlErr;
   if (!input.account_email) return 'Account email is required.';
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.account_email))
     return 'Enter a valid email address.';
-  if (!input.api_token || input.api_token.length < 24)
+  if (typeof input.api_token !== 'string' || input.api_token.length < 24)
     return 'API token must be at least 24 characters.';
+  if (input.sync_direction !== undefined && !isValidSyncDirection(input.sync_direction))
+    return 'Sync direction must be two_way, launcher_to_jira, or jira_to_launcher.';
+  if (input.auto_create !== undefined && coerceAutoCreate(input.auto_create) === null)
+    return 'Auto-create must be a boolean.';
   return null;
 }
 
@@ -136,14 +189,19 @@ function handlePostTestConnection(req: Request, res: Response): void {
     return;
   }
 
-  // TODO: real Jira client call (placeholder — the spec defers this until
-  // Phase 2 when we wire the Atlassian REST API). For now, return a stub
-  // with sync_status reflecting the current stored state so the UI can render.
+  // DR2 #4 — no real probe exists: the shipped server has no Atlassian client
+  // (the token is a one-way salted hash; a connector needs plaintext — Will's
+  // A/B call on decisions 1/5). Until the probe lands we must NOT claim the
+  // connection works: report the honest unverified state and let the banner
+  // surface it. The 401/403/429 mapping arrives with the secrets design.
   res.json({
     ok: true,
+    verified: false,
+    syncStatus: link.sync_status,
     projectKey: link.jira_project_key,
     baseUrl: link.jira_base_url,
-    message: `Test connection succeeded against ${link.jira_base_url}.`,
+    message:
+      'Connection saved, but Jira access is not verified yet — a real probe (401/403/429) lands with the secrets design (plan decisions 1/5).',
   });
 }
 
@@ -179,8 +237,15 @@ function handlePostLink(req: Request, res: Response): void {
     return;
   }
 
-  // Upsert — project_id is the PK so we either INSERT or REPLACE.
+  // Upsert — project_id is the PK so we either INSERT or REPLACE. The enums
+  // were allowlisted by validateCreateInput; write the normalized wire values
+  // so neither the fresh-DB CHECK nor a migrated no-CHECK column ever sees a
+  // raw caller string (DR2 #2).
   const apiTokenHash = hashToken(input.api_token!);
+  const syncDirection = isValidSyncDirection(input.sync_direction)
+    ? input.sync_direction
+    : 'two_way';
+  const autoCreate = coerceAutoCreate(input.auto_create) ?? true;
   db.prepare(`INSERT OR REPLACE INTO jira_link (
     project_id, jira_project_key, jira_base_url, account_email,
     api_token_hash, sync_direction, auto_create
@@ -190,13 +255,15 @@ function handlePostLink(req: Request, res: Response): void {
     input.jira_base_url,
     input.account_email,
     apiTokenHash,
-    input.sync_direction ?? 'two_way',
-    input.auto_create ? 1 : 0,
+    syncDirection,
+    autoCreate ? 1 : 0,
   );
 
-  // Update last_synced_at to now on first connect so the banner shows "just synced".
+  // Update to now on first connect so the banner shows "just synced", and mark
+  // the link pending — no real probe ran, so claiming `connected` would be a
+  // lie (DR2 #4).
   db.prepare("UPDATE jira_link SET sync_status = ?, last_synced_at = datetime('now') WHERE project_id = ?")
-    .run('connected', projectId);
+    .run('pending', projectId);
 
   const link = getLinkByProject(projectId)!;
   res.status(201).json({ link: serializeLink(link) });
@@ -215,20 +282,35 @@ function handlePatchLink(req: Request, res: Response): void {
     return;
   }
 
-  // Partial validation — only validate fields that changed.
+  // Partial validation — only validate fields that changed (DR2 #1/#2: the
+  // same allowlists as the create path, so a migrated DB can never silently
+  // accept a javascript: URL or a raw enum string).
   const input: Partial<JiraLinkPatchInput> = normalizeBody(req.body);
   if (input.jira_project_key && !/^[A-Z][A-Z0-9]+$/.test(input.jira_project_key)) {
     res.status(422).json({ error: 'Project key must be 2–10 uppercase letters (e.g. TM, TEN).' });
     return;
   }
-  if (input.jira_base_url) {
-    try { new URL(input.jira_base_url); } catch {
-      res.status(422).json({ error: 'Base URL must be a valid URL with protocol.' });
+  if (input.jira_base_url !== undefined) {
+    const urlErr = validateBaseUrl(input.jira_base_url);
+    if (urlErr) {
+      res.status(422).json({ error: urlErr });
       return;
     }
   }
   if (input.account_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.account_email)) {
     res.status(422).json({ error: 'Enter a valid email address.' });
+    return;
+  }
+  if (input.sync_direction !== undefined && !isValidSyncDirection(input.sync_direction)) {
+    res.status(422).json({ error: 'Sync direction must be two_way, launcher_to_jira, or jira_to_launcher.' });
+    return;
+  }
+  if (input.api_token !== undefined && (typeof input.api_token !== 'string' || input.api_token.length < 24)) {
+    res.status(422).json({ error: 'API token must be at least 24 characters.' });
+    return;
+  }
+  if (input.auto_create !== undefined && coerceAutoCreate(input.auto_create) === null) {
+    res.status(422).json({ error: 'Auto-create must be a boolean.' });
     return;
   }
 
@@ -252,13 +334,16 @@ function handlePatchLink(req: Request, res: Response): void {
     updates.push('sync_direction = ?'); values.push(input.sync_direction);
   }
   if (input.auto_create !== undefined) {
-    updates.push('auto_create = ?'); values.push(input.auto_create ? 1 : 0);
+    updates.push('auto_create = ?'); values.push(coerceAutoCreate(input.auto_create) ? 1 : 0);
   }
 
   // Concurrent-edit guard: only update if the row hasn't changed since we
   // read it. The optimistic-lock column is last_synced_at.
   const optimisticTs = existing.last_synced_at;
   updates.push("last_synced_at = datetime('now')");
+  // Any config/token change invalidates prior verification — back to pending
+  // until a real probe re-verifies (DR2 #4).
+  updates.push("sync_status = 'pending'");
 
   const sql = `UPDATE jira_link SET ${updates.join(', ')} WHERE project_id = ? AND last_synced_at = ?`;
   values.push(projectId, optimisticTs);

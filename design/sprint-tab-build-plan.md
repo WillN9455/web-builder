@@ -81,3 +81,19 @@ Per `sprint-requirements.md`, Sprint is **status-only — no Rules half**. This 
 ## Sign-off chain
 
 Solution Architect planned + set up worktree/branch → Code Agent 1 (Senior) implements → gates → Dev Reviewer 2 reviews once code complete → report `gh pr` link in thread `b1fb2167...`.
+
+## SA-R risk log (post-DR2 revisit — Code Agent 2, 2026-09-16)
+
+Dev Reviewer 2 **FAILED-REVIEW** at `3bd11f9` (5 findings, confirmed by SA re-read at the tip). The decision-independent fixes landed in one commit on `feature/sprint-tab`; the one framework-level call is left open for Will.
+
+| # | Finding (DR2) | Resolution in this revisit | Risk left open |
+|---|---------------|----------------------------|----------------|
+| 1 🔴 | `jira_base_url` accepts any scheme → stored XSS via `href=…/browse/…` | Server `validateBaseUrl` allowlist — http(s) only, host required, no user/pass — enforced on CREATE **and** PATCH (both → 422), plus client-side mirror in `validateJiraFields` and a render-time href guard (pre-fix rows in migrated DBs can't become a `javascript:`/`data:` href) | — |
+| 2 🟠 | `sync_direction` / `auto_create` unvalidated → fresh-DB CHECK 500 leak, migrated-DB silent garbage | Allowlist `sync_direction ∈ {two_way, launcher_to_jira, jira_to_launcher}`; `auto_create` coerced through `{true,false,1,0}` — both paths 422; INSERT/PATCH write only normalized wire values; PATCH token path now also enforces ≥24 chars | — |
+| 3 🟠 | open-by-default surface (`cors()` reflect-any-origin + `listen(PORT)` all interfaces; ungated `/generate` | `app.listen(PORT, '127.0.0.1')` (Vite proxy already targets 127.0.0.1); CORS scoped to the Vite dev origins (`localhost/127.0.0.1/[::1]:<LAUNCHER_WEB_PORT|5183>`, `LAUNCHER_*`-tunable); per-project in-memory sliding-window limiter on `POST …/stories/generate` (3 / 10 min, 429 + `Retry-After`) | limiter is in-memory → resets on server restart (acceptable for a local dev server; revisit if the launcher gains multi-user exposure) |
+| 4 🟡 | test-connection asserts `connected` with zero verification; 401/403/429 states unreachable | Save → `sync_status='pending'`; test-connection returns `verified:false` + honest state; banner/config-pill surface "Verification pending"; UI never claims "Connection tested" on an unverified state | **Open — Will's A/B call (decisions 1/5):** the token is a one-way salted hash, which no server-side Atlassian client can use. **A** = AES-256-GCM at rest (per-install secret/keychain) — keeps decisions 1/5 honest, connector can call Atlassian; **B** = de-scope decision 5 to local-only (what shipped) + table real Jira. Either path, then land the real probe + 401/403/429/offline mapping |
+| 5 🟡 | unsalted one-pass SHA-256 token digest | Per-row 16-byte random salt → stored `salt:hex:digest`; defeats offline credential-stuffing from a DB dump; backward-compatible with existing rows (`hasToken` untouched) | salted-HMAC is only valid under **B** — under **A** the digest is replaced by AES-GCM (same A/B call) |
+
+**Escalations (framework-level — unchanged by this revisit, not code defects):** no real `rbac-matrix.md` in the repo (4-line placeholder) — all routes sit behind the accepted `TODO(auth)` seam, so "every route maps to a matrix row" remains unverifiable. The headless harness (`launcher/scripts/sprint-fixture.ts`, `launcher/scripts/verify-sprint-headless.mjs`, `launcher/design/_sprint-extracted-css.txt`) is **untracked** — a clean-clone gate run cannot reproduce the 41/41 walk; shipping the harness is a follow-up commit decision (SA flagged, not a PR blocker).
+
+**Re-verified at the fix tip:** DR2 passed-claims intact — board IDOR scoping (`board.ts` `WHERE id=? AND project_id=?` + scoped PATCH), parameterized `parseProjectId`, `serializeLink` never re-emits the token, board input allowlist, story-gen output bounded. `verify:css-equivalence` baseline preserved (all changes are server logic, TS types, or copy — zero new CSS).

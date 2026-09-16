@@ -588,6 +588,27 @@ async function callStoryModelJson(context: string, derivedIndex: string): Promis
   }
 }
 
+// ── Launch rate limit (DR2 #3) ──────────────────────────────────────────────
+// /generate drives a minutes-long local-model derivation — expensive and
+// abuse-able. Per-project sliding window; in-memory (resets on server restart,
+// fine for a local dev server). Counts POST triggers, never the poll GETs.
+const GEN_MAX_PER_PROJECT = 3;
+const GEN_WINDOW_MS = 10 * 60_000;
+const genLaunchTimes = new Map<number, number[]>();
+
+/** Registers a launch; returns the Retry-After seconds (0 = allowed). */
+function rateLimitGenerate(projectId: number): number {
+  const now = Date.now();
+  const within = (genLaunchTimes.get(projectId) ?? []).filter((t) => now - t < GEN_WINDOW_MS);
+  if (within.length >= GEN_MAX_PER_PROJECT) {
+    genLaunchTimes.set(projectId, within);
+    return Math.max(1, Math.ceil((GEN_WINDOW_MS - (now - within[0])) / 1000));
+  }
+  within.push(now);
+  genLaunchTimes.set(projectId, within);
+  return 0;
+}
+
 // ── Route handlers ─────────────────────────────────────────────────────────
 
 function handleGetStatus(req: Request, res: Response): void {
@@ -604,6 +625,14 @@ function handlePostGenerate(req: Request, res: Response): void {
   const projectId = parseProjectId(req.params.projectId);
   if (projectId === null) {
     res.status(400).json({ error: 'Valid project ID is required.' });
+    return;
+  }
+  const retryAfterS = rateLimitGenerate(projectId);
+  if (retryAfterS > 0) {
+    res.setHeader('Retry-After', String(retryAfterS));
+    res.status(429).json({
+      error: `Rate limit exceeded — story generation is available again in ~${retryAfterS}s (${GEN_MAX_PER_PROJECT} launches per 10 minutes per project).`,
+    });
     return;
   }
   const result = triggerStoryGeneration(projectId);
