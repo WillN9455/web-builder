@@ -1297,3 +1297,212 @@ export async function saveDesignRules(
     body: JSON.stringify({ content }),
   });
 }
+
+// ── QA tab fetchers (qa-tab build plan §4) ──────────────────────────────────
+
+// QA statuses are a per-story lifecycle distinct from board columns (plan §3,
+// sitemap § QA). ready_for_qa = arrived from Build's queue; in_qa = a run is
+// queued/running; passed/failed/flaky are test outcomes; blocked_skipped =
+// blocked with reason (not deploy-blocking).
+export type QaStatus =
+  | 'ready_for_qa'
+  | 'in_qa'
+  | 'passed'
+  | 'failed'
+  | 'flaky'
+  | 'blocked_skipped';
+
+export type QaTestStatus = 'pass' | 'fail' | 'skip' | 'flaky' | 'blocked';
+export type QaDimension = 'functional' | 'a11y' | 'fidelity';
+
+export type QaRun = {
+  id: number;
+  run_no: number;
+  trigger: 'auto' | 'manual' | 'agent';
+  started_at: string;
+  duration_ms: number | null;
+  result: 'passed' | 'failed' | 'flaky' | 'blocked' | 'partial' | null;
+  summary: string | null;
+};
+
+export type QaStorySummary = {
+  storyId: string;
+  title: string;
+  qa_status: QaStatus;
+  status_pill: string;
+  ticket_key: string | null;
+  rework_rounds: number;
+  round_trip: Record<string, unknown>;
+  roundtrip_in_progress: boolean;
+  escalation: boolean;
+  tests_strip: { pass: number; fail: number; skip: number; flaky: number; blocked: number; total: number };
+  screenshots: { pass: number; issue: number };
+  coverage: { covered: number; total: number };
+  latest_run: Pick<QaRun, 'run_no' | 'trigger' | 'started_at' | 'duration_ms' | 'result'> | null;
+};
+
+export type QaStoriesResponse = {
+  stories: QaStorySummary[];
+  dimension_summary: QaDimensionSummary[];
+  missing_stories: boolean;
+};
+
+export type QaTestStep = { label: string; status: QaTestStatus; shot: string | null };
+
+export type QaTest = {
+  id: number;
+  run_no: number;
+  name: string;
+  dimension: QaDimension;
+  status: QaTestStatus;
+  expected: string | null;
+  actual: string | null;
+  duration_ms: number | null;
+  trace_path: string | null;
+  acs: string[];
+  steps: QaTestStep[];
+  screenshots: { pass: string[]; issue: string[] };
+};
+
+export type QaNote = { id: number; author: string; body: string; created_at: string };
+
+export type QaDimensionSummary = {
+  dimension: QaDimension;
+  pass: number;
+  fail: number;
+  skip: number;
+  flaky: number;
+  total: number;
+};
+
+export type QaStoryDetail = {
+  story: {
+    storyId: string;
+    title: string;
+    ticket_key: string | null;
+    qa_status: QaStatus;
+    status_pill: string;
+    rework_rounds: number;
+    round_trip: Record<string, unknown>;
+    roundtrip_line: string | null;
+  };
+  dimensions: QaDimensionSummary[];
+  runs: QaRun[];
+  tests: QaTest[];
+  notes: QaNote[];
+  missing_stories: boolean;
+};
+
+export type QaRulesResponse = { files: Record<string, string> };
+export type QaRunTriggerResponse = {
+  scope: string;
+  runs: { id: number; run_no: number; story_id: string }[];
+};
+export type QaCoverageResponse = {
+  covered: { ac: string; storyId: string }[];
+  untested: { ac: string; storyId: string }[];
+  total: number;
+  covered_count: number;
+  untested_count: number;
+  missing_stories: boolean;
+};
+export type QaEnvResponse = { env: null; reason: 'not_deployed' };
+export type QaNotePostResponse = { note: QaNote };
+export type QaSignoffResponse = { ok: true; deployed: true };
+
+export const QA_RULES_FILENAMES = ['qa-rules.md', 'QA-AGENT.md', 'REVIEWER-AGENT.md'] as const;
+export type QaRulesFile = (typeof QA_RULES_FILENAMES)[number];
+
+// A QA-route failure that carries its HTTP status so the UI can branch on
+// 404 (stories.md missing / unknown story), 422 (validation — the server's
+// message surfaces verbatim), 409 (signoff gate not met).
+export class QaHttpError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = 'QaHttpError';
+    this.status = status;
+  }
+}
+
+async function qaFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(path, init);
+  const contentType = res.headers.get('content-type') ?? '';
+  if (!contentType.includes('application/json')) {
+    throw new Error(
+      'API server is not running. Start it with `npm run dev` (or `npm run dev:api` in another terminal).',
+    );
+  }
+  const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  if (!res.ok) {
+    throw new QaHttpError(res.status, typeof data.error === 'string' ? data.error : `Request failed (HTTP ${res.status})`);
+  }
+  return data as T;
+}
+
+export async function fetchQaStories(idOrSlug: string): Promise<QaStoriesResponse> {
+  return qaFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/qa/stories`);
+}
+
+export async function fetchQaStory(idOrSlug: string, storyId: string): Promise<QaStoryDetail> {
+  return qaFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/qa/tests/${encodeURIComponent(storyId)}`);
+}
+
+export async function fetchQaRuns(idOrSlug: string, storyId: string): Promise<{ runs: QaRun[] }> {
+  return qaFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/qa/runs/${encodeURIComponent(storyId)}`);
+}
+
+export async function triggerQaRuns(
+  idOrSlug: string,
+  scope: 'full' | 'smoke' | `story ${string}`,
+): Promise<QaRunTriggerResponse> {
+  return qaFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/qa/runs`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ scope }),
+  });
+}
+
+export async function fetchQaEnv(idOrSlug: string): Promise<QaEnvResponse> {
+  return qaFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/qa/env`);
+}
+
+export async function fetchQaCoverage(idOrSlug: string): Promise<QaCoverageResponse> {
+  return qaFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/qa/coverage`);
+}
+
+export async function fetchQaRules(idOrSlug: string): Promise<QaRulesResponse> {
+  return qaFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/qa/rules`);
+}
+
+export async function saveQaRules(
+  idOrSlug: string,
+  file: QaRulesFile,
+  content: string,
+): Promise<{ ok: true; file: QaRulesFile; size: number }> {
+  return qaFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/qa/rules`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ file, content }),
+  });
+}
+
+export async function postQaNote(
+  idOrSlug: string,
+  storyId: string,
+  body: string,
+): Promise<QaNotePostResponse> {
+  return qaFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/qa/${encodeURIComponent(storyId)}/notes`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ body }),
+  });
+}
+
+export async function qaSignoff(idOrSlug: string): Promise<QaSignoffResponse> {
+  return qaFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/qa/signoff`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  });
+}

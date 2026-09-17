@@ -15,6 +15,7 @@ import { registerJiraLinkRoutes } from './jira-link.js';
 import { registerBoardRoutes } from './board.js';
 import { registerStoryGenRoutes } from './story-gen.js';
 import { registerDesignRoutes } from './design.js';
+import { registerQaRoutes } from './qa.js';
 import {
   validateProjectDir,
   scaffoldProjectDir,
@@ -115,6 +116,11 @@ registerStoryGenRoutes(app);
 // Design tab — design list + story detail + rules half (design-tab build
 // plan §3). Additive; never touches sprint-owned surfaces (SA-R-01).
 registerDesignRoutes(app);
+
+// QA tab — per-story QA status, run recording, signoff, coverage, rules
+// (qa-tab build plan §3). Story-membership 404 + project_id scoping + fixed-
+// filename rules allowlist from the first commit (F-SEC-1/2 conventions).
+registerQaRoutes(app);
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -1388,10 +1394,15 @@ void readBody;
 // without this middleware, an internal error would produce HTML and look
 // like a missing backend.
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  const message = err instanceof Error ? err.message : 'Internal server error';
+  const status =
+    err instanceof Error && (err as { type?: string }).type === 'entity.too.large'
+      ? 413
+      : 500;
+  const message =
+    status === 413 ? 'Payload too large.' : err instanceof Error ? err.message : 'Internal server error';
   console.error('[api] unhandled error:', err);
   if (res.headersSent) return;
-  res.status(500).json({ error: message });
+  res.status(status).json({ error: message });
 });
 
 const PORT = Number(process.env.PORT ?? 5184);

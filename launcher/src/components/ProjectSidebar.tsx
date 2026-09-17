@@ -155,6 +155,10 @@ type ProjectSidebarProps = {
   // Null/0 → chip omitted — the tab publishes it via the outlet context, so
   // the chip only shows when that screen is its data source (AC-12).
   requirementsCount?: number | null;
+  // QA's count chip (failing + pending test count from the QA tab). Same
+  // publication rule as requirementsCount — only shows while the QA screen is
+  // its data source, and only once the project is confirmed (QA is gated).
+  qaCount?: number | null;
 };
 
 // Per-project sidebar, ported from mockup #s3: brand block, "Menu" label, the
@@ -162,7 +166,7 @@ type ProjectSidebarProps = {
 // are still locked render the N11b locked-row pattern: a keyboard-focusable
 // anchor with aria-disabled, full readable label, a "Confirm project context
 // first" tooltip on hover/focus, and no navigation on click.
-export function ProjectSidebar({ projectId, confirmed, backgroundCount, requirementsCount }: ProjectSidebarProps) {
+export function ProjectSidebar({ projectId, confirmed, backgroundCount, requirementsCount, qaCount }: ProjectSidebarProps) {
   return (
     <aside className="side">
       <div className="brand">
@@ -205,6 +209,7 @@ export function ProjectSidebar({ projectId, confirmed, backgroundCount, requirem
                 {tab.key === 'requirements' && !!requirementsCount && (
                   <span className="count">{requirementsCount}</span>
                 )}
+                {tab.key === 'qa' && !!qaCount && <span className="count">{qaCount}</span>}
               </NavLink>
             );
           })}

@@ -150,6 +150,79 @@ CREATE TABLE IF NOT EXISTS design_note (
   created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 
+-- QA tab: per-story QA state (plan §4, server/qa.ts). One row per story,
+-- created lazily on first write; a story with no row reads as ready_for_qa
+-- (nothing has started). status is the QA lifecycle only. rework_rounds counts
+-- return-to-Build cycles; round_trip JSON records the last Build↔QA handoff
+-- (e.g. {to:'build', reason:'fidelity'}). flaky_since = first run timestamp
+-- when a flaky story reaches the quarantine threshold (v1: flag + display
+-- only — the plan defers auto-quarantine). F-6 lesson applies: every access
+-- is scoped by project_id.
+CREATE TABLE IF NOT EXISTS qa_story_state (
+  project_id     INTEGER NOT NULL REFERENCES project(id) ON DELETE CASCADE,
+  story_id       TEXT    NOT NULL,
+  status         TEXT    NOT NULL DEFAULT 'ready_for_qa'
+                 CHECK (status IN
+                  ('ready_for_qa','in_qa','passed','failed','flaky','blocked_skipped')),
+  rework_rounds  INTEGER NOT NULL DEFAULT 0,
+  round_trip     TEXT    NOT NULL DEFAULT '{}',
+  flaky_since    TEXT,
+  updated_at     TEXT    NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (project_id, story_id)
+);
+
+-- QA tab: test runs (plan §4). One row per triggered run; the POST records the
+-- run as queued/manual until the QA agent backfills results. run_no is a
+-- per-story monotonic counter — the run's evidence directory is
+-- <project>/qa-evidence/<story-slug>/run-<run_no>/ (SA-R-106: screenshots are
+-- served by id, never by path, so run_no collision is harmless but uniqueness
+-- keeps the on-disk layout stable).
+CREATE TABLE IF NOT EXISTS qa_run (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id  INTEGER NOT NULL REFERENCES project(id) ON DELETE CASCADE,
+  story_id    TEXT    NOT NULL,
+  run_no      INTEGER NOT NULL,
+  trigger     TEXT    NOT NULL CHECK (trigger IN ('auto','manual','agent')),
+  started_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+  duration_ms INTEGER,
+  result      TEXT    CHECK (result IN ('passed','failed','flaky','blocked','partial')),
+  summary     TEXT
+);
+
+-- QA tab: per-test results inside a run (plan §4). dimension is the QA agent's
+-- test discipline (functional / a11y / fidelity). expected/actual/steps mirror
+-- a test assertion block; trace_path is a server-relative evidence link.
+-- ac_refs: the acceptance-criterion IDs this test exercised (JSON array of
+-- AC-0NN) — the coverage endpoint joins these against stories.md's AC rows
+-- (plan §3, SA-R-103: coverage tolerates stories without ACs).
+CREATE TABLE IF NOT EXISTS qa_test (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  run_id      INTEGER NOT NULL REFERENCES qa_run(id) ON DELETE CASCADE,
+  project_id  INTEGER NOT NULL REFERENCES project(id) ON DELETE CASCADE,
+  story_id    TEXT    NOT NULL,
+  name        TEXT    NOT NULL,
+  dimension   TEXT    NOT NULL CHECK (dimension IN ('functional','a11y','fidelity')),
+  status      TEXT    NOT NULL CHECK (status IN ('pass','fail','skip','flaky','blocked')),
+  expected    TEXT,
+  actual      TEXT,
+  trace_path  TEXT,
+  steps       TEXT    NOT NULL DEFAULT '[]',
+  ac_refs     TEXT    NOT NULL DEFAULT '[]'
+);
+
+-- QA tab: notes thread on a story detail page (zone 10 — QA Agent + Reviewer
+-- + user). Same guarantee as design notes: bodies are enforced plain-text
+-- server-side (POST rejects '<', 10 KB cap), so storage is safe to render
+-- escape-then-markdown.
+CREATE TABLE IF NOT EXISTS qa_note (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id  INTEGER NOT NULL REFERENCES project(id) ON DELETE CASCADE,
+  story_id    TEXT    NOT NULL,
+  author      TEXT    NOT NULL,
+  body        TEXT    NOT NULL,
+  created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+);
+
 -- BA Workspace (Project Background tab): per-file review state for the 17
 -- PRD artifacts. Rows are created lazily — a file with no row is 'draft'.
 -- edited_since_send (plan §9.5 AC-30): 1 once the BA has saved an edit since
@@ -227,6 +300,10 @@ CREATE INDEX IF NOT EXISTS idx_ba_status_project ON ba_artifacts_status(project_
 CREATE INDEX IF NOT EXISTS idx_ba_generation_project ON ba_generation(project_id);
 CREATE INDEX IF NOT EXISTS idx_design_story_project ON design_story(project_id);
 CREATE INDEX IF NOT EXISTS idx_design_note_project ON design_note(project_id, story_id);
+CREATE INDEX IF NOT EXISTS idx_qa_story_project ON qa_story_state(project_id);
+CREATE INDEX IF NOT EXISTS idx_qa_run_project_story ON qa_run(project_id, story_id);
+CREATE INDEX IF NOT EXISTS idx_qa_test_project_story ON qa_test(project_id, story_id);
+CREATE INDEX IF NOT EXISTS idx_qa_note_project_story ON qa_note(project_id, story_id);
 `;
 
 export function migrate(): void {

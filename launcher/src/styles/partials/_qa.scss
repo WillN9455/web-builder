@@ -1,0 +1,870 @@
+// QA tab — qa-tab-build-plan §4, screens QSD / QSS / QRL rendered from
+// qa-tab.html (zones 1–11). Additive partial: every selector below is either
+// new (qa-* classes) or a qa-tab.html class ported into its proper scoped
+// home. Like the sprint/design partials, everything is scoped under
+// `.qa-screen` so these rules never leak onto other tabs. Shared primitives
+// (`.card` / `.btn` / `.pill` / `.toast` / `.center-stage`) come from the
+// layout / projects / shared-ui / intake partials; this file only APPENDS —
+// the css-equivalence gate is selector-order-preserving post-#31.
+//
+// The mockup's raw rgba(50,42,92,…) literals are the navy token at
+// rgb(50,42,92) — written as rgba(tokens.$navy, …) here per repo convention;
+// hex literals use tokens.$white.
+@use '../tokens';
+
+.qa-screen {
+  /* ── List header — title + count pill + run-scope + re-run (mockup §Q) ── */
+  .stories-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 22px 12px;
+
+    h3 { margin: 0; font-size: 14px; font-weight: 700; }
+    .count { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-2); }
+    .qa-scope { margin-left: auto; }
+  }
+
+  .filter {
+    margin-left: auto;
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+
+    button {
+      padding: 4px 10px;
+      font-size: 11.5px;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--ink-2);
+      border: 0;
+      cursor: pointer;
+
+      &.on { background: rgba(tokens.$navy, 0.08); color: var(--ink); }
+      &:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
+    }
+  }
+
+  /* ── Verdict band (mockup §Q.1) ─────────────────────────────────────── */
+  .qa-verdict {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 18px 22px;
+    background: var(--blush);
+    border: 1px solid rgba(tokens.$rose, 0.25);
+    border-radius: 12px;
+
+    .ico {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      background: rgba(tokens.$white, 0.6);
+      display: grid; place-items: center;
+      color: var(--rose);
+      flex: none;
+    }
+    .headline { font-size: 14px; font-weight: 700; color: var(--ink); }
+    .headline span { color: var(--rose); }
+    .sub { font-size: 12px; color: var(--ink-2); margin-top: 2px; }
+    .actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+
+    &.all-pass {
+      background: var(--mint);
+      border-color: rgba(tokens.$green, 0.3);
+
+      .ico { color: var(--green); }
+      .headline span { color: var(--green); }
+    }
+  }
+
+  /* ── Env panel (mockup §Q.2) — not-deployed empty state by plan §4 ─── */
+  .qa-env {
+    background: rgba(tokens.$navy, 0.02);
+    border: 1px dashed rgba(tokens.$navy, 0.12);
+    border-radius: 12px;
+    padding: 14px 16px;
+
+    .h { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .h h4 { margin: 0; font-size: 12.5px; font-weight: 700; }
+    .h .badge {
+      font-size: 10.5px; color: var(--ink-2);
+      background: rgba(tokens.$navy, 0.06);
+      padding: 1px 6px; border-radius: 4px;
+      font-family: var(--font-mono);
+    }
+    .row { display: grid; grid-template-columns: 130px 1fr; gap: 8px; padding: 4px 0; font-size: 12px; }
+    .row .k { color: var(--ink-2); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; font-size: 11px; }
+    .row .v { color: var(--ink); font-family: var(--font-mono); font-size: 11.5px; }
+    .caption { margin-top: 8px; font-size: 11px; color: var(--ink-2); font-style: italic; }
+  }
+
+  /* ── Coverage strip (mockup §Q.3) ────────────────────────────────────── */
+  .qa-coverage {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 18px;
+    background: var(--lavender);
+    border-radius: 12px;
+
+    .n { font-size: 22px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+    .lbl { font-size: 12px; color: var(--ink); font-weight: 500; }
+    .lbl .muted { color: var(--ink-2); font-weight: 400; }
+    .bar {
+      flex: 1; height: 6px;
+      background: rgba(tokens.$navy, 0.08);
+      border-radius: 3px; overflow: hidden;
+
+      .fill { height: 100%; background: var(--purple); }
+    }
+    .actions { margin-left: auto; display: flex; gap: 6px; }
+  }
+
+  /* Untested-AC disclosure (C.17 — inline list under the coverage strip) */
+  .qa-untested {
+    margin: 8px 0 0;
+    padding: 10px 14px;
+    background: rgba(tokens.$navy, 0.03);
+    border-radius: 10px;
+    font-size: 11.5px;
+    color: var(--ink-2);
+
+    .mono { font-family: var(--font-mono); font-size: 11px; }
+  }
+
+  /* ── Stat tiles + pass-rate footnote (mockup §Q.4) ───────────────────── */
+  .qa-stats {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 12px;
+    padding: 18px 22px;
+  }
+  .qa-stat {
+    background: rgba(tokens.$navy, 0.04);
+    border-radius: 12px;
+    padding: 14px 16px;
+    position: relative;
+
+    .n { font-size: 22px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+    .lbl {
+      font-size: 11px; color: var(--ink-2);
+      text-transform: uppercase; letter-spacing: 0.06em;
+      margin-top: 2px;
+    }
+    .sub { font-size: 11.5px; color: var(--ink-2); margin-top: 6px; }
+    .sub.ok { color: var(--green); }
+    .sub.warn { color: var(--rose); }
+    .rate {
+      position: absolute; top: 14px; right: 14px;
+      font-size: 10.5px; color: var(--ink-2);
+      font-family: var(--font-mono);
+    }
+  }
+  .qa-footnote {
+    padding: 0 22px 14px;
+    font-size: 11px; color: var(--ink-2);
+    font-style: italic;
+  }
+
+  /* ── Per-story rows (mockup §Q.5) — grid: id title strip shots action ── */
+  .qa-row {
+    display: grid;
+    grid-template-columns: 100px 1fr 130px 130px 90px;
+    gap: 12px;
+    align-items: center;
+    padding: 12px 22px;
+    border-top: 1px solid rgba(tokens.$navy, 0.06);
+
+    &.selected { background: rgba(tokens.$purple, 0.06); }
+
+    .id { font-family: var(--font-mono); font-size: 12px; color: var(--ink-2); }
+    .title { font-size: 13.5px; font-weight: 500; }
+    .title .sub { display: block; color: var(--ink-2); font-size: 11.5px; font-weight: 400; margin-top: 2px; }
+    .title .roundtrip { display: block; color: var(--rose); font-size: 11px; font-family: var(--font-mono); margin-top: 4px; }
+    .title .escalation { display: block; color: var(--rose); font-weight: 600; font-size: 11px; margin-top: 4px; }
+
+    .row-actions { display: flex; gap: 6px; align-items: center; justify-content: flex-end; }
+  }
+
+  .tests-strip {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+
+    .t {
+      width: 18px; height: 18px;
+      border-radius: 4px;
+      display: grid; place-items: center;
+      font-size: 10px; font-weight: 700;
+
+      .dot { width: 6px; height: 6px; border-radius: 50%; }
+      &.pass { background: var(--mint); color: var(--ink); .dot { background: var(--green); } }
+      &.fail { background: var(--blush); color: var(--ink); .dot { background: var(--rose); } }
+      &.skip { background: rgba(tokens.$navy, 0.06); color: var(--ink-2); }
+      &.flaky { background: var(--butter); color: var(--ink); .dot { background: var(--amber); } }
+    }
+    .count { margin-left: 6px; font-size: 11.5px; color: var(--ink-2); font-family: var(--font-mono); }
+  }
+
+  /* ── Screenshot thumbs on the row (mockup §Q.5 .shots) ──────────────── */
+  .shots {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+
+    .thumb {
+      width: 38px; height: 28px;
+      border-radius: 4px;
+      border: 1px solid rgba(tokens.$navy, 0.1);
+
+      &.ok { background: linear-gradient(135deg, var(--mint) 0%, var(--sky) 100%); }
+      &.fail {
+        background: linear-gradient(135deg, var(--blush) 0%, var(--butter) 100%);
+        position: relative;
+
+        &::after {
+          content: "✕";
+          position: absolute; inset: 0;
+          display: grid; place-items: center;
+          color: var(--rose); font-weight: 700; font-size: 12px;
+        }
+      }
+    }
+    .more { font-size: 11px; color: var(--ink-2); }
+  }
+
+  /* ── QA agent panel (mockup §Q.6, mirrors sprint/build agent cards) ─── */
+  .qa-agent-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    background: tokens.$white;
+    border: 1px solid rgba(tokens.$navy, 0.08);
+    border-radius: 12px;
+
+    .avatar {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      display: grid; place-items: center;
+      color: tokens.$white;
+      font-weight: 700; font-size: 13px;
+      flex: none;
+
+      &.qa { background: var(--purple); }
+      &.rev { background: var(--amber); color: var(--ink); }
+    }
+    .name { font-size: 13px; font-weight: 600; }
+    .activity { font-size: 11.5px; color: var(--ink-2); margin-top: 2px; font-family: var(--font-mono); }
+    .queue { font-size: 11px; color: var(--ink-2); margin-top: 4px; }
+    .right { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+  }
+
+  /* ── Tools panel — Playwright only (mockup §Q.7) ─────────────────────── */
+  .tools {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .tools-card {
+    background: tokens.$white;
+    border: 1px solid rgba(tokens.$navy, 0.08);
+    border-radius: 12px;
+    padding: 14px;
+
+    .h { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+    .h h4 { margin: 0; font-size: 12.5px; font-weight: 700; }
+    .h .badge {
+      font-size: 10.5px; color: var(--ink-2);
+      background: rgba(tokens.$navy, 0.06);
+      padding: 1px 6px; border-radius: 4px;
+    }
+  }
+  .tools-row {
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    gap: 8px;
+    padding: 6px 0;
+    border-top: 1px solid rgba(tokens.$navy, 0.05);
+    font-size: 12px;
+
+    &:first-of-type { border-top: 0; }
+    .k { color: var(--ink-2); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; font-size: 11px; }
+    .v { color: var(--ink); }
+    .v code { font-family: var(--font-mono); font-size: 11.5px; background: rgba(tokens.$navy, 0.06); padding: 1px 5px; border-radius: 4px; }
+  }
+
+  /* ── Linked-requirement + test-dimension cards (mockup §QSD) ─────────── */
+  .req-surface-row {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 14px;
+    margin-top: 14px;
+  }
+  .req-card {
+    background: tokens.$white;
+    border: 1px solid rgba(tokens.$navy, 0.08);
+    border-radius: 12px;
+    padding: 14px 16px;
+
+    .h { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .h h4 { margin: 0; font-size: 12.5px; font-weight: 700; }
+    .h .id { font-family: var(--font-mono); font-size: 11px; color: var(--ink-2); }
+    .h .open { margin-left: auto; font-size: 11.5px; color: var(--navy); font-weight: 600; }
+    .desc { font-size: 12.5px; line-height: 1.55; color: var(--ink); }
+    .users-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 10px;
+      font-size: 11px;
+      color: var(--ink-2);
+    }
+    .lbl { font-weight: 600; }
+  }
+
+  /* ── Dimension pill (mockup §QSD/B15) — API emits 'functional' so the
+       aliased class is wired too. ─────────────────────────────────────── */
+  .qa-dim {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10.5px;
+    font-weight: 600;
+    background: var(--lavender);
+    color: var(--ink);
+
+    .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--purple); }
+    &.func, &.functional { background: var(--mint); .dot { background: var(--green); } }
+    &.a11y { background: var(--lavender); .dot { background: var(--purple); } }
+    &.fidelity { background: var(--sky); .dot { background: var(--blue); } }
+  }
+
+  .qa-dim-summary {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    margin-top: 14px;
+
+    .lane {
+      background: tokens.$white;
+      border: 1px solid rgba(tokens.$navy, 0.08);
+      border-radius: 12px;
+      padding: 14px 16px;
+
+      .h { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+      .h h4 { margin: 0; font-size: 12.5px; font-weight: 700; }
+      .h .tag {
+        margin-left: auto;
+        font-size: 10.5px; color: var(--ink-2);
+        background: rgba(tokens.$navy, 0.04);
+        padding: 1px 6px; border-radius: 4px;
+      }
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11.5px;
+        padding: 3px 0;
+
+        .n { font-family: var(--font-mono); font-weight: 600; color: var(--ink); }
+        .lbl { color: var(--ink-2); }
+        &.fail .n { color: var(--rose); }
+        &.pass .n { color: var(--green); }
+      }
+    }
+  }
+
+  /* ── Pass chip (mockup §QSD) ────────────────────────────────────────── */
+  .pass-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10.5px;
+    font-weight: 600;
+    background: var(--mint);
+    color: var(--ink);
+
+    .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--green); }
+    &.warn { background: var(--blush); color: var(--ink); .dot { background: var(--rose); } }
+    &.skip { background: rgba(tokens.$navy, 0.06); color: var(--ink-2); .dot { background: var(--ink-3); } }
+  }
+
+  /* ── Rework round-trip banner (mockup §QSD) ──────────────────────────── */
+  .rework-banner {
+    background: var(--blush);
+    border: 1px solid rgba(tokens.$rose, 0.3);
+    border-radius: 12px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 12.5px;
+    color: var(--ink);
+
+    .ico {
+      width: 28px; height: 28px;
+      border-radius: 8px;
+      background: rgba(tokens.$white, 0.6);
+      display: grid; place-items: center;
+      color: var(--rose); flex: none;
+    }
+    .body { flex: 1; }
+    .body .round {
+      font-size: 11px; color: var(--ink-2);
+      font-family: var(--font-mono);
+      text-transform: uppercase; letter-spacing: 0.06em;
+    }
+    .body .story { font-weight: 600; margin-top: 2px; }
+    .body .detail { color: var(--ink-2); margin-top: 2px; font-size: 12px; }
+    .body .escalation { color: var(--rose); font-weight: 600; margin-top: 4px; font-size: 11.5px; }
+  }
+
+  /* ── Run history (mockup §QSD B.9) ──────────────────────────────────── */
+  .qa-history {
+    background: tokens.$white;
+    border: 1px solid rgba(tokens.$navy, 0.08);
+    border-radius: 12px;
+    overflow: hidden;
+
+    .h {
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(tokens.$navy, 0.06);
+      display: flex; align-items: center; gap: 8px;
+
+      h4 { margin: 0; font-size: 12.5px; font-weight: 700; }
+      .right { margin-left: auto; font-size: 11px; color: var(--ink-2); }
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th {
+      text-align: left; padding: 8px 16px;
+      font-size: 10.5px; font-weight: 600; color: var(--ink-2);
+      text-transform: uppercase; letter-spacing: 0.06em;
+      background: rgba(tokens.$navy, 0.02);
+    }
+    td { padding: 9px 16px; border-top: 1px solid rgba(tokens.$navy, 0.05); }
+    td.mono { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-2); }
+  }
+
+  /* ── Run scope pill (mockup §Q .qa-scope) ───────────────────────────── */
+  .qa-scope {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: rgba(tokens.$white, 0.7);
+    border: 1px solid rgba(tokens.$navy, 0.12);
+    font-size: 11.5px;
+    color: var(--ink-2);
+
+    &::after { content: "▾"; color: var(--ink-2); font-size: 10px; }
+  }
+
+  /* ── Annotated screenshot viewer (mockup §QSD B.12) + C.20 empty ───── */
+  .shot-stage {
+    background: tokens.$white;
+    border: 1px solid rgba(tokens.$navy, 0.08);
+    border-radius: 12px;
+    padding: 12px;
+    position: relative;
+
+    .stage-img {
+      aspect-ratio: 16/9;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--lavender) 0%, var(--peach) 50%, var(--sky) 100%);
+      position: relative;
+      overflow: hidden;
+
+      &.empty {
+        background: rgba(tokens.$navy, 0.04);
+        display: grid;
+        place-items: center;
+        color: var(--ink-2);
+        font-size: 12px;
+        font-style: italic;
+      }
+    }
+  }
+  .shot-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+
+    .nav-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      font-size: 11.5px;
+      border-radius: 999px;
+      background: rgba(tokens.$navy, 0.06);
+      color: var(--ink);
+      border: 0;
+      cursor: pointer;
+
+      &:disabled { opacity: 0.4; cursor: not-allowed; }
+      &:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
+    }
+    .meta { font-size: 11px; color: var(--ink-2); font-family: var(--font-mono); }
+  }
+  .annot {
+    position: absolute;
+    top: 18px; right: 22px;
+    background: var(--blush);
+    border: 1px solid var(--rose);
+    border-radius: 8px;
+    padding: 6px 8px;
+    font-size: 11px;
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 180px;
+
+    &::before {
+      content: "";
+      position: absolute;
+      bottom: -7px; right: 18px;
+      width: 12px; height: 12px;
+      background: var(--blush);
+      border-right: 1px solid var(--rose);
+      border-bottom: 1px solid var(--rose);
+      transform: rotate(45deg);
+    }
+  }
+
+  /* ── Visual diff (mockup §QSD B.16) — deferred state by plan §2 ──────── */
+  .qa-diff {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    margin-top: 12px;
+
+    .pane {
+      background: tokens.$white;
+      border: 1px solid rgba(tokens.$navy, 0.08);
+      border-radius: 10px;
+      padding: 10px 12px;
+
+      h5 { margin: 0 0 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-2); }
+      .img { aspect-ratio: 16/9; border-radius: 6px; }
+    }
+    .expected .img { background: linear-gradient(135deg, var(--mint) 0%, var(--sky) 100%); }
+    .actual .img {
+      background: linear-gradient(135deg, var(--blush) 0%, var(--butter) 100%);
+      position: relative;
+
+      &::after {
+        content: "✕";
+        position: absolute; inset: 0;
+        display: grid; place-items: center;
+        color: var(--rose); font-weight: 700;
+      }
+    }
+    .diff .img {
+      background: repeating-linear-gradient(45deg, var(--rose) 0 4px, transparent 4px 8px), var(--blush);
+      position: relative;
+
+      &::after {
+        content: "diff overlay";
+        position: absolute; inset: 0;
+        display: grid; place-items: center;
+        color: var(--rose); font-size: 10px; font-weight: 600;
+      }
+    }
+    &.deferred {
+      .pane { background: rgba(tokens.$navy, 0.02); border-style: dashed; }
+      .pane .img { background: transparent; border: 1px dashed rgba(tokens.$navy, 0.15); display: grid; place-items: center; color: var(--ink-2); font-size: 11px; font-style: italic; }
+      .actual .img::after { display: none; }
+    }
+  }
+
+  /* ── Per-test rows (mockup §QSD B.6) ────────────────────────────────── */
+  .test-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+
+    .t-row {
+      display: grid;
+      grid-template-columns: 22px 1fr 70px 90px;
+      gap: 8px;
+      align-items: center;
+      padding: 7px 10px;
+      background: tokens.$white;
+      border: 1px solid rgba(tokens.$navy, 0.06);
+      border-radius: 8px;
+      font-size: 12px;
+
+      .ico {
+        width: 18px; height: 18px;
+        border-radius: 50%;
+        display: grid; place-items: center;
+        font-size: 10px; font-weight: 700;
+        color: tokens.$white;
+
+        &.pass { background: var(--green); }
+        &.fail { background: var(--rose); }
+        &.skip { background: var(--ink-3); }
+      }
+      .name {
+        color: var(--ink);
+
+        .expected { display: block; color: var(--ink-2); font-size: 11px; margin-top: 2px; }
+      }
+      .dur { font-size: 11px; color: var(--ink-2); font-family: var(--font-mono); }
+    }
+  }
+
+  /* ── Notes thread (mockup §QSD) — shared .thread/.comment/.compose are
+       scoped to other tabs; re-issued here scoped. ───────────────────── */
+  .thread {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+    .thread-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--ink-2);
+
+      .who {
+        margin-left: auto;
+        font-size: 11px; color: var(--ink-2);
+        font-weight: 500; text-transform: none; letter-spacing: 0;
+      }
+    }
+  }
+  .comment {
+    background: tokens.$white;
+    border: 1px solid rgba(tokens.$navy, 0.06);
+    border-left: 3px solid var(--mint);
+    border-radius: 10px;
+    padding: 10px 12px;
+
+    &.qa { border-left-color: var(--mint); }
+    &.rev { border-left-color: var(--lavender); }
+
+    .body { font-size: 12.5px; line-height: 1.5; }
+    .body .who { font-size: 11.5px; font-weight: 600; color: var(--ink); }
+    .body .who span { color: var(--ink-2); font-weight: 400; margin-left: 6px; }
+    .body p { margin: 4px 0 0; color: var(--ink); }
+  }
+  .compose {
+    display: flex;
+    gap: 10px;
+    align-items: end;
+    background: tokens.$white;
+    border: 1px solid rgba(tokens.$navy, 0.08);
+    border-radius: 10px;
+    padding: 8px 10px;
+
+    textarea {
+      flex: 1;
+      min-width: 0;
+      border: 0;
+      outline: 0;
+      resize: none;
+      font: inherit;
+      font-size: 12.5px;
+      color: var(--ink);
+      background: transparent;
+      min-height: 36px;
+
+      &:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; border-radius: 4px; }
+      &:disabled { cursor: not-allowed; }
+    }
+    .who { font-size: 11px; color: var(--ink-2); }
+  }
+
+  /* ── Rules screen (mockup §QRL) — read-only config + 3 md editors ────── */
+  .rules-section {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-top: 14px;
+
+    .arch-card {
+      background: tokens.$white;
+      border: 1px solid rgba(tokens.$navy, 0.08);
+      border-radius: 12px;
+      padding: 14px 16px;
+
+      .h { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+      .h h4 { margin: 0; font-size: 12.5px; font-weight: 700; }
+      .h .pill.lock { margin-left: auto; }
+      .body ul { margin: 0; padding-left: 16px; font-size: 12px; line-height: 1.6; color: var(--ink); }
+      .body b { font-weight: 600; }
+    }
+
+    .md-card, .agent-md-card {
+      background: tokens.$white;
+      border: 1px solid rgba(tokens.$navy, 0.08);
+      border-radius: 12px;
+      padding: 14px 16px;
+
+      .h { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+      .h h4 { margin: 0; font-size: 12.5px; font-weight: 700; }
+      .h .name { display: flex; flex-direction: column; gap: 2px; }
+      .h .path {
+        font-family: var(--font-mono);
+        font-size: 10.5px;
+        color: var(--ink-2);
+        background: rgba(tokens.$navy, 0.06);
+        padding: 1px 6px;
+        border-radius: 4px;
+      }
+      .h .pill.warn { margin-left: auto; }
+      .h .btn { margin-left: auto; }
+      .hint { margin: 0 0 6px; font-size: 12px; color: var(--ink-2); }
+      .md-edit {
+        width: 100%;
+        min-height: 120px;
+        border: 1px solid rgba(tokens.$navy, 0.1);
+        border-radius: 8px;
+        padding: 10px 12px;
+        font: inherit;
+        font-family: var(--font-mono);
+        font-size: 12px;
+        line-height: 1.55;
+        color: var(--ink);
+        background: rgba(tokens.$navy, 0.02);
+        resize: vertical;
+
+        &:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
+      }
+    }
+
+    .agent-md-card .h { cursor: default; }
+  }
+
+  /* ── Story detail header (mockup §QSD story-head) — shared .story-head
+       is design-scoped; re-issued here scoped. ───────────────────────── */
+  .story-head {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 22px;
+
+    .ico-lg {
+      width: 56px; height: 56px;
+      border-radius: 14px;
+      display: grid; place-items: center;
+      background: var(--butter);
+      color: var(--ink);
+      flex: none;
+    }
+    .title-stack { flex: 1; min-width: 0; }
+    h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.25; margin: 0; }
+    .one { color: var(--ink-2); font-size: 13px; margin-top: 4px; }
+    .actions { margin-left: auto; display: flex; gap: 8px; align-items: center; flex: none; flex-wrap: wrap; }
+  }
+
+  .back-arrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink-2);
+    text-decoration: none;
+    transition: background 120ms ease, color 120ms ease;
+
+    &:hover { background: rgba(tokens.$white, 0.6); color: var(--ink); }
+    &:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
+    svg { width: 18px; height: 18px; }
+  }
+
+  .proj-head {
+    display: flex;
+    flex-direction: column;
+    align-items: start;
+    gap: 4px;
+    padding: 8px 4px 4px;
+
+    h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.01em; margin: 0; }
+    .sub { color: var(--ink-2); font-size: 13px; font-weight: 400; }
+    .sub b { color: var(--ink); font-weight: 600; }
+  }
+
+  /* Rules cog — mockup §Q .hdr-cog in the proj-head actions. */
+  .hdr-cog {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 12px;
+    border-radius: 999px;
+    background: rgba(tokens.$white, 0.7);
+    border: 1px solid rgba(tokens.$navy, 0.12);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-2);
+    text-decoration: none;
+    transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+
+    &:hover {
+      background: tokens.$white;
+      border-color: rgba(tokens.$navy, 0.22);
+      color: var(--ink);
+    }
+    &:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
+    svg { color: var(--ink-2); }
+    &:hover svg { color: var(--ink); }
+  }
+
+  /* ── Misc states ────────────────────────────────────────────────────── */
+  .story-empty {
+    text-align: center;
+    padding: 22px 0;
+    color: var(--ink-2);
+    font-size: 12.5px;
+    font-style: italic;
+    border: 1px dashed rgba(tokens.$navy, 0.15);
+    border-radius: 12px;
+  }
+
+  .qa-state-empty {
+    background: rgba(tokens.$navy, 0.02);
+    border: 1px dashed rgba(tokens.$navy, 0.15);
+    border-radius: 12px;
+    padding: 28px 22px;
+    text-align: center;
+  }
+  .qa-state-empty .ico {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    background: var(--lavender);
+    color: var(--purple);
+    margin: 0 auto 10px;
+    display: grid;
+    place-items: center;
+  }
+  .qa-state-empty h4 { margin: 0; font-size: 14px; font-weight: 700; color: var(--ink); }
+  .qa-state-empty p { margin: 6px auto 0; color: var(--ink-2); font-size: 12px; max-width: 360px; }
+}
+
+/* sr-only utility — nothing global exists (sprint board inlines its own);
+   used by the QA list running-state announcer (C.18). */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
