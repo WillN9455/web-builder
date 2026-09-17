@@ -17,6 +17,7 @@ export type ProjectOutletContext = {
   error: string | null;
   onContextConfirmed: () => void;
   onRequirementsCount?: (count: number | null) => void;
+  onQaCount?: (count: number | null) => void;
 };
 
 // Project shell — the open-project layout: per-project sidebar + main column
@@ -31,6 +32,7 @@ export function ProjectDetailScreen() {
   const [project, setProject] = useState<ProjectInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [requirementsCount, setRequirementsCount] = useState<number | null>(null);
+  const [qaCount, setQaCount] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -56,6 +58,7 @@ export function ProjectDetailScreen() {
         confirmed={project?.context_confirmed ?? false}
         backgroundCount={project?.ba_artifact_count ?? null}
         requirementsCount={requirementsCount}
+        qaCount={qaCount}
       />
       <main className="main" aria-busy={project === null && error === null}>
         <header className="topbar">
@@ -73,6 +76,7 @@ export function ProjectDetailScreen() {
               onContextConfirmed: () =>
                 setProject((p) => (p ? { ...p, context_confirmed: true } : p)),
               onRequirementsCount: setRequirementsCount,
+              onQaCount: setQaCount,
             } satisfies ProjectOutletContext
           }
         />

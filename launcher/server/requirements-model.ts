@@ -651,6 +651,33 @@ export function parseStories(journeys: string): { stories: StoryRow[]; parseErro
   return { stories, parseError: null };
 }
 
+// AC IDs inside ONE story's block (decision 6r: `## Acceptance Criteria` with
+// `- AC-0NN | text` rows below a `### US-NN` heading). parseStories does not
+// collect ACs, and the coverage join needs them per story — single grammar
+// home, shared with server/qa.ts (code-quality: never duplicate the regex).
+export function parseStoryAcs(
+  journeys: string,
+  usId: string,
+): { id: string; text: string | null }[] {
+  const lines = journeys.split('\n');
+  const acs: { id: string; text: string | null }[] = [];
+  let inBlock = false;
+  for (let i = 0; i < lines.length; i++) {
+    const trimmed = lines[i].trim();
+    if (STORY_HEADING_RE.test(trimmed)) {
+      if (inBlock) break; // next story block — done with this story
+      inBlock = trimmed.startsWith(`### ${usId} `);
+      continue;
+    }
+    if (!inBlock) continue;
+    const am = trimmed.match(AC_ROW_RE);
+    if (am) {
+      acs.push({ id: am[1], text: am[2]?.trim() ?? null });
+    }
+  }
+  return acs;
+}
+
 export function parseRequirements(prd: string, features: string): ParseResult {
   const b = parseBusinessReqs(prd);
   const f = parseFeatures(features);

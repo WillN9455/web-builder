@@ -4,6 +4,12 @@ import { NewIdeaScreen } from './components/NewIdeaScreen';
 import { ProjectDetailScreen, ProjectTabScreen } from './components/ProjectDetailScreen';
 import { ProjectBackgroundScreen } from './components/ProjectBackgroundScreen';
 import { RequirementsScreen } from './components/requirements/RequirementsScreen';
+import { SprintScreen } from './components/sprint/SprintScreen';
+import { DesignScreen } from './components/design/DesignScreen';
+import { DesignStoryScreen } from './components/design/DesignStoryScreen';
+import { QaScreen } from './components/qa/QaScreen';
+import { QaStoryScreen } from './components/qa/QaStoryScreen';
+import { QaRulesScreen } from './components/qa/QaRulesScreen';
 
 // Single-column frame for the screens without the per-project menu. The
 // two-column `.app` grid (sidebar + main) only applies inside an open
@@ -37,6 +43,19 @@ export default function App() {
             `:tab` so they win the match. */}
         <Route path="background" element={<ProjectBackgroundScreen />} />
         <Route path="requirements" element={<RequirementsScreen />} />
+        <Route path="sprint" element={<SprintScreen />} />
+        {/* Design routes are declared before the `:tab` catch-all below.
+            The design screen is gated (ProjectSidebar gated:true) and the
+            detail route resolves a story id that never collides with a tab. */}
+        <Route path="design" element={<DesignScreen />} />
+        <Route path="design/:storyId" element={<DesignStoryScreen />} />
+        {/* QA routes are declared before the `:tab` catch-all below. The QA
+            screen is gated (ProjectSidebar gated:true); `qa/rules` must be
+            declared before `qa/:storyId` so the literal 'rules' never parses
+            as a story id. */}
+        <Route path="qa/rules" element={<QaRulesScreen />} />
+        <Route path="qa/:storyId" element={<QaStoryScreen />} />
+        <Route path="qa" element={<QaScreen />} />
         <Route path=":tab" element={<ProjectTabScreen />} />
       </Route>
       <Route path="*" element={<Navigate to="/projects" replace />} />
