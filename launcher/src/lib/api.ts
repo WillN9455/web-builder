@@ -1297,3 +1297,229 @@ export async function saveDesignRules(
     body: JSON.stringify({ content }),
   });
 }
+
+// ── Build tab fetchers (build-tab build plan §4) ─────────────────────────────
+
+export type BuildStatus =
+  | 'picked_up'
+  | 'building'
+  | 'self_review'
+  | 'ready_for_review'
+  | 'ready_for_qa'
+  | 'deployed_qa'
+  | 'rework';
+
+export type BuildReqLink = { id: string; text: string | null };
+
+export type BuildStorySummary = {
+  storyId: string; // route param — always US-XX
+  title: string;
+  /** null → the story has no build_story row — not an in-build list row (SA-R-08). */
+  build_status: BuildStatus | null;
+  status_pill: string | null;
+  /** TM-XX display key from the kanban mapping; falls back to US-XX. */
+  ticket_key: string;
+  card_column: string | null;
+  points: number | null;
+  priority: string | null;
+  reqs: BuildReqLink[];
+  rework_origin: 'qa' | 'review' | null;
+  rework_issues: number;
+};
+
+export type BuildStoriesResponse = {
+  stories: BuildStorySummary[];
+  missing_stories: boolean;
+};
+
+export type BuildFile = { id: number; path: string; layer: 'new' | 'modified' | null };
+
+export type BuildApiMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+
+export type BuildApi = {
+  id: number;
+  tier: 'bff' | 'be';
+  method: BuildApiMethod;
+  route_path: string;
+  description: string;
+};
+
+export type BuildNote = { id: number; author: string; body: string; created_at: string };
+
+export type BuildStoryDetail = {
+  story: {
+    storyId: string;
+    title: string;
+    build_status: BuildStatus;
+    status_pill: string;
+    ticket_key: string;
+    card_column: string | null;
+    reqs: BuildReqLink[];
+    rework_origin: 'qa' | 'review' | null;
+    rework_issues: number;
+  };
+  files: BuildFile[];
+  apis: BuildApi[];
+  notes: BuildNote[];
+};
+
+export type BuildAgentGuidelines = { display: string; content: string };
+
+export type BuildRulesPayload = {
+  architecture: Record<string, string>;
+  config: { key: string; value: string }[];
+  rules: string;
+  agents: Record<string, BuildAgentGuidelines>;
+};
+
+export type BuildNotePostResponse = { note: BuildNote };
+export type BuildTransitionResponse = { build_status: BuildStatus };
+
+// A build-route failure that carries its HTTP status so the UI can branch on
+// 404 (unknown story / no stories), 422 (validation — client shows the
+// server's message verbatim), and 409 (illegal transition / duplicate file).
+export class BuildHttpError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = 'BuildHttpError';
+    this.status = status;
+  }
+}
+
+async function buildFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(path, init);
+  const contentType = res.headers.get('content-type') ?? '';
+  if (!contentType.includes('application/json')) {
+    throw new Error(
+      'API server is not running. Start it with `npm run dev` (or `npm run dev:api` in another terminal).',
+    );
+  }
+  const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  if (!res.ok) {
+    throw new BuildHttpError(res.status, typeof data.error === 'string' ? data.error : `Request failed (HTTP ${res.status})`);
+  }
+  return data as T;
+}
+
+export async function fetchBuildStories(idOrSlug: string): Promise<BuildStoriesResponse> {
+  return buildFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/build/stories`);
+}
+
+export async function fetchBuildStory(
+  idOrSlug: string,
+  storyId: string,
+): Promise<BuildStoryDetail> {
+  return buildFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/build/${encodeURIComponent(storyId)}`);
+}
+
+export async function fetchBuildRules(idOrSlug: string): Promise<BuildRulesPayload> {
+  return buildFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/build/rules`);
+}
+
+export async function saveBuildConfig(
+  idOrSlug: string,
+  key: string,
+  value: string,
+): Promise<{ ok: true; key: string; value: string; size: number }> {
+  return buildFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/build/config`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key, value }),
+  });
+}
+
+export async function saveBuildRules(
+  idOrSlug: string,
+  content: string,
+): Promise<{ ok: true; size: number }> {
+  return buildFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/build/rules`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content }),
+  });
+}
+
+export async function saveBuildAgentRules(
+  idOrSlug: string,
+  agent: string,
+  content: string,
+): Promise<{ ok: true; agent: string; size: number }> {
+  return buildFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/build/rules/agents/${encodeURIComponent(agent)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content }),
+  });
+}
+
+export async function addBuildFile(
+  idOrSlug: string,
+  storyId: string,
+  path: string,
+  layer: 'new' | 'modified' | null,
+): Promise<{ file: BuildFile }> {
+  return buildFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/build/${encodeURIComponent(storyId)}/files`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path, layer }),
+  });
+}
+
+export async function removeBuildFile(
+  idOrSlug: string,
+  storyId: string,
+  fileId: number,
+): Promise<{ ok: true }> {
+  return buildFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/build/${encodeURIComponent(storyId)}/files/${fileId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function addBuildApi(
+  idOrSlug: string,
+  storyId: string,
+  tier: 'bff' | 'be',
+  method: BuildApiMethod,
+  routePath: string,
+  description: string,
+): Promise<{ api: BuildApi }> {
+  return buildFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/build/${encodeURIComponent(storyId)}/apis`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tier, method, path: routePath, description }),
+  });
+}
+
+export async function removeBuildApi(
+  idOrSlug: string,
+  storyId: string,
+  apiId: number,
+): Promise<{ ok: true }> {
+  return buildFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/build/${encodeURIComponent(storyId)}/apis/${apiId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function postBuildNote(
+  idOrSlug: string,
+  storyId: string,
+  body: string,
+): Promise<BuildNotePostResponse> {
+  return buildFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/build/${encodeURIComponent(storyId)}/notes`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ body }),
+  });
+}
+
+export async function transitionBuildStory(
+  idOrSlug: string,
+  storyId: string,
+  to: BuildStatus,
+): Promise<BuildTransitionResponse> {
+  return buildFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/build/${encodeURIComponent(storyId)}/transition`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ to }),
+  });
+}

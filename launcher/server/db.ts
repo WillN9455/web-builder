@@ -150,6 +150,70 @@ CREATE TABLE IF NOT EXISTS design_note (
   created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Build tab: per-story build state (build-tab build plan §3, server/build.ts).
+-- One row per story (project_id, story_id key), created lazily on first build
+-- interaction; a story with no row reads as build_status 'picked_up' but is
+-- NOT an in-build list row (SA-R-08 — stories enter the Build list only when a
+-- build_story row exists). build_status is the BUILD lifecycle only (NOT the
+-- board column — kanban_card stays the sprint-owned spine, F-5):
+--   picked_up → building → self_review → ready_for_review → ready_for_qa → deployed_qa
+--   rework → building   (rework is entered from QA/Review events, not this route)
+-- ready_for_qa is reachable ONLY from self_review / ready_for_review (DR2
+-- assertion 1 — eligibility is server-enforced, no skip-ahead). rework_origin
+-- records where the story came back from (QA/Review) for the rework queue card.
+CREATE TABLE IF NOT EXISTS build_story (
+  project_id     INTEGER NOT NULL REFERENCES project(id) ON DELETE CASCADE,
+  story_id       TEXT    NOT NULL,
+  build_status   TEXT    NOT NULL DEFAULT 'picked_up'
+                 CHECK (build_status IN
+                  ('picked_up','building','self_review','ready_for_review','ready_for_qa','deployed_qa','rework')),
+  rework_origin  TEXT    CHECK (rework_origin IN ('qa','review')),
+  rework_issues  INTEGER NOT NULL DEFAULT 0 CHECK (rework_issues >= 0),
+  updated_at     TEXT    NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (project_id, story_id)
+);
+
+-- Build tab: FE files a story edits (FR-13). Paths are METADATA STRINGS only —
+-- never written to disk, never used in a filesystem operation (the validation
+-- in server/build.ts is data hygiene, not containment — SA-R-04). layer marks
+-- the change kind for reviewers (new / modified).
+CREATE TABLE IF NOT EXISTS build_story_file (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id  INTEGER NOT NULL REFERENCES project(id) ON DELETE CASCADE,
+  story_id    TEXT    NOT NULL,
+  path        TEXT    NOT NULL,
+  layer       TEXT    CHECK (layer IN ('new','modified')),
+  created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+  UNIQUE (project_id, story_id, path)
+);
+
+-- Build tab: BFF / BE route surface a story calls (FR-14/15). The project uses
+-- one BFF + one BE; tier distinguishes them. method values are stored full-word
+-- (GET/POST/…) so the method-chip render maps them to coloured chips.
+CREATE TABLE IF NOT EXISTS build_story_api (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id  INTEGER NOT NULL REFERENCES project(id) ON DELETE CASCADE,
+  story_id    TEXT    NOT NULL,
+  tier        TEXT    NOT NULL CHECK (tier IN ('bff','be')),
+  method      TEXT    NOT NULL CHECK (method IN ('GET','POST','PUT','PATCH','DELETE')),
+  route_path  TEXT    NOT NULL,
+  description TEXT    NOT NULL DEFAULT '',
+  created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Build tab: notes thread on a story detail page (FR-16). Human-post-only;
+-- bodies are enforced plain-text server-side ('<' rejected — the same guard
+-- family as design_note) plus a 10 KB cap (F-SEC-1 lesson) so storage is
+-- guaranteed safe to render escape-then-markdown.
+CREATE TABLE IF NOT EXISTS build_note (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id  INTEGER NOT NULL REFERENCES project(id) ON DELETE CASCADE,
+  story_id    TEXT    NOT NULL,
+  author      TEXT    NOT NULL,
+  body        TEXT    NOT NULL,
+  created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+);
+
 -- BA Workspace (Project Background tab): per-file review state for the 17
 -- PRD artifacts. Rows are created lazily — a file with no row is 'draft'.
 -- edited_since_send (plan §9.5 AC-30): 1 once the BA has saved an edit since
@@ -227,6 +291,10 @@ CREATE INDEX IF NOT EXISTS idx_ba_status_project ON ba_artifacts_status(project_
 CREATE INDEX IF NOT EXISTS idx_ba_generation_project ON ba_generation(project_id);
 CREATE INDEX IF NOT EXISTS idx_design_story_project ON design_story(project_id);
 CREATE INDEX IF NOT EXISTS idx_design_note_project ON design_note(project_id, story_id);
+CREATE INDEX IF NOT EXISTS idx_build_story_project ON build_story(project_id);
+CREATE INDEX IF NOT EXISTS idx_build_file_project ON build_story_file(project_id, story_id);
+CREATE INDEX IF NOT EXISTS idx_build_api_project ON build_story_api(project_id, story_id);
+CREATE INDEX IF NOT EXISTS idx_build_note_project ON build_note(project_id, story_id);
 `;
 
 export function migrate(): void {

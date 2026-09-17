@@ -7,6 +7,8 @@ import { RequirementsScreen } from './components/requirements/RequirementsScreen
 import { SprintScreen } from './components/sprint/SprintScreen';
 import { DesignScreen } from './components/design/DesignScreen';
 import { DesignStoryScreen } from './components/design/DesignStoryScreen';
+import { BuildScreen } from './components/build/BuildScreen';
+import { BuildStoryScreen } from './components/build/BuildStoryScreen';
 
 // Single-column frame for the screens without the per-project menu. The
 // two-column `.app` grid (sidebar + main) only applies inside an open
@@ -46,6 +48,15 @@ export default function App() {
             detail route resolves a story id that never collides with a tab. */}
         <Route path="design" element={<DesignScreen />} />
         <Route path="design/:storyId" element={<DesignStoryScreen />} />
+        {/* Build routes are declared before the `:tab` catch-all, mirroring
+            design. `build/rules` must be declared before `build/:storyId` so a
+            deep link to the rules screen does not resolve `rules` as a story
+            id (the server has the same route-order guard). `/rules` is the
+            deep-link target; the in-tab Status/Rules pill switch is a UI-only
+            mode toggle (FR-5) and does not navigate. */}
+        <Route path="build" element={<BuildScreen />} />
+        <Route path="build/rules" element={<BuildScreen />} />
+        <Route path="build/:storyId" element={<BuildStoryScreen />} />
         <Route path=":tab" element={<ProjectTabScreen />} />
       </Route>
       <Route path="*" element={<Navigate to="/projects" replace />} />

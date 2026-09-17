@@ -15,6 +15,7 @@ import { registerJiraLinkRoutes } from './jira-link.js';
 import { registerBoardRoutes } from './board.js';
 import { registerStoryGenRoutes } from './story-gen.js';
 import { registerDesignRoutes } from './design.js';
+import { registerBuildRoutes } from './build.js';
 import {
   validateProjectDir,
   scaffoldProjectDir,
@@ -115,6 +116,12 @@ registerStoryGenRoutes(app);
 // Design tab — design list + story detail + rules half (design-tab build
 // plan §3). Additive; never touches sprint-owned surfaces (SA-R-01).
 registerDesignRoutes(app);
+
+// Build tab — build list + story detail + rules surface (build-tab build
+// plan §3). Additive; no uploads, no body-gate exception (SA-R-06), no
+// kanban_card writes (SA-R-05). Mounted after design so the shared seams stay
+// in the same region for the stacked branch rebases.
+registerBuildRoutes(app);
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -1391,7 +1398,12 @@ app.use((err: unknown, _req: express.Request, res: express.Response, _next: expr
   const message = err instanceof Error ? err.message : 'Internal server error';
   console.error('[api] unhandled error:', err);
   if (res.headersSent) return;
-  res.status(500).json({ error: message });
+  // Honor a carried status (e.g. body-parser's PayloadTooLargeError → 413 for
+  // the build routes' 1 MB JSON cap) instead of masking it as a 500. A
+  // PayloadTooLargeError is a client error, not a server fault — a 413 lets the
+  // client branch on the size boundary (the gate's A6 assertion).
+  const status = err instanceof Error && typeof (err as unknown as { status?: unknown }).status === 'number' ? ((err as unknown as { status: number }).status as number) : 500;
+  res.status(status).json({ error: message });
 });
 
 const PORT = Number(process.env.PORT ?? 5184);

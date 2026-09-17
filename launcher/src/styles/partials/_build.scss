@@ -1,0 +1,1159 @@
+// Build tab — v5.4 (build-tab-build-plan §4). Additive partial: every selector
+// is scoped to .build-screen so nothing leaks onto other tabs. Mirrors the
+// sprint/design partials: `.card`/`.btn`/`.btn-primary`/`.btn-soft`/`.btn-pill`/
+// `.btn-ghost`/`.pill`/`.toast`/`.topbar`/`.center-stage` primitives come from
+// the layout / intake / shared-ui partials; this file appends AFTER
+// partials/design in app.scss, so shared class names used by both tabs
+// (`.split-switch`, `.story-row`, `.back-arrow`, `.story-head`, `.rules-half`,
+// `.thread`, `.compose`, `.agent-strip`) are re-issued here scoped to build —
+// they must NOT be deduplicated into a shared partial (css-equivalence gate is
+// selector-order-preserving).
+//
+// Mockup sources: build-tab.html §BU (status list), §BUR (rules), §BUSD (story
+// detail); build-story-requirements.md FR-1..17 / AC-1..16 / §6 a11y.
+
+@use '../tokens';
+
+.build-screen {
+  /* ── Project header (fresh copy of sprint's .proj-head — sprint scopes it
+        to its own screens, so this tab re-issues it scoped). ─────────── */
+  .proj-head {
+    display: flex;
+    align-items: start;
+    gap: 18px;
+    padding: 8px 4px 4px;
+  }
+  .proj-head .ico-lg {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    display: grid;
+    place-items: center;
+    flex: none;
+  }
+  .proj-head h1 {
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .proj-head .one {
+    color: var(--ink-2);
+    font-size: 13.5px;
+    margin-top: 2px;
+  }
+  .proj-head .path {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--ink-2);
+    margin-top: 6px;
+  }
+  .proj-head .actions {
+    margin-left: auto;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  /* ── Status/Rules split switch (UI-only mode switch — FR-5). ───────── */
+  .split-switch {
+    display: inline-flex;
+    background: rgba(tokens.$navy, 0.06);
+    border-radius: 999px;
+    padding: 3px;
+    gap: 2px;
+
+    button {
+      padding: 5px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ink-2);
+      border-radius: 999px;
+      background: transparent;
+      border: 0;
+      cursor: pointer;
+
+      &.on {
+        background: tokens.$white;
+        color: var(--ink);
+        box-shadow: 0 1px 2px rgba(tokens.$navy, 0.05);
+      }
+      &:focus-visible {
+        outline: 2px solid var(--navy);
+        outline-offset: 2px;
+      }
+    }
+  }
+
+  /* ── FR-2 summary tiles (mockup §BU .bd-stats). ───────────────────── */
+  .bd-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    padding: 6px 22px 22px;
+  }
+  .bd-stat {
+    background: tokens.$white;
+    border: 1px solid rgba(tokens.$navy, 0.08);
+    border-radius: 12px;
+    padding: 12px 14px;
+
+    .n {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+    }
+    .lbl {
+      font-size: 11px;
+      color: var(--ink-2);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-top: 2px;
+    }
+    .sub {
+      font-size: 11.5px;
+      color: var(--ink-2);
+      margin-top: 6px;
+    }
+  }
+
+  /* ── Story list header — title + total pill + filter pills. ────────── */
+  .stories-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 22px 12px;
+
+    h3 {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .filter {
+      margin-left: auto;
+      display: flex;
+      gap: 4px;
+    }
+    .filter button {
+      padding: 4px 10px;
+      font-size: 11.5px;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--ink-2);
+      border: 0;
+      cursor: pointer;
+
+      &.on {
+        background: rgba(tokens.$navy, 0.08);
+        color: var(--ink);
+      }
+      &:focus-visible {
+        outline: 2px solid var(--navy);
+        outline-offset: 2px;
+      }
+    }
+  }
+
+  /* ── Per-story rows — single status pill, no stepper (FR-1, +AC-10
+        scroll-back target via data-story-id). ───────────────────────── */
+  .story-list {
+    max-height: 460px;
+    overflow-y: auto;
+    padding: 0 4px 4px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(tokens.$navy, 0.18) transparent;
+  }
+  .story-row {
+    display: grid;
+    grid-template-columns: 110px 1fr 110px;
+    gap: 14px;
+    align-items: center;
+    padding: 12px 22px;
+    border-top: 1px solid rgba(tokens.$navy, 0.06);
+
+    &.selected {
+      background: rgba(tokens.$purple, 0.06);
+    }
+    .id {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--ink-2);
+    }
+    .title {
+      font-size: 13.5px;
+      font-weight: 500;
+    }
+    .title .sub {
+      display: block;
+      color: var(--ink-2);
+      font-size: 11.5px;
+      font-weight: 400;
+      margin-top: 2px;
+    }
+  }
+  .row-open {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--ink);
+    background: rgba(tokens.$navy, 0.04);
+    border: 1px solid rgba(tokens.$navy, 0.08);
+    justify-self: end;
+    text-decoration: none;
+    transition: background 0.12s ease;
+
+    &:hover {
+      background: rgba(tokens.$navy, 0.08);
+    }
+    svg {
+      width: 12px;
+      height: 12px;
+    }
+  }
+  .story-empty {
+    padding: 40px 24px;
+    text-align: center;
+    color: var(--ink-2);
+    font-size: 13px;
+    border-top: 1px solid rgba(tokens.$navy, 0.06);
+  }
+  .skeleton-row .skeleton {
+    display: inline-block;
+    height: 12px;
+    border-radius: 6px;
+  }
+
+  /* ── FR-3 rework queue (failed QA / review). ───────────────────────── */
+  .rework {
+    padding: 0 22px 22px;
+
+    .rework-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+
+      h3 {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 700;
+      }
+      .rework-note {
+        margin-left: auto;
+        font-size: 11.5px;
+        color: var(--ink-2);
+      }
+    }
+    .rework-row {
+      display: grid;
+      grid-template-columns: 110px 1fr 120px 130px 110px;
+      gap: 14px;
+      align-items: center;
+      padding: 12px 0;
+      border-top: 1px solid rgba(tokens.$navy, 0.06);
+
+      .id {
+        font-family: var(--font-mono);
+        font-size: 12px;
+        color: var(--ink-2);
+      }
+      .why {
+        b {
+          font-size: 13px;
+          font-weight: 600;
+          display: block;
+        }
+        .sub {
+          display: block;
+          font-size: 11.5px;
+          color: var(--ink-2);
+          margin-top: 2px;
+        }
+      }
+      .ev {
+        font-size: 11.5px;
+        font-weight: 600;
+        color: var(--ink-2);
+
+        .sub {
+          display: block;
+          font-weight: 400;
+          color: var(--ink-2);
+          margin-top: 2px;
+        }
+      }
+    }
+  }
+
+  /* ── FR-4 code agent strip (display-only this slice). ──────────────── */
+  .agent-strip {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px 22px 22px;
+  }
+  .agent-card {
+    background: tokens.$white;
+    border: 1px solid rgba(tokens.$navy, 0.08);
+    border-radius: 12px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    .av {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--ink);
+      flex: none;
+    }
+    &.c1 .av {
+      background: var(--mint);
+    }
+    &.c2 .av {
+      background: var(--sky);
+    }
+    &.c3 .av {
+      background: var(--butter);
+    }
+    .meta {
+      b {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .sub {
+        display: block;
+        font-size: 11.5px;
+        color: var(--ink-2);
+      }
+    }
+    .right {
+      margin-left: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      align-items: flex-end;
+    }
+  }
+  .pass-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ink-2);
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(tokens.$green, 0.12);
+
+    &.warn {
+      background: rgba(tokens.$amber, 0.16);
+    }
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+    }
+    &.warn .dot {
+      background: var(--amber);
+    }
+  }
+
+  /* ── Rules half (FR-5..10) ──────────────────────────────────────────── */
+  .rules-half {
+    padding: 18px 22px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+
+    // AC-12: callout needs ≥16px top padding and carries no
+    // "View code-builder/" button.
+    .rules-preview {
+      padding-top: 16px;
+      border: 1px solid rgba(tokens.$navy, 0.08);
+      border-radius: 12px;
+      padding: 12px 16px;
+      background: tokens.$white;
+      font-size: 12.5px;
+      line-height: 1.6;
+
+      code {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        background: rgba(tokens.$navy, 0.06);
+        padding: 1px 5px;
+        border-radius: 4px;
+      }
+    }
+  }
+  .rules-section {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  /* FR-7 / AC-15 architecture card (read-only) */
+  .arch-card {
+    background: tokens.$white;
+    border: 1px solid rgba(tokens.$navy, 0.08);
+    border-radius: 12px;
+    padding: 14px 16px;
+
+    .arch-h {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 6px;
+
+      h4 {
+        margin: 0;
+        font-size: 13px;
+        font-weight: 700;
+      }
+      .edit-tag {
+        font-size: 11px;
+        color: var(--ink-2);
+        font-weight: 500;
+      }
+    }
+    .arch-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 0;
+      border-top: 1px solid rgba(tokens.$navy, 0.05);
+
+      .k {
+        width: 56px;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--ink-2);
+        flex: none;
+      }
+      .v {
+        font-size: 12.5px;
+        color: var(--ink);
+        font-weight: 500;
+        word-break: break-word;
+      }
+      .lock {
+        margin-left: 8px;
+        border: 0;
+        background: transparent;
+        padding: 2px;
+        color: var(--ink-3);
+        cursor: default;
+        vertical-align: -2px;
+      }
+    }
+    .arch-cap {
+      margin-top: 10px;
+      font-size: 11.5px;
+      line-height: 1.5;
+      color: var(--ink-2);
+      border-top: 1px dashed rgba(tokens.$navy, 0.1);
+      padding-top: 10px;
+    }
+  }
+
+  /* FR-8 configuration grid (closed key set) */
+  .config-grid {
+    display: flex;
+    flex-direction: column;
+  }
+  .config-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+    border-top: 1px solid rgba(tokens.$navy, 0.05);
+
+    .k {
+      width: 148px;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--ink);
+      flex: none;
+    }
+    .v {
+      font-size: 12.5px;
+      color: var(--ink);
+      word-break: break-word;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .pencil {
+      border: 0;
+      background: transparent;
+      padding: 3px;
+      color: var(--ink-2);
+      cursor: pointer;
+      border-radius: 6px;
+
+      &:hover {
+        background: rgba(tokens.$navy, 0.07);
+        color: var(--ink);
+      }
+      &:focus-visible {
+        outline: 2px solid var(--navy);
+        outline-offset: 1px;
+      }
+    }
+    input {
+      flex: 1;
+      min-width: 0;
+      border: 1px solid rgba(tokens.$navy, 0.14);
+      border-radius: 8px;
+      padding: 7px 10px;
+      font: inherit;
+      font-size: 12.5px;
+      color: var(--ink);
+      background: tokens.$white;
+
+      &:focus-visible {
+        outline: 2px solid var(--navy);
+        outline-offset: 1px;
+      }
+    }
+    .mini {
+      border: 0;
+      border-radius: 999px;
+      padding: 5px 12px;
+      font-size: 11.5px;
+      font-weight: 600;
+      background: var(--navy);
+      color: tokens.$white;
+      cursor: pointer;
+
+      &.cancel {
+        background: rgba(tokens.$navy, 0.07);
+        color: var(--ink);
+      }
+      &:focus-visible {
+        outline: 2px solid var(--navy);
+        outline-offset: 1px;
+      }
+    }
+  }
+
+  /* FR-9 / FR-10 markdown cards + editors */
+  .md-card {
+    background: tokens.$white;
+    border: 1px solid rgba(tokens.$navy, 0.08);
+    border-radius: 12px;
+    padding: 14px 16px;
+
+    .md-h {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+
+      h4 {
+        margin: 0;
+        font-size: 13px;
+        font-weight: 700;
+      }
+      .who {
+        font-size: 11.5px;
+        color: var(--ink-2);
+      }
+      .who code {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        background: rgba(tokens.$navy, 0.06);
+        padding: 1px 5px;
+        border-radius: 4px;
+      }
+      .actions {
+        margin-left: auto;
+        display: flex;
+        gap: 6px;
+        align-items: center;
+      }
+    }
+    .md-body {
+      font-size: 12.5px;
+      line-height: 1.6;
+      color: var(--ink);
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .md-editor {
+      width: 100%;
+      min-height: 220px;
+      border: 1px solid rgba(tokens.$navy, 0.1);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font: inherit;
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      line-height: 1.6;
+      color: var(--ink);
+      background: tokens.$white;
+      resize: vertical;
+
+      &:focus-visible {
+        outline: 2px solid var(--navy);
+        outline-offset: 1px;
+      }
+    }
+  }
+  .agent-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .agent-md-card {
+    border: 1px solid rgba(tokens.$navy, 0.08);
+    border-radius: 12px;
+    padding: 12px 14px;
+    background: tokens.$white;
+
+    &.c1 {
+      border-left: 3px solid var(--green);
+    }
+    &.c2 {
+      border-left: 3px solid var(--blue);
+    }
+    &.c3 {
+      border-left: 3px solid var(--amber);
+    }
+    &.rv {
+      border-left: 3px solid var(--rose);
+    }
+    .h {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+
+      .av {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        font-size: 10px;
+        font-weight: 700;
+        color: var(--ink);
+        flex: none;
+        background: var(--lavender);
+      }
+      &.c1 .av {
+        background: var(--mint);
+      }
+      &.c2 .av {
+        background: var(--sky);
+      }
+      &.c3 .av {
+        background: var(--butter);
+      }
+      &.rv .av {
+        background: var(--peach);
+      }
+      .meta {
+        flex: 1;
+        min-width: 0;
+
+        b {
+          display: block;
+          font-size: 13px;
+          font-weight: 600;
+        }
+        .sub {
+          display: block;
+          font-size: 11.5px;
+          color: var(--ink-2);
+        }
+      }
+      .right {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        flex: none;
+      }
+    }
+    .body {
+      margin-top: 10px;
+      font-size: 12.5px;
+      line-height: 1.6;
+      color: var(--ink);
+      border-top: 1px solid rgba(tokens.$navy, 0.06);
+      padding-top: 10px;
+    }
+    .editor-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 10px;
+      justify-content: flex-end;
+    }
+  }
+
+  /* ── Story detail (FR-11..16) ──────────────────────────────────────── */
+  .back-arrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink-2);
+    text-decoration: none;
+    transition: background 120ms ease, color 120ms ease;
+
+    &:hover {
+      background: rgba(tokens.$white, 0.6);
+      color: var(--ink);
+    }
+    &:focus-visible {
+      outline: 2px solid var(--navy);
+      outline-offset: 2px;
+    }
+    svg {
+      width: 18px;
+      height: 18px;
+    }
+  }
+  .story-head {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 22px;
+
+    .ico-lg {
+      width: 56px;
+      height: 56px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      background: var(--butter);
+      color: var(--ink);
+      flex: none;
+    }
+    .title-stack {
+      flex: 1;
+      min-width: 0;
+
+      h1 {
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        line-height: 1.25;
+        margin: 0;
+      }
+      .one {
+        color: var(--ink-2);
+        font-size: 13px;
+        margin-top: 4px;
+      }
+    }
+    .actions {
+      margin-left: auto;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex: none;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+  }
+
+  // v5.4 Re-PR ghost — rendered as a non-interactive link (aria-disabled);
+  // PR actions live in GitHub.
+  .re-pr {
+    opacity: 0.6;
+    cursor: default;
+    text-decoration: none;
+
+    svg {
+      width: 13px;
+      height: 13px;
+    }
+    &:hover {
+      background: tokens.$white;
+    }
+  }
+
+  // FR-12 rework banner — announces why the story came back (role=status).
+  .rework-banner {
+    margin-top: 14px;
+    background: rgba(tokens.$rose, 0.1);
+    border: 1px solid rgba(tokens.$rose, 0.35);
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-size: 12.5px;
+    line-height: 1.55;
+    color: var(--ink);
+
+    b {
+      color: var(--rose);
+    }
+  }
+
+  /* FR-13 requirement link-back + FR-14/15 surfaces */
+  .req-surface-row {
+    display: grid;
+    gap: 14px;
+    margin-top: 14px;
+  }
+  .req-card {
+    background: tokens.$white;
+    border: 1px solid rgba(tokens.$navy, 0.08);
+    border-radius: 14px;
+    padding: 14px 16px;
+
+    .h {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      .ico {
+        display: grid;
+        place-items: center;
+        color: var(--purple);
+      }
+      .id {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: var(--ink-2);
+      }
+      .open {
+        margin-left: auto;
+        font-size: 11.5px;
+        color: var(--navy);
+        font-weight: 600;
+        text-decoration: none;
+      }
+    }
+    .desc {
+      font-size: 12.5px;
+      line-height: 1.55;
+      color: var(--ink);
+      margin-top: 8px;
+    }
+  }
+  .surface-card {
+    background: tokens.$white;
+    border: 1px solid rgba(tokens.$navy, 0.08);
+    border-radius: 14px;
+    padding: 14px 16px;
+
+    &.fe {
+      border-left: 3px solid var(--blue);
+    }
+    &.bff {
+      border-left: 3px solid var(--purple);
+    }
+    &.be {
+      border-left: 3px solid var(--green);
+    }
+    .h {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 6px;
+
+      .ico {
+        display: grid;
+        place-items: center;
+        color: var(--purple);
+      }
+      b {
+        display: block;
+        font-size: 13px;
+        font-weight: 700;
+      }
+      .sub {
+        display: block;
+        font-size: 11.5px;
+        color: var(--ink-2);
+      }
+      .add {
+        margin-left: auto;
+        padding: 5px 12px;
+        font-size: 11.5px;
+      }
+    }
+  }
+  /* FE files */
+  .file-list {
+    display: flex;
+    flex-direction: column;
+  }
+  .file-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    border-top: 1px solid rgba(tokens.$navy, 0.05);
+
+    .path {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--ink);
+      word-break: break-all;
+      flex: 1;
+      min-width: 0;
+    }
+    .layer {
+      display: inline-block;
+      font-family: var(--font-sans);
+      font-size: 9.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-radius: 4px;
+      padding: 1px 5px;
+      margin-right: 8px;
+      vertical-align: 1px;
+
+      &.layer-new {
+        background: var(--mint);
+        color: var(--ink);
+      }
+      &.layer-modified {
+        background: var(--butter);
+        color: var(--ink);
+      }
+    }
+    .trash {
+      border: 0;
+      background: transparent;
+      color: var(--ink-3);
+      padding: 4px;
+      border-radius: 6px;
+      cursor: pointer;
+      flex: none;
+
+      &:hover {
+        color: var(--rose);
+        background: rgba(tokens.$rose, 0.1);
+      }
+      &:focus-visible {
+        outline: 2px solid var(--navy);
+        outline-offset: 1px;
+      }
+    }
+  }
+  /* BFF / BE api rows */
+  .api-list {
+    display: flex;
+    flex-direction: column;
+  }
+  .api-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    border-top: 1px solid rgba(tokens.$navy, 0.05);
+
+    .path {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--ink);
+      word-break: break-all;
+      flex: 1;
+      min-width: 0;
+    }
+    .desc {
+      font-size: 11.5px;
+      color: var(--ink-2);
+      max-width: 220px;
+    }
+    .trash {
+      border: 0;
+      background: transparent;
+      color: var(--ink-3);
+      padding: 4px;
+      border-radius: 6px;
+      cursor: pointer;
+      flex: none;
+
+      &:hover {
+        color: var(--rose);
+        background: rgba(tokens.$rose, 0.1);
+      }
+      &:focus-visible {
+        outline: 2px solid var(--navy);
+        outline-offset: 1px;
+      }
+    }
+  }
+  .method-chip {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    border-radius: 4px;
+    padding: 2px 5px;
+    flex: none;
+
+    &.get {
+      background: var(--mint);
+      color: var(--ink);
+    }
+    &.post {
+      background: var(--sky);
+      color: var(--ink);
+    }
+    &.patch {
+      background: var(--lavender);
+      color: var(--ink);
+    }
+    &.put {
+      background: var(--butter);
+      color: var(--ink);
+    }
+    &.delete {
+      background: var(--blush);
+      color: var(--ink);
+    }
+  }
+  /* inline add rows (FE path input + BFF/BE method/path/desc) */
+  .add-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    padding: 10px 0;
+    border-top: 1px dashed rgba(tokens.$navy, 0.12);
+
+    input,
+    select {
+      border: 1px solid rgba(tokens.$navy, 0.14);
+      border-radius: 8px;
+      padding: 7px 10px;
+      font: inherit;
+      font-size: 12.5px;
+      color: var(--ink);
+      background: tokens.$white;
+      flex: 1;
+      min-width: 120px;
+
+      &:focus-visible {
+        outline: 2px solid var(--navy);
+        outline-offset: 1px;
+      }
+    }
+    select {
+      flex: none;
+      min-width: 88px;
+    }
+    .add-error {
+      width: 100%;
+      font-size: 11.5px;
+      color: var(--rose);
+      line-height: 1.4;
+    }
+  }
+
+  /* FR-16 notes thread (the review thread this slice) */
+  .thread-card {
+    padding: 14px 16px;
+  }
+  .thread {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+    .thread-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--ink-2);
+
+      h3 {
+        margin: 0;
+        font-size: inherit;
+        font-weight: inherit;
+        text-transform: inherit;
+        letter-spacing: inherit;
+        color: inherit;
+      }
+    }
+    > p.who {
+      font-size: 11px;
+      color: var(--ink-2);
+      margin: 0;
+    }
+    .comment {
+      background: tokens.$white;
+      border: 1px solid rgba(tokens.$navy, 0.06);
+      border-left: 3px solid var(--lavender);
+      border-radius: 10px;
+      padding: 10px 12px;
+
+      .who {
+        font-size: 11.5px;
+        font-weight: 600;
+        color: var(--ink);
+        margin-bottom: 4px;
+      }
+      .body {
+        font-size: 12.5px;
+        line-height: 1.5;
+        color: var(--ink);
+
+        p {
+          margin: 0;
+        }
+      }
+      &.empty {
+        text-align: center;
+        color: var(--ink-2);
+        font-size: 12.5px;
+      }
+    }
+    .compose {
+      display: flex;
+      gap: 10px;
+      align-items: end;
+      background: tokens.$white;
+      border: 1px solid rgba(tokens.$navy, 0.08);
+      border-radius: 10px;
+      padding: 8px 10px;
+
+      textarea {
+        flex: 1;
+        min-width: 0;
+        border: 0;
+        outline: 0;
+        resize: none;
+        font: inherit;
+        font-size: 12.5px;
+        color: var(--ink);
+        background: transparent;
+        min-height: 36px;
+
+        &:focus-visible {
+          outline: 2px solid var(--navy);
+          outline-offset: 2px;
+          border-radius: 4px;
+        }
+        &:disabled {
+          cursor: not-allowed;
+        }
+      }
+      .who {
+        font-size: 11px;
+        color: var(--ink-2);
+      }
+    }
+  }
+}

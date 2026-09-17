@@ -13,6 +13,7 @@
 @use 'partials/requirements';
 @use 'partials/sprint';
 @use 'partials/design';
+@use 'partials/build';
 // Icons last — the N3 consolidation layers shared stroke rules on top of the
 // partials above (see partials/_icons.scss).
 @use 'partials/icons';
