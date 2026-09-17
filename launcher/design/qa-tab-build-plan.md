@@ -80,6 +80,16 @@ Security requirements (day one, not fix-later):
 - `project_id` scoping on every query and every UPDATE (F-4/F-6 pattern).
 - Markdown rendering on the client: escape-then-markdown, never `innerHTML` on raw bodies.
 
+> **Amendment (2026-09-17, DR4 finding / SA5 disposition):** the rules cap in the
+> endpoint row above is corrected to **1 MB effective**. The route-level
+> `express.json({limit:'8mb'})` parser is dropped — the global 1 mb json gate
+> (index.ts) pre-empts it over HTTP, so any local cap above 1 MB would be dead
+> config; the handler-side byte check (`qa.ts`) stays at 1 MB as
+> defense-in-depth. 2 MB parity with design was not required — QA rules are
+> prose files (qa-rules.md / QA-AGENT.md / REVIEWER-AGENT.md), not multi-MB HTML
+> uploads like design's source screenshots. UI copy (QaRulesScreen.tsx) and
+> verify-qa.ts updated to the same one number.
+
 ---
 
 ## 4. Data model (`server/db.ts` — additive, same migration pattern as design_tab; CHECK rebuild caution applies)

@@ -10,7 +10,8 @@
 //            and the notes POST carry `stories.some` membership; foreign storyId
 //            404s, non-US grammar storyId 404s.
 //   F-SEC-2  rules PUT containment: fixed-filename allowlist
-//            (qa-rules.md/QA-AGENT.md/REVIEWER-AGENT.md), 2 MB byte cap,
+//            (qa-rules.md/QA-AGENT.md/REVIEWER-AGENT.md), 1 MB effective byte
+//            cap (global json gate; handler check is defense-in-depth),
 //            tmp+rename atomic write, on-disk bytes asserted; rejected writes
 //            leave the prior file byte-identical.
 //   SA-R-101 kanban_card.status is plain TEXT (no CHECK) → signoff's scoped
@@ -294,10 +295,11 @@ async function main(): Promise<void> {
     check('non-allowlist filename → 422', r.status === 422 && String(r.body?.error).includes('Unknown rules file'), JSON.stringify(r.body));
     r = await json(`/api/projects/${slug}/qa/rules`, 'PUT', { file: 'QA-AGENT.md', content: 42 });
     check('non-string content → 422', r.status === 422);
-    // >2 MB content — the route cap (qa.ts) is defense-in-depth; the global
-    // 1mb json gate (index.ts) pre-empts it over HTTP, so the honest HTTP
-    // contract is 413. The write must not touch the saved file on disk.
-    r = await json(`/api/projects/${slug}/qa/rules`, 'PUT', { file: 'QA-AGENT.md', content: 'x'.repeat(2 * 1024 * 1024 + 1) });
+    // >1 MB content — the effective cap is 1 MB: the global json gate
+    // (index.ts) pre-empts the route over HTTP, so the honest HTTP contract
+    // is 413; the handler-side check (qa.ts, also 1 MB) is defense-in-depth.
+    // The write must not touch the saved file on disk.
+    r = await json(`/api/projects/${slug}/qa/rules`, 'PUT', { file: 'QA-AGENT.md', content: 'x'.repeat(1 * 1024 * 1024 + 1) });
     check('oversized rules body → 413 (global gate)', r.status === 413 && r.body?.error === 'Payload too large.', JSON.stringify(r.body));
     check('rejected writes leave saved file byte-identical', read(path.join(testingDir, 'qa-rules.md')) === rulesBody);
     r = await json(`/api/projects/${slug}/qa/rules`, 'PUT', { file: 'QA-AGENT.md', content: 'agent brief' });

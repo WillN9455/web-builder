@@ -8,7 +8,8 @@
 //  - project_id scoping on every SELECT and every UPDATE (F-4/F-6).
 //  - Rules write-back: fixed filename allowlist + resolveInside under
 //    testing/, no red-herring `..` checks (F-SEC-2 resolution), tmp+rename
-//    atomic, 2 MB cap, testing/ created on first write.
+//    atomic, 1 MB effective cap (global json gate), testing/ created on
+//    first write.
 //  - Screenshots served by test id + step index, never by raw client path;
 //    resolveInside under qa-evidence/ (SA-R-106).
 //  - Notes: '<' rejected + 10 KB body cap (parity with design notes).
@@ -402,7 +403,13 @@ export function registerQaRoutes(app: express.Application): void {
     res.json({ files: out });
   });
 
-  app.put(`${prefix}/rules`, express.json({ limit: '8mb' }), (req, res) => {
+  // No route-level body parser: the QA rules body is parsed by the global
+  // 1 mb json gate (index.ts) which runs before this route. A cap above that
+  // gate would be dead config — the honest cap is 1 MB effective, and the
+  // handler-side byte check below is the defense-in-depth (SA5 disposition,
+  // DR4 finding, 2026-09-17). Design's pre-gate bypass exists because design
+  // carries multi-MB HTML uploads; QA rules are prose files that fit 1 MB.
+  app.put(`${prefix}/rules`, (req, res) => {
     const ctx = projectContext(req.params.id);
     if (!ctx) {
       res.status(400).json({ error: 'Unknown project id or slug' });
@@ -420,8 +427,8 @@ export function registerQaRoutes(app: express.Application): void {
       res.status(422).json({ error: 'Rules content must be a string.' });
       return;
     }
-    if (Buffer.byteLength(body.content, 'utf-8') > 2 * 1024 * 1024) {
-      res.status(422).json({ error: 'Rules are limited to 2 MB.' });
+    if (Buffer.byteLength(body.content, 'utf-8') > 1 * 1024 * 1024) {
+      res.status(422).json({ error: 'Rules are limited to 1 MB.' });
       return;
     }
     // F-SEC-2 resolution: the fixed-filename allowlist + resolveInside IS the
