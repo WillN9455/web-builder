@@ -62,6 +62,8 @@ The **Sprint tab is the master board** (every story, every status); Design/Build
 - `mockups.html` — visuals for screens 1–11. Screen-divider comments now match the `id="s1"…s11"` anchors; navigate by anchor.
 - `background.html` — Project Background (screens 12–14). Labels reconciled: "Mark Completed ✓" → "Approve ✓", status "Completed" → "Approved".
 - `requirements.html` — Requirements (screen 15).
+- `sprint.html` — Sprint (screen 6/6b) — board, backlog, add-issue, Edit-Jira panel, disconnect, story generation card.
+- `sprint-requirements.md` — the Sprint tab PRD user stories + acceptance criteria (the story-gen gate this slice implements).
 - `PROJECT-BACKGROUND-BUILD-PLAN.md` — focused build plan for the Project Background slice (file map, 7 endpoints, phases).
 - `restructure-brief.md` — handoff for the sitemap restructure; includes a Restructure log at the end recording what was done.
 

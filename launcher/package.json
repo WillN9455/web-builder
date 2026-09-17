@@ -17,7 +17,10 @@
     "verify:requirements": "tsx scripts/verify-requirements.ts",
     "verify:visual": "node scripts/verify-visual.mjs",
     "verify:css-equivalence": "node scripts/verify-css-equivalence.mjs",
-    "verify:no-color-literals": "node scripts/verify-no-color-literals.mjs"
+    "verify:no-color-literals": "node scripts/verify-no-color-literals.mjs",
+    "verify:design": "tsx scripts/verify-design.ts",
+    "verify:build": "tsx scripts/verify-build.ts",
+    "verify:build-ui": "node scripts/verify-build-ui-walk.mjs"
   },
   "dependencies": {
     "better-sqlite3": "^11.5.0",

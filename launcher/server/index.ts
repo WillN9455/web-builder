@@ -11,6 +11,11 @@ import { migrate, db } from './db.js';
 import { registerBaWorkspaceRoutes, countBaArtifacts } from './ba-workspace.js';
 import { enqueueBaDraftJob } from './ba-draft.js';
 import { registerRequirementsRoutes } from './requirements.js';
+import { registerJiraLinkRoutes } from './jira-link.js';
+import { registerBoardRoutes } from './board.js';
+import { registerStoryGenRoutes } from './story-gen.js';
+import { registerDesignRoutes } from './design.js';
+import { registerBuildRoutes } from './build.js';
 import {
   validateProjectDir,
   scaffoldProjectDir,
@@ -41,8 +46,50 @@ import {
 migrate();
 
 const app = express();
-app.use(cors());
+
+// CORS scoped to the Vite dev origin(s) (DR2 #3 — the prior reflect-any-origin
+// default exposed the jira_link token write and the Ollama story-gen trigger to
+// any web page that could reach the server). Same-origin fetches through the
+// Vite /api proxy send no Origin and stay allowed. LAUNCHER_WEB_PORT mirrors
+// vite.config.ts so custom dev pairs keep working.
+const DEV_WEB_PORT = Number(process.env.LAUNCHER_WEB_PORT ?? 5183);
+const DEV_CORS_ORIGINS = new Set([
+  `http://localhost:${DEV_WEB_PORT}`,
+  `http://127.0.0.1:${DEV_WEB_PORT}`,
+  `http://[::1]:${DEV_WEB_PORT}`,
+]);
+app.use(
+  cors({
+    origin: (origin, cb) => {
+      if (!origin || DEV_CORS_ORIGINS.has(origin)) {
+        cb(null, true);
+        return;
+      }
+      // Not a dev origin — do not advertise CORS headers (browser blocks the
+      // cross-origin read).
+      cb(null, false);
+    },
+  }),
+);
+// Design tab - large-body routes (source HTML up to 5 MB, rules write up to
+// 2 MB) parse BEFORE the global 1mb json gate below. body-parser skips the
+// second parse once req._body is set, so a >1MB design body reaches its route
+// handler instead of 500'ing at the global middleware; the handler's own byte
+// caps (server/design.ts) do the real enforcement.
+app.use((req, _res, next) => {
+  const p = req.path;
+  const isDesignBody =
+    p.includes('/design/') &&
+    (p.endsWith('/source') || p.endsWith('/rules')) &&
+    (req.method === 'POST' || req.method === 'PUT');
+  if (isDesignBody) {
+    express.json({ limit: '12mb' })(req, _res, next);
+    return;
+  }
+  next();
+});
 app.use(express.json({ limit: '1mb' }));
+
 
 // BA Workspace — Project Background tab (screens 12–14 + State D gate).
 registerBaWorkspaceRoutes(app);
@@ -53,6 +100,28 @@ registerBaWorkspaceRoutes(app);
 // middleware exists in the launcher, so the seam is documented at the
 // registration site (plan §0c) — see server/requirements.ts for the full note.
 registerRequirementsRoutes(app);
+
+// Sprint tab — Jira link management (screen 6/6b Edit-Jira panel + disconnect).
+registerJiraLinkRoutes(app);
+
+// Sprint tab — Kanban board read-model (screen 6). Cards are stored locally
+// (kanban_card) with Jira as the source of truth via ~30s polling.
+registerBoardRoutes(app);
+
+// Sprint tab — BA Run 2 story generation + auto-created To-do cards (slice 4).
+// Mounted after the board routes — it reads + writes the same kanban_card and
+// prd.md/features.md surfaces Run 1 owns.
+registerStoryGenRoutes(app);
+
+// Design tab — design list + story detail + rules half (design-tab build
+// plan §3). Additive; never touches sprint-owned surfaces (SA-R-01).
+registerDesignRoutes(app);
+
+// Build tab — build list + story detail + rules surface (build-tab build
+// plan §3). Additive; no uploads, no body-gate exception (SA-R-06), no
+// kanban_card writes (SA-R-05). Mounted after design so the shared seams stay
+// in the same region for the stacked branch rebases.
+registerBuildRoutes(app);
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -1329,10 +1398,18 @@ app.use((err: unknown, _req: express.Request, res: express.Response, _next: expr
   const message = err instanceof Error ? err.message : 'Internal server error';
   console.error('[api] unhandled error:', err);
   if (res.headersSent) return;
-  res.status(500).json({ error: message });
+  // Honor a carried status (e.g. body-parser's PayloadTooLargeError → 413 for
+  // the build routes' 1 MB JSON cap) instead of masking it as a 500. A
+  // PayloadTooLargeError is a client error, not a server fault — a 413 lets the
+  // client branch on the size boundary (the gate's A6 assertion).
+  const status = err instanceof Error && typeof (err as unknown as { status?: unknown }).status === 'number' ? ((err as unknown as { status: number }).status as number) : 500;
+  res.status(status).json({ error: message });
 });
 
 const PORT = Number(process.env.PORT ?? 5184);
-app.listen(PORT, () => {
-  console.log(`[api] Idea Hub API listening on http://localhost:${PORT}`);
+// Loopback-only (DR2 #3): the Vite dev proxy targets 127.0.0.1 (vite.config.ts),
+// so binding here keeps the dev pair working while closing the all-interfaces
+// surface to the LAN.
+app.listen(PORT, '127.0.0.1', () => {
+  console.log(`[api] Idea Hub API listening on http://127.0.0.1:${PORT}`);
 });

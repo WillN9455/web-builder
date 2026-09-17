@@ -1,0 +1,8 @@
+node_modules
+dist/
+*.log
+.DS_Store
+# The repo-root .gitignore ignores any dir named `build/` as web-build output.
+# This launcher source dir is NOT build output — re-include it (the nested
+# rule overrides the shallower one for this specific path).
+!src/components/build/
