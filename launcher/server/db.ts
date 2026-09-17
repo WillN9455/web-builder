@@ -117,6 +117,39 @@ CREATE TABLE IF NOT EXISTS kanban_card (
   updated_at      TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Design tab: per-story design state (plan §3, server/design.ts). One row
+-- per story (project_id, story_id key), created lazily on first write; a
+-- story with no row reads as design_status 'not_started' with no source.
+-- design_status enum is the design lifecycle only (NOT the board column):
+--   not_started → in_design ⇄ peer_review → design_complete → ready_for_dev
+-- (in_design ⇄ peer_review — review back to in_design is the "Request
+--  changes" transition). F-6: every access is scoped by project_id.
+CREATE TABLE IF NOT EXISTS design_story (
+  project_id     INTEGER NOT NULL REFERENCES project(id) ON DELETE CASCADE,
+  story_id       TEXT    NOT NULL,
+  design_status  TEXT    NOT NULL DEFAULT 'not_started'
+                 CHECK (design_status IN
+                  ('not_started','in_design','peer_review','design_complete','ready_for_dev')),
+  source_type    TEXT    CHECK (source_type IN ('figma','html')),
+  source_value   TEXT,
+  source_meta    TEXT    NOT NULL DEFAULT '{}',
+  updated_at     TEXT    NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (project_id, story_id)
+);
+
+-- Design tab: notes thread on a story detail page (FR-8). Human-post-only
+-- (v5.5 — agents do not auto-post here). Bodies are enforced plain-text
+-- server-side (F-3: POST rejects '<'), so storage is guaranteed safe to
+-- render escape-then-markdown.
+CREATE TABLE IF NOT EXISTS design_note (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id  INTEGER NOT NULL REFERENCES project(id) ON DELETE CASCADE,
+  story_id    TEXT    NOT NULL,
+  author      TEXT    NOT NULL,
+  body        TEXT    NOT NULL,
+  created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+);
+
 -- BA Workspace (Project Background tab): per-file review state for the 17
 -- PRD artifacts. Rows are created lazily — a file with no row is 'draft'.
 -- edited_since_send (plan §9.5 AC-30): 1 once the BA has saved an edit since
@@ -192,6 +225,8 @@ CREATE INDEX IF NOT EXISTS idx_stage_project    ON stage(project_id);
 CREATE INDEX IF NOT EXISTS idx_kanban_project   ON kanban_card(project_id);
 CREATE INDEX IF NOT EXISTS idx_ba_status_project ON ba_artifacts_status(project_id);
 CREATE INDEX IF NOT EXISTS idx_ba_generation_project ON ba_generation(project_id);
+CREATE INDEX IF NOT EXISTS idx_design_story_project ON design_story(project_id);
+CREATE INDEX IF NOT EXISTS idx_design_note_project ON design_note(project_id, story_id);
 `;
 
 export function migrate(): void {

@@ -1111,3 +1111,189 @@ export async function triggerStoryGeneration(idOrSlug: string): Promise<{ ok: tr
     body: JSON.stringify({}),
   });
 }
+
+// ── Design tab fetchers (design-tab build plan §4) ───────────────────────────
+
+// Design statuses are a separate lifecycle from board columns (plan §3).
+export type DesignStatus =
+  | 'not_started'
+  | 'in_design'
+  | 'peer_review'
+  | 'design_complete'
+  | 'ready_for_dev';
+
+export type DesignReqLink = { id: string; text: string | null };
+
+export type DesignStorySummary = {
+  storyId: string;
+  title: string;
+  design_status: DesignStatus;
+  status_pill: string;
+  has_source: boolean;
+  ticket_key: string | null;
+  card_column: string | null;
+  reqs: DesignReqLink[];
+};
+
+export type DesignStoriesResponse = {
+  stories: DesignStorySummary[];
+  missing_stories: boolean;
+};
+
+export type DesignSourceMeta = {
+  filename?: string;
+  size?: number;
+  stored?: string;
+  [key: string]: unknown;
+};
+
+export type DesignSource = {
+  type: 'figma' | 'html' | null;
+  value: string | null;
+  meta: DesignSourceMeta;
+  // Stored HTML bytes echoed back for the preview iframe srcdoc (html sources
+  // only; the client renders them inside a scriptless sandbox).
+  preview_html?: string;
+};
+
+export type DesignNote = {
+  id: number;
+  author: string;
+  body: string;
+  created_at: string;
+};
+
+export type DesignStoryDetail = {
+  story: {
+    storyId: string;
+    title: string;
+    design_status: DesignStatus;
+    status_pill: string;
+    ticket_key: string | null;
+    card_column: string | null;
+    reqs: DesignReqLink[];
+  };
+  source: DesignSource;
+  notes: DesignNote[];
+};
+
+export type DesignRulesResponse = { content: string };
+
+export type DesignSourceAttachResponse = {
+  source: { type: 'figma' | 'html'; value: string; meta: DesignSourceMeta };
+  preview_html?: string;
+};
+
+export type DesignNotePostResponse = { note: DesignNote };
+export type DesignTransitionResponse = { design_status: DesignStatus };
+
+// A design-route failure that carries its HTTP status so the UI can branch on
+// 404 (stories.md missing / unknown story), 422 (validation — client shows the
+// server's message verbatim), and 409 (illegal status transition).
+export class DesignHttpError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = 'DesignHttpError';
+    this.status = status;
+  }
+}
+
+async function designFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(path, init);
+  const contentType = res.headers.get('content-type') ?? '';
+  if (!contentType.includes('application/json')) {
+    throw new Error(
+      'API server is not running. Start it with `npm run dev` (or `npm run dev:api` in another terminal).',
+    );
+  }
+  const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  if (!res.ok) {
+    throw new DesignHttpError(res.status, typeof data.error === 'string' ? data.error : `Request failed (HTTP ${res.status})`);
+  }
+  return data as T;
+}
+
+export async function fetchDesignStories(idOrSlug: string): Promise<DesignStoriesResponse> {
+  return designFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/design/stories`);
+}
+
+export async function fetchDesignStory(
+  idOrSlug: string,
+  storyId: string,
+): Promise<DesignStoryDetail> {
+  return designFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/design/${encodeURIComponent(storyId)}`);
+}
+
+export async function attachFigmaSource(
+  idOrSlug: string,
+  storyId: string,
+  url: string,
+): Promise<DesignSourceAttachResponse> {
+  return designFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/design/${encodeURIComponent(storyId)}/source`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: 'figma', url }),
+  });
+}
+
+export async function attachHtmlSource(
+  idOrSlug: string,
+  storyId: string,
+  filename: string,
+  content: string,
+): Promise<DesignSourceAttachResponse> {
+  return designFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/design/${encodeURIComponent(storyId)}/source`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: 'html', filename, content }),
+  });
+}
+
+export async function removeDesignSource(
+  idOrSlug: string,
+  storyId: string,
+): Promise<{ source: null }> {
+  return designFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/design/${encodeURIComponent(storyId)}/source`, {
+    method: 'DELETE',
+  });
+}
+
+export async function postDesignNote(
+  idOrSlug: string,
+  storyId: string,
+  body: string,
+): Promise<DesignNotePostResponse> {
+  return designFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/design/${encodeURIComponent(storyId)}/notes`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ body }),
+  });
+}
+
+export async function transitionDesignStory(
+  idOrSlug: string,
+  storyId: string,
+  to: DesignStatus,
+): Promise<DesignTransitionResponse> {
+  return designFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/design/${encodeURIComponent(storyId)}/transition`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ to }),
+  });
+}
+
+export async function fetchDesignRules(idOrSlug: string): Promise<DesignRulesResponse> {
+  return designFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/design/rules`);
+}
+
+export async function saveDesignRules(
+  idOrSlug: string,
+  content: string,
+): Promise<{ ok: true; size: number }> {
+  return designFetch(`/api/projects/${encodeURIComponent(idOrSlug)}/design/rules`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content }),
+  });
+}

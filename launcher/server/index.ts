@@ -14,6 +14,7 @@ import { registerRequirementsRoutes } from './requirements.js';
 import { registerJiraLinkRoutes } from './jira-link.js';
 import { registerBoardRoutes } from './board.js';
 import { registerStoryGenRoutes } from './story-gen.js';
+import { registerDesignRoutes } from './design.js';
 import {
   validateProjectDir,
   scaffoldProjectDir,
@@ -69,7 +70,25 @@ app.use(
     },
   }),
 );
+// Design tab - large-body routes (source HTML up to 5 MB, rules write up to
+// 2 MB) parse BEFORE the global 1mb json gate below. body-parser skips the
+// second parse once req._body is set, so a >1MB design body reaches its route
+// handler instead of 500'ing at the global middleware; the handler's own byte
+// caps (server/design.ts) do the real enforcement.
+app.use((req, _res, next) => {
+  const p = req.path;
+  const isDesignBody =
+    p.includes('/design/') &&
+    (p.endsWith('/source') || p.endsWith('/rules')) &&
+    (req.method === 'POST' || req.method === 'PUT');
+  if (isDesignBody) {
+    express.json({ limit: '12mb' })(req, _res, next);
+    return;
+  }
+  next();
+});
 app.use(express.json({ limit: '1mb' }));
+
 
 // BA Workspace — Project Background tab (screens 12–14 + State D gate).
 registerBaWorkspaceRoutes(app);
@@ -92,6 +111,10 @@ registerBoardRoutes(app);
 // Mounted after the board routes — it reads + writes the same kanban_card and
 // prd.md/features.md surfaces Run 1 owns.
 registerStoryGenRoutes(app);
+
+// Design tab — design list + story detail + rules half (design-tab build
+// plan §3). Additive; never touches sprint-owned surfaces (SA-R-01).
+registerDesignRoutes(app);
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
