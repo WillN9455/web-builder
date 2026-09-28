@@ -20,7 +20,7 @@ An intelligent multi-agent system that takes a business idea and produces a full
 
 The two cases map to two different repos:
 
-- **This repository (the framework repo)** contains `framework/` — the stage rulebooks, skills, configs, agent briefs, and the nextjs-starter template — plus the launcher and intake tooling. It is a *rules library*, not a project. When running from here (e.g. via `idea-intake/server.js`), `project-dir.txt` pins the separate project folder that receives artifacts.
+- **This repository (the framework repo)** contains `framework/` — the stage rulebooks, skills, configs, agent briefs, and the starter templates (nextjs-starter, flutter-starter) — plus the launcher and intake tooling. It is a *rules library*, not a project. When running from here (e.g. via `idea-intake/server.js`), `project-dir.txt` pins the separate project folder that receives artifacts.
 - **An exported project repo** already has `framework/` copied in at export time (per `framework/manifest.json`). It has no `project-dir.txt`: the repository root is the workspace, `framework/` supplies the rules, and `PRD/`, `design-system/`, app code, and tests are written here.
 
 `project-dir.txt` is written by `idea-intake/server.js` when a user picks a project folder in the intake chat (it is git-ignored — it is machine-local state, not project content). Never commit it, and never invent a project path if the file is absent.
@@ -38,7 +38,7 @@ web-builder/
 ├── framework/               # The stage rule library (contract: framework/manifest.json)
 │   ├── design/ · build/ · qa/ · review/   # Stage rulebooks — skills/, config/, agents/ per stage
 │   ├── shared/              # Rule bodies consumed by 2+ stages (security, general best practices)
-│   └── templates/           # Starter scaffolds (nextjs-starter) + template-selection doc
+│   └── templates/           # Starter scaffolds (nextjs-starter, flutter-starter) + template-selection doc
 ├── PRD/templates/           # PRD template + supporting docs (copied at export time)
 ├── design-system/           # Design specs used by the Design stage; per-project outputs live in the project's own workspace
 ├── workflows/               # Orchestration patterns for agent coordination (copied at export time)
@@ -61,7 +61,7 @@ web-builder/
 │   ├── qa/                #   QA stage — testing guidelines + playwright helpers, config, agent brief
 │   ├── review/            #   Review stage — review bar, severity ladder, agent brief
 │   ├── shared/            #   Rule bodies consumed by 2+ stages (security, general best practices)
-│   └── templates/         # Starter scaffolds (nextjs-starter) + template-selection doc
+│   └── templates/         # Starter scaffolds (nextjs-starter, flutter-starter) + template-selection doc
 ├── workflows/             # Orchestration patterns for agent coordination (copied at export time)
 └── design-system/         # Design stage OUTPUT — tokens/, components/, states/ created per project during the design stage
 ```
@@ -99,7 +99,7 @@ Each project flows through these stages:
   - `framework/build/skills/feature-fidelity.md` — match design exactly, preserve existing code
   - `framework/design/skills/ui-best-practices.md` — all UI states handled
   - `framework/shared/skills/general-best-practices.md` — requirements-first discipline
-- Scaffold from `framework/templates/nextjs-starter/` (or chosen stack per `framework/templates/docs/template-selection.md`)
+- Scaffold from `framework/templates/nextjs-starter/` (web) or `framework/templates/flutter-starter/` (native app) — or chosen stack per `framework/templates/docs/template-selection.md`
 - Output: Feature-ready code pushed to branch
 
 ### Stage 4: Review

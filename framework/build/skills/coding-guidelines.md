@@ -70,7 +70,8 @@ src/
 
 | File | Relationship |
 |------|-------------|
-| [`../../templates/nextjs-starter/`](../../templates/nextjs-starter/) | Coding conventions define `src/` or app-router file organization that templates must follow exactly |
+| [`../../templates/nextjs-starter/`](../../templates/nextjs-starter/) | Web template — coding conventions define `src/` or app-router file organization that templates must follow exactly |
+| [`../../templates/flutter-starter/`](../../templates/flutter-starter/) | Native template — Dart conventions define `lib/` organization (feature-first under `lib/features/`, `test/` mirroring `lib/`) that the template must follow exactly; tokens via `lib/theme/`, never a literal in a widget |
 | [`../../../design-system/components/README.md`](../../../design-system/components/README.md) Component Rules §5 | Components are CSS-implementable only — templates must not introduce JS-only effects |
 | [`../../qa/skills/testing-guidelines.md`](../../qa/skills/testing-guidelines.md) §Test File Organization | Test file naming convention (`.test.ts` / `.spec.ts`) and organization mirrors source structure per these conventions |
 | [`security.md`](./security.md) (binding → `../../shared/skills/security.md`) | All route handlers/API calls defined here must also pass the security checklist |

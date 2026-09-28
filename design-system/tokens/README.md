@@ -24,6 +24,7 @@ Design tokens are the atomic building blocks of the visual design system. Each t
 All component specs in `design-system/components/` must use these token names — never hardcode hex values. Code Agents fill template CSS files with computed values from the token definitions:
 
 - [`code-builder/templates/nextjs-starter/app/globals.css`](../code-builder/templates/nextjs-starter/app/globals.css) → receives all color + typography tokens as `@layer base` custom properties
+- [`framework/templates/flutter-starter/lib/theme/tokens.dart`](../../framework/templates/flutter-starter/lib/theme/tokens.dart) → receives the same color + typography + spacing tokens as Dart constants (native), mapped into `ThemeData` by `lib/theme/app_theme.dart`
 - [`code-builder/config-rules.md`](../../framework/build/config/config-rules.md) → brand colors from PRD input feed stack choice (primary/secondary determine branding tier)
 - Each component spec file in `design-system/components/` → references specific token names in its CSS implementation notes
 - QA Agent → contrast check against `skills/accessibility-guidelines.md` §Color & Contrast using computed values

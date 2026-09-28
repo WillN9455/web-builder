@@ -7,7 +7,8 @@ does not *own* it (`build/README.md` § Inputs).
 
 | File | Purpose | Written by |
 |---|---|---|
-| `nextjs-starter/` | Scaffold the Build stage fills with tokens | Framework maintainers |
+| `nextjs-starter/` | Scaffold the Build stage fills with tokens — web (Next.js) | Framework maintainers |
+| `flutter-starter/` | Scaffold the Build stage fills with tokens — native iOS/Android (Flutter) | Framework maintainers |
 | `docs/` | Template selection rules the launcher reads | Framework maintainers |
 
 See `framework/manifest.json` → `templates` for the export wiring.

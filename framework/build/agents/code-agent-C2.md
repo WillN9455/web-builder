@@ -8,7 +8,7 @@
 - Model / effort: *(edited on Agents tab)*
 - Trigger: feature branch assigned on the Sprint board
 - Skills in force: `../skills/coding-guidelines.md`, `../skills/code-quality.md`, `../skills/security.md`, `../skills/feature-fidelity.md`
-- Scaffold from: `../../templates/nextjs-starter/`
+- Scaffold from: `../../templates/nextjs-starter/` (web) or `../../templates/flutter-starter/` (native app) — per `../config/config-rules.md` §Frontend Framework
 
 ## Adversarial review
 - Critiqued by: Reviewer Agent
