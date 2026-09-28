@@ -137,7 +137,7 @@ Each workflow reads from upstream artifacts and produces outputs consumed by dow
 | Phase | Reads from | Writes to | Triggers |
 |-------|-----------|----------|---------|
 | Confirm Stack | PRD §3 Dependencies + user answers; `config-rules.md` §User Questions #1-#5 | Stack selection output (frontend, DB, hosting, API) | Template selection |
-| Scaffold | Stack choice from config-rules; `templates/nextjs-starter/` (or chosen template per `templates/README.md`); design token files | Scaffolded project with filled token values in CSS/TS files | Feature assignment |
+| Scaffold | Stack choice from config-rules; `templates/nextjs-starter/` (web) or `templates/flutter-starter/` (native — platform folders via `flutter create .`), or chosen template per `templates/README.md`; design token files | Scaffolded project with filled token values in CSS/TS files (web) or `lib/theme/` Dart files (native) | Feature assignment |
 | Build Features | Approved PRD §8 User Stories (assigned features); component specs (`components/<feature>.md`); state specs (`states/*.md`); all skill files via Skill Invocation Rules table | Feature branch code implementing all states, following all rules | Unit tests |
 | Unit Tests | Feature spec; `framework/qa/skills/testing-guidelines.md` §Required Test Coverage; PRD acceptance criteria per user story (#N) | Unit + integration test files in feature's test directory | Push & Notify |
 | Push & Notify | Feature branch code + tests | Pushed feature branch | **Workflow 4** — Dev Reviewers begin review |

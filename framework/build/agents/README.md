@@ -12,7 +12,7 @@ never here.
 - Stage: Build
 - Trigger: story assigned on the Sprint board
 - Skills in force: `../skills/coding-guidelines.md`, `../skills/code-quality.md`, `../skills/security.md` (binding → `../../shared/skills/security.md`), `../skills/feature-fidelity.md`
-- Scaffold from: `../../templates/nextjs-starter/` (per `../config/config-rules.md` stack selection)
+- Scaffold from: `../../templates/nextjs-starter/` (web) or `../../templates/flutter-starter/` (native app) — per `../config/config-rules.md` stack selection
 - Critiqued by: Reviewer Agent (`../../review/agents/reviewer-agent.md`)
 
 If you find yourself editing this section to steer one agent, put that edit in

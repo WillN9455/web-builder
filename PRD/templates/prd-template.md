@@ -635,7 +635,7 @@ third parties via EU endpoints). Cross-border risks filed in `open-questions.md`
 **Output chain (downstream consumers):** Approved PRD at `PRD/<project>/prd.md` feeds:
 - Design Agents → component selection from [`design-system/components/README.md`](../../design-system/components/README.md) index (map each user story to a component); token definitions from [`design-system/tokens/README.md`](../../design-system/tokens/README.md) (§6 UX Principles → typography/spacing scale)
 - Solution Architect → `PRD/<project>/tech-decision-brief.md` (SA completes the second half using §3a, §3b, §9a, §9b + `nfr-catalog.md` + `open-questions.md`); stack choice then drives `framework/build/config/config-rules.md`
-- Code Agents → assigned features per §8 User Stories + acceptance criteria; tech stack via the SA-approved `tech-decision-brief.md`; scaffold from [`framework/templates/nextjs-starter/`](../../framework/templates/nextjs-starter/) (or whichever stack the SA picked)
+- Code Agents → assigned features per §8 User Stories + acceptance criteria; tech stack via the SA-approved `tech-decision-brief.md`; scaffold from [`framework/templates/nextjs-starter/`](../../framework/templates/nextjs-starter/) (web) or [`framework/templates/flutter-starter/`](../../framework/templates/flutter-starter/) (native app) — or whichever stack the SA picked
 - QA Agent → test suite traces each PRD user story (#N) to a Playwright test (`framework/qa/skills/testing-guidelines.md` §Test Writing Rules → "every test must trace back to a PRD requirement"); also tests NFRs in `nfr-catalog.md` and KPIs in §6a
 - BA + Design Reviewers → feature verification via Playwright per workflow pattern
 See [`FRAMEWORK-FLOW.md`](../../FRAMEWORK-FLOW.md) rows for each downstream file.

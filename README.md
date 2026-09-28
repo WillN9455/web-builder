@@ -40,7 +40,7 @@ web-builder/
 │   ├── MANIFEST.md              #   Key-by-key manifest schema
 │   ├── design/ · build/ · qa/ · review/   # Stage rulebooks — skills/, config/, agents/ per stage
 │   ├── shared/                  #   Rule bodies consumed by 2+ stages (security, general best practices)
-│   └── templates/               #   Starter scaffolds (nextjs-starter/) + template-selection doc
+│   └── templates/               #   Starter scaffolds (nextjs-starter/, flutter-starter/) + template-selection doc
 ├── PRD/
 │   ├── templates/               # prd-template.md + supporting/ docs (copied at export time)
 │   └── example/                 # acme-coaching — worked example PRD set
@@ -73,7 +73,7 @@ On idea creation, the launcher copies `framework/` wholesale plus the manifest `
 │   ├── qa/                      #   QA stage — skills/ (testing guidelines + playwright helpers), config/, agents/
 │   ├── review/                  #   Review stage — config/ (review bar, severity ladder), agents/
 │   ├── shared/                  #   Rule bodies consumed by 2+ stages (security, general best practices)
-│   └── templates/               #   Starter scaffolds (nextjs-starter/) + template-selection doc
+│   └── templates/               #   Starter scaffolds (nextjs-starter/, flutter-starter/) + template-selection doc
 ├── workflows/                   # Orchestration scripts for agent coordination (copied at export time)
 │   └── README.md                # Workflow patterns with file dependency map (§all 5 workflows: reads-from / writes-to / triggers)
 └── design-system/               # Design stage OUTPUT — created per project during the design stage

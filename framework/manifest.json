@@ -27,7 +27,7 @@
       ],
       "config": ["build/config/config-rules.md", "build/config/build-rules.md"],
       "agents": ["build/agents/code-agent-C1.md", "build/agents/code-agent-C2.md", "build/agents/code-agent-C3.md"],
-      "templates": ["templates/nextjs-starter/"],
+      "templates": ["templates/nextjs-starter/", "templates/flutter-starter/"],
       "shared_inputs": ["shared/skills/general-best-practices.md"],
       "ui_write_back": "Build tab → Rules half"
     },
